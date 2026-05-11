@@ -1,0 +1,20189 @@
+
+
+
+# app.py
+# 사주MRI Streamlit 앱 v5.140-my-saju-direct-link
+# 실행: python -m streamlit run app.py
+
+
+# ============================================================
+# 📑 파일 구조 목차 (v4.97 기준)
+# ============================================================
+#
+# [SECTION 1] 데이터 상수 ---------- line 49
+# [SECTION 2] dataclass ----------- line 308
+# [SECTION 3] 공통 유틸 ------------ line 358
+# [SECTION 4] 오행 계산 ------------ line 549
+# [SECTION 5] 합충형파해 ----------- line 581
+# [SECTION 6] 일간 강약 ------------ line 805
+# [SECTION 7] 격국 판정 ------------ line 1284
+# [SECTION 8] 조후 ---------------- line 852
+# [SECTION 9] 용신 ---------------- line 945
+# [SECTION 10] 점수 산출 ----------- line 1200
+# [SECTION 11] 분석 오케스트레이터 -- line 2601
+# [SECTION 12] 만세력 산출 --------- line 2977
+# [SECTION 13] 검증 ---------------- line 2870
+# [SECTION 14] 케미 분석 ----------- line 5244
+# [SECTION 15] 뽑기 --------------- line 3560
+# [SECTION 16] 리포트 -------------- line 2747
+# [SECTION 17] UI 헬퍼 ------------- line 4069
+# [SECTION 18] Streamlit 페이지 ----- line 6501
+#
+# 검색 팁: "[SECTION N]" 으로 검색하면 해당 섹션으로 점프
+# 라인 번호는 변경될 수 있으므로 섹션 마커 텍스트로 검색 권장
+# ============================================================
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
+import pandas as pd
+import streamlit as st
+import streamlit.components.v1 as components
+import random
+import html
+import math
+import textwrap
+import re
+import json
+import uuid
+import os
+import io
+import urllib.request
+import urllib.error
+import urllib.parse
+
+
+# Streamlit/PyArrow가 일부 혼합형 객체(list/dict/None)를 표로 변환하다가 오류를 내는 것을 방지한다.
+# v5.51: st.dataframe 자체가 PyArrow 변환을 호출하므로, 안전 표시는 HTML 표/목록으로 우회한다.
+def _clean_display_text(value) -> str:
+    """사용자 화면에 그대로 노출되면 안 되는 내부/JS식 빈값 표현을 제거한다."""
+    text = "" if value is None else str(value)
+    bad_tokens = ["\uc815\uc758\ub418\uc9c0 \uc54a\uc74c", "undefined", "Undefined", "UNDEFINED", "nan", "NaN", "None"]
+    for token in bad_tokens:
+        text = text.replace(token, "")
+    return text.strip()
+
+
+def _display_value(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, (list, tuple, set)):
+        return ", ".join(_display_value(x) for x in v if _display_value(x))
+    if isinstance(v, dict):
+        return "; ".join(f"{_display_value(k)}: {_display_value(val)}" for k, val in v.items() if _display_value(val))
+    return _clean_display_text(v)
+
+
+def safe_dataframe(data, *args, **kwargs):
+    """PyArrow를 전혀 호출하지 않는 안전 표 렌더러.
+
+    st.dataframe/st.table/st.bar_chart 계열은 내부적으로 Arrow 변환을 타므로
+    이 함수는 DataFrame을 HTML 문자열로 직접 만들어 출력한다.
+    """
+    try:
+        max_rows = int(kwargs.pop("max_rows", 80) or 80)
+        if isinstance(data, pd.DataFrame):
+            cols_raw = list(data.columns)
+            records = data.to_dict("records")
+        elif isinstance(data, list):
+            records = data
+            cols_raw = []
+            for row in records:
+                if isinstance(row, dict):
+                    for k in row.keys():
+                        if k not in cols_raw:
+                            cols_raw.append(k)
+            if not cols_raw:
+                cols_raw = ["내용"]
+                records = [{"내용": x} for x in records]
+        elif isinstance(data, dict):
+            cols_raw = ["항목", "내용"]
+            records = [{"항목": k, "내용": v} for k, v in data.items()]
+        else:
+            cols_raw = ["내용"]
+            records = [{"내용": data}]
+
+        if not records:
+            st.caption("표시할 항목이 없습니다.")
+            return
+
+        truncated = len(records) > max_rows
+        records = records[:max_rows]
+        header = "".join(f"<th>{html.escape(_clean_display_text(c))}</th>" for c in cols_raw)
+        body_rows = []
+        for row in records:
+            if not isinstance(row, dict):
+                row = {"내용": row}
+            cells = []
+            for c in cols_raw:
+                val = row.get(c, "")
+                cells.append(f"<td>{html.escape(_display_value(val))}</td>")
+            body_rows.append("<tr>" + "".join(cells) + "</tr>")
+
+        st.markdown(
+            "<div class='safe-table-wrap'><table class='safe-table'>"
+            f"<thead><tr>{header}</tr></thead><tbody>{''.join(body_rows)}</tbody>"
+            "</table></div>",
+            unsafe_allow_html=True,
+        )
+        if truncated:
+            st.caption(f"표가 길어 앞 {max_rows}개 행만 표시했습니다.")
+    except Exception as exc:
+        st.warning(f"표시용 표를 만들지 못했습니다: {html.escape(_clean_display_text(exc))}")
+
+
+# v5.51: PyArrow 오류 차단용 전역 안전 출력 패치.
+# Streamlit의 st.write/st.dataframe/st.table은 객체를 내부적으로 Arrow 변환할 수 있어,
+# 화면 출력 경로를 markdown/html 기반으로 우회한다.
+_ORIGINAL_ST_RADIO = st.radio
+_ORIGINAL_ST_WRITE = st.write
+
+def _safe_write(*args, **kwargs):
+    if not args:
+        st.markdown("")
+        return
+    for arg in args:
+        if isinstance(arg, pd.DataFrame) or isinstance(arg, (dict, list, tuple, set)):
+            safe_dataframe(arg)
+        else:
+            text = _display_value(arg)
+            if text:
+                st.markdown(text)
+            else:
+                st.markdown("")
+
+
+def _safe_radio_toggle(label, value=False, key=None, **kwargs):
+    """기존 st.toggle 대신 st.radio를 사용한다.
+    과거 Streamlit 프론트엔드/Arrow 문제가 토글·표 렌더링과 함께 재현된 이력이 있어,
+    접기/펼치기 선택은 radio 기반으로 고정한다.
+    """
+    options = ["닫기", "열기"]
+    index = 1 if bool(value) else 0
+    choice = _ORIGINAL_ST_RADIO(
+        label,
+        options,
+        index=index,
+        key=key,
+        horizontal=True,
+        label_visibility=kwargs.get("label_visibility", "visible"),
+    )
+    return choice == "열기"
+
+# 혹시 남아 있는 직접 호출도 Arrow 변환을 타지 않도록 덮어쓴다.
+safe_write = _safe_write
+safe_toggle = _safe_radio_toggle
+st.write = _safe_write
+st.dataframe = safe_dataframe
+st.table = safe_dataframe
+st.toggle = _safe_radio_toggle
+
+# v5.51: Streamlit 프론트엔드 removeChild/Arrow 오류 차단.
+# native expander(접기 화살표)와 metric 카드가 일부 환경에서 DOM 재렌더링 오류를 만들 수 있어
+# 앱 전체에서 radio/markdown 기반 안전 출력으로 대체한다.
+class _SafeExpander:
+    def __init__(self, label, expanded=False, **kwargs):
+        self.label = _clean_display_text(label) or "상세 보기"
+        self.expanded = expanded
+
+    def __enter__(self):
+        # native expander를 쓰지 않고, 단순 제목으로 표시한다. 본문은 항상 렌더링된다.
+        # 오류 안정화를 우선한 버전이며, 접기/펼치기는 개별 radio UI에서 처리한다.
+        st.markdown(f"#### {_clean_display_text(self.label)}")
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+def _safe_expander(label, expanded=False, **kwargs):
+    return _SafeExpander(label, expanded=expanded, **kwargs)
+
+
+def _safe_metric(label, value, delta=None, delta_color="normal", help=None, label_visibility="visible", border=False):
+    label_txt = _clean_display_text(label) or "항목"
+    value_txt = _clean_display_text(value) or "-"
+    delta_txt = _clean_display_text(delta)
+    line = f"**{label_txt}**: {value_txt}"
+    if delta_txt:
+        line += f" ({delta_txt})"
+    st.markdown(line)
+
+st.expander = _safe_expander
+st.metric = _safe_metric
+safe_section = _safe_expander
+safe_metric = _safe_metric
+
+# 안전장치: 실수로 남은 plotly/components 호출이 실행되어도 프론트엔드 JS 경로를 타지 않게 막는다.
+def _disabled_plotly_chart(*args, **kwargs):
+    st.caption("이 버전에서는 안정성을 위해 Plotly 차트를 사용하지 않습니다.")
+
+st.plotly_chart = _disabled_plotly_chart
+
+# v5.51: Plotly/Arrow/DOM 충돌 가능성을 피하기 위해 첫 화면 그래프는 순수 SVG/HTML로 렌더링한다.
+go = None
+
+
+# ============================================================
+
+# ============================================================
+# [SECTION 1] 데이터 상수
+#
+# 이 섹션의 내용 요약: 명리학 기본 데이터 정의. 이 값들은 명리학 정설로 변하지 않는 기준 데이터입니다.
+# 주요 함수/상수: STEMS, BRANCHES, ELEMENTS, GENERATES, CONTROLS, POSITION_WEIGHTS_*
+# 변경 시 영향: 모든 분석 로직에 영향. 매우 신중히 변경.
+# ============================================================
+
+# 1. 기본 데이터
+# ============================================================
+
+ELEMENTS = ["목", "화", "토", "금", "수"]
+
+STEMS = {
+    "甲": {"ko": "갑", "element": "목", "polarity": "yang"},
+    "乙": {"ko": "을", "element": "목", "polarity": "yin"},
+    "丙": {"ko": "병", "element": "화", "polarity": "yang"},
+    "丁": {"ko": "정", "element": "화", "polarity": "yin"},
+    "戊": {"ko": "무", "element": "토", "polarity": "yang"},
+    "己": {"ko": "기", "element": "토", "polarity": "yin"},
+    "庚": {"ko": "경", "element": "금", "polarity": "yang"},
+    "辛": {"ko": "신", "element": "금", "polarity": "yin"},
+    "壬": {"ko": "임", "element": "수", "polarity": "yang"},
+    "癸": {"ko": "계", "element": "수", "polarity": "yin"},
+}
+
+BRANCHES = {
+    "子": {"ko": "자", "element": "수", "hidden": [("癸", 1.00)]},
+    "丑": {"ko": "축", "element": "토", "hidden": [("己", 0.60), ("癸", 0.30), ("辛", 0.10)]},
+    "寅": {"ko": "인", "element": "목", "hidden": [("甲", 0.60), ("丙", 0.30), ("戊", 0.10)]},
+    "卯": {"ko": "묘", "element": "목", "hidden": [("乙", 1.00)]},
+    "辰": {"ko": "진", "element": "토", "hidden": [("戊", 0.60), ("乙", 0.30), ("癸", 0.10)]},
+    "巳": {"ko": "사", "element": "화", "hidden": [("丙", 0.60), ("戊", 0.25), ("庚", 0.15)]},
+    "午": {"ko": "오", "element": "화", "hidden": [("丁", 0.70), ("己", 0.30)]},
+    "未": {"ko": "미", "element": "토", "hidden": [("己", 0.60), ("丁", 0.30), ("乙", 0.10)]},
+    "申": {"ko": "신", "element": "금", "hidden": [("庚", 0.60), ("壬", 0.30), ("戊", 0.10)]},
+    "酉": {"ko": "유", "element": "금", "hidden": [("辛", 1.00)]},
+    "戌": {"ko": "술", "element": "토", "hidden": [("戊", 0.60), ("辛", 0.25), ("丁", 0.15)]},
+    "亥": {"ko": "해", "element": "수", "hidden": [("壬", 0.70), ("甲", 0.30)]},
+}
+
+
+# 한글 간지 입력 지원용 매핑
+KOREAN_STEM_TO_HANJA = {
+    "갑": "甲", "을": "乙", "병": "丙", "정": "丁", "무": "戊",
+    "기": "己", "경": "庚", "신": "辛", "임": "壬", "계": "癸",
+}
+
+KOREAN_BRANCH_TO_HANJA = {
+    "자": "子", "축": "丑", "인": "寅", "묘": "卯", "진": "辰", "사": "巳",
+    "오": "午", "미": "未", "신": "申", "유": "酉", "술": "戌", "해": "亥",
+}
+
+GENERATES = {"목": "화", "화": "토", "토": "금", "금": "수", "수": "목"}
+CONTROLS = {"목": "토", "토": "수", "수": "화", "화": "금", "금": "목"}
+
+POSITION_WEIGHTS_STEM = {"year": 0.8, "month": 1.2, "day": 1.0, "hour": 1.0}
+POSITION_WEIGHTS_BRANCH = {"year": 1.0, "month": 2.5, "day": 1.5, "hour": 1.2}
+
+SEASON_BY_MONTH_BRANCH = {
+    "寅": ("봄", "목"), "卯": ("봄", "목"), "辰": ("봄말/토", "토"),
+    "巳": ("여름", "화"), "午": ("여름", "화"), "未": ("여름말/토", "토"),
+    "申": ("가을", "금"), "酉": ("가을", "금"), "戌": ("가을말/토", "토"),
+    "亥": ("겨울", "수"), "子": ("겨울", "수"), "丑": ("겨울말/토", "토"),
+}
+
+SEASONAL_ADJUSTMENT = {
+    "봄": {"목": 1.25, "화": 1.10, "금": 0.88},
+    "여름": {"화": 1.25, "토": 1.10, "수": 0.88},
+    "가을": {"금": 1.25, "수": 1.10, "목": 0.88},
+    "겨울": {"수": 1.25, "목": 1.08, "화": 0.88},
+    "봄말/토": {"토": 1.20, "목": 1.08, "수": 0.95},
+    "여름말/토": {"토": 1.20, "화": 1.08, "수": 0.90},
+    "가을말/토": {"토": 1.20, "금": 1.08, "목": 0.90},
+    "겨울말/토": {"토": 1.20, "수": 1.08, "화": 0.90},
+}
+
+TRIADS = [
+    {"name": "申子辰 水局", "branches": {"申", "子", "辰"}, "element": "수", "king": "子"},
+    {"name": "亥卯未 木局", "branches": {"亥", "卯", "未"}, "element": "목", "king": "卯"},
+    {"name": "寅午戌 火局", "branches": {"寅", "午", "戌"}, "element": "화", "king": "午"},
+    {"name": "巳酉丑 金局", "branches": {"巳", "酉", "丑"}, "element": "금", "king": "酉"},
+]
+
+DIRECTIONAL_COMBOS = [
+    {"name": "寅卯辰 木方", "branches": {"寅", "卯", "辰"}, "element": "목"},
+    {"name": "巳午未 火方", "branches": {"巳", "午", "未"}, "element": "화"},
+    {"name": "申酉戌 金方", "branches": {"申", "酉", "戌"}, "element": "금"},
+    {"name": "亥子丑 水方", "branches": {"亥", "子", "丑"}, "element": "수"},
+]
+
+SIX_HARMONIES = [
+    ("子", "丑", "토", "子丑合土"),
+    ("寅", "亥", "목", "寅亥合木"),
+    ("卯", "戌", "화", "卯戌合火"),
+    ("辰", "酉", "금", "辰酉合金"),
+    ("巳", "申", "수", "巳申合水"),
+    ("午", "未", "토", "午未合土"),
+]
+
+CLASHES = [
+    ("子", "午", "子午沖"),
+    ("丑", "未", "丑未沖"),
+    ("寅", "申", "寅申沖"),
+    ("卯", "酉", "卯酉沖"),
+    ("辰", "戌", "辰戌沖"),
+    ("巳", "亥", "巳亥沖"),
+]
+
+PENALTIES = [
+    ("子", "卯", "子卯刑"),
+    ("寅", "巳", "寅巳刑"),
+    ("巳", "申", "巳申刑"),
+    ("申", "寅", "申寅刑"),
+    ("丑", "戌", "丑戌刑"),
+    ("戌", "未", "戌未刑"),
+    ("未", "丑", "未丑刑"),
+]
+
+# ============================================================
+# 보완 모델 상수: 12운성·격국·특수격·관계 모드
+# ============================================================
+
+BRANCH_ORDER = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+TWELVE_STAGES = ["장생", "목욕", "관대", "건록", "제왕", "쇠", "병", "사", "묘", "절", "태", "양"]
+TWELVE_STAGE_START = {"甲":"亥","乙":"午","丙":"寅","丁":"酉","戊":"寅","己":"酉","庚":"巳","辛":"子","壬":"申","癸":"卯"}
+TWELVE_STAGE_DIRECTION = {"甲":1,"丙":1,"戊":1,"庚":1,"壬":1,"乙":-1,"丁":-1,"己":-1,"辛":-1,"癸":-1}
+TWELVE_STAGE_POWER = {"장생":1.0,"목욕":0.7,"관대":1.1,"건록":1.2,"제왕":1.2,"쇠":0.8,"병":0.3,"사":0.2,"묘":0.5,"절":0.2,"태":0.4,"양":0.5}
+STEM_COMBINATIONS = {frozenset(["甲","己"]):"토", frozenset(["乙","庚"]):"금", frozenset(["丙","辛"]):"수", frozenset(["丁","壬"]):"목", frozenset(["戊","癸"]):"화"}
+RELATIONSHIP_WEIGHTS = {
+    "연인": {"complement":0.30,"alliance":0.30,"flow":0.15,"buffer":0.25,"day_branch":1.0},
+    "친구": {"complement":0.32,"alliance":0.28,"flow":0.22,"buffer":0.18,"day_branch":0.6},
+    "비즈니스": {"complement":0.38,"alliance":0.22,"flow":0.25,"buffer":0.15,"day_branch":0.4},
+    "가족": {"complement":0.30,"alliance":0.32,"flow":0.18,"buffer":0.20,"day_branch":0.8},
+}
+SCORE_UNCERTAINTY = 4
+MAX_CONFIDENCE_DISPLAY = 95  # 신뢰도는 확정처럼 보이지 않도록 최대 95%로 표시
+MODEL_LIMITATIONS_V4 = """
+이 모델은 자평명리 요소를 앱에서 비교 가능하도록 점수화한 휴리스틱입니다.
+특수격·격국·12운성·합화 조건·대운 전후반 분리를 일부 반영했지만, 신살·공망·기문·맹파·궁통보감식 해석은 별도 항목으로 반영하지 않습니다.
+점수 계수와 임계값은 명리학 직관 기반 참고값이며 실증 데이터로 검증된 수치가 아닙니다.
+결과는 게임·참고용이며 중대한 의사결정의 근거로 사용해서는 안 됩니다.
+"""
+
+def get_twelve_stage(day_stem: str, branch: str) -> str:
+    start = TWELVE_STAGE_START.get(day_stem)
+    if start is None or branch not in BRANCH_ORDER:
+        return "미상"
+    direction = TWELVE_STAGE_DIRECTION.get(day_stem, 1)
+    diff = ((BRANCH_ORDER.index(branch) - BRANCH_ORDER.index(start)) * direction) % 12
+    return TWELVE_STAGES[diff]
+
+def twelve_stage_power(chart: "Chart") -> Dict[str, object]:
+    branches = {"year": chart.year.branch, "month": chart.month.branch, "day": chart.day.branch}
+    weights = {"year": 1.0, "month": 3.0, "day": 2.0}
+    if chart.hour is not None:
+        branches["hour"] = chart.hour.branch
+        weights["hour"] = 1.2
+    stages, power = {}, {}
+    for pos, branch in branches.items():
+        stage = get_twelve_stage(chart.day_master, branch)
+        stages[pos] = stage
+        power[pos] = TWELVE_STAGE_POWER.get(stage, 0.6)
+    denom = sum(weights[p] for p in power) or 1.0
+    overall = sum(power[p] * weights[p] for p in power) / denom
+    return {"stages": stages, "power": power, "overall": overall}
+
+def day_rootedness_factor(chart: "Chart") -> Tuple[float, List[str]]:
+    """
+    일간의 통근 강도를 본기/중기/여기 비율에 따라 차등 계산한다.
+
+    - 지지 본기 일치: 강한 통근
+    - 지장간 본기에 일간 오행: 강한 통근
+    - 지장간 중기: 중간
+    - 지장간 여기: 약한
+    """
+    day_el = STEMS[chart.day_master]["element"]
+    factor = 1.0
+    notes: List[str] = []
+
+    branch_checks = [
+        ("일지", chart.day.branch, 0.20),
+        ("월지", chart.month.branch, 0.14),
+        ("년지", chart.year.branch, 0.06),
+    ]
+    if chart.hour is not None:
+        branch_checks.append(("시지", chart.hour.branch, 0.06))
+    else:
+        notes.append("시지 미상: 시간 통근은 제외")
+
+    for label, branch, base_add in branch_checks:
+        # 지지 자체의 오행이 일간과 같음 (본기 통근)
+        if BRANCHES[branch]["element"] == day_el:
+            factor += base_add
+            notes.append(f"{label} 본기 통근")
+            continue
+
+        # 지장간 분석: 비율에 따라 차등
+        max_ratio_match = 0.0
+        for hidden_stem, ratio in BRANCHES[branch]["hidden"]:
+            if STEMS[hidden_stem]["element"] == day_el:
+                max_ratio_match = max(max_ratio_match, ratio)
+
+        if max_ratio_match >= 0.5:
+            factor += base_add * 0.7
+            notes.append(f"{label} 지장간 본기 통근")
+        elif max_ratio_match >= 0.25:
+            factor += base_add * 0.4
+            notes.append(f"{label} 지장간 중기 통근")
+        elif max_ratio_match > 0:
+            factor += base_add * 0.15
+            notes.append(f"{label} 지장간 여기 미약 통근")
+
+    return min(1.40, factor), notes
+
+def detect_special_pattern(chart: "Chart", adjusted_scores: Dict[str, float], strength_index: float) -> Dict[str, object]:
+    pct = normalize_scores(adjusted_scores)
+    day_el = STEMS[chart.day_master]["element"]
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    if pct[day_el] + pct[resource_el] >= 60 and strength_index >= 70 and pct[officer_el] < 12 and pct[wealth_el] < 15:
+        if pct[day_el] >= 40:
+            return {"is_special": True, "type": "종왕", "direction": day_el, "confidence": min(1.0, (pct[day_el]-30)/30), "reasons": [f"일간 오행 {day_el}이 {pct[day_el]:.1f}%"]}
+        return {"is_special": True, "type": "종강", "direction": day_el, "confidence": min(1.0, (pct[day_el]+pct[resource_el]-55)/30), "reasons": [f"비겁·인성 합계 {pct[day_el]+pct[resource_el]:.1f}%"]}
+    if strength_index <= 25:
+        if pct[wealth_el] >= 45:
+            return {"is_special": True, "type": "종재", "direction": wealth_el, "confidence": min(1.0, (pct[wealth_el]-40)/25), "reasons": [f"극신약 + 재성 {pct[wealth_el]:.1f}%"]}
+        if pct[officer_el] >= 45:
+            return {"is_special": True, "type": "종살", "direction": officer_el, "confidence": min(1.0, (pct[officer_el]-40)/25), "reasons": [f"극신약 + 관성 {pct[officer_el]:.1f}%"]}
+        if pct[output_el] >= 45:
+            return {"is_special": True, "type": "종아", "direction": output_el, "confidence": min(1.0, (pct[output_el]-40)/25), "reasons": [f"극신약 + 식상 {pct[output_el]:.1f}%"]}
+    combo_stems = [chart.year.stem, chart.month.stem]
+    if chart.hour is not None:
+        combo_stems.append(chart.hour.stem)
+    for other in combo_stems:
+        target = STEM_COMBINATIONS.get(frozenset([chart.day_master, other]))
+        if target:
+            month_el = BRANCHES[chart.month.branch]["element"]
+            if month_el == target or GENERATES.get(month_el) == target:
+                blocker = next(e for e in ELEMENTS if CONTROLS[e] == target)
+                if pct.get(blocker, 0) < 15:
+                    return {"is_special": True, "type": "화격", "direction": target, "confidence": 0.6, "reasons": [f"{chart.day_master}{other} 천간합, 월령이 {target} 합화를 도움"]}
+    return {"is_special": False, "type": "일반격", "direction": None, "confidence": 0.0, "reasons": []}
+
+def format_score_display(score: float, uncertainty: int = SCORE_UNCERTAINTY) -> str:
+    return f"{int(round(float(score)))} ± {uncertainty}"
+
+def is_close_match(score_a: float, score_b: float, threshold: int = 5) -> bool:
+    return abs(float(score_a) - float(score_b)) <= threshold
+
+
+# ============================================================
+# 2. 데이터 구조
+# ============================================================
+
+
+# ============================================================
+# [SECTION 2] dataclass
+#
+# 이 섹션의 내용 요약: 사주 원국을 표현하는 데이터 구조입니다. Pillar와 Chart가 분석 함수의 공통 입력 단위입니다.
+# 주요 함수/상수: Pillar, Chart
+# 변경 시 영향: 분석 함수 거의 전체.
+# ============================================================
+
+@dataclass
+class Pillar:
+    stem: str
+    branch: str
+
+@dataclass
+class Chart:
+    year: Pillar
+    month: Pillar
+    day: Pillar
+    hour: Pillar | None
+    gender: str
+    birth_info: str = ""
+
+    @property
+    def day_master(self) -> str:
+        return self.day.stem
+
+    @property
+    def has_hour(self) -> bool:
+        return self.hour is not None
+
+    @property
+    def stems(self) -> List[str]:
+        values = [self.year.stem, self.month.stem, self.day.stem]
+        if self.hour is not None:
+            values.append(self.hour.stem)
+        return values
+
+    @property
+    def branches(self) -> List[str]:
+        values = [self.year.branch, self.month.branch, self.day.branch]
+        if self.hour is not None:
+            values.append(self.hour.branch)
+        return values
+
+
+# ============================================================
+# 3. 공통 함수
+# ============================================================
+
+
+# ============================================================
+# [SECTION 3] 공통 유틸
+#
+# 이 섹션의 내용 요약: 점수 안전 처리, 정규화 등 분석 전반에서 쓰는 보조 함수입니다. 작은 변경도 여러 점수 항목에 퍼질 수 있습니다.
+# 주요 함수/상수: clamp, safe_score, normalize_scores, safe_call
+# 변경 시 영향: 점수 산출 결과의 일관성에 영향.
+# ============================================================
+
+def clamp(x: float, low: float, high: float) -> float:
+    return max(low, min(high, x))
+
+
+def safe_score(score: float, max_score: float) -> float:
+    """
+    항목별 점수가 배점을 초과하지 않도록 최종 검증한다.
+    화면에 표시되는 모든 항목별 점수는 이 함수를 거친다.
+    """
+    try:
+        value = float(score)
+    except Exception:
+        value = 0.0
+    return round(clamp(value, 0.0, float(max_score)), 1)
+
+def add_score(scores: Dict[str, float], element: str, amount: float) -> None:
+    scores[element] = scores.get(element, 0.0) + amount
+
+def normalize_scores(scores: Dict[str, float]) -> Dict[str, float]:
+    total = sum(scores.values())
+    if total <= 0:
+        return {e: 0.0 for e in ELEMENTS}
+    return {e: scores.get(e, 0.0) / total * 100 for e in ELEMENTS}
+
+def relation_to_day(day_stem: str, target_stem: str) -> str:
+    """
+    일간 기준 십성 계산.
+    target_stem은 원칙적으로 천간이지만, 만세력 원국 화면에서는 지지가 들어올 수 있으므로
+    지지가 들어오면 해당 지지의 대표 지장간을 기준으로 안전하게 변환한다.
+    """
+    if day_stem not in STEMS:
+        return "기타"
+
+    target = str(target_stem or "")
+    if target in BRANCHES:
+        hidden = BRANCHES[target].get("hidden", [])
+        target = hidden[0][0] if hidden else ""
+
+    if target not in STEMS:
+        return "기타"
+
+    day_el = STEMS[day_stem]["element"]
+    target_el = STEMS[target]["element"]
+    day_pol = STEMS[day_stem]["polarity"]
+    target_pol = STEMS[target]["polarity"]
+    same = day_pol == target_pol
+
+    if target_el == day_el:
+        return "비견" if same else "겁재"
+    if GENERATES[target_el] == day_el:
+        return "편인" if same else "정인"
+    if GENERATES[day_el] == target_el:
+        return "식신" if same else "상관"
+    if CONTROLS[day_el] == target_el:
+        return "편재" if same else "정재"
+    if CONTROLS[target_el] == day_el:
+        return "편관" if same else "정관"
+    return "기타"
+
+def element_state(percent: float) -> str:
+    if percent < 5:
+        return "결핍"
+    if percent < 12:
+        return "부족"
+    if percent <= 28:
+        return "균형권"
+    if percent <= 35:
+        return "강함"
+    return "과다"
+
+def strength_label(index: float) -> str:
+    if index <= 25:
+        return "극신약"
+    if index <= 40:
+        return "신약"
+    if index <= 60:
+        return "중화"
+    if index <= 75:
+        return "신강"
+    return "극신강"
+
+
+# 정규분포형 10단계 등급 기준
+# 평균권 명식이 B / B+ / A- 구간에 주로 분포하도록 65점 중심, 10점 표준편차형으로 설계한다.
+# 등급 비율은 참고용 내부 메타값이며, 사용자 화면에는 등급 기준 비율·환산 인구를 노출하지 않는다.
+REFERENCE_POPULATION = 51_609_121
+
+GRADE_BANDS = [
+    {
+        "grade": "S",
+        "min": 85.0,
+        "max": 100.01,
+        "z_range": "+2σ 이상",
+        "ratio": 0.0228,
+        "label": "눈에 띄는 상위 골격",
+        "description": "오행 균형, 순환, 현실 발현력이 함께 강하게 나온 드문 상위 구조입니다.",
+    },
+    {
+        "grade": "A+",
+        "min": 80.0,
+        "max": 85.0,
+        "z_range": "+1.5σ ~ +2σ",
+        "ratio": 0.0440,
+        "label": "매우 안정적인 우수 골격",
+        "description": "장점이 뚜렷하고 구조적 안정성이 매우 높은 편입니다.",
+    },
+    {
+        "grade": "A",
+        "min": 75.0,
+        "max": 80.0,
+        "z_range": "+1σ ~ +1.5σ",
+        "ratio": 0.0919,
+        "label": "안정적인 상위 골격",
+        "description": "평균권보다 뚜렷하게 좋은 흐름과 발현력을 가진 구조입니다.",
+    },
+    {
+        "grade": "A-",
+        "min": 70.0,
+        "max": 75.0,
+        "z_range": "+0.5σ ~ +1σ",
+        "ratio": 0.1499,
+        "label": "양호한 골격",
+        "description": "일반적인 명식 중에서도 장점과 활용 방향이 비교적 분명한 구조입니다.",
+    },
+    {
+        "grade": "B+",
+        "min": 65.0,
+        "max": 70.0,
+        "z_range": "0 ~ +0.5σ",
+        "ratio": 0.1915,
+        "label": "평균보다 좋은 골격",
+        "description": "장단점이 함께 있으나 전반적으로 활용 가능한 강점이 보이는 구조입니다.",
+    },
+    {
+        "grade": "B",
+        "min": 60.0,
+        "max": 65.0,
+        "z_range": "-0.5σ ~ 0",
+        "ratio": 0.1915,
+        "label": "표준권 골격",
+        "description": "대부분의 일반적인 명식이 걸치는 중심 구간으로, 장점과 보완점이 함께 있습니다.",
+    },
+    {
+        "grade": "B-",
+        "min": 55.0,
+        "max": 60.0,
+        "z_range": "-1σ ~ -0.5σ",
+        "ratio": 0.1499,
+        "label": "보완점이 보이는 골격",
+        "description": "일부 편중이나 흐름의 제한이 있어 보완 방향을 함께 보는 것이 좋습니다.",
+    },
+    {
+        "grade": "C+",
+        "min": 50.0,
+        "max": 55.0,
+        "z_range": "-1.5σ ~ -1σ",
+        "ratio": 0.0919,
+        "label": "조율이 필요한 골격",
+        "description": "강점보다 보완해야 할 지점이 더 눈에 띄는 구조입니다.",
+    },
+    {
+        "grade": "C",
+        "min": 45.0,
+        "max": 50.0,
+        "z_range": "-2σ ~ -1.5σ",
+        "ratio": 0.0440,
+        "label": "흐름 보완이 큰 골격",
+        "description": "편중이나 충돌 신호가 비교적 커서 운의 흐름과 보완 요소를 신중히 봐야 합니다.",
+    },
+    {
+        "grade": "C-",
+        "min": 0.0,
+        "max": 45.0,
+        "z_range": "-2σ 이하",
+        "ratio": 0.0228,
+        "label": "보완 과제가 큰 골격",
+        "description": "구조적 불균형이 커서 단정적 해석보다 보완 방향 중심으로 참고해야 합니다.",
+    },
+]
+
+def grade_info(score: float) -> Dict[str, object]:
+    for band in GRADE_BANDS:
+        if band["min"] <= score < band["max"]:
+            info = band.copy()
+            info["estimated_people"] = round(REFERENCE_POPULATION * info["ratio"])
+            higher_or_equal_ratio = sum(b["ratio"] for b in GRADE_BANDS if b["min"] >= band["min"])
+            info["upper_cumulative_ratio"] = higher_or_equal_ratio
+            info["upper_cumulative_people"] = round(REFERENCE_POPULATION * higher_or_equal_ratio)
+            return info
+    return GRADE_BANDS[-1].copy()
+
+def grade_text(score: float) -> str:
+    return grade_info(score)["label"]
+
+# ============================================================
+# 4. 오행 계산, 월령 보정, 합충 보정
+# ============================================================
+
+
+# ============================================================
+# [SECTION 4] 오행 계산
+#
+# 이 섹션의 내용 요약: 원국의 오행 분포 계산과 계절 보정을 담당합니다. 이후 강약, 조후, 격국 판정의 기초값이 됩니다.
+# 주요 함수/상수: calculate_base_element_scores, apply_season_adjustment
+# 변경 시 영향: 일간 강약, 조후, 격국 판정에 연쇄 영향.
+# ============================================================
+
+def calculate_base_element_scores(chart: Chart) -> Dict[str, float]:
+    scores = {e: 0.0 for e in ELEMENTS}
+    pillars = [("year", chart.year), ("month", chart.month), ("day", chart.day), ("hour", chart.hour)]
+
+    for pos, p in pillars:
+        add_score(scores, STEMS[p.stem]["element"], POSITION_WEIGHTS_STEM[pos])
+        bw = POSITION_WEIGHTS_BRANCH[pos]
+        for hidden_stem, ratio in BRANCHES[p.branch]["hidden"]:
+            add_score(scores, STEMS[hidden_stem]["element"], bw * ratio)
+
+    return scores
+
+def apply_season_adjustment(scores: Dict[str, float], month_branch: str) -> Tuple[Dict[str, float], str]:
+    season, _main_el = SEASON_BY_MONTH_BRANCH[month_branch]
+    adj = SEASONAL_ADJUSTMENT.get(season, {})
+    return {el: val * adj.get(el, 1.0) for el, val in scores.items()}, season
+
+def branch_count(chart: Chart) -> Dict[str, int]:
+    c = {}
+    for b in chart.branches:
+        c[b] = c.get(b, 0) + 1
+    return c
+
+
+# ============================================================
+# [SECTION 5] 합충형파해
+#
+# 이 섹션의 내용 요약: 지지 간 합충형파해 감지와 오행 비율 보정을 담당합니다. 합국 보정은 뒤쪽 점수 항목에 중복 반영되지 않도록 관리합니다.
+# 주요 함수/상수: detect_interactions, apply_interaction_adjustment
+# 변경 시 영향: 오행 비율 → 일간 강약 → 격국 판정에 영향.
+# ============================================================
+
+def _partial_triad_name(triad: Dict[str, object], counts: Dict[str, int]) -> str:
+    """반합은 전체 삼합국 이름이 아니라 실제 원국에 있는 지지만 표시한다."""
+    raw_name = str(triad.get("name", ""))
+    full_branch_text = raw_name.split()[0] if raw_name else ""
+    ordered = [ch for ch in full_branch_text if ch in BRANCHES]
+    present = [b for b in ordered if counts.get(b, 0) > 0]
+    present_text = "".join(present) if present else full_branch_text
+    return f"{present_text} {triad.get('element', '')} 반합"
+
+
+def detect_interactions(chart: Chart) -> List[Dict[str, object]]:
+    counts = branch_count(chart)
+    bset = set(chart.branches)
+    mb = chart.month.branch
+    result = []
+
+    for triad in TRIADS:
+        present_count = sum(1 for b in triad["branches"] if counts.get(b, 0) > 0)
+        if triad["branches"].issubset(bset):
+            result.append({
+                "type": "삼합",
+                "name": triad["name"],
+                "element": triad["element"],
+                "strength": "매우 강함" if mb in triad["branches"] else "강함",
+                "coefficient": 0.90 if mb in triad["branches"] else 0.75,
+                "description": f"{triad['element']} 기운을 강화합니다. 원래 오행은 완전히 사라지지 않고 비율 보정됩니다.",
+            })
+        elif present_count >= 2 and counts.get(triad["king"], 0) > 0:
+            result.append({
+                "type": "반합",
+                "name": _partial_triad_name(triad, counts),
+                "element": triad["element"],
+                "strength": "중간",
+                "coefficient": 0.55 if mb == triad["king"] else 0.45,
+                "description": f"{triad['element']} 반합 성향입니다.",
+            })
+
+    for combo in DIRECTIONAL_COMBOS:
+        if combo["branches"].issubset(bset):
+            result.append({
+                "type": "방합",
+                "name": combo["name"],
+                "element": combo["element"],
+                "strength": "매우 강함" if mb in combo["branches"] else "강함",
+                "coefficient": 0.92 if mb in combo["branches"] else 0.80,
+                "description": f"계절적 방향으로 {combo['element']} 기운이 모입니다.",
+            })
+
+    for a, b, el, name in SIX_HARMONIES:
+        if counts.get(a, 0) and counts.get(b, 0):
+            result.append({
+                "type": "육합",
+                "name": name,
+                "element": el,
+                "strength": "중간",
+                "coefficient": 0.45 if mb in (a, b) else 0.35,
+                "description": f"{a}{b}의 묶임이 있고 조건부로 {el} 성향을 보탭니다.",
+            })
+
+    for a, b, name in CLASHES:
+        if counts.get(a, 0) and counts.get(b, 0):
+            important = chart.month.branch in (a, b) or chart.day.branch in (a, b)
+            result.append({
+                "type": "충",
+                "name": name,
+                "element": None,
+                "strength": "강함" if important else "중간",
+                "coefficient": 0.60 if important else 0.40,
+                "description": "충은 변동성과 긴장을 만들 수 있으나, 기신을 흔드는 경우 보완적으로 작용할 수도 있습니다.",
+            })
+
+    for a, b, name in PENALTIES:
+        if counts.get(a, 0) and counts.get(b, 0):
+            result.append({
+                "type": "형",
+                "name": name,
+                "element": None,
+                "strength": "약함",
+                "coefficient": 0.20,
+                "description": "보조적 긴장 요소입니다. 단독으로 큰 판단을 하지 않습니다.",
+            })
+
+    return result
+
+
+# ============================================================
+# 신살·공망 평가
+# ============================================================
+
+CHEONEUL_BRANCHES = {
+    "甲": ["丑", "未"], "戊": ["丑", "未"], "庚": ["丑", "未"],
+    "乙": ["子", "申"], "己": ["子", "申"],
+    "丙": ["亥", "酉"], "丁": ["亥", "酉"],
+    "壬": ["卯", "巳"], "癸": ["卯", "巳"],
+    "辛": ["寅", "午"],
+}
+
+MUNCHANG_BRANCH = {
+    "甲": "巳", "乙": "午", "丙": "申", "丁": "酉", "戊": "申",
+    "己": "酉", "庚": "亥", "辛": "子", "壬": "寅", "癸": "卯",
+}
+
+def _day_branch_group(day_branch: str) -> str:
+    if day_branch in {"寅", "午", "戌"}:
+        return "寅午戌"
+    if day_branch in {"申", "子", "辰"}:
+        return "申子辰"
+    if day_branch in {"巳", "酉", "丑"}:
+        return "巳酉丑"
+    return "亥卯未"
+
+YEOKMA_BRANCH = {"寅午戌": "申", "申子辰": "寅", "巳酉丑": "亥", "亥卯未": "巳"}
+DOHWA_BRANCH = {"寅午戌": "卯", "申子辰": "酉", "巳酉丑": "午", "亥卯未": "子"}
+HWAGAE_BRANCH = {"寅午戌": "戌", "申子辰": "辰", "巳酉丑": "丑", "亥卯未": "未"}
+
+GONGMANG_BY_XUN_INDEX = [
+    ("戌", "亥"),  # 甲子旬
+    ("申", "酉"),  # 甲戌旬
+    ("午", "未"),  # 甲申旬
+    ("辰", "巳"),  # 甲午旬
+    ("寅", "卯"),  # 甲辰旬
+    ("子", "丑"),  # 甲寅旬
+]
+
+
+def _gongmang_branches_for_day(day_stem: str, day_branch: str) -> Tuple[str, str]:
+    """일주 기준 공망. 60갑자 순서의 旬空을 사용한다."""
+    try:
+        ganzhi = f"{day_stem}{day_branch}"
+        seq = [list(STEMS.keys())[i % 10] + list(BRANCHES.keys())[i % 12] for i in range(60)]
+        idx = seq.index(ganzhi)
+        return GONGMANG_BY_XUN_INDEX[idx // 10]
+    except Exception:
+        return ("", "")
+
+
+def _branch_position_hits(chart: "Chart", target_branches: Tuple[str, ...] | List[str]) -> List[str]:
+    labels = ["년지", "월지", "일지", "시지"]
+    hits = []
+    for label, branch in zip(labels, chart.branches):
+        if branch in target_branches:
+            hits.append(f"{label} {_branch_ko(branch)}")
+    return hits
+
+
+def evaluate_shinsal_support(chart: Chart) -> Dict[str, object]:
+    """
+    신살·공망은 원국의 중심 판단을 대체하지 않지만,
+    사용자가 체감하는 사건감·보조 신호가 약하게 묻히지 않도록 v5.81에서 반영폭을 높였다.
+    전체 반영 한도는 최대 ±5점으로 제한한다.
+    """
+    branches = list(chart.branches)
+    day_stem = chart.day_master
+    day_branch = chart.day.branch
+    group = _day_branch_group(day_branch)
+
+    hits: List[Dict[str, object]] = []
+    notes: List[str] = []
+    adjustment = 0.0
+
+    cheoneul_targets = CHEONEUL_BRANCHES.get(day_stem, [])
+    cheoneul_hits = [b for b in branches if b in cheoneul_targets]
+    if cheoneul_hits:
+        add = min(1.8, 1.05 + 0.35 * len(set(cheoneul_hits)))
+        adjustment += add
+        hits.append({"신살": "천을귀인", "위치": ", ".join(cheoneul_hits), "성격": "보호·지원", "반영": round(add, 1)})
+        notes.append("천을귀인은 위기 완충·도움 인연의 체감 신호로 보아 가점을 강화")
+
+    munchang_target = MUNCHANG_BRANCH.get(day_stem)
+    if munchang_target and munchang_target in branches:
+        adjustment += 0.9
+        hits.append({"신살": "문창귀인", "위치": munchang_target, "성격": "문서·표현", "반영": 0.9})
+        notes.append("문창귀인은 학습·문서·표현 능력의 체감 신호로 반영")
+
+    yeokma = YEOKMA_BRANCH[group]
+    yeokma_count = branches.count(yeokma)
+    if yeokma_count == 1:
+        adjustment += 0.6
+        hits.append({"신살": "역마", "위치": yeokma, "성격": "활동성", "반영": 0.6})
+        notes.append("역마가 한 곳에 있어 이동성·활동 반경 확장의 체감 신호")
+    elif yeokma_count >= 2:
+        penalty = min(1.2, 0.55 + 0.25 * (yeokma_count - 2))
+        adjustment -= penalty
+        hits.append({"신살": "역마", "위치": f"{yeokma}×{yeokma_count}", "성격": "변동성", "반영": round(-penalty, 1)})
+        notes.append("역마 중복은 활동성보다 변동성·분산감이 커질 수 있어 감점 반영")
+
+    dohwa = DOHWA_BRANCH[group]
+    dohwa_count = branches.count(dohwa)
+    if dohwa_count == 1:
+        adjustment += 0.6
+        hits.append({"신살": "도화", "위치": dohwa, "성격": "매력·노출", "반영": 0.6})
+        notes.append("도화는 매력·노출·분위기 형성의 체감 신호")
+    elif dohwa_count >= 2:
+        penalty = min(1.3, 0.65 + 0.25 * (dohwa_count - 2))
+        adjustment -= penalty
+        hits.append({"신살": "도화", "위치": f"{dohwa}×{dohwa_count}", "성격": "과노출", "반영": round(-penalty, 1)})
+        notes.append("도화 중복은 관계 피로·과노출로 체감될 수 있어 감점 반영")
+
+    hwagae = HWAGAE_BRANCH[group]
+    hwagae_count = branches.count(hwagae)
+    if hwagae_count == 1:
+        adjustment += 0.5
+        hits.append({"신살": "화개", "위치": hwagae, "성격": "몰입·축적", "반영": 0.5})
+        notes.append("화개는 몰입·축적·취향의 깊이를 체감 신호로 반영")
+    elif hwagae_count >= 2:
+        penalty = min(1.0, 0.5 + 0.2 * (hwagae_count - 2))
+        adjustment -= penalty
+        hits.append({"신살": "화개", "위치": f"{hwagae}×{hwagae_count}", "성격": "고립성", "반영": round(-penalty, 1)})
+        notes.append("화개 중복은 몰입과 함께 고립감이 강해질 수 있어 감점 반영")
+
+    gongmang = _gongmang_branches_for_day(chart.day.stem, chart.day.branch)
+    gongmang_hits = _branch_position_hits(chart, list(gongmang))
+    if gongmang_hits:
+        pos_penalty = {"년지": 0.35, "월지": 0.80, "일지": 1.00, "시지": 0.55}
+        raw_penalty = 0.0
+        for hit in gongmang_hits:
+            for pos, val in pos_penalty.items():
+                if hit.startswith(pos):
+                    raw_penalty += val
+                    break
+        penalty = min(2.0, raw_penalty)
+        adjustment -= penalty
+        hits.append({
+            "신살": "공망",
+            "위치": ", ".join(gongmang_hits),
+            "성격": "공백·우회",
+            "반영": round(-penalty, 1),
+            "공망지": ", ".join([_branch_ko(b) for b in gongmang if b]),
+        })
+        notes.append("공망은 해당 자리가 바로 손에 잡히기보다 비어 보이거나 우회적으로 작동하므로 위치별 체감 감점 반영")
+
+    if not hits:
+        notes.append("뚜렷하게 반영할 신살·공망 체감 신호가 크지 않음")
+
+    adjustment = round(clamp(adjustment, -5.0, 5.0), 1)
+    return {
+        "adjustment": adjustment,
+        "hits": hits,
+        "notes": notes,
+        "summary": f"신살·공망 체감 반영 {adjustment:+.1f}점",
+        "limit": "±5점",
+    }
+
+
+def apply_interaction_adjustment(scores: Dict[str, float], interactions: List[Dict[str, object]]) -> Dict[str, float]:
+    adjusted = scores.copy()
+    total = sum(scores.values()) or 1.0
+    # 합국·육합 전체 보정량 한도. 특정 합 하나가 전체 점수를 압도하지 못하게 제한.
+    max_shift_total = total * 0.12
+    used_shift = 0.0
+
+    for it in interactions:
+        if it["type"] not in ["삼합", "방합", "반합", "육합"]:
+            continue
+        target_el = it.get("element")
+        if not target_el:
+            continue
+
+        coeff = float(it.get("coefficient", 0.0))
+        shift = total * 0.04 * coeff
+        shift = min(shift, max_shift_total - used_shift)
+        if shift <= 0:
+            break
+        used_shift += shift
+
+        adjusted[target_el] += shift
+        others = [e for e in ELEMENTS if e != target_el]
+        other_total = sum(adjusted[e] for e in others) or 1.0
+        for e in others:
+            adjusted[e] = max(0.0, adjusted[e] - shift * (adjusted[e] / other_total))
+
+    return adjusted
+
+
+# ============================================================
+# 5. 일간 강약, 용희기, 조후
+# ============================================================
+
+
+# ============================================================
+# [SECTION 6] 일간 강약
+#
+# 이 섹션의 내용 요약: 일간이 얼마나 강한지 판정합니다. 통근 강도와 12운성 관련 보조 요소가 함께 사용됩니다.
+# 주요 함수/상수: day_master_strength, day_rootedness_factor
+# 변경 시 영향: 격국 판정과 용신 선정에 핵심 영향.
+# ============================================================
+
+def day_master_strength(chart: Chart, adjusted_scores: Dict[str, float]) -> Tuple[float, Dict[str, float]]:
+    """일간 강약 산정: 지원·소모 + 12운성 + 좌하통근."""
+    pct = normalize_scores(adjusted_scores)
+    day_el = STEMS[chart.day_master]["element"]
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    support = pct[day_el] + pct[resource_el] * 0.95
+    drain = pct[output_el] * 0.60 + pct[wealth_el] * 0.70 + pct[officer_el] * 0.75
+    twelve = twelve_stage_power(chart)
+    month_stage = twelve["stages"].get("month", "미상")
+    month_stage_power = float(twelve["power"].get("month", 0.6))
+    twelve_factor = 0.70 + 0.60 * month_stage_power
+    root_factor, root_notes = day_rootedness_factor(chart)
+    support_adj = support * twelve_factor * root_factor
+    month_el = BRANCHES[chart.month.branch]["element"]
+    month_bonus = 0.0
+    if month_el == day_el:
+        month_bonus += 6.0
+    elif month_el == resource_el:
+        month_bonus += 4.0
+    elif month_el == officer_el:
+        month_bonus -= 6.0
+    elif month_el == wealth_el:
+        month_bonus -= 4.0
+    elif month_el == output_el:
+        month_bonus -= 2.0
+    index = 50 + (support_adj - drain) * 0.50 + month_bonus
+    index = clamp(index, 5, 95)
+    return index, {
+        "비겁": pct[day_el], "인성": pct[resource_el], "식상": pct[output_el],
+        "재성": pct[wealth_el], "관성": pct[officer_el], "지원계": support,
+        "지원계_12운성통근보정후": support_adj, "소모/극계": drain, "월령보정": month_bonus,
+        "12운성": month_stage, "12운성계수": month_stage_power, "통근계수": root_factor,
+        "통근메모": "; ".join(root_notes) if root_notes else "뿌리 자리 신호가 뚜렷하지 않음",
+    }
+
+
+# ============================================================
+# [SECTION 8] 조후
+#
+# 이 섹션의 내용 요약: 일간 × 계절 매트릭스 기반으로 조후 보완 방향을 결정합니다. 계절성 보정은 사용자 해설과 조후 점수에 반영됩니다.
+# 주요 함수/상수: CLIMATE_MATRIX, climate_needed_elements
+# 변경 시 영향: 용신 선정과 조후 점수 산출에 영향.
+# ============================================================
+
+CLIMATE_MATRIX = {
+    # (일간, 계절) → 우선 보완 오행 리스트
+    # 궁통보감식 조후 원칙 단순화 버전
+
+    # 봄
+    ("甲", "봄"): ["화"],
+    ("乙", "봄"): ["화", "토"],
+    ("丙", "봄"): ["수", "목"],
+    ("丁", "봄"): ["수", "목"],
+    ("戊", "봄"): ["화"],
+    ("己", "봄"): ["화"],
+    ("庚", "봄"): ["화", "토"],
+    ("辛", "봄"): ["화"],
+    ("壬", "봄"): ["화", "금"],
+    ("癸", "봄"): ["화", "금"],
+
+    # 여름
+    ("甲", "여름"): ["수"],
+    ("乙", "여름"): ["수"],
+    ("丙", "여름"): ["수", "금"],
+    ("丁", "여름"): ["수", "금"],
+    ("戊", "여름"): ["수"],
+    ("己", "여름"): ["수"],
+    ("庚", "여름"): ["수", "토"],
+    ("辛", "여름"): ["수"],
+    ("壬", "여름"): ["금"],
+    ("癸", "여름"): ["금"],
+
+    # 가을
+    ("甲", "가을"): ["수", "화"],
+    ("乙", "가을"): ["수", "화"],
+    ("丙", "가을"): ["목", "화"],
+    ("丁", "가을"): ["목", "화"],
+    ("戊", "가을"): ["화"],
+    ("己", "가을"): ["화"],
+    ("庚", "가을"): ["화", "목"],
+    ("辛", "가을"): ["수", "목"],
+    ("壬", "가을"): ["화"],
+    ("癸", "가을"): ["화"],
+
+    # 겨울
+    ("甲", "겨울"): ["화"],
+    ("乙", "겨울"): ["화"],
+    ("丙", "겨울"): ["목", "화"],
+    ("丁", "겨울"): ["목", "화"],
+    ("戊", "겨울"): ["화"],
+    ("己", "겨울"): ["화"],
+    ("庚", "겨울"): ["화", "토"],
+    ("辛", "겨울"): ["화", "토"],
+    ("壬", "겨울"): ["화", "토"],
+    ("癸", "겨울"): ["화", "토"],
+}
+
+
+def climate_needed_elements(season: str, day_stem: str = None) -> List[str]:
+    """
+    조후 보완 후보 오행.
+    일간이 주어지면 일간×계절 매트릭스에서 정밀 조회.
+    일간이 없으면 기존 계절 단순 룰을 사용한다.
+    """
+    season_normalized = season
+    if "봄말" in season:
+        season_normalized = "봄"
+    elif "여름말" in season:
+        season_normalized = "여름"
+    elif "가을말" in season:
+        season_normalized = "가을"
+    elif "겨울말" in season:
+        season_normalized = "겨울"
+
+    if day_stem and (day_stem, season_normalized) in CLIMATE_MATRIX:
+        return list(CLIMATE_MATRIX[(day_stem, season_normalized)])
+
+    # 폴백: 기존 단순 룰
+    if "겨울" in season:
+        return ["화"]
+    if "여름" in season:
+        return ["수"]
+    if "가을" in season:
+        return ["화"]
+    if "봄" in season:
+        return ["화", "금"]
+    return []
+
+
+# ============================================================
+# [SECTION 9] 용신
+#
+# 이 섹션의 내용 요약: 억부, 조후, 통관 용신을 선정합니다. 보완 방향과 부담 방향을 구분하여 결과 해설과 점수 계산에 제공합니다.
+# 주요 함수/상수: useful_elements, detect_tonggwan_situation
+# 변경 시 영향: 점수 산출과 운 흐름 분석에 영향.
+# ============================================================
+
+def detect_tonggwan_situation(adjusted_scores: Dict[str, float]) -> List[Dict[str, object]]:
+    """
+    원국 내 두 오행이 강하게 충돌하는 상황을 감지하고 통관 오행을 제안한다.
+
+    예시:
+    - 목이 강하고 토가 강함 → 목극토 충돌 → 화가 통관(목생화, 화생토)
+    - 수가 강하고 화가 강함 → 수극화 충돌 → 목이 통관(수생목, 목생화)
+    """
+    pct = normalize_scores(adjusted_scores)
+    threshold_strong = 30.0
+    conflicts = [
+        ("목", "토", "화"),
+        ("화", "금", "토"),
+        ("토", "수", "금"),
+        ("금", "목", "수"),
+        ("수", "화", "목"),
+    ]
+
+    candidates: List[Dict[str, object]] = []
+    for attacker, defender, mediator in conflicts:
+        atk_pct = float(pct.get(attacker, 0) or 0)
+        def_pct = float(pct.get(defender, 0) or 0)
+        med_pct = float(pct.get(mediator, 0) or 0)
+        if atk_pct >= threshold_strong and def_pct >= threshold_strong:
+            candidates.append({
+                "conflict": f"{attacker}剋{defender}",
+                "attacker": attacker,
+                "defender": defender,
+                "mediator": mediator,
+                "attacker_pct": round(atk_pct, 1),
+                "defender_pct": round(def_pct, 1),
+                "mediator_pct": round(med_pct, 1),
+                "needs_strengthening": med_pct < 15,
+                "severity": "강함" if (atk_pct >= 30 and def_pct >= 30) else "중간",
+            })
+    return candidates
+
+
+def useful_elements(chart: Chart, strength_index: float, season: str, adjusted_scores: Dict[str, float] = None) -> Dict[str, object]:
+    day_el = STEMS[chart.day_master]["element"]
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+
+    if strength_index >= 61:
+        primary = [wealth_el, output_el]
+        conditional = [officer_el]
+        burden = [resource_el, day_el]
+        logic = "신강 쪽이므로 식상·재성으로 설기·활용하는 방향을 우선 봅니다."
+    elif strength_index <= 40:
+        primary = [resource_el, day_el]
+        conditional = [output_el]
+        burden = [wealth_el, officer_el]
+        logic = "신약 쪽이므로 인성·비겁의 보강을 우선 봅니다."
+    else:
+        primary = []
+        conditional = [output_el, wealth_el, officer_el, resource_el]
+        burden = []
+        logic = "중화권이므로 조후와 순환 구조를 우선 봅니다."
+
+    for el in climate_needed_elements(season, chart.day_master):
+        if el not in primary:
+            primary.append(el)
+
+    unique = []
+    for el in primary:
+        if el not in unique:
+            unique.append(el)
+
+    # 통관용신: 강한 극관계 충돌이 있고 중간 오행이 약하면 보완 방향에 추가한다.
+    tonggwan_list = detect_tonggwan_situation(adjusted_scores or {})
+    tonggwan_added = []
+    for item in tonggwan_list:
+        mediator = item.get("mediator")
+        if item.get("needs_strengthening") and mediator and mediator not in unique:
+            unique.append(mediator)
+            tonggwan_added.append(item)
+
+    if tonggwan_added:
+        conflict_summary = ", ".join([f"{t['conflict']}({t['mediator']} 통관 필요)" for t in tonggwan_added])
+        logic_addition = f" 또한 {conflict_summary} 상황으로 통관용신이 필요합니다."
+    else:
+        logic_addition = ""
+
+    return {
+        "primary": unique,
+        "conditional": [e for e in conditional if e not in unique],
+        "burden": burden,
+        "logic": logic + logic_addition,
+        "tonggwan_candidates": tonggwan_list,
+        "tonggwan_added_to_primary": tonggwan_added,
+    }
+
+
+# ============================================================
+# 6. 순환 구조, 성별별 재관성
+# ============================================================
+
+def has_stem_element(chart: Chart, el: str) -> bool:
+    return any(STEMS[s]["element"] == el for s in chart.stems)
+
+def has_hidden_or_branch_element(chart: Chart, el: str) -> bool:
+    for b in chart.branches:
+        if BRANCHES[b]["element"] == el:
+            return True
+        for hs, _ratio in BRANCHES[b]["hidden"]:
+            if STEMS[hs]["element"] == el:
+                return True
+    return False
+
+def evaluate_flow_structures(chart: Chart, adjusted_scores: Dict[str, float], useful: Dict[str, object]) -> List[Dict[str, str]]:
+    pct = normalize_scores(adjusted_scores)
+    day_el = STEMS[chart.day_master]["element"]
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+
+    flows = [
+        ("식상생재", [output_el, wealth_el], "식상 → 재성"),
+        ("재생관", [wealth_el, officer_el], "재성 → 관성"),
+        ("관인상생", [officer_el, resource_el], "관성 → 인성 → 일간"),
+        ("재관인상생", [wealth_el, officer_el, resource_el], "재성 → 관성 → 인성 → 일간"),
+    ]
+
+    primary = set(useful["primary"])
+    result = []
+
+    for name, els, desc in flows:
+        min_pct = min(pct.get(e, 0) for e in els)
+        stem_clear = any(has_stem_element(chart, e) for e in els)
+        root_clear = all(has_hidden_or_branch_element(chart, e) for e in els)
+        useful_match = any(e in primary for e in els)
+
+        if min_pct >= 13 and stem_clear and root_clear:
+            strength = "중간~강함"
+        elif min_pct >= 8:
+            strength = "중간"
+        elif min_pct >= 3:
+            strength = "형태만 있음"
+        else:
+            strength = "해당 낮음"
+
+        notes = []
+        if useful_match:
+            notes.append("용희신 방향과 일부 연결")
+        if not root_clear:
+            notes.append("뿌리 약함")
+        if not stem_clear:
+            notes.append("천간 명확성 낮음")
+        if not notes:
+            notes.append("구성 요소 확인")
+
+        result.append({"구조": name, "흐름": desc, "강도": strength, "비고": ", ".join(notes)})
+
+    result.append({
+        "구조": "식신제살/상관패인",
+        "흐름": "식상과 관성·인성의 제화 관계",
+        "강도": "별도 검토",
+        "비고": "상세 판정은 격국·천간 배치에 따라 보수적으로 해석",
+    })
+
+    return result
+
+
+def evaluate_gender_structure(chart: Chart, adjusted_scores: Dict[str, float]) -> Dict[str, object]:
+    pct = normalize_scores(adjusted_scores)
+    day_el = STEMS[chart.day_master]["element"]
+
+    if chart.gender == "남자":
+        target_el = CONTROLS[day_el]
+        label = "재성"
+        visible = [s for s in chart.stems if STEMS[s]["element"] == target_el]
+        hidden = [hs for b in chart.branches for hs, _r in BRANCHES[b]["hidden"] if STEMS[hs]["element"] == target_el]
+        gods = set(relation_to_day(chart.day_master, s) for s in visible + hidden)
+        mixed = "정재" in gods and "편재" in gods
+
+        score = 2.5
+        notes = []
+        if visible:
+            score += 0.7
+            notes.append("재성이 천간에 드러남")
+        if hidden:
+            score += 0.5
+            notes.append("재성이 지장간에도 확인됨")
+        if mixed:
+            score -= 0.3
+            notes.append("정재·편재가 함께 보이나 천간 동시 투출이 아니면 혼잡성은 제한적으로 해석")
+        if pct.get(target_el, 0) < 8:
+            score -= 0.7
+            notes.append("재성 세력이 약한 편")
+        resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+        if pct.get(day_el, 0) + pct.get(resource_el, 0) > 55:
+            score -= 0.3
+            notes.append("신강·인성 강세 속에서 재성 작동력이 제한될 수 있음")
+
+        score = clamp(score, 0, 4)
+        status = "비교적 무난" if score >= 3.0 else ("혼합적" if score >= 1.8 else "보완 필요")
+        return {
+            "대상": "남자 명식: 재성 구조",
+            "점수": round(score, 1),
+            "상태": status,
+            "요약": "재성의 투출·통근, 정편재 혼합, 재성 고립, 군겁쟁재 가능성을 보수적으로 평가합니다.",
+            "비고": notes or ["특이한 혼잡 또는 고립 신호가 크지 않습니다."],
+        }
+
+    target_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    visible = [s for s in chart.stems if STEMS[s]["element"] == target_el]
+    hidden = [hs for b in chart.branches for hs, _r in BRANCHES[b]["hidden"] if STEMS[hs]["element"] == target_el]
+    gods = set(relation_to_day(chart.day_master, s) for s in visible + hidden)
+    mixed = "정관" in gods and "편관" in gods
+
+    score = 2.5
+    notes = []
+    if visible:
+        score += 0.7
+        notes.append("관성이 천간에 드러남")
+    if hidden:
+        score += 0.5
+        notes.append("관성이 지장간에도 확인됨")
+    if mixed:
+        score -= 0.4
+        notes.append("정관·편관이 함께 보이나 제화·통관 여부를 함께 봐야 함")
+    if pct.get(target_el, 0) < 8:
+        score -= 0.6
+        notes.append("관성 세력이 약한 편")
+    if pct.get(GENERATES[day_el], 0) > 30:
+        score -= 0.3
+        notes.append("식상 강세가 관성과 긴장을 만들 수 있음")
+
+    score = clamp(score, 0, 4)
+    status = "비교적 무난" if score >= 3.0 else ("혼합적" if score >= 1.8 else "보완 필요")
+    return {
+        "대상": "여자 명식: 관성 구조",
+        "점수": round(score, 1),
+        "상태": status,
+        "요약": "관성의 투출·통근, 정편관 혼잡, 관성 고립, 식상과의 관계를 보수적으로 평가합니다.",
+        "비고": notes or ["특이한 혼잡 또는 고립 신호가 크지 않습니다."],
+    }
+
+# ============================================================
+# 7. 점수 산정
+# ============================================================
+
+
+# ============================================================
+# [SECTION 10] 점수 산출
+#
+# 이 섹션의 내용 요약: 8개 항목별 점수 계산과 종합 검토를 담당합니다. 최종 원국 참고점와 등급을 구성하는 핵심 산식입니다.
+# 주요 함수/상수: score_element_structure, score_climate, score_flow, score_interactions, score_consistency, holistic_review
+# 변경 시 영향: 최종 원국 참고점와 등급에 직접 영향.
+# ============================================================
+
+def score_element_structure(chart: Chart, adjusted_scores: Dict[str, float]) -> Tuple[float, List[str]]:
+    """
+    오행 원국 참고점.
+    보완: 20점 만점에서 22점 만점으로 확대하되, 오행 편차를 지나치게 엄벌하지 않는다.
+    단순 균형보다 월령·통근·투출 후 실제 작동력을 보되, 합국 하나가 과도하게 전체 점수를 끌어내리지 않도록 한다.
+    """
+    pct = normalize_scores(adjusted_scores)
+    abs_dev = sum(abs(pct[e] - 20.0) for e in ELEMENTS)
+    score = 21.5 - abs_dev * 0.10
+    notes = []
+
+    for el, p in pct.items():
+        state = element_state(p)
+        if state == "부족":
+            score -= 0.5
+            notes.append(f"{el} 부족")
+        elif state == "결핍":
+            score -= 1.1
+            notes.append(f"{el} 결핍")
+        elif state == "강함":
+            score -= 0.3
+            notes.append(f"{el} 강함")
+        elif state == "과다":
+            score -= 0.8
+            notes.append(f"{el} 과다")
+
+    max_el = max(pct, key=pct.get)
+    if pct[max_el] > 38:
+        score -= 0.8
+        notes.append(f"{max_el} 세력이 원국을 강하게 주도")
+    elif pct[max_el] > 34:
+        score -= 0.5
+        notes.append(f"{max_el} 세력 우세")
+
+    return round(clamp(score, 0, 22), 1), notes or ["오행 분포가 비교적 무난"]
+
+
+def score_daymaster_and_useful(chart: Chart, adjusted_scores: Dict[str, float], strength_index: float, useful: Dict[str, object]) -> Tuple[float, List[str]]:
+    """일간 강약·운용성 10점. 격국은 별도 8점으로 분리."""
+    pct = normalize_scores(adjusted_scores)
+    label = strength_label(strength_index)
+    score = 8.8
+    notes = [f"일간 강약: {label}"]
+    if label == "중화":
+        score += 0.7
+    elif label in ["신약", "신강"]:
+        score -= 0.6
+    else:
+        score -= 2.8
+        notes.append("극단 강약은 운용 난도가 높은 편")
+    primary = useful["primary"]
+    useful_presence = sum(pct.get(e, 0) for e in primary)
+    if useful_presence < 12:
+        score -= 1.6
+        notes.append("보완 방향 오행 존재감이 약함")
+    elif useful_presence < 25:
+        score -= 0.8
+        notes.append("보완 방향 오행은 있으나 충분하지 않음")
+    elif useful_presence >= 35:
+        score += 0.4
+        notes.append("보완 방향 오행이 비교적 충분")
+    else:
+        notes.append("보완 방향 오행이 일정 부분 확인됨")
+    burden_presence = sum(pct.get(e, 0) for e in useful["burden"])
+    if burden_presence > 58:
+        score -= 1.2
+        notes.append("부담 오행이 강한 편")
+    elif burden_presence > 48:
+        score -= 0.6
+        notes.append("부담 오행이 다소 강함")
+    return round(clamp(score, 0, 10), 1), notes
+
+
+# 양인격: 일간이 양간(甲丙戊庚壬)일 때만 성립. 음간 양인은 인정하지 않는 학파가 다수.
+
+# ============================================================
+# [SECTION 7] 격국 판정
+#
+# 이 섹션의 내용 요약: 정격, 외격(양인격, 건록격), 특수격 판정과 파격/구응을 다룹니다. 격국 명확도는 가중치 프로필 선택으로 이어집니다.
+# 주요 함수/상수: assess_pattern_clarity, detect_outer_pattern, detect_special_pattern, assess_pattern_break
+# 변경 시 영향: weight_profile 선택에 직접 영향.
+# ============================================================
+
+YANGIN_BRANCH_BY_STEM = {
+    "甲": "卯",
+    "丙": "午",
+    "戊": "午",
+    "庚": "酉",
+    "壬": "子",
+}
+
+# 건록격: 일간의 록(祿)이 월지에 있을 때
+LUKBRANCH_BY_STEM = {
+    "甲": "寅", "乙": "卯",
+    "丙": "巳", "丁": "午",
+    "戊": "巳", "己": "午",
+    "庚": "申", "辛": "酉",
+    "壬": "亥", "癸": "子",
+}
+
+# 정격별 파격(破格) 글자
+# 자평진전 격국론 기준 단순화 버전
+PATTERN_BREAKERS = {
+    "정관": ["상관"],
+    "편관": [],
+    "정재": ["겁재"],
+    "편재": ["겁재"],
+    "식신": ["편인"],
+    "상관": ["정관"],
+    "정인": ["정재"],
+    "편인": ["정재"],
+}
+
+# 파격을 구하는 글자(구응, 救應)
+# (격국, 파격글자) → 구응글자 후보
+PATTERN_RESCUERS = {
+    ("정관", "상관"): ["정인", "편인"],
+    ("상관", "정관"): ["정인", "편인"],
+    ("정재", "겁재"): ["식신", "상관", "정관", "편관"],
+    ("편재", "겁재"): ["식신", "상관", "정관", "편관"],
+    ("식신", "편인"): ["편재", "정재"],
+    ("정인", "정재"): ["비견", "겁재"],
+    ("편인", "정재"): ["비견", "겁재"],
+}
+
+
+def detect_outer_pattern(chart: "Chart") -> Dict[str, object]:
+    """
+    외격(양인격, 건록격) 판정.
+
+    반환:
+    - is_outer: bool
+    - type: "양인격" | "건록격" | None
+    - clarity: 0.0 ~ 1.0
+    - reasons: 판정 근거
+    """
+    day_stem = chart.day_master
+    month_branch = chart.month.branch
+
+    # 양인격 우선 (양간만)
+    if day_stem in YANGIN_BRANCH_BY_STEM and month_branch == YANGIN_BRANCH_BY_STEM[day_stem]:
+        return {
+            "is_outer": True,
+            "type": "양인격",
+            "clarity": 0.65,
+            "reasons": [f"월지 {month_branch}이 일간 {day_stem}의 양인 — 양인격 성립"],
+        }
+
+    # 건록격
+    if day_stem in LUKBRANCH_BY_STEM and month_branch == LUKBRANCH_BY_STEM[day_stem]:
+        return {
+            "is_outer": True,
+            "type": "건록격",
+            "clarity": 0.55,
+            "reasons": [f"월지 {month_branch}이 일간 {day_stem}의 록 — 건록격 성립"],
+        }
+
+    return {"is_outer": False, "type": None, "clarity": 0.0, "reasons": []}
+
+
+def assess_pattern_break(
+    chart: "Chart",
+    investing_god: str,
+    transparent_stems: List[str],
+) -> Dict[str, object]:
+    """
+    정격에 대한 파격(破格) 및 구응(救應) 판정.
+
+    파격: 격국을 깨뜨리는 글자가 천간에 드러남
+    구응: 파격을 다시 구하는 글자가 있어 격이 회복됨
+
+    반환:
+    - is_broken: bool
+    - is_rescued: bool
+    - net_effect: -1.0 ~ 0.0 (격국 명확도에 곱할 보정 계수의 변동분)
+    - reasons: 판정 근거
+    """
+    if investing_god not in PATTERN_BREAKERS:
+        return {"is_broken": False, "is_rescued": False, "net_effect": 0.0, "reasons": []}
+
+    breaker_gods = PATTERN_BREAKERS.get(investing_god, [])
+    if not breaker_gods:
+        return {"is_broken": False, "is_rescued": False, "net_effect": 0.0, "reasons": []}
+
+    # 천간에 드러난 십성 추출 (일간 제외)
+    visible_gods = []
+    for s in transparent_stems:
+        if s == chart.day_master:
+            continue
+        tg = relation_to_day(chart.day_master, s)
+        visible_gods.append(tg)
+
+    # 파격 글자가 천간에 있는지
+    breakers_present = [g for g in breaker_gods if g in visible_gods]
+    if not breakers_present:
+        return {"is_broken": False, "is_rescued": False, "net_effect": 0.0, "reasons": ["파격 신호 없음"]}
+
+    breaker = breakers_present[0]
+    reasons = [f"{investing_god}격이 {breaker}에 의해 파격 위협"]
+
+    # 구응 체크
+    rescue_gods = PATTERN_RESCUERS.get((investing_god, breaker), [])
+    rescuers_present = [g for g in rescue_gods if g in visible_gods]
+
+    if rescuers_present:
+        reasons.append(f"{rescuers_present[0]}이 천간에 있어 구응 가능 — 격국 일부 회복")
+        return {
+            "is_broken": True,
+            "is_rescued": True,
+            "net_effect": -0.15,
+            "reasons": reasons,
+        }
+    else:
+        reasons.append("구응 글자 없음 — 격국이 흔들림")
+        return {
+            "is_broken": True,
+            "is_rescued": False,
+            "net_effect": -0.30,
+            "reasons": reasons,
+        }
+
+
+def assess_pattern_clarity(chart: Chart, adjusted_scores: Dict[str, float], strength_index: float) -> Dict[str, object]:
+    """
+    격국 명확도를 평가한다.
+
+    판정 우선순위:
+    1. 특수격 후보
+    2. 외격 (양인격, 건록격)
+    3. 정격 (월지 지장간 투출 + 파격/구응 보정)
+    4. 격국 불명
+    """
+    pct = normalize_scores(adjusted_scores)
+    day_stem = chart.day_master
+    day_el = STEMS[day_stem]["element"]
+
+    # 1. 특수격 우선 체크
+    special = detect_special_pattern(chart, adjusted_scores, strength_index)
+    if special.get("is_special"):
+        return {
+            "mode": "special",
+            "clarity": round(float(special.get("confidence", 0.6)), 2),
+            "special_type": special.get("type"),
+            "direction": special.get("direction"),
+            "investing_god": None,
+            "investing_stem": None,
+            "is_outer": False,
+            "outer_type": None,
+            "is_broken": False,
+            "is_rescued": False,
+            "reasons": list(special.get("reasons", [])),
+        }
+
+    # 2. 외격 체크 (양인격/건록격)
+    outer = detect_outer_pattern(chart)
+    if outer["is_outer"]:
+        return {
+            "mode": "regular_clear",
+            "clarity": round(float(outer["clarity"]), 2),
+            "special_type": None,
+            "direction": None,
+            "investing_god": outer["type"],
+            "investing_stem": None,
+            "is_outer": True,
+            "outer_type": outer["type"],
+            "is_broken": False,
+            "is_rescued": False,
+            "reasons": list(outer["reasons"]),
+        }
+
+    # 3. 정격 판정 (기존 로직 + 파격 보정)
+    month_hidden = [(s, ratio) for s, ratio in BRANCHES[chart.month.branch]["hidden"]]
+    transparent_stems = [chart.year.stem, chart.month.stem]
+    if chart.hour is not None:
+        transparent_stems.append(chart.hour.stem)
+
+    investing_god = None
+    investing_stem = None
+    investing_ratio = 0.0
+    for hidden_stem, ratio in month_hidden:
+        if hidden_stem in transparent_stems and hidden_stem != day_stem:
+            tg = relation_to_day(day_stem, hidden_stem)
+            if tg in ["정관", "편관", "정재", "편재", "식신", "상관", "정인", "편인"]:
+                if float(ratio) > investing_ratio:
+                    investing_god = tg
+                    investing_stem = hidden_stem
+                    investing_ratio = float(ratio)
+
+    reasons = []
+    clarity = 0.0
+    is_broken = False
+    is_rescued = False
+
+    if investing_god:
+        clarity += investing_ratio * 0.6
+        hidden_level = "본기" if investing_ratio >= 0.5 else "중기" if investing_ratio >= 0.25 else "여기"
+        reasons.append(f"월지 {hidden_level} {investing_stem}({investing_god}) 투출")
+
+        target_el_map = {
+            "정관": next(e for e in ELEMENTS if CONTROLS[e] == day_el),
+            "편관": next(e for e in ELEMENTS if CONTROLS[e] == day_el),
+            "정재": CONTROLS[day_el],
+            "편재": CONTROLS[day_el],
+            "식신": GENERATES[day_el],
+            "상관": GENERATES[day_el],
+            "정인": next(e for e in ELEMENTS if GENERATES[e] == day_el),
+            "편인": next(e for e in ELEMENTS if GENERATES[e] == day_el),
+        }
+        target_el = target_el_map.get(investing_god)
+        if target_el and pct.get(target_el, 0) >= 15:
+            clarity += 0.15
+            reasons.append(f"{investing_god} 세력이 충분({pct[target_el]:.1f}%)")
+
+        # 파격 보정
+        break_result = assess_pattern_break(chart, investing_god, transparent_stems)
+        if break_result["is_broken"]:
+            clarity += float(break_result["net_effect"])
+            is_broken = True
+            is_rescued = bool(break_result["is_rescued"])
+            reasons.extend(break_result["reasons"])
+    else:
+        reasons.append("월지 지장간 천간 투출이 명확하지 않음")
+
+    # mode 결정 (clarity가 음수가 될 수 있으므로 max 0)
+    clarity = max(0.0, clamp(clarity, 0.0, 1.0))
+
+    if clarity >= 0.45:
+        mode = "regular_clear"
+    elif clarity >= 0.20:
+        mode = "regular_partial"
+    else:
+        mode = "unclear"
+        reasons.append("격국이 명확하지 않아 억부·조후 중심으로 평가")
+
+    return {
+        "mode": mode,
+        "clarity": round(clarity, 2),
+        "special_type": None,
+        "direction": None,
+        "investing_god": investing_god,
+        "investing_stem": investing_stem,
+        "is_outer": False,
+        "outer_type": None,
+        "is_broken": is_broken,
+        "is_rescued": is_rescued,
+        "reasons": reasons,
+    }
+
+def get_weight_profile(mode: str) -> Dict[str, float]:
+    """
+    격국 명확도 mode별 점수 가중치.
+    총점 변동을 보수적으로 제한하기 위해 작은 폭으로만 조정한다.
+    """
+    profiles = {
+        "special": {
+            "element": 0.95,
+            "strength": 0.85,
+            "pattern": 1.20,
+            "climate": 0.90,
+            "flow": 0.95,
+        },
+        "regular_clear": {
+            "element": 1.00,
+            "strength": 1.00,
+            "pattern": 1.15,
+            "climate": 0.95,
+            "flow": 1.05,
+        },
+        "regular_partial": {
+            "element": 1.00,
+            "strength": 1.00,
+            "pattern": 1.00,
+            "climate": 1.00,
+            "flow": 1.00,
+        },
+        "unclear": {
+            "element": 1.05,
+            "strength": 1.10,
+            "pattern": 0.85,
+            "climate": 1.10,
+            "flow": 1.00,
+        },
+        "outer_yangin": {
+            "element": 0.95,
+            "strength": 0.90,
+            "pattern": 1.10,
+            "climate": 1.00,
+            "flow": 1.15,
+        },
+        "outer_luk": {
+            "element": 1.00,
+            "strength": 0.95,
+            "pattern": 1.10,
+            "climate": 1.00,
+            "flow": 1.10,
+        },
+    }
+    return profiles.get(mode, profiles["regular_partial"])
+
+
+def pattern_mode_label(mode: str) -> str:
+    labels = {
+        "special": "특수격 후보",
+        "regular_clear": "격국이 명확한 명식",
+        "regular_partial": "격국이 부분적으로 성립",
+        "unclear": "조후·억부 중심형",
+        "outer_yangin": "양인격 전용 가중",
+        "outer_luk": "건록격 전용 가중",
+    }
+    return labels.get(mode, "격국 판정 참고")
+
+
+def score_pattern_formation(chart: Chart, adjusted_scores: Dict[str, float], strength_index: float, special_pattern: Dict[str, object]) -> Tuple[float, List[str]]:
+    """격국 성립도와 청탁 8점."""
+    if special_pattern.get("is_special"):
+        conf = float(special_pattern.get("confidence", 0))
+        notes = [f"{special_pattern.get('type')} 후보: 순응 방향 {special_pattern.get('direction')}"] + list(special_pattern.get("reasons", []))
+        return round(clamp(6.0 + conf * 1.6, 0, 8), 1), notes
+    score = 4.5
+    notes: List[str] = []
+    day_stem = chart.day_master
+    month_hidden = [s for s, _ in BRANCHES[chart.month.branch]["hidden"]]
+    transparent = [chart.year.stem, chart.month.stem]
+    if chart.hour is not None:
+        transparent.append(chart.hour.stem)
+    investing_god = None
+    for hidden in month_hidden:
+        if hidden in transparent and hidden != day_stem:
+            tg = relation_to_day(day_stem, hidden)
+            if tg in ["정관", "편관", "정재", "편재", "식신", "상관", "정인", "편인"]:
+                investing_god = tg
+                break
+    visible_gods = [relation_to_day(day_stem, s) for s in transparent if s != day_stem]
+    if investing_god:
+        score += 2.0
+        notes.append(f"월지 지장간에서 {investing_god} 투출")
+        if investing_god in ["정관", "편관"]:
+            if "정관" in visible_gods and "편관" in visible_gods:
+                score -= 0.7; notes.append("정관·편관 혼잡 신호")
+            else:
+                score += 0.5; notes.append("관성 단일성 비교적 양호")
+        if investing_god in ["정재", "편재"]:
+            if "정재" in visible_gods and "편재" in visible_gods:
+                score -= 0.5; notes.append("정재·편재 혼잡 신호")
+            else:
+                score += 0.3
+    else:
+        score -= 0.5
+        notes.append("월지 투출이 명확하지 않아 격국 성립도는 보수적으로 평가")
+    for s in transparent:
+        target = STEM_COMBINATIONS.get(frozenset([day_stem, s]))
+        if target:
+            month_el = BRANCHES[chart.month.branch]["element"]
+            if month_el == target or GENERATES.get(month_el) == target:
+                score += 0.4; notes.append(f"일간 천간합이 {target} 방향으로 작동 가능")
+            else:
+                notes.append("천간합은 있으나 월령 조건상 합이불화로 보수 평가")
+    return round(clamp(score, 0, 8), 1), notes or ["격국 청탁은 중립적으로 평가"]
+
+
+def score_climate(adjusted_scores: Dict[str, float], season: str, useful: Dict[str, object], day_stem: str = None) -> Tuple[float, List[str]]:
+    """
+    조후 점수.
+    보완: 火가 원국에 존재하는 경우에는 합국으로 일부 제한되더라도 '부재'처럼 과도하게 감점하지 않는다.
+    """
+    pct = normalize_scores(adjusted_scores)
+    needs = climate_needed_elements(season, day_stem)
+    score = 10.2
+    notes = [f"월령 계절성: {season}"]
+
+    if needs:
+        notes.append(f"조후상 보완 후보: {', '.join(needs)}")
+        presence = sum(pct.get(e, 0) for e in needs)
+        if presence < 8:
+            score -= 2.5
+            notes.append("조후 보완 오행이 약함")
+        elif presence < 16:
+            score -= 1.0
+            notes.append("조후 보완 오행은 있으나 작동력이 제한적")
+        else:
+            score += 0.8
+            notes.append("조후 보완 오행이 확인됨")
+
+        if any(e in useful["primary"] for e in needs):
+            score += 0.6
+            notes.append("억부 방향과 조후 방향이 일부 일치")
+        else:
+            score -= 0.8
+            notes.append("억부 방향과 조후 방향이 일부 다를 수 있음")
+
+    return round(clamp(score, 0, 14), 1), notes
+
+
+def score_flow(flow_rows: List[Dict[str, str]]) -> Tuple[float, List[str]]:
+    """
+    순환 원국 참고점.
+    보완: 식상생재·재생관·관인상생 같은 흐름을 원국의 장점으로 더 충분히 반영한다.
+    다만 재관인상생은 하위 흐름을 포함하므로 보너스 한도를 둔다.
+    """
+    weights = {"중간~강함": 3.3, "중간": 2.5, "형태만 있음": 1.1, "해당 낮음": 0.0, "별도 검토": 0.4}
+    scored = []
+    notes = []
+
+    for row in flow_rows:
+        val = weights.get(row["강도"], 0.0)
+        if "용희신 방향" in row["비고"]:
+            val += 0.6
+        if row["구조"] == "재관인상생":
+            val = min(val, 1.6)
+        scored.append((row["구조"], val, row))
+        if row["강도"] != "해당 낮음":
+            notes.append(f"{row['구조']}: {row['강도']}")
+
+    core = [x for x in scored if x[0] != "재관인상생"]
+    # 핵심 흐름 중 상위 3개까지 반영. 순환이 실제로 여러 층위에서 확인되는 경우 장점으로 본다.
+    core_vals = sorted([v for _name, v, _row in core], reverse=True)[:3]
+    composite_bonus = sum(v for name, v, row in scored if name == "재관인상생")
+    score = sum(core_vals) + composite_bonus + 0.3
+
+    return round(clamp(score, 0, 18), 1), notes or ["뚜렷한 순환 구조는 제한적"]
+
+
+def score_interactions(interactions: List[Dict[str, object]], useful: Dict[str, object]) -> Tuple[float, List[str]]:
+    """
+    합충형파해의 구조 안정성 점수.
+    
+    중요: 합국에 의한 오행 비율 변동은 이미 apply_interaction_adjustment에서
+    오행 점수와 일간 강약, 조후에 반영됨. 이 함수는 그 외의 '구조 변동성'만 평가한다.
+    
+    - 충: 변동성 / 안정성 저해
+    - 형: 보조적 긴장
+    - 합: 결속성. 단, 점수 가산은 제한적 (이미 비율로 반영됨)
+    """
+    score = 9.5
+    notes = []
+    primary = set(useful["primary"])
+    burden = set(useful["burden"])
+    
+    if not interactions:
+        return 11.0, ["큰 합충형파해 신호가 적음 — 구조 안정"]
+    
+    for it in interactions:
+        typ, name, el, strength = it["type"], it["name"], it.get("element"), it.get("strength", "")
+        
+        if typ == "충":
+            # 충은 구조 변동성을 직접 평가
+            if strength == "강함":
+                score -= 1.4
+                notes.append(f"{name}: 강한 변동 신호")
+            else:
+                score -= 0.7
+                notes.append(f"{name}: 변동 신호")
+        elif typ == "형":
+            score -= 0.3
+            notes.append(f"{name}: 보조적 긴장")
+        elif typ in ["삼합", "방합"]:
+            # 합국은 결속력만 소폭 가산 (비율 변동은 이미 반영됨)
+            if el in primary:
+                score += 0.3
+                notes.append(f"{name}: 결속이 보완 방향과 일치")
+            elif el in burden:
+                score -= 0.4
+                notes.append(f"{name}: 결속이 부담 방향")
+            else:
+                notes.append(f"{name}: 결속 신호")
+        elif typ in ["반합", "육합"]:
+            if el in primary:
+                score += 0.15
+            elif el in burden:
+                score -= 0.2
+            notes.append(f"{name}: 부분 결속")
+    
+    return round(clamp(score, 0, 12), 1), notes
+
+def score_consistency(ratios: Dict[str, float], interactions: List[Dict[str, object]]) -> Tuple[float, List[str]]:
+    """
+    해석 정합성 점수.
+    각 항목의 점수 비율이 극단으로 치우치지 않는지를 본다.
+    """
+    score = 9.0
+    notes = ["항목 간 균형 평가"]
+    
+    values = [v for v in ratios.values() if isinstance(v, (int, float))]
+    if values:
+        low_count = sum(1 for v in values if v < 0.45)
+        high_count = sum(1 for v in values if v > 0.85)
+        
+        if low_count >= 4:
+            score -= 1.5
+            notes.append("다수 항목이 낮은 점수에 머무름")
+        elif low_count >= 2:
+            score -= 0.6
+            notes.append("일부 항목이 낮음")
+        
+        if high_count >= 3:
+            score += 0.5
+            notes.append("다수 항목이 양호")
+    
+    return round(clamp(score, 0, 12), 1), notes
+
+
+def operability_balance_adjustment(
+    chart: Chart,
+    adjusted_scores: Dict[str, float],
+    interactions: List[Dict[str, object]],
+    flows: List[Dict[str, str]],
+    useful: Dict[str, object],
+    strength_index: float,
+) -> Dict[str, object]:
+    """v5.135: 구조미보다 중화·조후·생활 운용성을 조금 더 반영하는 보정.
+
+    목적:
+    - 중화권과 조후 보완이 분명한 명식은 조금 더 좋게 본다.
+    - 강한 합국·특정 오행 편중은 구조미는 인정하되 실제 운용 난도를 살짝 반영한다.
+    - 보정 폭은 작게 제한해 기존 점수 체계를 크게 흔들지 않는다.
+    """
+    pct = normalize_scores(adjusted_scores)
+    branches = chart.branches
+    stems = chart.stems
+    month_branch = chart.month.branch
+    label = strength_label(strength_index)
+
+    adjustment = 0.0
+    positives: List[str] = []
+    cautions: List[str] = []
+
+    # 1. 중화권 운용성 보정
+    if 43 <= float(strength_index) <= 57:
+        adjustment += 1.0
+        positives.append("일간 강약이 중화권에 가까워 생활 운용성이 좋게 잡힘")
+    elif 38 <= float(strength_index) < 43 or 57 < float(strength_index) <= 62:
+        adjustment += 0.3
+        positives.append("극단 강약은 아니어서 운용 여지가 있음")
+    elif label in ["극신강", "극신약"]:
+        adjustment -= 1.0
+        cautions.append("강약이 극단에 가까워 운용 난도 보정")
+    elif label in ["신강", "신약"]:
+        adjustment -= 0.3
+        cautions.append("중화권에서 벗어나 운용 난도 소폭 반영")
+
+    # 2. 겨울·냉습 구조에서 丙丁火가 드러난 경우 조후 보완 강화
+    winter_branches = {"亥", "子", "丑"}
+    fire_stem_count = sum(1 for s in stems if s in ["丙", "丁"])
+    wet_earth_count = sum(1 for b in branches if b in ["丑", "辰"])
+    if month_branch in winter_branches:
+        if "丙" in stems and "丁" in stems:
+            adjustment += 1.2
+            positives.append("겨울월에 丙丁火가 함께 드러나 조후 보완이 분명함")
+        elif fire_stem_count >= 1:
+            adjustment += 0.7
+            positives.append("겨울월에 火가 드러나 조후 보완 여지가 있음")
+    if wet_earth_count >= 2 and fire_stem_count >= 1:
+        adjustment += 0.4
+        positives.append("냉습한 토 구조에 火가 있어 답답함을 풀 여지가 있음")
+
+    # 3. 강한 합국·특정 오행 편중의 운용 난도
+    max_el = max(pct, key=pct.get)
+    max_pct = float(pct.get(max_el, 0) or 0)
+    complete_metal_trine = all(b in branches for b in ["巳", "酉", "丑"])
+    if complete_metal_trine and max_el == "금" and max_pct >= 35:
+        adjustment -= 1.2
+        cautions.append("巳酉丑 금국은 구조미가 있으나 금 편중 운용 난도 반영")
+    elif max_pct >= 42:
+        adjustment -= 0.8
+        cautions.append(f"{max_el} 기운 과다에 따른 편중 운용 난도 반영")
+    elif max_pct >= 38:
+        adjustment -= 0.4
+        cautions.append(f"{max_el} 기운 우세에 따른 편중 보정")
+
+    # 4. 흐름 구조가 여러 개 잡혀도 중복 보상은 살짝 제한
+    active_flows = [
+        str(r.get("구조", ""))
+        for r in flows
+        if str(r.get("강도", "")) not in ["해당 낮음", ""]
+    ]
+    if "재관인상생" in active_flows and ("식상생재" in active_flows or "재생관" in active_flows):
+        adjustment -= 0.5
+        cautions.append("흐름 구조 중복 보상은 상한을 두어 일부 조정")
+
+    # 5. 조후 보완 방향이 실제 천간에 드러나면 운용성 보너스
+    primary = set(useful.get("primary", []) or [])
+    fire_is_useful = "화" in primary
+    if fire_is_useful and fire_stem_count >= 1:
+        adjustment += 0.3
+        positives.append("보완 방향 火가 천간에 드러나 실제 사용성이 있음")
+
+    adjustment = round(clamp(adjustment, -2.5, 2.8), 1)
+    summary_parts = positives[:2] + cautions[:2]
+    if not summary_parts:
+        summary_parts = ["기존 산식 중심으로 보정 없음"]
+
+    return {
+        "adjustment": adjustment,
+        "positives": positives[:5],
+        "cautions": cautions[:5],
+        "summary": " / ".join(summary_parts),
+    }
+
+
+
+def origin_profile_tags(
+    chart: Chart,
+    adjusted_scores: Dict[str, float],
+    strength_index: float,
+    flows: List[Dict[str, str]],
+    interactions: List[Dict[str, object]],
+    useful: Dict[str, object],
+    holistic: Dict[str, object] | None = None,
+) -> Dict[str, object]:
+    """팔자 총점과 별도로 명식의 작동 유형을 설명하는 태그."""
+    pct = normalize_scores(adjusted_scores)
+    day_el = STEMS[chart.day_master]["element"]
+    label = strength_label(strength_index)
+    max_el = max(pct, key=pct.get)
+    max_pct = pct[max_el]
+    tags: List[str] = []
+    notes: List[str] = []
+
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+
+    has_output = pct.get(output_el, 0) >= 12 or any(STEMS[s]["element"] == output_el for s in chart.stems)
+    has_wealth = pct.get(wealth_el, 0) >= 12 or any(STEMS[s]["element"] == wealth_el for s in chart.stems)
+    has_officer = pct.get(officer_el, 0) >= 10 or any(STEMS[s]["element"] == officer_el for s in chart.stems)
+    has_resource = pct.get(resource_el, 0) >= 18 or any(STEMS[s]["element"] == resource_el for s in chart.stems)
+
+    if all(pct[e] >= 8 for e in ELEMENTS) and max_pct < 36:
+        tags.append("균형 안정형")
+        notes.append("오행 재료가 비교적 고르게 있어 무난한 운용성이 있습니다.")
+
+    if max_pct >= 36:
+        tags.append("편중 강세형")
+        notes.append(f"{max_el} 기운이 강하게 구조를 주도합니다. 균형형 점수와 특화 강점은 구분해서 봅니다.")
+
+    if label in ["신강", "극신강"] and (has_output or has_wealth):
+        tags.append("발현 특화형")
+        notes.append("강한 일간이 식상·재성 통로로 이어질 여지가 있어 표현·생산·성과화 가능성이 있습니다.")
+
+    if has_output and has_wealth:
+        tags.append("성과 생산형")
+        notes.append("식상과 재성이 함께 작동해 결과물·현실 성과로 이어질 통로가 있습니다.")
+
+    if has_resource and pct.get(resource_el, 0) >= 25:
+        tags.append("분석구조형")
+        notes.append("인성 기반이 강해 학습·문서·분석·기준 세우기에 장점이 있습니다.")
+
+    if pct.get(wealth_el, 0) >= 25 or pct.get("土", 0) >= 30:
+        tags.append("현실관리형")
+        notes.append("현실 감각, 관리, 책임, 자원 배분 쪽의 기운이 강합니다.")
+
+    if has_officer and pct.get(officer_el, 0) >= 18:
+        tags.append("규범운용형")
+        notes.append("관성 기운이 작동해 규칙·역할·책임 구조를 다루는 힘이 있습니다.")
+
+    if any(row.get("구조") in ["식상생재", "재생관", "관인상생"] and row.get("강도") in ["중간", "중간~강함", "강함"] for row in flows):
+        tags.append("순환 보완형")
+        notes.append("기운이 특정 십성 흐름으로 이어지는 통로가 확인됩니다.")
+
+    if any(it.get("type") == "충" and it.get("strength") == "강함" for it in interactions):
+        tags.append("변동 자극형")
+        notes.append("강한 충이 있어 정체보다 변화·재조정이 중요한 구조입니다.")
+
+    unique_tags: List[str] = []
+    for t in tags:
+        if t not in unique_tags:
+            unique_tags.append(t)
+    if not unique_tags:
+        unique_tags = ["표준 혼합형"]
+        notes.append("특정 유형 하나로만 단정하기보다 여러 요소가 섞인 표준 혼합 구조입니다.")
+
+    primary = unique_tags[:3]
+    return {"tags": primary, "all_tags": unique_tags, "summary": " · ".join(primary), "notes": notes[:6]}
+
+
+def compatibility_profile_from_values(score: float, complement: float, alliance: float, tension: float, sync: float) -> Dict[str, object]:
+    """케미 점수와 별도로 관계의 체감 유형을 설명한다."""
+    tags: List[str] = []
+    notes: List[str] = []
+
+    if complement >= 75 and tension >= 58:
+        tags.append("고보완·고긴장형")
+        notes.append("서로 필요한 기운은 크지만 긴장도도 높아 자극과 피로가 함께 올 수 있습니다.")
+    elif complement >= 75 and tension < 45:
+        tags.append("고보완 안정형")
+        notes.append("서로 보완하는 힘이 크고 긴장도는 낮아 안정적 협력 가능성이 큽니다.")
+
+    if alliance >= 76 and tension <= 40:
+        tags.append("든든형")
+        notes.append("결속성은 높고 긴장은 낮아 같은 편으로 묶일 가능성이 큽니다.")
+
+    if tension <= 35 and alliance >= 60:
+        tags.append("편안형")
+        notes.append("큰 마찰 없이 관계를 유지하기 쉬운 편안한 축입니다.")
+
+    if tension >= 60:
+        tags.append("자극형")
+        notes.append("긴장도가 높아 서로를 성장시키거나 피로하게 만들 수 있는 자극형 관계입니다.")
+
+    if 52 <= score < 64:
+        tags.append("조율형")
+        notes.append("관계 자체는 가능하지만 역할·거리·기대치를 조율해야 안정됩니다.")
+
+    if score < 52:
+        tags.append("거리두기형")
+        notes.append("가까운 관계보다 적절한 거리와 역할 분리가 더 편할 수 있습니다.")
+
+    if sync >= 62:
+        tags.append("흐름동조형")
+        notes.append("운 흐름의 온도 차이가 작아 같은 시기에 비슷한 리듬을 느낄 수 있습니다.")
+
+    unique_tags: List[str] = []
+    for t in tags:
+        if t not in unique_tags:
+            unique_tags.append(t)
+    if not unique_tags:
+        unique_tags = ["표준 관계형"]
+        notes.append("특정 극단 신호보다 여러 요소가 섞인 표준 관계형입니다.")
+
+    return {"tags": unique_tags[:3], "summary": " · ".join(unique_tags[:3]), "notes": notes[:6]}
+
+
+def holistic_review(
+    chart: Chart,
+    adjusted_scores: Dict[str, float],
+    interactions: List[Dict[str, object]],
+    flows: List[Dict[str, str]],
+    useful: Dict[str, object],
+    gender_structure: Dict[str, object],
+    base_total: float,
+    strength_index: float,
+) -> Dict[str, object]:
+    """
+    전체 인상 점검 로직.
+
+    항목별 점수만 단순 합산하면 다음 문제가 생길 수 있다.
+    1. 장점이 여러 항목에 흩어져 있어 충분히 보상되지 않음
+    2. 특정 약점, 특히 강한 합국 하나가 여러 항목에서 반복 감점됨
+    3. 실제 원국 전체 인상과 최종 점수 사이에 괴리가 생김
+
+    이 함수는 마지막에 ±5점 범위에서만 보정한다.
+    보정은 단정적 길흉 판단이 아니라, 점수 체계의 과소·과대 반영을 완화하기 위한 안항목치다.
+    """
+    pct = normalize_scores(adjusted_scores)
+    day_el = STEMS[chart.day_master]["element"]
+    primary = list(useful.get("primary", []))
+    burden = list(useful.get("burden", []))
+
+    positives: List[str] = []
+    cautions: List[str] = []
+    adjustment = 0.0
+
+    # 1. 오행이 모두 일정 수준 존재하는 경우: 기본 재료가 있다는 장점
+    if all(pct[e] >= 8 for e in ELEMENTS):
+        adjustment += 0.7
+        positives.append("오행이 모두 일정 수준 존재하여 원국의 기본 재료가 비교적 갖추어져 있음")
+    elif any(pct[e] < 5 for e in ELEMENTS):
+        adjustment -= 0.8
+        cautions.append("특정 오행이 결핍 수준이라 전체 구조의 한쪽 기능이 약할 수 있음")
+
+    # 2. 필요한 오행이 천간에 드러난 경우: 숨어 있는 것보다 작동 명확성이 높음
+    visible_primary = [el for el in primary if any(STEMS[s]["element"] == el for s in chart.stems)]
+    if visible_primary:
+        add = min(1.4, 0.7 * len(set(visible_primary)))
+        adjustment += add
+        positives.append(f"보완 방향인 {', '.join(sorted(set(visible_primary)))} 오행이 천간에 드러나 작동 명확성이 있음")
+    else:
+        if primary:
+            adjustment -= 0.5
+            cautions.append("보완 방향의 오행이 천간에 뚜렷하게 드러나지 않음")
+
+    # 3. 신강 명식에서 식상생재가 천간에 확인되면 별도 장점으로 인정
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    has_output_stem = any(STEMS[s]["element"] == output_el for s in chart.stems)
+    has_wealth_stem = any(STEMS[s]["element"] == wealth_el for s in chart.stems)
+    flow_map = {row["구조"]: row for row in flows}
+    food_wealth_row = flow_map.get("식상생재")
+
+    if has_output_stem and has_wealth_stem:
+        if strength_label(strength_index) in ["신강", "극신강"]:
+            adjustment += 1.2
+            positives.append("신강한 일간이 식상과 재성을 천간에서 활용하는 식상생재 흐름이 확인됨")
+        else:
+            adjustment += 0.8
+            positives.append("식상과 재성이 천간에 함께 드러나 현실적 발현 흐름이 확인됨")
+    elif food_wealth_row and food_wealth_row.get("강도") in ["중간", "중간~강함"]:
+        adjustment += 0.5
+        positives.append("식상생재 흐름이 중간 이상으로 확인됨")
+
+    # 4. 큰 충이 없으면 구조 안정성 인정
+    clash_count = sum(1 for it in interactions if it["type"] == "충")
+    strong_clash_count = sum(1 for it in interactions if it["type"] == "충" and it.get("strength") == "강함")
+    if clash_count == 0:
+        adjustment += 0.6
+        positives.append("큰 지지충이 없어 원국의 기본 안정성이 비교적 유지됨")
+    elif strong_clash_count >= 1:
+        adjustment -= 0.8
+        cautions.append("월지·일지 관련 강한 충이 있어 구조 변동성이 커질 수 있음")
+
+    # 5. 성별별 재성/관성 구조가 중상 이상이면 과소평가 방지
+    gender_score = float(gender_structure.get("점수", 0))
+    if gender_score >= 4.5:
+        adjustment += 0.5
+        positives.append("성별별 재성·관성 구조가 비교적 무난하여 관계·역할 구조의 기본 작동성이 있음")
+    elif gender_score < 2.6:
+        adjustment -= 0.5
+        cautions.append("성별별 재성·관성 구조에 보완 필요성이 큼")
+
+    # 6. 인성 강세는 무조건 감점만 하지 않고 학습·문서·기반 장점도 일부 인정
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+    if pct.get(resource_el, 0) >= 30 and strength_label(strength_index) in ["신강", "중화"]:
+        adjustment += 0.3
+        positives.append("인성 기운이 강해 학습·문서·기반의 장점으로 작용할 여지가 있음")
+
+    # 7. 편중형 명식은 부담을 보되, 발현 통로가 있으면 특화 강점도 적극 반영한다.
+    max_el = max(pct, key=pct.get)
+    specialized_positive = False
+    if pct[max_el] >= 42:
+        adjustment -= 1.0
+        cautions.append(f"{max_el} 기운이 42% 이상으로 강해 편중 부담이 큼")
+    elif pct[max_el] >= 36:
+        adjustment -= 0.5
+        cautions.append(f"{max_el} 기운이 우세하여 전체 구조를 주도함")
+
+    if pct[max_el] >= 36:
+        useful_visible = any(el in visible_primary for el in [output_el, wealth_el, resource_el])
+        has_flow_channel = (
+            (has_output_stem and has_wealth_stem)
+            or (food_wealth_row and food_wealth_row.get("강도") in ["중간", "중간~강함", "강함"])
+            or any(row.get("강도") in ["중간~강함", "강함"] for row in flows)
+        )
+        if has_flow_channel and (useful_visible or strong_clash_count == 0):
+            bonus = 1.0 if pct[max_el] >= 42 else 0.7
+            if strength_label(strength_index) in ["극신강", "신강"] and has_output_stem:
+                bonus += 0.4
+            adjustment += min(1.6, bonus)
+            specialized_positive = True
+            positives.append(f"{max_el} 편중이 있으나 식상·재성·순환 통로가 확인되어 발현 특화 강점으로 일부 반영")
+
+    strong_burden_combo = any(
+        it["type"] in ["삼합", "방합"] and it.get("element") in burden and it.get("strength") in ["강함", "매우 강함"]
+        for it in interactions
+    )
+    if strong_burden_combo:
+        adjustment -= 0.7
+        cautions.append("강한 합국이 부담 오행을 강화하므로 보완 방향의 작동력이 일부 제한됨")
+
+    # 8. 극단 강약은 최종적으로 한 번 더 확인하되, 발현 통로가 있으면 감점을 완화
+    if strength_label(strength_index) in ["극신약", "극신강"]:
+        if strength_label(strength_index) == "극신강" and specialized_positive:
+            adjustment -= 0.3
+            cautions.append("일간 강약은 극신강이나 발현 통로가 있어 극단 감점을 일부 완화")
+        else:
+            adjustment -= 0.8
+            cautions.append("일간 강약이 극단권에 가까워 운의 보완성이 더 중요함")
+
+    # 9. 보정 상한: 전체 인상은 안항목치일 뿐, 점수 체계를 뒤집지 않는다.
+    # 단, 70점 전후에서 장점이 충분히 확인되는 명식은 B 하위권으로 이동할 수 있도록 +4까지 허용한다.
+    if base_total >= 80 and adjustment > 0:
+        adjustment = min(adjustment, 1.5)
+    elif base_total < 60 and adjustment > 0:
+        adjustment = min(adjustment, 2.0)
+
+    adjustment = round(clamp(adjustment, -5.0, 5.0), 1)
+
+    if adjustment > 0:
+        summary = f"항목별 합산보다 장점이 일부 과소평가되어 +{adjustment}점 보정"
+    elif adjustment < 0:
+        summary = f"항목별 합산보다 구조 부담이 일부 과소평가되어 {adjustment}점 보정"
+    else:
+        summary = "항목별 합산과 전체 인상이 대체로 일치하여 보정 없음"
+
+    return {
+        "adjustment": adjustment,
+        "summary": summary,
+        "positives": positives,
+        "cautions": cautions,
+    }
+
+def normalize_ganji_token(token: str) -> str:
+    """
+    대운 입력 토큰을 한자 간지 2글자로 정규화한다.
+
+    지원 예:
+    - 辛巳
+    - 신사
+    - 신사대운
+    - 辛巳대운
+    - 경진, 기묘, 무인
+    """
+    if not token:
+        return ""
+
+    cleaned = (
+        token.strip()
+        .replace(" ", "")
+        .replace("대운", "")
+        .replace("년", "")
+        .replace("운", "")
+        .replace(":", "")
+        .replace("-", "")
+        .replace("_", "")
+    )
+
+    # 이미 한자 간지로 시작하는 경우
+    if len(cleaned) >= 2 and cleaned[0] in STEMS and cleaned[1] in BRANCHES:
+        return cleaned[0] + cleaned[1]
+
+    # 한글 간지로 시작하는 경우: 첫 글자는 천간, 두 번째 글자는 지지로 해석
+    if len(cleaned) >= 2:
+        first, second = cleaned[0], cleaned[1]
+        stem = KOREAN_STEM_TO_HANJA.get(first, first if first in STEMS else "")
+        branch = KOREAN_BRANCH_TO_HANJA.get(second, second if second in BRANCHES else "")
+        if stem in STEMS and branch in BRANCHES:
+            return stem + branch
+
+    # 토큰 안에 한자 간지가 섞여 있는 경우를 보수적으로 탐색
+    for i in range(len(cleaned) - 1):
+        a, b = cleaned[i], cleaned[i + 1]
+        stem = KOREAN_STEM_TO_HANJA.get(a, a if a in STEMS else "")
+        branch = KOREAN_BRANCH_TO_HANJA.get(b, b if b in BRANCHES else "")
+        if stem in STEMS and branch in BRANCHES:
+            return stem + branch
+
+    return cleaned
+
+
+def parse_luck_cycles(luck_text: str) -> List[str]:
+    """
+    대운 직접 입력값을 간지 목록으로 정리한다.
+
+    지원 입력:
+    - 한자: 辛巳, 庚辰, 己卯, 戊寅
+    - 한글: 신사, 경진, 기묘, 무인
+    - 줄바꿈 또는 공백 혼합 입력
+    """
+    if not luck_text.strip():
+        return []
+
+    raw = (
+        luck_text.replace("，", ",")
+        .replace("、", ",")
+        .replace("/", ",")
+        .replace("\n", ",")
+        .replace(chr(10), ",")
+    )
+
+    # 쉼표가 없고 공백으로만 나열한 경우도 허용
+    if "," not in raw and " " in raw:
+        parts = raw.split()
+    else:
+        parts = raw.split(",")
+
+    normalized = []
+    for p in parts:
+        token = normalize_ganji_token(p)
+        if token:
+            normalized.append(token)
+    return normalized
+
+
+def luck_score_label(score: float) -> str:
+    if score >= 78:
+        return "매우 보완적"
+    if score >= 68:
+        return "보완적"
+    if score >= 58:
+        return "다소 보완"
+    if score >= 48:
+        return "혼합/중립"
+    if score >= 38:
+        return "다소 부담"
+    return "부담"
+
+
+def hidden_elements_of_branch(branch: str) -> List[str]:
+    return [STEMS[hs]["element"] for hs, _r in BRANCHES[branch]["hidden"]]
+
+
+def hidden_tengods_text(day_master: str, branch: str) -> str:
+    return " ".join([f"{hs}({relation_to_day(day_master, hs)})" for hs, _r in BRANCHES[branch]["hidden"]])
+
+
+def detect_luck_branch_interactions(chart: Chart, luck_branch: str) -> List[Dict[str, object]]:
+    """
+    대운 지지가 원국 지지와 만드는 합·충·삼합·방합을 보수적으로 탐지한다.
+    이는 대운 점수용이며 원국 자체 점수는 바꾸지 않는다.
+    """
+    result: List[Dict[str, object]] = []
+    original = chart.branches
+    original_set = set(original)
+    combined_set = set(original + [luck_branch])
+
+    # 충
+    for a, b, name in CLASHES:
+        if luck_branch in (a, b):
+            other = b if luck_branch == a else a
+            if other in original_set:
+                important = chart.month.branch == other or chart.day.branch == other
+                result.append({
+                    "type": "충",
+                    "name": name,
+                    "element": None,
+                    "strength": "강함" if important else "중간",
+                    "description": "대운 지지가 원국 지지를 충합니다. 변동성·이동성·관계 재조정으로 작용할 수 있습니다.",
+                    "target": other,
+                    "important": important,
+                })
+
+    # 육합
+    for a, b, el, name in SIX_HARMONIES:
+        if luck_branch in (a, b):
+            other = b if luck_branch == a else a
+            if other in original_set:
+                important = chart.month.branch == other or chart.day.branch == other
+                result.append({
+                    "type": "육합",
+                    "name": name,
+                    "element": el,
+                    "strength": "중간" if important else "약함",
+                    "description": f"대운 지지가 원국의 {other}와 육합하여 {el} 성향을 보탭니다.",
+                    "target": other,
+                    "important": important,
+                })
+
+    # 삼합 완성 또는 반합
+    for triad in TRIADS:
+        before_count = len(triad["branches"].intersection(original_set))
+        after_count = len(triad["branches"].intersection(combined_set))
+        if luck_branch in triad["branches"]:
+            if after_count == 3 and before_count < 3:
+                result.append({
+                    "type": "삼합완성",
+                    "name": triad["name"],
+                    "element": triad["element"],
+                    "strength": "강함",
+                    "description": f"대운 지지가 원국과 결합해 {triad['name']}을 완성하여 {triad['element']} 기운을 강화합니다.",
+                    "target": "",
+                    "important": chart.month.branch in triad["branches"] or chart.day.branch in triad["branches"],
+                })
+            elif after_count >= 2 and before_count < 2:
+                result.append({
+                    "type": "반합",
+                    "name": _partial_triad_name(triad, counts),
+                    "element": triad["element"],
+                    "strength": "중간",
+                    "description": f"대운 지지가 원국과 {triad['element']} 반합 성향을 만듭니다.",
+                    "target": "",
+                    "important": chart.month.branch in triad["branches"] or chart.day.branch in triad["branches"],
+                })
+
+    # 방합 완성
+    for combo in DIRECTIONAL_COMBOS:
+        before_count = len(combo["branches"].intersection(original_set))
+        after_count = len(combo["branches"].intersection(combined_set))
+        if luck_branch in combo["branches"] and after_count == 3 and before_count < 3:
+            result.append({
+                "type": "방합완성",
+                "name": combo["name"],
+                "element": combo["element"],
+                "strength": "강함",
+                "description": f"대운 지지가 원국과 {combo['name']}을 완성하여 계절적 {combo['element']} 기운을 강화합니다.",
+                "target": "",
+                "important": chart.month.branch in combo["branches"] or chart.day.branch in combo["branches"],
+            })
+
+    return result
+
+
+def analyze_single_luck_cycle(
+    idx: int,
+    luck: str,
+    chart: Chart,
+    adjusted_scores: Dict[str, float],
+    useful: Dict[str, object],
+    season: str,
+    strength_index: float,
+) -> Dict[str, object]:
+    """
+    대운 하나를 상세 리포트한다.
+    총점은 100점이며 원국 점수와 별도로 표시한다.
+    """
+    if len(luck) < 2:
+        return {
+            "순서": idx,
+            "대운": luck,
+            "천간": "-",
+            "지지": "-",
+            "종합점수": 0.0,
+            "평가": "입력 확인 필요",
+            "핵심작용": "간지 2글자 형식으로 입력해야 합니다.",
+            "유리요소": "",
+            "유의요소": "입력 형식 오류",
+            "상세": ["입력 형식이 올바르지 않습니다. 예: 辛巳"],
+        }
+
+    stem, branch = luck[0], luck[1]
+    if stem not in STEMS or branch not in BRANCHES:
+        return {
+            "순서": idx,
+            "대운": luck,
+            "천간": stem,
+            "지지": branch,
+            "종합점수": 0.0,
+            "평가": "입력 확인 필요",
+            "핵심작용": "천간 또는 지지가 올바르지 않습니다.",
+            "유리요소": "",
+            "유의요소": "입력 형식 오류",
+            "상세": ["천간은 甲乙丙丁戊己庚辛壬癸, 지지는 子丑寅卯辰巳午未申酉戌亥 중 하나여야 합니다."],
+        }
+
+    pct = normalize_scores(adjusted_scores)
+    primary = set(useful.get("primary", []))
+    burden = set(useful.get("burden", []))
+    climate_needs = set(climate_needed_elements(season, chart.day_master))
+    day_el = STEMS[chart.day_master]["element"]
+
+    stem_el = STEMS[stem]["element"]
+    branch_el = BRANCHES[branch]["element"]
+    hidden_els = hidden_elements_of_branch(branch)
+
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+
+    favorable: List[str] = []
+    caution: List[str] = []
+    detail: List[str] = []
+
+    # 1. 용희신 보완성 30점
+    useful_score = 15.0
+    for label, el, weight in [("대운 천간", stem_el, 7.0), ("대운 지지", branch_el, 6.0)]:
+        if el in primary:
+            useful_score += weight
+            favorable.append(f"{label}의 {el}이 보완 방향")
+        if el in burden:
+            useful_score -= weight * 0.85
+            caution.append(f"{label}의 {el}이 부담 방향")
+    for el in hidden_els:
+        if el in primary:
+            useful_score += 1.2
+        if el in burden:
+            useful_score -= 0.9
+    useful_score = safe_score(useful_score, 30)
+    detail.append(f"용희신 보완성: {useful_score}/30")
+
+    # 2. 조후 보완성 20점
+    climate_score = 10.0
+    luck_els = [stem_el, branch_el] + hidden_els
+    if climate_needs:
+        hit = [el for el in luck_els if el in climate_needs]
+        if hit:
+            climate_score += 6.0 + min(3.0, len(hit) * 1.0)
+            favorable.append(f"조후 보완 오행({', '.join(sorted(set(hit)))})이 대운에 포함")
+        else:
+            climate_score -= 2.0
+            caution.append("조후 보완 오행이 대운에서 뚜렷하지 않음")
+    else:
+        climate_score += 2.0
+    climate_score = safe_score(climate_score, 20)
+    detail.append(f"조후 보완성: {climate_score}/20")
+
+    # 3. 원국 편중 조절 20점
+    balance_score = 10.0
+    max_el = max(pct, key=pct.get)
+    weak_els = [e for e in ELEMENTS if pct[e] < 12]
+    if stem_el in weak_els or branch_el in weak_els:
+        balance_score += 3.0
+        favorable.append("대운이 원국의 부족 오행을 일부 보완")
+    if stem_el == max_el:
+        balance_score -= 2.0
+        caution.append(f"대운 천간이 이미 강한 {max_el}을 더 보탬")
+    if branch_el == max_el:
+        balance_score -= 2.0
+        caution.append(f"대운 지지가 이미 강한 {max_el}을 더 보탬")
+    if any(el in primary for el in [stem_el, branch_el]):
+        balance_score += 2.0
+    if any(el in burden for el in [stem_el, branch_el]):
+        balance_score -= 1.5
+    balance_score = safe_score(balance_score, 20)
+    detail.append(f"원국 편중 조절: {balance_score}/20")
+
+    # 4. 합충 작용 15점
+    luck_interactions = detect_luck_branch_interactions(chart, branch)
+    interaction_score = 8.0
+    if not luck_interactions:
+        interaction_score += 1.0
+        detail.append("합충 작용: 큰 합충 재작동은 제한적")
+    for it in luck_interactions:
+        el = it.get("element")
+        typ = it["type"]
+        name = it["name"]
+        if typ == "충":
+            target = it.get("target")
+            target_el = BRANCHES[target]["element"] if target in BRANCHES else None
+            if target_el in burden:
+                interaction_score += 1.5
+                favorable.append(f"{name}이 부담 오행을 흔들어 변화의 계기가 될 수 있음")
+            else:
+                interaction_score -= 2.0 if it.get("important") else 1.0
+                caution.append(f"{name}으로 원국의 안정축에 변동성 발생")
+        elif el in primary:
+            interaction_score += 2.0
+            favorable.append(f"{name}으로 필요한 {el} 기운 강화")
+        elif el in burden:
+            interaction_score -= 2.0
+            caution.append(f"{name}으로 부담 오행인 {el} 기운 강화")
+        else:
+            interaction_score += 0.2
+    interaction_score = safe_score(interaction_score, 15)
+    detail.append(f"합충 작용: {interaction_score}/15")
+
+    # 5. 순환 구조 보완 15점
+    flow_score = 6.0
+    if output_el in [stem_el, branch_el] and wealth_el in [stem_el, branch_el] + [STEMS[s]["element"] for s in chart.stems]:
+        flow_score += 3.0
+        favorable.append("식상생재 흐름을 보조")
+    if wealth_el in [stem_el, branch_el] and officer_el in [stem_el, branch_el] + hidden_els:
+        flow_score += 2.0
+        favorable.append("재생관 흐름을 보조")
+    if officer_el in [stem_el, branch_el] and resource_el in [stem_el, branch_el] + hidden_els:
+        flow_score += 2.0
+        favorable.append("관인상생 흐름을 보조")
+    if strength_label(strength_index) in ["신강", "극신강"] and output_el in [stem_el, branch_el]:
+        flow_score += 1.5
+        favorable.append("신강한 일간의 설기 방향을 보조")
+    if strength_label(strength_index) in ["신약", "극신약"] and resource_el in [stem_el, branch_el]:
+        flow_score += 1.5
+        favorable.append("신약한 일간의 보강 방향을 보조")
+    if any(el in burden for el in [stem_el, branch_el]) and not any(el in primary for el in [stem_el, branch_el]):
+        flow_score -= 1.0
+    flow_score = safe_score(flow_score, 15)
+    detail.append(f"순환 구조 보완: {flow_score}/15")
+
+    total = safe_score(useful_score + climate_score + balance_score + interaction_score + flow_score, 100)
+    label = luck_score_label(total)
+
+    stem_tengod = relation_to_day(chart.day_master, stem)
+    hidden_text = hidden_tengods_text(chart.day_master, branch)
+
+    core = []
+    if stem_el in primary or branch_el in primary:
+        core.append("보완 방향 포함")
+    if stem_el in burden or branch_el in burden:
+        core.append("부담 방향 포함")
+    if luck_interactions:
+        core.append("합충 재작동")
+    if not core:
+        core.append("중립적 작용")
+
+    # 중복 제거
+    favorable_unique = list(dict.fromkeys(favorable))
+    caution_unique = list(dict.fromkeys(caution))
+    detail += [f"대운 천간 {stem}({stem_el}, {stem_tengod}), 지지 {branch}({branch_el}, 지장간 {hidden_text})"]
+    if luck_interactions:
+        detail.append("대운-원국 상호작용: " + " / ".join([f"{it['type']} {it['name']}({it['strength']})" for it in luck_interactions]))
+
+    return {
+        "순서": idx,
+        "대운": luck,
+        "천간": f"{stem}({stem_el}, {stem_tengod})",
+        "지지": f"{branch}({branch_el})",
+        "지장간": hidden_text,
+        "종합점수": total,
+        "평가": label,
+        "핵심작용": ", ".join(core),
+        "유리요소": "; ".join(favorable_unique[:4]) if favorable_unique else "뚜렷한 가점 요소는 제한적",
+        "유의요소": "; ".join(caution_unique[:4]) if caution_unique else "큰 부담 요소는 제한적",
+        "상세": detail,
+        "상호작용": luck_interactions,
+        "세부점수": {
+            "용희신 보완성": useful_score,
+            "조후 보완성": climate_score,
+            "원국 편중 조절": balance_score,
+            "합충 작용": interaction_score,
+            "순환 구조 보완": flow_score,
+        },
+    }
+
+
+def evaluate_luck_cycles(
+    luck_text: str,
+    chart: Chart,
+    adjusted_scores: Dict[str, float],
+    useful: Dict[str, object],
+    season: str,
+    strength_index: float,
+) -> Dict[str, object]:
+    """
+    대운 직접 입력형 상세 리포트.
+    원국 점수와 별도로 각 대운의 보완성을 100점 만점으로 평가한다.
+    """
+    parts = parse_luck_cycles(luck_text)
+    details: List[Dict[str, object]] = []
+    for i, luck in enumerate(parts, start=1):
+        details.append(analyze_single_luck_cycle(i, luck, chart, adjusted_scores, useful, season, strength_index))
+
+    if not details:
+        return {"summary_df": pd.DataFrame(), "details": [], "average_score": None, "overall_label": "대운 미입력"}
+
+    summary_cols = ["순서", "대운", "천간", "지지", "종합점수", "평가", "핵심작용", "유리요소", "유의요소"]
+    summary_df = pd.DataFrame([{k: d.get(k, "") for k in summary_cols} for d in details])
+    avg = round(sum(float(d["종합점수"]) for d in details) / len(details), 1)
+    return {
+        "summary_df": summary_df,
+        "details": details,
+        "average_score": avg,
+        "overall_label": luck_score_label(avg),
+    }
+
+
+# ============================================================
+# 8. 카테고리별 점수 재구성
+# ============================================================
+
+def scaled_subscore(score: float, original_max: float, new_max: float) -> float:
+    """
+    기존 세부 점수를 새 배점에 맞게 비례 환산한다.
+    기존 평가 로직을 유지하면서 사용자에게는 35/30/35 구조로 보여주기 위한 함수다.
+    """
+    if original_max <= 0:
+        return 0.0
+    return safe_score((float(score) / float(original_max)) * float(new_max), new_max)
+
+
+def build_categorized_scores(scores: Dict[str, Tuple[float, float, List[str]]]) -> Dict[str, Dict[str, Tuple[float, float, List[str]]]]:
+    """3대 카테고리 재분류. 100점 배점을 35/30/35로 재배치한다."""
+    s1, m1, n1 = scores["오행 세력·월령·통근·투출"]
+    s2, m2, n2 = scores["일간 강약·운용성"]
+    sp, mp, np = scores["격국 성립도와 청탁"]
+    s3, m3, n3 = scores["조후·한난조습"]
+    s4, m4, n4 = scores["십성 순환 구조"]
+    s5, m5, n5 = scores["합충형파해 후 구조 안정성"]
+    s6, m6, n6 = scores["성별별 재성·관성 구조"]
+    s7, m7, n7 = scores["해석 정합성·중복 보정"]
+    pattern_energy = scaled_subscore(sp, mp, 3)
+    pattern_stability = scaled_subscore(sp, mp, 5)
+    climate_flow = scaled_subscore(s3, m3, 12)
+    climate_stability = scaled_subscore(s3, m3, 2)
+    return {
+        "기운의 크기 점수 · 35점": {
+            "오행 세력·월령·통근·투출": (safe_score(s1, 22), 22, n1),
+            "일간 강약·운용성": (safe_score(s2, 10), 10, n2),
+            "격국 골격 보정": (pattern_energy, 3, np),
+        },
+        "기운의 순환 점수 · 30점": {
+            "조후·한난조습": (climate_flow, 12, n3),
+            "십성 순환 구조": (safe_score(s4, 18), 18, n4),
+        },
+        "기운의 발현 점수 · 35점": {
+            "합충형파해 후 구조 안정성": (safe_score(s5, 12), 12, n5),
+            "성별별 재성·관성 구조": (safe_score(s6, 4), 4, n6),
+            "해석 정합성·중복 보정": (safe_score(s7, 12), 12, n7),
+            "조후 현실 운용 보정": (climate_stability, 2, n3),
+            "격국 청탁 안정성": (pattern_stability, 5, np),
+        },
+    }
+
+
+def _soft_display_bonus(category: str, score_sum: float, max_sum: float) -> float:
+    """사용자 체감용 점수를 약간 후하게 보정한다.
+
+    v5.94: 첫 화면 체감이 너무 박하지 않도록 display 계열 점수만 소폭 상향.
+    특히 흐름과 연결(기운의 순환) 축은 보너스를 조금 더 준다.
+    """
+    raw = str(category or "")
+    bonus = 0.0
+    if "순환" in raw:
+        bonus = 3.0
+    elif "크기" in raw:
+        bonus = 1.5
+    elif "발현" in raw:
+        bonus = 2.0
+    boosted = round(min(float(max_sum or 0), float(score_sum or 0) + bonus), 1)
+    return boosted
+
+
+def category_totals(categorized_scores: Dict[str, Dict[str, Tuple[float, float, List[str]]]]) -> List[Dict[str, object]]:
+    rows = []
+    for category, sub_items in categorized_scores.items():
+        raw_score_sum = round(sum(float(v[0]) for v in sub_items.values()), 1)
+        max_sum = round(sum(float(v[1]) for v in sub_items.values()), 1)
+        score_sum = _soft_display_bonus(category, raw_score_sum, max_sum)
+        rows.append({
+            "카테고리": category,
+            "원점수": raw_score_sum,
+            "반영치": score_sum,
+            "점수": score_sum,
+            "기준": max_sum,
+            "배점": max_sum,
+            "비율": f"{(score_sum / max_sum * 100):.1f}%" if max_sum else "0.0%",
+        })
+    return rows
+
+
+def category_totals_synced_to_total(result: Dict[str, object]) -> List[Dict[str, object]]:
+    """첫 화면 표시용 3대 축.
+
+    후한 체감 표시값의 상대 비율은 유지하되,
+    3대 축 합계가 내부 최종점수와 정확히 일치하도록 비례 조정한다.
+    """
+    rows = category_totals_synced_to_total(result)
+    if not rows:
+        return rows
+
+    target_total = round(float(result.get("total", 0.0) or 0.0), 1)
+    boosted_sum = sum(float(r.get("점수", 0.0) or 0.0) for r in rows)
+    if boosted_sum <= 0:
+        return rows
+
+    synced: List[Dict[str, object]] = []
+    running = 0.0
+    for idx, row in enumerate(rows):
+        new_row = dict(row)
+        if idx == len(rows) - 1:
+            score = round(max(0.0, target_total - running), 1)
+        else:
+            score = round(float(row.get("점수", 0.0) or 0.0) / boosted_sum * target_total, 1)
+            running += score
+        max_sum = float(new_row.get("배점", new_row.get("기준", 0)) or 0)
+        score = min(score, max_sum) if max_sum > 0 else score
+        new_row["표시점수"] = score
+        new_row["반영치"] = score
+        new_row["점수"] = score
+        new_row["비율"] = f"{(score / max_sum * 100):.1f}%" if max_sum else "0.0%"
+        synced.append(new_row)
+
+    # 만점 클램프 때문에 차이가 생기면 마지막 축에서 다시 보정
+    diff = round(target_total - sum(float(r["점수"]) for r in synced), 1)
+    if synced and abs(diff) >= 0.1:
+        last = synced[-1]
+        max_sum = float(last.get("배점", last.get("기준", 0)) or 0)
+        adjusted = max(0.0, min(max_sum, float(last["점수"]) + diff))
+        last["점수"] = last["반영치"] = last["표시점수"] = round(adjusted, 1)
+        last["비율"] = f"{(adjusted / max_sum * 100):.1f}%" if max_sum else "0.0%"
+
+    return synced
+
+
+# ============================================================
+# 8. 전체 분석
+# ============================================================
+
+def safe_call(func, *args, fallback=(0.0, ["산출 실패: 기본값 사용"]), **kwargs):
+    try:
+        return func(*args, **kwargs)
+    except Exception:
+        return fallback
+
+
+# ============================================================
+# [SECTION 11] 분석 오케스트레이터
+#
+# 이 섹션의 내용 요약: 모든 분석 단계를 순서대로 호출하고 결과를 통합합니다. 화면과 리포트가 사용하는 최종 result dict를 생성합니다.
+# 주요 함수/상수: analyze, get_weight_profile
+# 변경 시 영향: 분석 결과 전체.
+# ============================================================
+
+def analyze(chart: Chart, luck_text: str = "") -> Dict[str, object]:
+    base_scores = calculate_base_element_scores(chart)
+    seasonal_scores, season = apply_season_adjustment(base_scores, chart.month.branch)
+    interactions = detect_interactions(chart)
+    adjusted_scores = apply_interaction_adjustment(seasonal_scores, interactions)
+
+    strength_index, strength_detail = day_master_strength(chart, adjusted_scores)
+    useful = useful_elements(chart, strength_index, season, adjusted_scores)
+    special_pattern = detect_special_pattern(chart, adjusted_scores, strength_index)
+    pattern_clarity = assess_pattern_clarity(chart, adjusted_scores, strength_index)
+    mode_for_weight = str(pattern_clarity.get("mode", "regular_partial"))
+    if pattern_clarity.get("is_outer"):
+        outer_type = pattern_clarity.get("outer_type", "")
+        if outer_type == "양인격":
+            mode_for_weight = "outer_yangin"
+        elif outer_type == "건록격":
+            mode_for_weight = "outer_luk"
+    weight_profile = get_weight_profile(mode_for_weight)
+    flows = evaluate_flow_structures(chart, adjusted_scores, useful)
+    gender_structure = evaluate_gender_structure(chart, adjusted_scores)
+
+    s1, n1 = safe_call(score_element_structure, chart, adjusted_scores)
+    s2, n2 = safe_call(score_daymaster_and_useful, chart, adjusted_scores, strength_index, useful)
+    sp, npat = safe_call(score_pattern_formation, chart, adjusted_scores, strength_index, special_pattern)
+    s3, n3 = safe_call(score_climate, adjusted_scores, season, useful, chart.day_master)
+    s4, n4 = safe_call(score_flow, flows)
+    s5, n5 = safe_call(score_interactions, interactions, useful)
+    s6 = float(gender_structure["점수"])
+
+    # 격국 게이트: 특수격/명확한 격국/부분 성립/불명확 분기에 따라 핵심 항목 가중치를 보수적으로 조정한다.
+    # 항목별 점수 검증: 어떤 경우에도 배점 초과 표시가 나오지 않게 한다.
+    s1 = safe_score(s1 * weight_profile["element"], 22)
+    s2 = safe_score(s2 * weight_profile["strength"], 10)
+    sp = safe_score(sp * weight_profile["pattern"], 8)
+    s3 = safe_score(s3 * weight_profile["climate"], 14)
+    s4 = safe_score(s4 * weight_profile["flow"], 18)
+    s5 = safe_score(s5, 12)
+    s6 = safe_score(s6, 4)
+    gender_structure["점수"] = s6
+
+    ratios = {
+        "오행": s1 / 22,
+        "일간": s2 / 10,
+        "격국": sp / 8,
+        "조후": s3 / 14,
+        "순환": s4 / 18,
+        "합충": s5 / 12,
+        "성별": s6 / 4,
+    }
+    s7, n7 = safe_call(score_consistency, ratios, interactions)
+    s7 = safe_score(s7, 12)
+
+    base_total = round(s1 + s2 + sp + s3 + s4 + s5 + s6 + s7, 1)
+    holistic = holistic_review(
+        chart=chart,
+        adjusted_scores=adjusted_scores,
+        interactions=interactions,
+        flows=flows,
+        useful=useful,
+        gender_structure=gender_structure,
+        base_total=base_total,
+        strength_index=strength_index,
+    )
+    shinsal = evaluate_shinsal_support(chart)
+    operability = operability_balance_adjustment(
+        chart=chart,
+        adjusted_scores=adjusted_scores,
+        interactions=interactions,
+        flows=flows,
+        useful=useful,
+        strength_index=strength_index,
+    )
+    total = round(clamp(
+        base_total
+        + float(shinsal.get("adjustment", 0.0))
+        + float(operability.get("adjustment", 0.0)),
+        0,
+        100,
+    ), 1)  # v5.135: 신살·공망 + 중화·조후·생활 운용성 보정 반영
+    origin_profile = origin_profile_tags(
+        chart=chart,
+        adjusted_scores=adjusted_scores,
+        strength_index=strength_index,
+        flows=flows,
+        interactions=interactions,
+        useful=useful,
+        holistic=holistic,
+    )
+    luck_result = evaluate_luck_cycles(
+        luck_text=luck_text,
+        chart=chart,
+        adjusted_scores=adjusted_scores,
+        useful=useful,
+        season=season,
+        strength_index=strength_index,
+    )
+
+    return {
+        "base_pct": normalize_scores(base_scores),
+        "seasonal_pct": normalize_scores(seasonal_scores),
+        "adjusted_pct": normalize_scores(adjusted_scores),
+        "season": season,
+        "interactions": interactions,
+        "strength_index": round(strength_index, 1),
+        "strength_label": strength_label(strength_index),
+        "strength_detail": strength_detail,
+        "useful": useful,
+        "flows": flows,
+        "gender_structure": gender_structure,
+        "luck_df": luck_result["summary_df"],
+        "luck_details": luck_result["details"],
+        "luck_average_score": luck_result["average_score"],
+        "luck_overall_label": luck_result["overall_label"],
+        "scores": {
+            "오행 세력·월령·통근·투출": (s1, 22, n1),
+            "일간 강약·운용성": (s2, 10, n2),
+            "격국 성립도와 청탁": (sp, 8, npat),
+            "조후·한난조습": (s3, 14, n3),
+            "십성 순환 구조": (s4, 18, n4),
+            "합충형파해 후 구조 안정성": (s5, 12, n5),
+            "성별별 재성·관성 구조": (s6, 4, gender_structure["비고"]),
+            "해석 정합성·중복 보정": (s7, 12, n7),
+        },
+        "categorized_scores": build_categorized_scores({
+            "오행 세력·월령·통근·투출": (s1, 22, n1),
+            "일간 강약·운용성": (s2, 10, n2),
+            "격국 성립도와 청탁": (sp, 8, npat),
+            "조후·한난조습": (s3, 14, n3),
+            "십성 순환 구조": (s4, 18, n4),
+            "합충형파해 후 구조 안정성": (s5, 12, n5),
+            "성별별 재성·관성 구조": (s6, 4, gender_structure["비고"]),
+            "해석 정합성·중복 보정": (s7, 12, n7),
+        }),
+        "special_pattern": special_pattern,
+        "pattern_clarity": pattern_clarity,
+        "weight_profile_used": weight_profile,
+        "score_display": format_score_display(total),
+        "base_total": base_total,
+        "holistic": holistic,
+        "shinsal": shinsal,
+        "operability": operability,
+        "total": total,
+        "grade": grade_text(total),
+        "grade_info": grade_info(total),
+        "origin_profile": origin_profile,
+    }
+
+
+# ============================================================
+# 9. 리포트 생성
+# ============================================================
+
+
+# ============================================================
+# [SECTION 16] 리포트
+#
+# 이 섹션의 내용 요약: 분석 결과를 마크다운 리포트로 변환합니다. 단일 분석, 1:1 케미, 뽑기 리포트 다운로드에 사용됩니다.
+# 주요 함수/상수: make_markdown_report, make_battle_summary, make_meal_report
+# 변경 시 영향: 다운로드 리포트 내용.
+# ============================================================
+
+def make_markdown_report(chart: Chart, result: Dict[str, object]) -> str:
+    useful = result["useful"]
+    lines = []
+    lines.append("# 사주 원국 구조 평가 리포트")
+    lines.append("")
+    lines.append(f"- 입력 정보: {chart.birth_info}")
+    lines.append(f"- 원국: {ganji_text(chart) if 'ganji_text' in globals() else chart_ganji_string(chart)}")
+    lines.append(f"- 성별 기준: {chart.gender}")
+    bd = score_breakdown(result)
+    lines.append(f"- 원국 원국 참고점: **{result.get('score_display', result['total'])} / 100**")
+    lines.append(f"- 기본 원국 참고점: **{bd['기본 원국 참고점']} / 100**")
+    lines.append(f"- 점수 산식: **기초체력 + 흐름과 연결 + 현실작동력 + 신살·공망 = {bd['최종 점수']}점**")
+    lines.append(f"- 전체 인상 보정 참고: **{bd['전체 인상 보정']:+.1f}점**")
+    lines.append(f"- 신살·공망 참고: **{bd['신살·공망']:+.1f}점 / ±3점**")
+    lines.append(f"- 전체 인상 점검: **{result.get('holistic', {}).get('summary', '보정 없음')}**")
+    lines.append(f"- 등급: **{result['grade_info']['grade']}등급 / {result['grade_info']['label']}**")
+    lines.append(f"- 원국 유형: **{result.get('origin_profile', {}).get('summary', '표준 혼합형')}**")
+    lines.append(f"- 일간 강약: **{result['strength_label']} ({result['strength_index']})**")
+    sp_info = result.get("special_pattern", {})
+    if sp_info.get("is_special"):
+        lines.append(f"- 특수격 후보: **{sp_info.get('type')} / 방향 {sp_info.get('direction')} / 신뢰도 {sp_info.get('confidence', 0):.2f}**")
+    lines.append(f"- 보완 방향: **{', '.join(useful['primary']) or '조후·순환 우선'}**")
+    lines.append(f"- 부담 방향: **{', '.join(useful['burden']) or '뚜렷하지 않음'}**")
+    lines.append("")
+    lines.append("## 카테고리별 원국 참고점")
+    for category, sub_items in result["categorized_scores"].items():
+        lines.append(f"### {category}")
+        for name, (score, max_score, notes) in sub_items.items():
+            lines.append(f"- {name}: {score}/{max_score} — {'; '.join(notes[:3]) if notes else ''}")
+    lines.append("")
+    lines.append("## 전체 인상 점검")
+    holistic = result.get("holistic", {})
+    for item in holistic.get("positives", []):
+        lines.append(f"- 장점: {item}")
+    for item in holistic.get("cautions", []):
+        lines.append(f"- 유의: {item}")
+    lines.append("")
+    lines.append("## 핵심 해석")
+    lines.append(f"이 명식은 {chart.day_master} 일간이며, 월령은 {chart.month.branch}월({result['season']})입니다.")
+    lines.append("합국·육합은 원래 오행을 완전히 바꾸지 않고 비율 보정으로 반영했습니다.")
+    if result["interactions"]:
+        lines.append("주요 합충형파해:")
+        for it in result["interactions"]:
+            lines.append(f"- {it['type']} {it['name']}: {it['strength']} — {it['description']}")
+
+    if result.get("luck_details"):
+        lines.append("")
+        lines.append("## 대운 직접 입력형 상세 리포트")
+        lines.append(f"- 입력 대운 평균 보완성: {result.get('luck_average_score')}점 / {result.get('luck_overall_label')}")
+        for d in result["luck_details"]:
+            lines.append(f"### {d['대운']} 대운 — {d['종합점수']}점 / {d['평가']}")
+            lines.append(f"- 천간: {d['천간']}")
+            lines.append(f"- 지지: {d['지지']}, 지장간: {d.get('지장간', '')}")
+            lines.append(f"- 핵심 작용: {d['핵심작용']}")
+            lines.append(f"- 유리 요소: {d['유리요소']}")
+            lines.append(f"- 유의 요소: {d['유의요소']}")
+            for item in d.get("상세", []):
+                lines.append(f"  - {item}")
+
+    lines.append("")
+    lines.append("※ 이 점수는 운명의 좋고 나쁨을 단정하는 값이 아니라, 원국의 구조적 균형·흐름·조후·합충 안정성을 수치화한 참고 지표입니다.")
+    return "\n".join(lines)
+
+
+# ============================================================
+# 10. 원국 구성 검증 유틸
+# ============================================================
+
+STEM_ORDER_FOR_VALIDATION = list(STEMS.keys())
+BRANCH_ORDER_FOR_VALIDATION = list(BRANCHES.keys())
+
+SEXAGENARY_FOR_VALIDATION = [
+    STEM_ORDER_FOR_VALIDATION[i % 10] + BRANCH_ORDER_FOR_VALIDATION[i % 12]
+    for i in range(60)
+]
+SEXAGENARY_SET_FOR_VALIDATION = set(SEXAGENARY_FOR_VALIDATION)
+
+MONTH_START_BY_YEAR_STEM_FOR_VALIDATION = {
+    "甲": "丙", "己": "丙",
+    "乙": "戊", "庚": "戊",
+    "丙": "庚", "辛": "庚",
+    "丁": "壬", "壬": "壬",
+    "戊": "甲", "癸": "甲",
+}
+MONTH_BRANCH_ORDER_FOR_VALIDATION = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"]
+
+HOUR_START_BY_DAY_STEM_FOR_VALIDATION = {
+    "甲": "甲", "己": "甲",
+    "乙": "丙", "庚": "丙",
+    "丙": "戊", "辛": "戊",
+    "丁": "庚", "壬": "庚",
+    "戊": "壬", "癸": "壬",
+}
+
+
+def pillar_ganji(p: Pillar) -> str:
+    return p.stem + p.branch
+
+
+def expected_month_pillar_for_validation(year_stem: str, month_branch: str) -> str:
+    start_stem = MONTH_START_BY_YEAR_STEM_FOR_VALIDATION[year_stem]
+    start_idx = STEM_ORDER_FOR_VALIDATION.index(start_stem)
+    branch_idx = MONTH_BRANCH_ORDER_FOR_VALIDATION.index(month_branch)
+    return STEM_ORDER_FOR_VALIDATION[(start_idx + branch_idx) % 10] + month_branch
+
+
+def expected_hour_pillar_for_validation(day_stem: str, hour_branch: str) -> str:
+    start_stem = HOUR_START_BY_DAY_STEM_FOR_VALIDATION[day_stem]
+    start_idx = STEM_ORDER_FOR_VALIDATION.index(start_stem)
+    branch_idx = BRANCH_ORDER_FOR_VALIDATION.index(hour_branch)
+    return STEM_ORDER_FOR_VALIDATION[(start_idx + branch_idx) % 10] + hour_branch
+
+
+# ============================================================
+# [SECTION 13] 검증
+#
+# 이 섹션의 내용 요약: 원국 검증과 회귀 테스트용 검증 샘플을 관리합니다. 수정 후 점수 변동과 만세력 산출 안정성을 확인합니다.
+# 주요 함수/상수: validate_origin_only_chart, SAMPLE_VALIDATION_CASES, run_sample_validation_cases
+# 변경 시 영향: 회귀 테스트 결과.
+# ============================================================
+
+def validate_origin_only_chart(chart: Chart):
+    """
+    원국 입력값의 문법적 가능성만 검증한다.
+    생년월일시를 받지 않으므로 실제 생년월일시와의 일치 여부는 검증하지 않는다.
+    """
+    passed = []
+    warnings = []
+
+    pillars = {
+        "년주": pillar_ganji(chart.year),
+        "월주": pillar_ganji(chart.month),
+        "일주": pillar_ganji(chart.day),
+    }
+    if chart.hour is not None:
+        pillars["시주"] = pillar_ganji(chart.hour)
+    else:
+        warnings.append("시주 미상: 년주·월주·일주만 검증했습니다.")
+
+    for name, ganji in pillars.items():
+        if ganji in SEXAGENARY_SET_FOR_VALIDATION:
+            passed.append(f"{name} {ganji}: 60갑자 조합")
+        else:
+            warnings.append(f"{name} {ganji}: 60갑자 조합이 아닙니다.")
+
+    if pillars["년주"] in SEXAGENARY_SET_FOR_VALIDATION and pillars["월주"] in SEXAGENARY_SET_FOR_VALIDATION:
+        expected = expected_month_pillar_for_validation(chart.year.stem, chart.month.branch)
+        if pillar_ganji(chart.month) == expected:
+            passed.append(f"월주 {pillar_ganji(chart.month)}: 년간-월지 기준 성립")
+        else:
+            warnings.append(
+                f"년간 {chart.year.stem} 기준 {chart.month.branch}월의 월주는 통상 {expected}인데, "
+                f"입력값은 {pillar_ganji(chart.month)}입니다."
+            )
+
+    if chart.hour is not None and pillars.get("일주") in SEXAGENARY_SET_FOR_VALIDATION and pillars.get("시주") in SEXAGENARY_SET_FOR_VALIDATION:
+        expected = expected_hour_pillar_for_validation(chart.day.stem, chart.hour.branch)
+        if pillar_ganji(chart.hour) == expected:
+            passed.append(f"시주 {pillar_ganji(chart.hour)}: 일간-시지 기준 성립")
+        else:
+            warnings.append(
+                f"일간 {chart.day.stem} 기준 {chart.hour.branch}시의 시주는 통상 {expected}인데, "
+                f"입력값은 {pillar_ganji(chart.hour)}입니다."
+            )
+
+    return len(warnings) == 0, passed, warnings
+
+
+def make_origin_only_report(chart: Chart, result: Dict[str, object], validation_passed: List[str], validation_warnings: List[str]) -> str:
+    useful = result["useful"]
+    lines = []
+    lines.append("# 사주 원국 구조 평가 리포트")
+    lines.append("")
+    lines.append(f"- 원국: {pillar_ganji(chart.year)} / {pillar_ganji(chart.month)} / {pillar_ganji(chart.day)} / {pillar_ganji(chart.hour)}")
+    lines.append(f"- 성별 기준: {chart.gender}")
+    lines.append(f"- 원국 원국 참고점: **{result.get('score_display', result['total'])} / 100**")
+    lines.append(f"- 기본 산출 점수: **{result.get('base_total', result['total'])} / 100**")
+    lines.append(f"- 전체 인상 점검: **{result.get('holistic', {}).get('summary', '보정 없음')}**")
+    lines.append(f"- 등급: **{result['grade_info']['grade']}등급 / {result['grade_info']['label']}**")
+    lines.append(f"- 일간 강약: **{result['strength_label']} ({result['strength_index']})**")
+    sp_info = result.get("special_pattern", {})
+    if sp_info.get("is_special"):
+        lines.append(f"- 특수격 후보: **{sp_info.get('type')} / 방향 {sp_info.get('direction')} / 신뢰도 {sp_info.get('confidence', 0):.2f}**")
+    lines.append(f"- 보완 방향: **{', '.join(useful['primary']) or '조후·순환 우선'}**")
+    lines.append(f"- 부담 방향: **{', '.join(useful['burden']) or '뚜렷하지 않음'}**")
+    lines.append("")
+    lines.append("## 원국 구성 검증")
+    for item in validation_passed:
+        lines.append(f"- 통과: {item}")
+    for item in validation_warnings:
+        lines.append(f"- 경고: {item}")
+    lines.append("")
+    lines.append("## 항목별 점수")
+    for name, (score, max_score, notes) in result["scores"].items():
+        lines.append(f"- {name}: {score}/{max_score} — {'; '.join(notes[:3]) if notes else ''}")
+    lines.append("")
+    lines.append("## 전체 인상 점검")
+    holistic = result.get("holistic", {})
+    for item in holistic.get("positives", []):
+        lines.append(f"- 장점: {item}")
+    for item in holistic.get("cautions", []):
+        lines.append(f"- 유의: {item}")
+    lines.append("")
+    lines.append("※ 이 점수는 운명의 좋고 나쁨을 단정하는 값이 아니라, 원국의 구조적 균형·흐름·조후·합충 안정성을 수치화한 참고 지표입니다.")
+    return "\n".join(lines)
+
+
+# ============================================================
+# 11. 정밀 만세력 모드 유틸
+# ============================================================
+
+from datetime import datetime, time, date, timedelta
+import base64
+import uuid
+import re
+from pathlib import Path
+
+try:
+
+# ============================================================
+# [SECTION 12] 만세력 산출
+#
+# 이 섹션의 내용 요약: 생년월일시를 사주 원국으로 변환하는 lunar_python 래퍼입니다. 자동 산출 입력 모드에서 사용됩니다.
+# 주요 함수/상수: get_saju_automated, resolve_birth_date_to_solar
+# 변경 시 영향: 자동 산출 입력 모드 전체.
+# ============================================================
+
+    from lunar_python import Solar, Lunar
+except Exception:
+    Solar = None
+    Lunar = None
+
+
+# ============================================================
+# 로그·오류 메시지 미기록 원칙
+# ============================================================
+
+def make_error_code(prefix: str = "ERR") -> str:
+    """입력값을 포함하지 않는 짧은 오류 코드."""
+    return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
+
+
+def show_safe_error(user_message: str, prefix: str = "ERR") -> None:
+    """
+    사용자 화면에는 구체 입력값이나 원본 예외 메시지를 표시하지 않는다.
+    로그에도 생년월일시·이름·payload를 남기지 않는 미기록 원칙을 따른다.
+    """
+    code = make_error_code(prefix)
+    st.error(f"{user_message} 오류 코드: {code}")
+    st.caption("오류 코드에는 생년월일시, 이름, 원국 등 구체 입력값이 포함되지 않습니다.")
+
+
+LOCATION_CORRECTION_MINUTES = {
+    "보정 안 함": 0,
+    "한국 평균 -30분": -30,
+    "서울 기준 -32분": -32,
+    "부산 기준 -24분": -24,
+    "제주 기준 -37분": -37,
+    "대전 기준 -29분": -29,
+    "광주 기준 -34분": -34,
+}
+
+# 사용자 입력은 기본적으로 대한민국 출생자를 전제로 하므로 태양시 보정은 선택값이 아니라 일괄 적용한다.
+KOREA_DEFAULT_CORRECTION_LABEL = "한국 평균 -30분"
+KOREA_DEFAULT_CORRECTION_MINUTES = LOCATION_CORRECTION_MINUTES[KOREA_DEFAULT_CORRECTION_LABEL]
+DEFAULT_AGE_BASIS = "만 나이"
+
+
+CALENDAR_TYPES = ["양력", "음력 평달", "음력 윤달"]
+
+
+def compact_calendar_selector(prefix: str) -> str:
+    """양력을 기본값으로 두고, 음력 평달/윤달 선택만 한 줄에서 처리한다."""
+    return st.radio(
+        "날짜 기준",
+        ["양력", "음력 평달", "음력 윤달"],
+        index=0,
+        horizontal=True,
+        key=f"{prefix}_calendar_compact_v5110",
+        help="기본값은 양력입니다. 음력 생일인 경우에만 음력 평달 또는 음력 윤달을 선택하세요.",
+    )
+
+
+def resolve_birth_date_to_solar(birth_date: date, calendar_type: str) -> date:
+    calendar_type = calendar_type or "양력"
+    if calendar_type == "양력":
+        return birth_date
+    if Lunar is None:
+        raise RuntimeError("음력 입력을 사용하려면 lunar_python의 Lunar 기능이 필요합니다.")
+
+    month = birth_date.month
+    if calendar_type == "음력 윤달":
+        month = -month
+
+    try:
+        lunar = Lunar.fromYmdHms(birth_date.year, month, birth_date.day, 0, 0, 0)
+    except Exception:
+        try:
+            lunar = Lunar.fromYmd(birth_date.year, month, birth_date.day)
+        except Exception:
+            raise RuntimeError("음력 날짜를 양력으로 변환하지 못했습니다. 날짜 기준과 윤달 여부를 확인하세요.")
+
+    solar = lunar.getSolar()
+    return date(int(solar.getYear()), int(solar.getMonth()), int(solar.getDay()))
+
+
+def sanitize_display_name(name: str, fallback: str) -> str:
+    """
+    사용자 표시명은 unsafe_allow_html=True 영역에도 들어가므로
+    HTML/CSS 주입에 쓰일 수 있는 문자를 제거한다.
+    실명 대신 별명 사용을 권장하며, 저장·로그용 식별자가 아니다.
+    """
+    name = str(name or fallback).strip()
+    if not name:
+        name = fallback
+    replacements = {
+        "<": "", ">": "", "&": "", "\"": "", "'": "", "`": "",
+        "{": "", "}": "", "[": "", "]": "", "\\": "",
+        "\n": " ", "\r": " ", "\t": " ",
+        " × ": " x ", "×": "x", "|": "/",
+    }
+    for old_ch, new_ch in replacements.items():
+        name = name.replace(old_ch, new_ch)
+    # 제어문자 제거
+    name = "".join(ch for ch in name if ch.isprintable())
+    name = " ".join(name.split())
+    if not name:
+        name = fallback
+    return name[:10]
+
+
+def normalize_participant_names(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    seen: Dict[str, int] = {}
+    for idx, p in enumerate(participants, start=1):
+        base = sanitize_display_name(p.get("name", ""), f"참가자 {idx}")
+        count = seen.get(base, 0) + 1
+        seen[base] = count
+        if count == 1:
+            display = base[:10]
+        else:
+            suffix = f"({count})"
+            display = f"{base[:max(1, 10 - len(suffix))]}{suffix}"
+        p["name"] = display
+        p["participant_id"] = f"P{idx}"
+    return participants
+
+
+def multi_field_metrics(participants: List[Dict[str, object]]) -> Dict[str, object]:
+    scores = [float(p["result"]["total"]) for p in participants]
+    if not scores:
+        return {"평균 총점": "-", "최고점": "-", "최저점": "-", "점수 격차": "-", "세력 분포": "-"}
+    avg = round(sum(scores) / len(scores), 1)
+    high = round(max(scores), 1)
+    low = round(min(scores), 1)
+    spread = round(high - low, 1)
+    if spread >= 20:
+        spread_label = "양극화 큼"
+    elif spread >= 10:
+        spread_label = "격차 보통"
+    else:
+        spread_label = "균형 구도"
+    return {"평균 총점": avg, "최고점": high, "최저점": low, "점수 격차": spread, "세력 분포": spread_label}
+
+
+def load_background_image_base64() -> str:
+    bg_path = Path(__file__).parent / "assets" / "palja_bg.png"
+    try:
+        return base64.b64encode(bg_path.read_bytes()).decode("utf-8")
+    except Exception:
+        return ""
+
+
+def calc_full_age(birth_date: date, today: date | None = None) -> int:
+    today = today or date.today()
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+
+def calc_korean_age(birth_date: date, today: date | None = None) -> int:
+    today = today or date.today()
+    return today.year - birth_date.year + 1
+
+
+def _extract_ganzhi(value: str) -> str:
+    if not value:
+        return ""
+    value = str(value).strip()
+    # lunar_python은 보통 "甲子" 형식 반환. 혹시 공백·괄호가 붙어도 앞의 간지 2글자만 탐색.
+    for i in range(max(0, len(value) - 1)):
+        if value[i] in STEMS and value[i + 1] in BRANCHES:
+            return value[i] + value[i + 1]
+    return value[:2]
+
+
+def get_saju_automated(
+    birth_date: date,
+    birth_time: time,
+    gender: str,
+    correction_minutes: int = 0,
+    use_yajashee: bool = False,
+) -> Tuple[Chart, List[Dict[str, object]], Dict[str, object]]:
+    """
+    lunar_python을 이용해 생년월일시에서 원국을 자동 산출한다.
+    태양시·야자시 처리는 학파 차이가 있으므로 옵션으로만 제공한다.
+    """
+    if Solar is None:
+        raise RuntimeError("lunar_python 패키지가 설치되어 있지 않습니다. requirements.txt에 lunar_python을 추가해야 합니다.")
+
+    original_dt = datetime.combine(birth_date, birth_time)
+    corrected_dt = original_dt + timedelta(minutes=correction_minutes)
+
+    solar = Solar.fromYmdHms(
+        corrected_dt.year,
+        corrected_dt.month,
+        corrected_dt.day,
+        corrected_dt.hour,
+        corrected_dt.minute,
+        corrected_dt.second,
+    )
+    lunar = solar.getLunar()
+    eight_char = lunar.getEightChar()
+
+    yajashee_applied = False
+    if use_yajashee and corrected_dt.hour == 23:
+        if hasattr(eight_char, "setSect"):
+            try:
+                eight_char.setSect(2)
+                yajashee_applied = True
+            except Exception:
+                yajashee_applied = False
+
+    y = _extract_ganzhi(eight_char.getYear())
+    m = _extract_ganzhi(eight_char.getMonth())
+    d = _extract_ganzhi(eight_char.getDay())
+    h = _extract_ganzhi(eight_char.getTime())
+
+    chart = Chart(
+        year=Pillar(y[0], y[1]),
+        month=Pillar(m[0], m[1]),
+        day=Pillar(d[0], d[1]),
+        hour=Pillar(h[0], h[1]),
+        gender=gender,
+        birth_info=corrected_dt.strftime("%Y-%m-%d %H:%M"),
+    )
+
+    daewuns = []
+    gender_flag = 1 if gender == "남자" else 0
+
+    yun = None
+    for args in [(gender_flag, 1), (gender_flag,), (gender_flag, 2)]:
+        try:
+            yun = eight_char.getYun(*args)
+            break
+        except Exception:
+            continue
+
+    if yun is not None:
+        daewun_arr = []
+        for method_name in ["getDaYun", "getDaeYun"]:
+            if hasattr(yun, method_name):
+                try:
+                    daewun_arr = list(getattr(yun, method_name)())
+                    if daewun_arr:
+                        break
+                except Exception:
+                    daewun_arr = []
+        for dy in daewun_arr:
+            try:
+                start_age = int(dy.getStartAge())
+            except Exception:
+                start_age = None
+            try:
+                gz = _extract_ganzhi(dy.getGanZhi())
+            except Exception:
+                gz = ""
+            if start_age is not None and gz and len(gz) >= 2:
+                daewuns.append({"start_age": start_age, "ganzhi": gz})
+
+    meta = {
+        "original_dt": original_dt.strftime("%Y-%m-%d %H:%M"),
+        "corrected_dt": corrected_dt.strftime("%Y-%m-%d %H:%M"),
+        "correction_minutes": correction_minutes,
+        "yajashee_requested": use_yajashee,
+        "yajashee_applied": yajashee_applied,
+    }
+    return chart, daewuns, meta
+
+
+def chart_ganji_string(chart: Chart) -> str:
+    hour_text = f"{chart.hour.stem}{chart.hour.branch}" if chart.hour is not None else "시주 미상"
+    return f"{chart.year.stem}{chart.year.branch} / {chart.month.stem}{chart.month.branch} / {chart.day.stem}{chart.day.branch} / {hour_text}"
+
+
+def try_auto_chart_variant(
+    birth_date: date,
+    birth_time: time,
+    gender: str,
+    correction_minutes: int = 0,
+    use_yajashee: bool = False,
+) -> Dict[str, object]:
+    """
+    자동 산출 비교용 단일 변형.
+    대운 산출 실패와 무관하게 원국 비교를 우선 수행한다.
+    """
+    chart, _daewuns, meta = get_saju_automated(
+        birth_date=birth_date,
+        birth_time=birth_time,
+        gender=gender,
+        correction_minutes=correction_minutes,
+        use_yajashee=use_yajashee,
+    )
+    return {
+        "chart": chart,
+        "원국": chart_ganji_string(chart),
+        "보정분": correction_minutes,
+        "야자시": "적용" if meta.get("yajashee_applied") else "미적용",
+        "기준시각": meta.get("corrected_dt", ""),
+        "메타": meta,
+    }
+
+
+def build_auto_verification(
+    birth_date: date,
+    birth_time: time,
+    gender: str,
+    correction_minutes: int,
+    use_yajashee: bool,
+    selected_chart: Chart,
+) -> Dict[str, object]:
+    """
+    자동 산출 결과에 대해 보정 전/후, 야자시 적용/미적용 비교표와 안정도 판단을 만든다.
+    """
+    variants: List[Dict[str, object]] = []
+    warnings: List[str] = []
+    reasons: List[str] = []
+
+    original_no = try_auto_chart_variant(birth_date, birth_time, gender, 0, False)
+    variants.append({
+        "비교 기준": "보정 전 · 야자시 미적용",
+        "원국": original_no["원국"],
+        "기준시각": original_no["기준시각"],
+        "비고": "원 입력값 기준",
+    })
+
+    corrected_no = try_auto_chart_variant(birth_date, birth_time, gender, correction_minutes, False)
+    variants.append({
+        "비교 기준": "보정 후 · 야자시 미적용",
+        "원국": corrected_no["원국"],
+        "기준시각": corrected_no["기준시각"],
+        "비고": f"태양시 보정 {correction_minutes:+}분",
+    })
+
+    corrected_yaja = None
+    original_dt = datetime.combine(birth_date, birth_time)
+    corrected_dt = original_dt + timedelta(minutes=correction_minutes)
+    yaja_relevant = original_dt.hour in [22, 23, 0] or corrected_dt.hour in [22, 23, 0]
+
+    if use_yajashee or yaja_relevant:
+        corrected_yaja = try_auto_chart_variant(birth_date, birth_time, gender, correction_minutes, True)
+        variants.append({
+            "비교 기준": "보정 후 · 야자시 적용 시도",
+            "원국": corrected_yaja["원국"],
+            "기준시각": corrected_yaja["기준시각"],
+            "비고": "야자시 적용 여부 비교",
+        })
+
+    selected_origin = chart_ganji_string(selected_chart)
+
+    if original_no["원국"] != corrected_no["원국"]:
+        warnings.append("태양시 보정 적용 여부에 따라 원국이 달라집니다.")
+    if corrected_yaja is not None and corrected_no["원국"] != corrected_yaja["원국"]:
+        warnings.append("야자시 적용 여부에 따라 원국이 달라집니다.")
+    if corrected_dt.hour in [23, 0]:
+        warnings.append("23시대 또는 자정 전후 출생으로 일주·시주 처리 기준 확인이 필요합니다.")
+    elif corrected_dt.hour in [22, 1]:
+        reasons.append("자시 경계와 비교적 가까운 시간대입니다.")
+    if correction_minutes != 0 and abs(correction_minutes) >= 20:
+        reasons.append("태양시 보정을 적용했습니다. 시주 경계 근처에서는 결과가 달라질 수 있습니다.")
+
+    unique_origins = list(dict.fromkeys([v["원국"] for v in variants]))
+    if len(unique_origins) == 1 and not warnings:
+        stability = "높음"
+        summary = "비교 기준들 사이에서 원국 변화가 확인되지 않았습니다."
+    elif len(unique_origins) == 1:
+        stability = "주의"
+        summary = "원국 자체는 같지만, 시간대 또는 보정 조건이 민감할 수 있습니다."
+    else:
+        stability = "검증 필요"
+        summary = "보정 또는 야자시 조건에 따라 원국이 달라질 수 있으므로 외부 만세력과 교차 확인이 필요합니다."
+
+    selected_basis = "보정 후 · 야자시 적용" if use_yajashee else "보정 후 · 야자시 미적용"
+    return {
+        "selected_origin": selected_origin,
+        "selected_basis": selected_basis,
+        "stability": stability,
+        "summary": summary,
+        "warnings": warnings,
+        "reasons": reasons,
+        "variants": variants,
+        "unique_origin_count": len(unique_origins),
+    }
+
+
+def get_year_ganzhi(year: int) -> str:
+    """
+    세운 표시용 연간지.
+    6월 1일은 입춘 이후이므로 해당 연도의 간지는 60갑자 공식으로 안정 산출한다.
+    lunar_python 부재나 내부 예외 때문에 빈 문자열을 반환하지 않는다.
+    """
+    try:
+        y = int(year)
+    except Exception as exc:
+        raise ValueError("세운 연도는 정수여야 합니다.") from exc
+    # 1984년은 甲子년. 60갑자 배열은 甲子부터 시작한다.
+    return SEXAGENARY_FOR_VALIDATION[(y - 1984) % 60]
+
+
+def get_month_day_pillars_for_date(target_date: date) -> Dict[str, str]:
+    """
+    밥값 배틀 기준일의 월운·일운을 산출한다.
+    월운·일운은 절기 기준이 필요하므로 lunar_python이 필요하다.
+    """
+    if Solar is None:
+        raise RuntimeError("밥값 배틀 월운·일운 산출에는 lunar_python이 필요합니다.")
+    solar = Solar.fromYmdHms(target_date.year, target_date.month, target_date.day, 12, 0, 0)
+    lunar = solar.getLunar()
+    eight_char = lunar.getEightChar()
+    month_gz = _extract_ganzhi(eight_char.getMonth())
+    day_gz = _extract_ganzhi(eight_char.getDay())
+    if not month_gz or len(month_gz) < 2 or month_gz[0] not in STEMS or month_gz[1] not in BRANCHES:
+        raise RuntimeError("월운 간지를 산출하지 못했습니다.")
+    if not day_gz or len(day_gz) < 2 or day_gz[0] not in STEMS or day_gz[1] not in BRANCHES:
+        raise RuntimeError("일운 간지를 산출하지 못했습니다.")
+    return {"month": month_gz[:2], "day": day_gz[:2]}
+
+
+def wealth_element_for_chart(chart: Chart) -> str:
+    """일간이 극하는 오행 = 재성."""
+    return CONTROLS[STEMS[chart.day_master]["element"]]
+
+
+def luck_pillar_wealth_effect(
+    chart: Chart,
+    result: Dict[str, object],
+    luck_ganzhi: str,
+    role: str,
+    weight: float,
+) -> Tuple[float, List[str]]:
+    """
+    특정 월운/일운 간지가 해당 원국의 지갑운 흐름에 주는 영향을 단순 점수화한다.
+    양수는 지갑운 흐름이 받쳐지는 쪽, 음수는 밥값 배틀 후보 쪽으로 본다.
+    """
+    if not luck_ganzhi or len(luck_ganzhi) < 2:
+        return 0.0, [f"{role}: 간지 산출 실패"]
+
+    stem, branch = luck_ganzhi[0], luck_ganzhi[1]
+    if stem not in STEMS or branch not in BRANCHES:
+        return 0.0, [f"{role}: 간지 형식 확인 필요"]
+
+    day_el = STEMS[chart.day_master]["element"]
+    wealth_el = wealth_element_for_chart(chart)
+    output_el = GENERATES[day_el]
+    primary = set(result.get("useful", {}).get("primary", []))
+    burden = set(result.get("useful", {}).get("burden", []))
+
+    score = 0.0
+    notes: List[str] = []
+
+    checks = [
+        ("천간", STEMS[stem]["element"], 7.0),
+        ("지지", BRANCHES[branch]["element"], 10.0),
+    ]
+    for label, elem, base in checks:
+        if elem == wealth_el:
+            score += base * weight
+            notes.append(f"{role} {label} {elem}: 재성 직접 자극")
+        elif elem == output_el:
+            score += base * 0.45 * weight
+            notes.append(f"{role} {label} {elem}: 식상→재성 통로")
+        elif elem in primary:
+            score += base * 0.35 * weight
+            notes.append(f"{role} {label} {elem}: 보완 방향")
+        elif elem in burden:
+            score -= base * 0.45 * weight
+            notes.append(f"{role} {label} {elem}: 부담 방향")
+
+    hidden_wealth = 0
+    hidden_primary = 0
+    hidden_burden = 0
+    for hidden_stem, ratio in BRANCHES[branch]["hidden"]:
+        elem = STEMS[hidden_stem]["element"]
+        if elem == wealth_el:
+            hidden_wealth += 1
+            score += 4.0 * ratio * weight
+        elif elem in primary:
+            hidden_primary += 1
+            score += 2.0 * ratio * weight
+        elif elem in burden:
+            hidden_burden += 1
+            score -= 2.0 * ratio * weight
+    if hidden_wealth:
+        notes.append(f"{role} 지장간에 재성 포함")
+    if hidden_primary and not hidden_wealth:
+        notes.append(f"{role} 지장간에 보완 오행 포함")
+    if hidden_burden:
+        notes.append(f"{role} 지장간에 부담 오행 포함")
+
+    # 일지·월지와의 충은 지출·변동 신호로 보수적으로 감점
+    for branch_label, natal_branch in [("월지", chart.month.branch), ("일지", chart.day.branch)]:
+        for c1, c2, name in CLASHES:
+            if (branch == c1 and natal_branch == c2) or (branch == c2 and natal_branch == c1):
+                target_el = BRANCHES[natal_branch]["element"]
+                if target_el in burden:
+                    score -= 1.5 * weight
+                    notes.append(f"{role} {name}: 부담 오행을 흔드는 변동")
+                else:
+                    score -= 4.5 * weight
+                    notes.append(f"{role} {name}: {branch_label} 충으로 지출·변동 신호")
+
+    pair_day = frozenset([branch, chart.day.branch])
+    if pair_day in SIX_HARMONY:
+        score += 2.2 * weight
+        notes.append(f"{role} 일지 육합: 관계·거래 연결성")
+    return score, notes
+
+
+def valid_ganzhi_text(gz: object) -> bool:
+    text = str(gz or "")
+    return len(text) >= 2 and text[0] in STEMS and text[1] in BRANCHES
+
+
+def meal_daewun_ganzhi(participant: Dict[str, object]) -> str:
+    """밥값 배틀에서 대운을 반영할 수 있으면 현재 대운 간지를 반환한다."""
+    lf = participant.get("luck_flow") or {}
+    current = lf.get("current_daewun") if isinstance(lf, dict) else None
+    if isinstance(current, dict):
+        gz = str(current.get("ganzhi", ""))
+        if valid_ganzhi_text(gz):
+            return gz
+    return ""
+
+
+def meal_wealth_score(participant: Dict[str, object], month_gz: str, day_gz: str) -> Dict[str, object]:
+    """
+    밥값 배틀용 지갑 방어력 점수.
+    낮을수록 오늘의 지갑 방어력이 약한 것으로 보고 뽑기 칸을 더 많이 배정한다.
+    대운이 산출 가능한 입력 방식이면 대운도 배경값으로 반영한다.
+    대운을 알 수 없는 입력 방식이면 대운 없이 월운·일운 중심으로 계산한다.
+    """
+    chart = participant["chart"]
+    result = participant["result"]
+    pct = result.get("adjusted_pct", {})
+    wealth_el = wealth_element_for_chart(chart)
+
+    score = 50.0
+    notes: List[str] = []
+
+    wealth_pct = float(pct.get(wealth_el, 0))
+    if 8 <= wealth_pct <= 28:
+        score += 5.0
+        notes.append(f"원국 재성({wealth_el})이 적정권")
+    elif wealth_pct < 5:
+        score -= 7.0
+        notes.append(f"원국 재성({wealth_el})이 부족권")
+    elif wealth_pct > 35:
+        score -= 3.0
+        notes.append(f"원국 재성({wealth_el})이 과다해 지출 부담 가능")
+
+    if wealth_el in result.get("useful", {}).get("primary", []):
+        score += 2.0
+        notes.append(f"재성({wealth_el})이 보완 방향")
+    if wealth_el in result.get("useful", {}).get("burden", []):
+        score -= 3.0
+        notes.append(f"재성({wealth_el})이 부담 방향")
+
+    daewun_gz = meal_daewun_ganzhi(participant)
+    if daewun_gz:
+        daewun_score, daewun_notes = luck_pillar_wealth_effect(chart, result, daewun_gz, "대운", 0.55)
+        score += daewun_score
+        notes.extend(daewun_notes[:3])
+        daewun_used = True
+    else:
+        daewun_used = False
+        notes.append("대운: 입력 방식상 미반영")
+
+    month_score, month_notes = luck_pillar_wealth_effect(chart, result, month_gz, "월운", 0.85)
+    day_score, day_notes = luck_pillar_wealth_effect(chart, result, day_gz, "일운", 1.25)
+    score += month_score + day_score
+    notes.extend(month_notes[:4])
+    notes.extend(day_notes[:5])
+
+    # 원국 전체 점수는 보조값으로만 작게 반영
+    total = float(result.get("total", 50))
+    if total >= 75:
+        score += 2.0
+        notes.append("원국 원국 참고점 상위권 보조 가점")
+    elif total < 60:
+        score -= 2.0
+        notes.append("원국 원국 참고점 하위권 보조 감점")
+
+    score = round(max(0, min(100, score)), 1)
+    return {
+        "participant": participant["name"],
+        "wealth_element": wealth_el,
+        "score": score,
+        "daewun_gz": daewun_gz or "-",
+        "daewun_used": daewun_used,
+        "month_gz": month_gz,
+        "day_gz": day_gz,
+        "notes": notes[:8],
+    }
+
+
+# ============================================================
+# [SECTION 15] 뽑기
+#
+# 이 섹션의 내용 요약: 밥값/일감/총대 뽑기 점수 산출과 16칸 배정을 담당합니다. 오늘의 뽑기 결과 화면과 리포트에 연결됩니다.
+# 주요 함수/상수: ROLE_ROULETTE_CONFIG, role_roulette_analysis, allocate_roulette_spokes
+# 변경 시 영향: 오늘의 뽑기 결과.
+# ============================================================
+
+ROLE_ROULETTE_CONFIG = {
+    "meal": {
+        "title": "밥값 뽑기",
+        "emoji": "🍚",
+        "mode_label": "오늘의 뽑기 / 밥값",
+        "stage_kicker": "🍚 오늘의 지갑 생존 게임",
+        "stage_title": "밥값 뽑기 준비 완료",
+        "stage_copy": "오늘의 운 흐름을 반영해 지갑 방어력 계산과 뽑기 칸 배정이 끝났습니다.",
+        "center_label": "밥값\n뽑기",
+        "popup_title": "오늘의 당첨자",
+        "winner_label": "오늘의 당첨자",
+        "main_result_line": "오늘의 당첨자",
+        "score_name": "밥값 회피력",
+        "score_short": "회피력",
+        "score_direction": "low",
+        "score_direction_caption": "회피력이 낮을수록 밥값을 떠맡을 가능성이 큽니다.",
+        "menu_desc": "오늘 누가 밥값 낼 차례?",
+        "top_label": "배정칸 최대",
+        "ready_high": "위험권",
+        "ready_mid": "긴장권",
+        "ready_low": "방어권",
+        "detail_title": "🍚 밥값 뽑기 판정표",
+        "detail_caption": "밥값 회피력은 재성, 보완·부담 방향, 대운(산출 가능한 경우), 월운·일운, 일지·월지 충돌을 단순화한 오락용 지표입니다. 회피력이 낮을수록 배정받은 뽑기 칸 수와 뽑힐 확률이 커집니다.",
+        "report_prefix": "palja_meal_report",
+        "disclaimer": "밥값 뽑기는 오락용 기능입니다. 실제 결제 의무나 인간관계 평가의 근거가 아닙니다.",
+    },
+    "workload": {
+        "title": "일감 뽑기",
+        "emoji": "💼",
+        "mode_label": "오늘의 뽑기 / 일감",
+        "stage_kicker": "💼 오늘의 손 바쁨 게임",
+        "stage_title": "일감 뽑기 준비 완료",
+        "stage_copy": "관성·식상·인성 및 오늘의 운 흐름을 반영해 일감흡수력 계산과 뽑기 칸 배정이 끝났습니다.",
+        "center_label": "일감\n뽑기",
+        "popup_title": "오늘의 당첨자",
+        "winner_label": "오늘의 당첨자",
+        "main_result_line": "오늘의 당첨자",
+        "score_name": "일감흡수력",
+        "score_short": "흡수력",
+        "score_direction": "high",
+        "score_direction_caption": "흡수력이 높을수록 일감을 떠맡을 가능성이 큽니다.",
+        "menu_desc": "오늘 누구한테 일이 몰릴까?",
+        "weights": {
+            "output": 0.35,
+            "partial_officer": 0.30,
+            "regular_officer": 0.10,
+            "resource": 0.10,
+            "wealth": 0.05,
+            "luck": 0.10,
+        },
+        "top_label": "일감 신호 최대",
+        "ready_high": "폭주권",
+        "ready_mid": "분주권",
+        "ready_low": "여유권",
+        "detail_title": "💼 일감 뽑기 판정표",
+        "detail_caption": "일감흡수력은 식상(처리·산출)과 편관(갑작스러운 책임)을 중심으로, 정관·인성·재성 및 월운·일운을 보조 반영한 오락용 지표입니다. 흡수력이 높을수록 오늘 일감을 떠맡을 가능성이 커집니다.",
+        "report_prefix": "palja_workload_report",
+        "disclaimer": "일감 뽑기는 오락용 역할 뽑기입니다. 실제 업무 배정, 인사평가, 책임 판단의 근거가 아닙니다.",
+    },
+    "leader": {
+        "title": "총대 뽑기",
+        "emoji": "📢",
+        "mode_label": "오늘의 뽑기 / 총대",
+        "stage_kicker": "📢 오늘의 앞장서기 게임",
+        "stage_title": "총대 뽑기 준비 완료",
+        "stage_copy": "관성·식상·비겁 및 현실작동력 흐름을 반영해 총대부름력 계산과 뽑기 칸 배정이 끝났습니다.",
+        "center_label": "총대\n뽑기",
+        "popup_title": "오늘의 당첨자",
+        "winner_label": "오늘의 당첨자",
+        "main_result_line": "오늘의 당첨자",
+        "score_name": "총대부름력",
+        "score_short": "부름력",
+        "score_direction": "high",
+        "score_direction_caption": "부름력이 높을수록 총대를 떠맡을 가능성이 큽니다.",
+        "menu_desc": "오늘 누가 총대 매?",
+        "weights": {
+            "hurting_officer": 0.30,
+            "peer": 0.30,
+            "regular_officer": 0.15,
+            "partial_officer": 0.10,
+            "wealth": 0.05,
+            "luck": 0.10,
+        },
+        "top_label": "대표 신호 최대",
+        "ready_high": "호출권",
+        "ready_mid": "대기권",
+        "ready_low": "은신권",
+        "detail_title": "📢 총대 뽑기 판정표",
+        "detail_caption": "총대부름력은 상관(발언·도전)과 비겁(사람 사이에서 나서는 힘)을 중심으로, 정관·편관·재성 및 월운·일운을 보조 반영한 오락용 지표입니다. 부름력이 높을수록 오늘 총대를 떠맡을 가능성이 커집니다.",
+        "report_prefix": "palja_leader_report",
+        "disclaimer": "총대 뽑기는 오락용 역할 뽑기입니다. 실제 책임 배정, 의사결정, 인간관계 판단의 근거가 아닙니다.",
+    },
+}
+
+
+def role_config(role_type: str) -> Dict[str, object]:
+    return ROLE_ROULETTE_CONFIG.get(str(role_type or "meal"), ROLE_ROULETTE_CONFIG["meal"])
+
+
+def element_roles_for_chart(chart: Chart) -> Dict[str, str]:
+    day_el = STEMS[chart.day_master]["element"]
+    return {
+        "비겁": day_el,
+        "식상": GENERATES[day_el],
+        "재성": CONTROLS[day_el],
+        "관성": next(e for e in ELEMENTS if CONTROLS[e] == day_el),
+        "인성": next(e for e in ELEMENTS if GENERATES[e] == day_el),
+    }
+
+
+def ten_god_strength_profile(chart: Chart) -> Dict[str, float]:
+    """
+    뽑기 전용 십성 프로파일.
+    분석 엔진 점수에는 영향을 주지 않고, 일감/총대 뽑기의 역할 신호만 더 세분화한다.
+    천간은 드러난 신호, 지장간은 잠재 신호로 보되 월지·일지를 더 크게 반영한다.
+    """
+    gods = ["비견", "겁재", "식신", "상관", "편재", "정재", "편관", "정관", "편인", "정인"]
+    raw = {g: 0.0 for g in gods}
+
+    stems = [("년간", chart.year.stem, 0.8), ("월간", chart.month.stem, 1.25), ("일간", chart.day.stem, 0.0)]
+    if chart.hour is not None:
+        stems.append(("시간", chart.hour.stem, 0.9))
+    for _label, stem, weight in stems:
+        if weight <= 0 or stem == chart.day_master:
+            continue
+        god = relation_to_day(chart.day_master, stem)
+        if god in raw:
+            raw[god] += weight
+
+    branches = [("년지", chart.year.branch, 0.8), ("월지", chart.month.branch, 2.2), ("일지", chart.day.branch, 1.45)]
+    if chart.hour is not None:
+        branches.append(("시지", chart.hour.branch, 0.75))
+    for _label, branch, branch_weight in branches:
+        for hidden_stem, ratio in BRANCHES[branch]["hidden"]:
+            if hidden_stem == chart.day_master:
+                # 일간 자신과 같은 지장간은 비견으로 보되, 고정 자기값이 과대해지지 않도록 잠재 신호만 반영
+                god = "비견"
+            else:
+                god = relation_to_day(chart.day_master, hidden_stem)
+            if god in raw:
+                raw[god] += branch_weight * ratio
+
+    total = sum(raw.values()) or 1.0
+    return {g: round(v / total * 100, 1) for g, v in raw.items()}
+
+
+def role_component(value: float, full_at: float = 28.0) -> float:
+    """뽑기 역할 점수용 0~1 정규화. full_at 이상이면 해당 성분이 충분한 것으로 본다."""
+    try:
+        return max(0.0, min(1.0, float(value) / float(full_at)))
+    except Exception:
+        return 0.0
+
+
+def role_axis_ratio(result: Dict[str, object], axis_keyword: str) -> float:
+    for row in category_totals_synced_to_total(result):
+        cat = str(row.get("카테고리", ""))
+        if axis_keyword in cat:
+            score = float(row.get("점수", 0) or 0)
+            max_score = float(row.get("배점", 1) or 1)
+            return score / max_score if max_score else 0.0
+    return 0.0
+
+
+def luck_pillar_role_effect(
+    chart: Chart,
+    result: Dict[str, object],
+    luck_ganzhi: str,
+    role: str,
+    weight: float,
+    role_type: str,
+) -> Tuple[float, List[str]]:
+    if not luck_ganzhi or len(luck_ganzhi) < 2:
+        return 0.0, [f"{role}: 간지 산출 실패"]
+    stem, branch = luck_ganzhi[0], luck_ganzhi[1]
+    if stem not in STEMS or branch not in BRANCHES:
+        return 0.0, [f"{role}: 간지 형식 확인 필요"]
+
+    if role_type == "workload":
+        # 일감은 손·처리·실행·산출이 핵심이므로 식상과 편관을 우선한다.
+        god_weights = {
+            "식신": 4.2, "상관": 4.8,
+            "편관": 4.6, "정관": 1.8,
+            "정인": 1.4, "편인": 1.2,
+            "정재": 0.8, "편재": 0.8,
+            "비견": 0.4, "겁재": 0.4,
+        }
+        clash_bonus = 2.5
+        harmony_bonus = 1.6
+    elif role_type == "leader":
+        # 총대는 입·대표·발언·주도이므로 상관과 비겁을 우선한다.
+        god_weights = {
+            "상관": 5.0, "식신": 2.2,
+            "비견": 4.2, "겁재": 4.5,
+            "정관": 2.5, "편관": 1.7,
+            "정재": 0.9, "편재": 0.9,
+            "정인": -0.8, "편인": -0.6,
+        }
+        clash_bonus = 2.0
+        harmony_bonus = 3.0
+    else:
+        return luck_pillar_wealth_effect(chart, result, luck_ganzhi, role, weight)
+
+    score = 0.0
+    notes: List[str] = []
+    stem_god = relation_to_day(chart.day_master, stem)
+    stem_score = god_weights.get(stem_god, 0.0) * weight
+    if stem_score:
+        score += stem_score
+        notes.append(f"{role} 천간 {stem_god}: 역할 신호")
+
+    hidden_hits = []
+    for hidden_stem, ratio in BRANCHES[branch]["hidden"]:
+        god = relation_to_day(chart.day_master, hidden_stem)
+        add = god_weights.get(god, 0.0) * ratio * 0.78 * weight
+        if add:
+            score += add
+            hidden_hits.append(god)
+    if hidden_hits:
+        notes.append(f"{role} 지장간 {', '.join(hidden_hits[:3])} 작동")
+
+    for branch_label, natal_branch in [("월지", chart.month.branch), ("일지", chart.day.branch)]:
+        for c1, c2, name in CLASHES:
+            if (branch == c1 and natal_branch == c2) or (branch == c2 and natal_branch == c1):
+                score += clash_bonus * weight
+                notes.append(f"{role} {name}: {branch_label}와 변동·호출 신호")
+    pair_day = frozenset([branch, chart.day.branch])
+    if pair_day in SIX_HARMONY:
+        score += harmony_bonus * weight
+        notes.append(f"{role} 일지 육합: 사람·역할이 엮이는 신호")
+    return score, notes
+
+
+def role_candidate_score(participant: Dict[str, object], month_gz: str, day_gz: str, role_type: str) -> Dict[str, object]:
+    if role_type == "meal":
+        row = meal_wealth_score(participant, month_gz, day_gz)
+        row["role_type"] = "meal"
+        row["score_name"] = role_config("meal")["score_name"]
+        return row
+
+    chart = participant["chart"]
+    result = participant["result"]
+    pct = result.get("adjusted_pct", {})
+    roles = element_roles_for_chart(chart)
+    god_profile = ten_god_strength_profile(chart)
+    cfg = role_config(role_type)
+    role_weights = cfg.get("weights", {})
+    score = 46.0
+    notes: List[str] = []
+
+    officer_pct = float(pct.get(roles["관성"], 0) or 0)
+    output_pct = float(pct.get(roles["식상"], 0) or 0)
+    resource_pct = float(pct.get(roles["인성"], 0) or 0)
+    peer_pct = float(pct.get(roles["비겁"], 0) or 0)
+    wealth_pct = float(pct.get(roles["재성"], 0) or 0)
+
+    if role_type == "workload":
+        # 권장 비율: 식상 0.35, 편관 0.30, 정관 0.10, 인성 0.10, 재성 0.05, 운 보정 0.10
+        output_strength = role_component(output_pct, 32.0)
+        partial_officer_strength = role_component(god_profile.get("편관", 0), 18.0)
+        regular_officer_strength = role_component(god_profile.get("정관", 0), 18.0)
+        resource_strength = role_component(resource_pct, 30.0)
+        wealth_strength = role_component(wealth_pct, 30.0)
+
+        weighted = (
+            float(role_weights.get("output", 0.35)) * output_strength
+            + float(role_weights.get("partial_officer", 0.30)) * partial_officer_strength
+            + float(role_weights.get("regular_officer", 0.10)) * regular_officer_strength
+            + float(role_weights.get("resource", 0.10)) * resource_strength
+            + float(role_weights.get("wealth", 0.05)) * wealth_strength
+        )
+        score += weighted * 38.0
+        notes.append(f"식상({roles['식상']}) 중심: 처리·산출 신호 {output_pct:.1f}%")
+        notes.append(f"편관 신호: 갑작스러운 책임·일감 호출 {god_profile.get('편관', 0):.1f}%")
+        if regular_officer_strength >= 0.45:
+            notes.append(f"정관 신호: 공식 업무·역할 {god_profile.get('정관', 0):.1f}%")
+        if resource_strength >= 0.45:
+            notes.append(f"인성({roles['인성']}) 보조: 문서·검토 신호")
+        if wealth_strength >= 0.45:
+            notes.append(f"재성({roles['재성']}) 보조: 결과·마감 신호")
+        if role_axis_ratio(result, "발현") >= 0.78:
+            score += 2.0; notes.append("현실작동력 상위권: 실제 처리력 보조")
+        if resource_pct > 40:
+            score -= 2.8; notes.append("인성 과다: 생각·검토가 길어질 수 있음")
+        if peer_pct > 44:
+            score -= 2.4; notes.append("비겁 과다: 역할이 분산될 수 있음")
+    else:  # leader
+        # 권장 비율: 상관 0.30, 비겁 0.30, 정관 0.15, 편관 0.10, 재성 0.05, 운 보정 0.10
+        hurting_strength = role_component(god_profile.get("상관", 0), 18.0)
+        peer_strength = role_component(peer_pct, 34.0)
+        regular_officer_strength = role_component(god_profile.get("정관", 0), 18.0)
+        partial_officer_strength = role_component(god_profile.get("편관", 0), 18.0)
+        wealth_strength = role_component(wealth_pct, 30.0)
+
+        weighted = (
+            float(role_weights.get("hurting_officer", 0.30)) * hurting_strength
+            + float(role_weights.get("peer", 0.30)) * peer_strength
+            + float(role_weights.get("regular_officer", 0.15)) * regular_officer_strength
+            + float(role_weights.get("partial_officer", 0.10)) * partial_officer_strength
+            + float(role_weights.get("wealth", 0.05)) * wealth_strength
+        )
+        score += weighted * 38.0
+        notes.append(f"상관 신호: 발언·공지·도전 {god_profile.get('상관', 0):.1f}%")
+        notes.append(f"비겁({roles['비겁']}) 중심: 사람 사이에서 나서는 힘 {peer_pct:.1f}%")
+        if regular_officer_strength >= 0.45:
+            notes.append(f"정관 신호: 공식 역할·대표성 {god_profile.get('정관', 0):.1f}%")
+        if partial_officer_strength >= 0.45:
+            notes.append(f"편관 신호: 떠맡는 부담 {god_profile.get('편관', 0):.1f}%")
+        if wealth_strength >= 0.45:
+            notes.append(f"재성({roles['재성']}) 보조: 결정·현실 판단")
+        if role_axis_ratio(result, "발현") >= 0.75:
+            score += 2.4; notes.append("현실작동력 상위권: 실제로 앞에 나서는 힘")
+        if resource_pct > 40:
+            score -= 2.8; notes.append("인성 과다: 고민이 길어져 총대 회피 가능")
+        if officer_pct > 44:
+            score -= 1.8; notes.append("관성 과다: 부담이 커져 위축 가능")
+
+    daewun_gz = meal_daewun_ganzhi(participant)
+    if daewun_gz:
+        daewun_score, daewun_notes = luck_pillar_role_effect(chart, result, daewun_gz, "대운", 0.35, role_type)
+        score += daewun_score * (0.9 if role_type == "meal" else 1.0)
+        notes.extend(daewun_notes[:3])
+        daewun_used = True
+    else:
+        daewun_used = False
+        notes.append("대운: 입력 방식상 미반영")
+
+    month_weight = 0.85 if role_type == "meal" else 0.65
+    day_weight = 1.25 if role_type == "meal" else 0.95
+    month_score, month_notes = luck_pillar_role_effect(chart, result, month_gz, "월운", month_weight, role_type)
+    day_score, day_notes = luck_pillar_role_effect(chart, result, day_gz, "일운", day_weight, role_type)
+    score += month_score + day_score
+    notes.extend(month_notes[:4])
+    notes.extend(day_notes[:5])
+
+    score = round(max(0, min(100, score)), 1)
+    return {
+        "participant": participant["name"],
+        "role_type": role_type,
+        "score_name": role_config(role_type)["score_name"],
+        "score": score,
+        "wealth_element": roles["재성"],
+        "work_elements": f"관성 {roles['관성']} · 식상 {roles['식상']} · 인성 {roles['인성']}",
+        "leader_elements": f"관성 {roles['관성']} · 식상 {roles['식상']} · 비겁 {roles['비겁']}",
+        "daewun_gz": daewun_gz or "-",
+        "daewun_used": daewun_used,
+        "month_gz": month_gz,
+        "day_gz": day_gz,
+        "notes": notes[:9],
+    }
+
+
+def allocate_roulette_spokes(scored_rows: List[Dict[str, object]], spoke_count: int = 16) -> List[Dict[str, object]]:
+    """
+    밥값 배틀 영토를 16칸 뽑기 단위로 배정한다.
+    회피력이 낮을수록 territory가 크고, territory 비율에 따라 더 많은 뽑기 칸을 받는다.
+    참가자가 16명 이하인 경우 각 참가자에게 최소 1개 살을 보장한다.
+    """
+    if not scored_rows:
+        return []
+    spoke_count = max(spoke_count, len(scored_rows))
+    base_rows = []
+    for r in scored_rows:
+        item = dict(r)
+        item["territory"] = max(5.0, 110.0 - float(r["score"]))
+        base_rows.append(item)
+
+    total_territory = sum(float(r["territory"]) for r in base_rows) or 1.0
+    raw_shares = [float(r["territory"]) / total_territory * spoke_count for r in base_rows]
+    assigned = [max(1, int(x)) for x in raw_shares]
+    # floor 합이 초과될 경우, 원 비율 대비 초과가 큰 항목부터 줄이되 최소 1개 유지
+    while sum(assigned) > spoke_count:
+        candidates = [(assigned[i] - raw_shares[i], i) for i in range(len(assigned)) if assigned[i] > 1]
+        if not candidates:
+            break
+        _, idx = max(candidates)
+        assigned[idx] -= 1
+    # 남는 살은 소수점 잔여가 큰 항목에 배정
+    while sum(assigned) < spoke_count:
+        candidates = [(raw_shares[i] - assigned[i], i) for i in range(len(assigned))]
+        _, idx = max(candidates)
+        assigned[idx] += 1
+
+    for i, r in enumerate(base_rows):
+        r["assigned_spokes"] = int(assigned[i])
+        r["probability"] = round(assigned[i] / spoke_count * 100, 1)
+        r["territory"] = round(float(r["territory"]), 1)
+    return base_rows
+
+
+def build_interleaved_spoke_segments(roulette_rows: List[Dict[str, object]], spoke_count: int = 16) -> List[Dict[str, object]]:
+    """
+    동일 참가자의 영토가 한 덩어리로 뭉치지 않도록 16개 살에 최대한 흩뿌린다.
+    이렇게 해야 2명이라도 단순 반반/통짜 영역처럼 보이지 않고 실제 뽑기 느낌이 난다.
+    """
+    pool: List[Dict[str, object]] = []
+    for r in roulette_rows:
+        for _ in range(int(r.get("assigned_spokes", 0))):
+            pool.append(r)
+    if not pool:
+        return []
+
+    # 가장 많은 살을 가진 사람부터 간격을 벌려 배치
+    ordered_rows = sorted(roulette_rows, key=lambda x: (-int(x.get("assigned_spokes", 0)), str(x.get("participant", ""))))
+    segments: List[Dict[str, object] | None] = [None] * len(pool)
+
+    def best_slot() -> int:
+        best_idx, best_score = 0, -1
+        n = len(segments)
+        for i, val in enumerate(segments):
+            if val is not None:
+                continue
+            # 이미 채워진 가장 가까운 좌우 거리의 합이 클수록 좋은 위치
+            left = right = 1
+            while left < n and segments[(i - left) % n] is None:
+                left += 1
+            while right < n and segments[(i + right) % n] is None:
+                right += 1
+            score = min(left, right) + 0.01 * (left + right)
+            if score > best_score:
+                best_idx, best_score = i, score
+        return best_idx
+
+    for row in ordered_rows:
+        for _ in range(int(row.get("assigned_spokes", 0))):
+            idx = best_slot()
+            segments[idx] = row
+
+    spoke_angle = 360 / len(segments)
+    out = []
+    for idx, row in enumerate(segments):
+        if row is None:
+            continue
+        out.append({
+            "index": idx,
+            "participant": row["participant"],
+            "row": row,
+            "angle_start": idx * spoke_angle,
+            "angle_end": (idx + 1) * spoke_angle,
+            "angle_center": (idx + 0.5) * spoke_angle,
+        })
+    return out
+
+
+def meal_roulette_rows(scored_rows: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    """
+    밥값 회피력이 낮을수록 16칸 뽑기 중 더 많은 뽑기 칸을 배정한다.
+    최종 후보 확률은 연속 비율이 아니라 배정된 뽑기 칸 수로 결정된다.
+    """
+    return allocate_roulette_spokes(scored_rows, spoke_count=16)
+
+
+def allocate_high_score_roulette_spokes(scored_rows: List[Dict[str, object]], spoke_count: int = 16) -> List[Dict[str, object]]:
+    """일감/총대처럼 점수가 높을수록 더 많은 뽑기 칸을 받는 역할 뽑기 배정."""
+    if not scored_rows:
+        return []
+    spoke_count = max(spoke_count, len(scored_rows))
+    base_rows = []
+    for r in scored_rows:
+        item = dict(r)
+        item["territory"] = max(5.0, float(r.get("score", 0)))
+        base_rows.append(item)
+    total_territory = sum(float(r["territory"]) for r in base_rows) or 1.0
+    raw_shares = [float(r["territory"]) / total_territory * spoke_count for r in base_rows]
+    assigned = [max(1, int(x)) for x in raw_shares]
+    while sum(assigned) > spoke_count:
+        candidates = [(assigned[i] - raw_shares[i], i) for i in range(len(assigned)) if assigned[i] > 1]
+        if not candidates:
+            break
+        _, idx = max(candidates)
+        assigned[idx] -= 1
+    while sum(assigned) < spoke_count:
+        candidates = [(raw_shares[i] - assigned[i], i) for i in range(len(assigned))]
+        _, idx = max(candidates)
+        assigned[idx] += 1
+    for i, r in enumerate(base_rows):
+        r["assigned_spokes"] = int(assigned[i])
+        r["probability"] = round(assigned[i] / spoke_count * 100, 1)
+        r["territory"] = round(float(r["territory"]), 1)
+    return base_rows
+
+
+def role_roulette_rows(scored_rows: List[Dict[str, object]], role_type: str) -> List[Dict[str, object]]:
+    if role_type == "meal":
+        return meal_roulette_rows(scored_rows)
+    return allocate_high_score_roulette_spokes(scored_rows, spoke_count=16)
+
+
+def pick_meal_roulette_winner(roulette_rows: List[Dict[str, object]]) -> Dict[str, object]:
+    segments = build_interleaved_spoke_segments(roulette_rows, spoke_count=16)
+    if not segments:
+        return roulette_rows[0] if roulette_rows else {}
+    selected_segment = random.choice(segments)
+    winner = dict(selected_segment["row"])
+    winner["selected_spoke_index"] = selected_segment["index"]
+    winner["selected_angle_center"] = selected_segment["angle_center"]
+    return winner
+
+
+# ============================================================
+# [SECTION 17] UI 헬퍼
+#
+# 이 섹션의 내용 요약: SVG 차트, 카드, 테이블 등 화면 렌더링 함수를 모아둔 영역입니다. 결과 화면의 시각적 표현을 담당합니다.
+# 주요 함수/상수: render_ability_triangle, render_element_pentagon, render_compatibility_radar, render_single_summary
+# 변경 시 영향: 결과 화면 표시.
+# ============================================================
+
+def render_meal_ready_stage(meal_result: Dict[str, object]) -> None:
+    """결과 카드 공개 전에는 배정칸과 봉투 연출로 긴장감을 만든다."""
+    cfg = role_config(str(meal_result.get("role_type", "meal")))
+    rows = meal_result.get("roulette_rows", [])
+    if not rows:
+        return
+
+    sorted_rows = sorted(rows, key=lambda r: (-int(r.get("assigned_spokes", 0)), float(r.get("score", 0)), str(r.get("participant", ""))))
+    participant_count = meal_result.get("participant_count", len(rows))
+    daewun_used = meal_result.get("daewun_used_count", 0)
+
+    cards = []
+    for r in sorted_rows:
+        name = html.escape(str(r.get("participant", "")))
+        spokes = int(r.get("assigned_spokes", 0))
+        score = r.get("score", "-")
+        probability = r.get("probability", "-")
+        if spokes >= 6:
+            risk = str(cfg["ready_high"])
+        elif spokes >= 4:
+            risk = str(cfg["ready_mid"])
+        else:
+            risk = str(cfg["ready_low"])
+        cards.append(
+            f'<div class="meal-ready-card">'
+            f'<div class="meal-ready-name">{name}</div>'
+            f'<div class="meal-ready-spokes">{spokes}/16칸</div>'
+            f'<div class="meal-ready-sub">{html.escape(str(cfg["score_short"]))} {score}점 · {probability}% · {risk}</div>'
+            f'</div>'
+        )
+
+    st.markdown(textwrap.dedent(f"""
+    <div class="meal-stage-wrap">
+        <div class="meal-stage-kicker">{html.escape(str(cfg["stage_kicker"]))}</div>
+        <div class="meal-stage-title">{html.escape(str(cfg["stage_title"]))}</div>
+        <div class="meal-stage-copy">
+            참가자 <b>{participant_count}명</b> 입장 완료 · 대운 반영 <b>{daewun_used}/{participant_count}명</b><br>
+            {html.escape(str(cfg["stage_copy"]))}<br>
+            아래 봉투 3장이 섞였습니다. 버튼을 누르면 최종 카드가 공개됩니다.
+        </div>
+        <div class="meal-stage-alert">봉투를 섞었습니다. 결과 카드를 뒤집으면 오늘의 당첨자가 공개됩니다.</div>
+        <div class="pick-suspense-grid">
+            <div class="pick-sealed-card"><div class="pick-sealed-icon">✉️</div><div class="pick-sealed-title">1차 봉투</div><div class="pick-sealed-sub">배정칸 확인</div></div>
+            <div class="pick-sealed-card"><div class="pick-sealed-icon">🎴</div><div class="pick-sealed-title">반전 카드</div><div class="pick-sealed-sub">확률 변수 대기</div></div>
+            <div class="pick-sealed-card"><div class="pick-sealed-icon">✨</div><div class="pick-sealed-title">최종 공개</div><div class="pick-sealed-sub">버튼을 누르면 공개</div></div>
+        </div>
+        <div class="meal-ready-grid">
+            {''.join(cards)}
+        </div>
+    </div>
+    """).strip(), unsafe_allow_html=True)
+    st.caption("자세한 배정표와 계산 근거는 결과 카드를 뒤집은 뒤 `상세 결과 보기`에서 확인합니다.")
+
+
+def render_role_winner_hero(meal_result: Dict[str, object]) -> None:
+    """뽑기 결과 화면 상단에 오늘의 당첨자를 크게 보여준다."""
+    cfg = role_config(str(meal_result.get("role_type", "meal")))
+    winner = meal_result.get("payer") or {}
+    if not winner:
+        return
+    safe_name = html.escape(str(winner.get("participant", "-")), quote=True)
+    safe_score_short = html.escape(str(cfg.get("score_short", "점수")), quote=True)
+    safe_score = html.escape(str(winner.get("score", "-")), quote=True)
+    safe_confidence = html.escape(str(meal_result.get("confidence", "")), quote=True)
+    safe_summary = html.escape(str(meal_result.get("summary", "")), quote=True)
+    safe_title = html.escape(str(cfg.get("title", "오늘의 뽑기")), quote=True)
+    emoji = html.escape(str(cfg.get("emoji", "🎲")), quote=True)
+    st.markdown(textwrap.dedent(f"""
+    <div style="background:linear-gradient(135deg,#fff7fb 0%,#fff7ed 100%);border:1px solid rgba(230,164,184,.45);border-radius:24px;padding:1.05rem 1.15rem;margin:.75rem 0 1rem 0;text-align:center;box-shadow:0 14px 34px rgba(214,66,115,.10);">
+        <div style="display:inline-block;background:#ffe4ee;border:1px solid rgba(214,66,115,.22);border-radius:999px;padding:.22rem .72rem;color:#9f1239;font-weight:950;font-size:.88rem;">{emoji} {safe_title}</div>
+        <div style="margin-top:.55rem;color:#7a5665;font-weight:850;">오늘의 당첨자</div>
+        <div style="font-size:2.2rem;line-height:1.12;font-weight:950;color:#d64273;margin-top:.2rem;">{emoji} {safe_name}</div>
+        <div style="color:#5b3f4b;font-weight:900;margin-top:.45rem;">{safe_score_short} {safe_score}점 · {safe_confidence}</div>
+        <div style="color:#7a5665;font-weight:760;line-height:1.55;margin-top:.35rem;">{safe_summary}</div>
+    </div>
+    """).strip(), unsafe_allow_html=True)
+
+
+def render_meal_roulette_wheel(meal_result: Dict[str, object]) -> None:
+    """뽑기 결과의 배정표만 표시한다. 당첨자 큰 카드는 render_role_winner_hero에서 한 번만 표시한다."""
+    cfg = role_config(str(meal_result.get("role_type", "meal")))
+    rows = meal_result.get("roulette_rows", [])
+    winner = meal_result.get("payer", {})
+    if not rows or not winner:
+        return
+
+    score_short = str(cfg.get("score_short", "점수"))
+    st.markdown("##### 뽑기 칸 배정")
+    sorted_rows = sorted(rows, key=lambda x: (-int(x.get("assigned_spokes", 0)), str(x.get("participant", ""))))
+    cols = st.columns(min(3, max(1, len(sorted_rows))))
+    for idx, r in enumerate(sorted_rows):
+        name = str(r.get("participant", "-"))
+        spokes = int(r.get("assigned_spokes", 0) or 0)
+        prob = r.get("probability", "-")
+        score = r.get("score", "-")
+        is_winner = str(r.get("participant", "")) == str(winner.get("participant", ""))
+        with cols[idx % len(cols)]:
+            title = f"🏆 {name}" if is_winner else name
+            st.markdown(f"**{title}**")
+            safe_write(f"{score_short} {score}점")
+            safe_write(f"뽑기 배정: {spokes}/16칸 · {prob}%")
+            if is_winner:
+                st.success("오늘의 당첨자")
+
+
+def role_top_row(roulette_rows: List[Dict[str, object]], role_type: str = "meal") -> Dict[str, object]:
+    if not roulette_rows:
+        return {}
+    if role_type == "meal":
+        return sorted(roulette_rows, key=lambda r: (-int(r.get("assigned_spokes", 0)), float(r.get("score", 0)), str(r.get("participant", ""))))[0]
+    return sorted(roulette_rows, key=lambda r: (-int(r.get("assigned_spokes", 0)), -float(r.get("score", 0)), str(r.get("participant", ""))))[0]
+
+
+def meal_weakest_row(roulette_rows: List[Dict[str, object]]) -> Dict[str, object]:
+    return role_top_row(roulette_rows, "meal")
+
+
+def format_meal_display_rows(
+    roulette_rows: List[Dict[str, object]],
+    selected: Dict[str, object] | None = None,
+    weakest: Dict[str, object] | None = None,
+    role_type: str = "meal",
+) -> List[Dict[str, object]]:
+    cfg = role_config(role_type)
+    top_row = weakest or role_top_row(roulette_rows, role_type)
+    if role_type == "meal":
+        rows_sorted = sorted(roulette_rows, key=lambda r: (-float(r["territory"]), str(r["participant"])))
+    else:
+        rows_sorted = sorted(roulette_rows, key=lambda r: (-float(r["territory"]), -float(r.get("score", 0)), str(r["participant"])))
+    display_rows = []
+    selected_name = selected.get("participant") if selected else None
+    top_name = top_row.get("participant") if top_row else None
+    score_col = str(cfg["score_name"])
+
+    for rank, r in enumerate(rows_sorted, start=1):
+        if selected_name:
+            if r["participant"] == selected_name:
+                verdict = "뽑기 결과"
+            elif r["participant"] == top_name:
+                verdict = str(cfg["top_label"])
+            else:
+                verdict = "대기 종료"
+        else:
+            verdict = "배정 완료"
+
+        item = {
+            "뽑기 칸 순위": rank,
+            "참가자": r["participant"],
+            score_col: r["score"],
+            "뽑기 칸": f"{int(r.get('assigned_spokes', 0))}/16",
+            "뽑힐 확률": f"{r['probability']}%",
+            "대운 반영": "반영" if r.get("daewun_used") else "미반영",
+            "대운": r.get("daewun_gz", "-"),
+            "월운": r["month_gz"],
+            "일운": r["day_gz"],
+            "판정": verdict,
+            "주요 근거": " / ".join(r.get("notes", [])[:4]),
+        }
+        if role_type == "meal":
+            item["재성"] = r.get("wealth_element", "-")
+        elif role_type == "workload":
+            item["핵심 요소"] = r.get("work_elements", "관성·식상·인성")
+        else:
+            item["핵심 요소"] = r.get("leader_elements", "관성·식상·비겁")
+        display_rows.append(item)
+    return display_rows
+
+
+def apply_meal_roulette_selection(meal_result: Dict[str, object]) -> Dict[str, object]:
+    """뽑기 버튼을 누른 시점에 16칸 중 하나를 실제 랜덤으로 선택한다."""
+    roulette_rows = meal_result.get("roulette_rows", [])
+    if not roulette_rows:
+        return meal_result
+
+    role_type = str(meal_result.get("role_type", "meal"))
+    cfg = role_config(role_type)
+    selected = pick_meal_roulette_winner(roulette_rows)
+    top_row = role_top_row(roulette_rows, role_type)
+
+    if selected.get("participant") == top_row.get("participant"):
+        confidence = "배정 확률대로 적중"
+        if role_type == "meal":
+            summary = f"{selected['participant']}은 회피력이 낮게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
+        elif role_type == "workload":
+            summary = f"{selected['participant']}은 일감흡수력이 높게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
+        else:
+            summary = f"{selected['participant']}은 총대부름력이 높게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
+    else:
+        confidence = "뽑기 반전"
+        summary = (
+            f"가장 많은 칸을 받은 사람은 {top_row.get('participant', '-')}이지만, "
+            f"마지막 카드는 {selected.get('participant', '-')}에게 열렸습니다. 오늘은 뽑기 반전 국면입니다."
+        )
+
+    meal_result["payer"] = selected
+    meal_result["weakest"] = top_row
+    meal_result["confidence"] = confidence
+    meal_result["summary"] = summary
+    meal_result["rows"] = format_meal_display_rows(roulette_rows, selected, top_row, role_type)
+    meal_result["result_ready"] = True
+    return meal_result
+
+
+def reset_meal_roulette_selection(meal_result: Dict[str, object]) -> Dict[str, object]:
+    roulette_rows = meal_result.get("roulette_rows", [])
+    role_type = str(meal_result.get("role_type", "meal"))
+    cfg = role_config(role_type)
+    top_row = role_top_row(roulette_rows, role_type)
+    meal_result["payer"] = None
+    meal_result["weakest"] = top_row
+    meal_result["confidence"] = "뽑기 대기"
+    meal_result["summary"] = f"모든 참가자가 뽑기에 배정되었습니다. 뽑기를 돌리면 배정된 칸 수에 비례해 {cfg.get('main_result_line', cfg['winner_label'])}이 무작위로 공개됩니다."
+    meal_result["rows"] = format_meal_display_rows(roulette_rows, None, top_row, role_type)
+    meal_result["result_ready"] = False
+    return meal_result
+
+
+def role_roulette_analysis(participants: List[Dict[str, object]], meal_date: date, role_type: str = "meal") -> Dict[str, object]:
+    """오늘의 뽑기: 밥값/일감/총대 역할별 점수를 계산하고 16칸 뽑기에 배정한다."""
+    role_type = role_type if role_type in ROLE_ROULETTE_CONFIG else "meal"
+    cfg = role_config(role_type)
+    pillars = get_month_day_pillars_for_date(meal_date)
+    month_gz = pillars["month"]
+    day_gz = pillars["day"]
+    scored_rows = [role_candidate_score(p, month_gz, day_gz, role_type) for p in participants]
+    roulette_rows = role_roulette_rows(scored_rows, role_type)
+    roulette_segments = build_interleaved_spoke_segments(roulette_rows, spoke_count=16)
+    top_row = role_top_row(roulette_rows, role_type)
+    daewun_used_count = sum(1 for r in roulette_rows if r.get("daewun_used"))
+    daewun_missing_names = [r["participant"] for r in roulette_rows if not r.get("daewun_used")]
+    daewun_warning = ""
+    if daewun_missing_names:
+        daewun_warning = "대운 정보가 없는 참가자(" + ", ".join(daewun_missing_names) + ")는 대운을 미반영하고 원국·월운·일운 중심으로 계산했습니다."
+
+    meal_result = {
+        "role_type": role_type,
+        "role_title": cfg["title"],
+        "meal_date": meal_date.strftime("%Y-%m-%d"),
+        "month_gz": month_gz,
+        "day_gz": day_gz,
+        "daewun_used_count": daewun_used_count,
+        "participant_count": len(participants),
+        "daewun_missing_names": daewun_missing_names,
+        "daewun_warning": daewun_warning,
+        "payer": None,
+        "weakest": top_row,
+        "roulette_rows": sorted(roulette_rows, key=lambda r: (-float(r["territory"]), str(r["participant"]))),
+        "roulette_segments": roulette_segments,
+        "rows": [],
+        "confidence": "뽑기 대기",
+        "summary": "",
+        "roulette_id": uuid.uuid4().hex[:8],
+        "disclaimer": cfg["disclaimer"],
+        "result_ready": False,
+    }
+    return reset_meal_roulette_selection(meal_result)
+
+
+def meal_payer_analysis(participants: List[Dict[str, object]], meal_date: date, role_type: str = "meal") -> Dict[str, object]:
+    return role_roulette_analysis(participants, meal_date, role_type)
+
+
+def validate_workload_vs_leader_distinction(participants, target_date) -> Dict[str, object]:
+    """
+    동일 참가자 그룹에 대해 일감 뽑기와 총대 뽑기가 다른 후보를 도출하는지 검증.
+    개발자 점검용 함수이며 UI에는 노출하지 않는다.
+    """
+    workload_result = role_roulette_analysis(participants, target_date, role_type="workload")
+    leader_result = role_roulette_analysis(participants, target_date, role_type="leader")
+
+    workload_rows = workload_result.get("roulette_rows", [])
+    leader_rows = leader_result.get("roulette_rows", [])
+
+    if not workload_rows or not leader_rows:
+        return {"workload_top": None, "leader_top": None, "is_distinct": False, "score_correlation": 0.0}
+
+    workload_top = max(workload_rows, key=lambda r: r.get("assigned_spokes", 0))
+    leader_top = max(leader_rows, key=lambda r: r.get("assigned_spokes", 0))
+
+    workload_scores = {r["participant"]: r["score"] for r in workload_rows}
+    leader_scores = {r["participant"]: r["score"] for r in leader_rows}
+
+    common = set(workload_scores.keys()) & set(leader_scores.keys())
+    if len(common) < 2:
+        correlation = 0.0
+    else:
+        names = list(common)
+        ws = [workload_scores[n] for n in names]
+        ls = [leader_scores[n] for n in names]
+        mean_w = sum(ws) / len(ws)
+        mean_l = sum(ls) / len(ls)
+        num = sum((w - mean_w) * (l - mean_l) for w, l in zip(ws, ls))
+        den_w = sum((w - mean_w) ** 2 for w in ws) ** 0.5
+        den_l = sum((l - mean_l) ** 2 for l in ls) ** 0.5
+        correlation = (num / (den_w * den_l)) if (den_w * den_l) > 0 else 0.0
+
+    return {
+        "workload_top": workload_top["participant"],
+        "leader_top": leader_top["participant"],
+        "is_distinct": workload_top["participant"] != leader_top["participant"],
+        "score_correlation": round(correlation, 3),
+    }
+
+
+def make_meal_report(participants: List[Dict[str, object]], meal_result: Dict[str, object]) -> str:
+    role_type = str(meal_result.get("role_type", "meal"))
+    cfg = role_config(role_type)
+    payer = meal_result.get("payer") or {}
+    payer_name = payer.get("participant", "아직 미정")
+    lines = [f"# 사주MRI {cfg['title']} 리포트", ""]
+    lines.append(f"- 기준일: {meal_result['meal_date']}")
+    lines.append(f"- 대운 반영: {meal_result.get('daewun_used_count', 0)}/{meal_result.get('participant_count', len(participants))}명")
+    lines.append(f"- 월운: {meal_result['month_gz']}")
+    lines.append(f"- 일운: {meal_result['day_gz']}")
+    lines.append(f"- {cfg.get('main_result_line', cfg['winner_label'])}: **{payer_name}**")
+    lines.append(f"- 판정: {meal_result['confidence']}")
+    lines.append(f"- 요약: {meal_result['summary']}")
+    lines.append("")
+    lines.append("## 참가자별 뽑기 배정")
+    score_col = str(cfg["score_name"])
+    for row in meal_result["rows"]:
+        score_val = row.get(score_col, row.get("점수", "-"))
+        lines.append(f"- 배정 {row['뽑기 칸 순위']}위 {row['참가자']}: {score_col} {score_val}점, 뽑기 칸 {row.get('뽑기 칸', '-')}, 확률 {row['뽑힐 확률']}, 대운 {row.get('대운', '-')} / {row['판정']} / {row['주요 근거']}")
+    lines.append("")
+    lines.append(str(cfg["disclaimer"]))
+    return "\n".join(lines)
+
+
+def validate_participant_specs_for_display(specs: List[Dict[str, object]], context: str = "참가자") -> Tuple[bool, List[str]]:
+    """계산 전에 사용자에게 보여줄 수 있는 범위의 입력 누락만 점검한다."""
+    messages: List[str] = []
+    for idx, spec in enumerate(specs, start=1):
+        label = f"{context} {idx}"
+        mode = str(spec.get("mode", ""))
+        if mode == "생년월일시 자동 산출":
+            if Solar is None:
+                messages.append("lunar_python이 설치되어 있지 않습니다. requirements.txt 설치를 다시 진행해 주세요.")
+                break
+            if spec.get("birth_date") is None:
+                messages.append(f"{label}: 생년월일 형식을 확인해 주세요.")
+            if not spec.get("time_unknown") and spec.get("birth_time") is None:
+                messages.append(f"{label}: 태어난 시간 형식을 확인하거나 '시간 모름'을 선택해 주세요.")
+        elif mode == "원국 직접 입력":
+            vals = list(spec.get("direct_values") or [])
+            if len(vals) < 9:
+                messages.append(f"{label}: 원국 직접 입력값이 부족합니다.")
+                continue
+            required_origin = vals[:8]
+            if any(v == BLANK or not v for v in required_origin):
+                messages.append(f"{label}: 년주·월주·일주·시주의 천간과 지지를 모두 선택해 주세요.")
+        else:
+            messages.append(f"{label}: 입력 방식을 확인해 주세요.")
+    # 중복 메시지 정리
+    dedup = []
+    for m in messages:
+        if m not in dedup:
+            dedup.append(m)
+    return (len(dedup) == 0), dedup
+
+
+
+def build_participants_from_specs(
+    specs: List[Dict[str, object]],
+    correction_minutes: int,
+    use_yajashee: bool,
+    age_basis: str,
+) -> List[Dict[str, object]]:
+    participants: List[Dict[str, object]] = []
+    for spec in specs:
+        if spec.get("mode") == "생년월일시 자동 산출":
+            if spec.get("birth_date") is None:
+                raise ValueError("생년월일 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력하세요.")
+            if not spec.get("time_unknown") and spec.get("birth_time") is None:
+                raise ValueError("태어난 시간 형식이 올바르지 않습니다. HH:MM 형식으로 입력하세요.")
+
+        if spec["mode"] == "생년월일시 자동 산출":
+            if Solar is None:
+                raise RuntimeError("lunar_python이 설치되어 있지 않습니다.")
+            if spec.get("birth_time") is None:
+                p = build_three_pillar_auto_payload(
+                    spec["name"],
+                    spec["birth_date"],
+                    spec["gender"],
+                    correction_minutes,
+                    use_yajashee,
+                    age_basis,
+                    spec.get("calendar_type", "양력"),
+                )
+            else:
+                p = build_auto_payload(
+                    spec["name"],
+                    spec["birth_date"],
+                    spec["birth_time"],
+                    spec["gender"],
+                    correction_minutes,
+                    use_yajashee,
+                    age_basis,
+                    spec.get("calendar_type", "양력"),
+                )
+        else:
+            p = build_direct_payload(spec["name"], spec["direct_values"])
+        participants.append(p)
+    return normalize_participant_names(participants)
+
+
+def find_current_daewun(daewuns: List[Dict[str, object]], age: int) -> Dict[str, object] | None:
+    if not daewuns:
+        return None
+    daewuns_sorted = sorted(daewuns, key=lambda x: int(x.get("start_age", 999)))
+    selected = None
+    for d in daewuns_sorted:
+        if int(d["start_age"]) <= age:
+            selected = d
+    return selected or daewuns_sorted[0]
+
+
+def luck_reactivity_profile(chart: Chart, result: Dict[str, object] | None, luck_elements: set | None = None) -> Dict[str, object]:
+    """
+    강약별 운 반응성.
+    - 신약 계열: 외부 운의 지원·압박에 더 민감
+    - 신강 계열: 운이 식상·재성·관성처럼 힘의 출구를 만들 때 발현성 증가
+    - 중화: 기본값 유지
+    """
+    result = result or {}
+    raw_label = str(result.get("strength_label", "중화") or "중화")
+    day_el = STEMS.get(chart.day_master, {}).get("element", "")
+    output_el = GENERATES.get(day_el, "")
+    wealth_el = CONTROLS.get(day_el, "")
+    officer_el = next((e for e in ELEMENTS if CONTROLS.get(e) == day_el), "")
+    expression_axis = {e for e in [output_el, wealth_el, officer_el] if e}
+    luck_elements = set(luck_elements or set())
+
+    base_map = {
+        "극신약": (1.20, "운 반응성 매우 높음", "외부 운의 지원·압박을 크게 체감하기 쉬운 구조"),
+        "신약": (1.12, "운 반응성 높음", "환경과 보완 오행의 영향을 비교적 크게 받는 구조"),
+        "중화": (1.00, "운 반응성 보통", "운의 방향을 비교적 균형 있게 받는 구조"),
+        "신강": (0.96, "운 반응성 안정권", "기본 체급이 있어 운에 바로 흔들리기보다 출구가 생길 때 반응하는 구조"),
+        "극신강": (0.92, "운 반응성 안정권", "자기 힘이 커서 일반 운에는 덜 흔들리지만 결과화 운에는 강하게 반응하는 구조"),
+    }
+    factor, label, note = base_map.get(raw_label, base_map["중화"])
+
+    # 신강 계열은 식상·재성·관성 운이 들어올 때 "흔들림"보다 "발현"이 커지는 것으로 본다.
+    if raw_label in ["신강", "극신강"] and luck_elements & expression_axis:
+        factor = max(factor, 1.08 if raw_label == "신강" else 1.12)
+        label = "운 발현성 높음"
+        matched = "·".join(sorted(luck_elements & expression_axis))
+        note = f"{matched} 운이 힘의 출구·목표·책임을 만들어 결과로 드러나기 쉬운 구조"
+
+    return {
+        "factor": float(factor),
+        "label": label,
+        "note": note,
+        "raw": raw_label,
+    }
+
+
+def format_luck_reactivity_note(profile: Dict[str, object]) -> str:
+    try:
+        factor = float(profile.get("factor", 1.0) or 1.0)
+    except Exception:
+        factor = 1.0
+    label = str(profile.get("label", "운 반응성 보통") or "운 반응성 보통")
+    note = str(profile.get("note", "") or "")
+    if abs(factor - 1.0) < 0.015:
+        return f"{label}: {note}"
+    return f"{label} ×{factor:.2f}: {note}"
+
+
+
+def analyze_luck_interaction(
+    luck_ganzhi: str,
+    chart: Chart,
+    useful: Dict[str, object],
+    max_impact: float,
+    origin_result: Dict[str, object] | None = None,
+) -> Tuple[float, str]:
+    """
+    운의 간지가 원국에 주는 보완/부담을 단순 가중치로 평가한다.
+    v5.51부터 강약별 운 반응성 계수를 보수적으로 반영한다.
+    """
+    if not luck_ganzhi or len(luck_ganzhi) < 2 or chart is None:
+        return 0.0, "분석 불가"
+
+    stem, branch = luck_ganzhi[0], luck_ganzhi[1]
+    if stem not in STEMS or branch not in BRANCHES:
+        return 0.0, "간지 형식 확인 필요"
+
+    primary = set(useful.get("primary", []))
+    burden = set(useful.get("burden", []))
+    score = 0.0
+    notes: List[str] = []
+
+    stem_el = STEMS[stem]["element"]
+    branch_el = BRANCHES[branch]["element"]
+    luck_elements = {stem_el, branch_el}
+
+    if stem_el in primary:
+        score += max_impact * 0.16
+        notes.append(f"천간 {stem_el} 보완")
+    elif stem_el in burden:
+        score -= max_impact * 0.14
+        notes.append(f"천간 {stem_el} 부담")
+
+    if branch_el in primary:
+        score += max_impact * 0.24
+        notes.append(f"지지 {branch_el} 보완")
+    elif branch_el in burden:
+        score -= max_impact * 0.22
+        notes.append(f"지지 {branch_el} 부담")
+
+    for hidden_stem, _ratio in BRANCHES[branch]["hidden"]:
+        hidden_el = STEMS[hidden_stem]["element"]
+        luck_elements.add(hidden_el)
+        if hidden_el in primary:
+            score += max_impact * 0.04
+        elif hidden_el in burden:
+            score -= max_impact * 0.035
+
+    # 충은 무조건 나쁘게 보지 않고, 부담 오행을 흔드는 경우 감점을 줄인다.
+    for b in chart.branches:
+        for c1, c2, name in CLASHES:
+            if (branch == c1 and b == c2) or (branch == c2 and b == c1):
+                target_el = BRANCHES[b]["element"]
+                if target_el in burden:
+                    score -= max_impact * 0.05
+                    notes.append(f"{name} 발생: 부담 오행 변동")
+                else:
+                    score -= max_impact * 0.18
+                    notes.append(f"{name} 발생: 변동성 증가")
+
+    if origin_result:
+        profile = luck_reactivity_profile(chart, origin_result, luck_elements)
+        factor = float(profile.get("factor", 1.0) or 1.0)
+        if abs(score) >= 0.05:
+            score *= factor
+            notes.append(format_luck_reactivity_note(profile))
+        else:
+            # 점수 변화가 작아도 사용자가 운 반응성을 이해할 수 있게 참고 문구만 남긴다.
+            notes.append(format_luck_reactivity_note(profile))
+
+    score = round(max(-max_impact, min(max_impact, score)), 1)
+    return score, " / ".join(list(dict.fromkeys(notes))) if notes else "무난함"
+
+
+
+
+def build_luck_flow_rows(
+    chart: Chart,
+    origin_result: Dict[str, object],
+    daewuns: List[Dict[str, object]],
+    birth_date: date,
+    age_basis: str,
+) -> Dict[str, object]:
+    age = calc_korean_age(birth_date) if age_basis == "세는나이" else calc_full_age(birth_date)
+    current = find_current_daewun(daewuns, age)
+    base_total = float(origin_result["total"])
+
+    if not current:
+        return {
+            "age": age,
+            "current_daewun": None,
+            "daewun_score": None,
+            "daewun_mod": 0.0,
+            "daewun_note": "대운 산출값 없음",
+            "sewun_rows": [],
+        }
+
+    dw_mod, dw_note = analyze_luck_interaction(str(current["ganzhi"]), chart, origin_result["useful"], 15.0, origin_result)
+    daewun_score = round(max(0, min(100, base_total + dw_mod)), 1)
+
+    rows = []
+    this_year = date.today().year
+    for i in range(5):
+        y = this_year + i
+        try:
+            sw = get_year_ganzhi(y)
+        except Exception:
+            sw = ""
+        if not sw or len(sw) < 2 or sw[0] not in STEMS or sw[1] not in BRANCHES:
+            rows.append({
+                "연도": f"{y}년",
+                "세운": "산출 실패",
+                "점수": daewun_score,
+                "변동": "+0.0",
+                "비고": "세운 간지를 산출하지 못해 대운 반영 참고점만 표시했습니다.",
+            })
+            continue
+        sw_mod, sw_note = analyze_luck_interaction(sw, chart, origin_result["useful"], 5.0, origin_result)
+        rows.append({
+            "연도": f"{y}년",
+            "세운": sw,
+            "점수": round(max(0, min(100, daewun_score + sw_mod)), 1),
+            "변동": f"{sw_mod:+.1f}",
+            "비고": sw_note,
+        })
+
+    return {
+        "age": age,
+        "current_daewun": current,
+        "daewun_score": daewun_score,
+        "daewun_mod": dw_mod,
+        "daewun_note": dw_note,
+        "sewun_rows": rows,
+    }
+
+
+# ============================================================
+# 샘플 만세력 검증 케이스
+# ============================================================
+
+SAMPLE_VALIDATION_CASES = [
+    {
+        "name": "샘플 2: 1990-05-20 23:45 남자, 양력, -30분, 야자시 미적용",
+        "birth_date": date(1990, 5, 20),
+        "birth_time": time(23, 45),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "庚午 / 辛巳 / 丙戌 / 戊子",
+        "expected_start_age": 5,
+        "note": "기준 앱 이미지: 일반 자시 처리, 대운수 5, 순행",
+    },
+    {
+        "name": "샘플 3: 1990-05-20 23:45 남자, 양력, -30분, 야자시 적용",
+        "birth_date": date(1990, 5, 20),
+        "birth_time": time(23, 45),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": True,
+        "expected": "庚午 / 辛巳 / 乙酉 / 戊子",
+        "expected_start_age": 5,
+        "note": "기준 앱 이미지: 야자시 처리, 대운수 5, 순행",
+    },
+    {
+        "name": "샘플 4: 1990-05-20 12:00 남자, 양력, -30분",
+        "birth_date": date(1990, 5, 20),
+        "birth_time": time(12, 0),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "庚午 / 辛巳 / 乙酉 / 壬午",
+        "expected_start_age": 6,
+        "note": "기준 앱 이미지: 정오 출생, 대운수 6, 순행",
+    },
+    {
+        "name": "샘플 5: 1997-02-03 22:30 남자, 양력, -30분",
+        "birth_date": date(1997, 2, 3),
+        "birth_time": time(22, 30),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "丙子 / 辛丑 / 丙子 / 己亥",
+        "expected_start_age": 1,
+        "note": "기준 앱 이미지: 입춘 전, 대운수 1, 순행",
+    },
+    {
+        "name": "샘플 6: 1988-04-12 23:20 남자, 양력, -30분, 야자시 미적용",
+        "birth_date": date(1988, 4, 12),
+        "birth_time": time(23, 20),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "戊辰 / 丙辰 / 丁酉 / 辛亥",
+        "expected_start_age": 8,
+        "note": "기준 앱 이미지: 23:20이지만 -30분 보정 후 22:50, 대운수 8, 순행",
+    },
+    {
+        "name": "샘플 7: 1988-04-12 23:20 남자, 양력, -30분, 야자시 적용",
+        "birth_date": date(1988, 4, 12),
+        "birth_time": time(23, 20),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": True,
+        "expected": "戊辰 / 丙辰 / 丁酉 / 辛亥",
+        "expected_start_age": 8,
+        "note": "기준 앱 이미지: 보정 후 亥시라 야자시 적용/미적용 결과 동일, 대운수 8, 순행",
+    },
+    {
+        "name": "샘플 8: 1995-12-03 00:30 여자, 양력, -30분",
+        "birth_date": date(1995, 12, 3),
+        "birth_time": time(0, 30),
+        "gender": "여자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "乙亥 / 丁亥 / 戊辰 / 壬子",
+        "expected_start_age": 2,
+        "note": "기준 앱 이미지: 자정 직후, 대운수 2, 순행",
+    },
+    {
+        "name": "샘플 9: 1992-08-17 18:30 여자, 양력, -30분",
+        "birth_date": date(1992, 8, 17),
+        "birth_time": time(18, 30),
+        "gender": "여자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "壬申 / 戊申 / 乙丑 / 乙酉",
+        "expected_start_age": 3,
+        "note": "기준 앱 이미지: 여자 대운 역행, 대운수 3",
+    },
+    {
+        "name": "샘플 10: 1995-08-10 남자, 음력 윤달, 14:40, -30분",
+        "birth_date": date(1995, 8, 10),
+        "birth_time": time(14, 40),
+        "gender": "남자",
+        "calendar_type": "음력 윤달",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "乙亥 / 乙酉 / 戊辰 / 己未",
+        "expected_start_age": 9,
+        "note": "기준 앱 이미지: 음력 윤 1995-08-10 → 양력 1995-10-04, 대운수 9, 역행",
+    },
+    {
+        "name": "샘플 11: 1991-03-15 여자, 음력 평달, 09:10, -30분",
+        "birth_date": date(1991, 3, 15),
+        "birth_time": time(9, 10),
+        "gender": "여자",
+        "calendar_type": "음력 평달",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "辛未 / 壬辰 / 己巳 / 戊辰",
+        "expected_start_age": 2,
+        "note": "기준 앱 이미지: 음력 1991-03-15 → 양력 1991-04-29, 대운수 2, 순행",
+    },
+    {
+        "name": "샘플 12: 1997-02-04 12:30 남자, 양력, -30분",
+        "birth_date": date(1997, 2, 4),
+        "birth_time": time(12, 30),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "丁丑 / 壬寅 / 丁丑 / 丙午",
+        "expected_start_age": 1,
+        "note": "기준 앱 이미지: 입춘 후, 대운수 1, 역행",
+    },    {
+        "name": "샘플 13: 2004-02-04 05:55 여자, 양력, -30분",
+        "birth_date": date(2004, 2, 4),
+        "birth_time": time(5, 55),
+        "gender": "여자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "癸未 / 乙丑 / 癸丑 / 乙卯",
+        "expected_start_age": 1,
+        "note": "기준 앱 이미지: 2004-02-04 05:55, 대운수 1, 순행",
+    },
+    {
+        "name": "샘플 14: 1983-01-25 04:15 여자, 양력, -30분",
+        "birth_date": date(1983, 1, 25),
+        "birth_time": time(4, 15),
+        "gender": "여자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "壬戌 / 癸丑 / 癸丑 / 甲寅",
+        "expected_start_age": 6,
+        "note": "기준 앱 이미지: 1983-01-25 04:15, 대운수 6, 역행",
+    },
+    {
+        "name": "샘플 15: 1979-06-22 01:20 남자, 양력, -30분",
+        "birth_date": date(1979, 6, 22),
+        "birth_time": time(1, 20),
+        "gender": "남자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "己未 / 庚午 / 庚申 / 丙子",
+        "expected_start_age": 5,
+        "note": "기준 앱 이미지: 1979-06-22 01:20, 대운수 5, 역행",
+    },
+    {
+        "name": "샘플 16: 2001-07-07 23:10 여자, 양력, -30분, 야자시 미적용",
+        "birth_date": date(2001, 7, 7),
+        "birth_time": time(23, 10),
+        "gender": "여자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": False,
+        "expected": "辛巳 / 乙未 / 辛未 / 己亥",
+        "expected_start_age": 10,
+        "note": "기준 앱 이미지: 23:10이나 -30분 보정 후 22:40, 대운수 10, 순행",
+    },
+    {
+        "name": "샘플 17: 2001-07-07 23:10 여자, 양력, -30분, 야자시 적용",
+        "birth_date": date(2001, 7, 7),
+        "birth_time": time(23, 10),
+        "gender": "여자",
+        "calendar_type": "양력",
+        "correction_minutes": -30,
+        "use_yajashee": True,
+        "expected": "辛巳 / 乙未 / 辛未 / 己亥",
+        "expected_start_age": 10,
+        "note": "기준 앱 이미지: 보정 후 亥시라 야자시 적용/미적용 결과 동일, 대운수 10, 순행",
+    },
+
+]
+
+
+def run_sample_validation_cases() -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    if Solar is None:
+        return [{
+            "샘플": "lunar_python 미설치",
+            "기대 원국": "-",
+            "산출 원국": "-",
+            "결과": "실행 불가",
+            "비고": "requirements.txt에 lunar_python==1.4.8이 필요합니다.",
+        }]
+
+    for case in SAMPLE_VALIDATION_CASES:
+        try:
+            calendar_type = case.get("calendar_type", "양력")
+            solar_birth_date = resolve_birth_date_to_solar(case["birth_date"], calendar_type)
+            chart, _daewuns, meta = get_saju_automated(
+                birth_date=solar_birth_date,
+                birth_time=case["birth_time"],
+                gender=case["gender"],
+                correction_minutes=case["correction_minutes"],
+                use_yajashee=case["use_yajashee"],
+            )
+            actual = chart_ganji_string(chart)
+            actual_start_age = _daewuns[0]["start_age"] if _daewuns else "-"
+            expected_start_age = case.get("expected_start_age", "-")
+            origin_ok = actual == case["expected"]
+            age_ok = (expected_start_age == "-" or actual_start_age == expected_start_age)
+            rows.append({
+                "샘플": case["name"],
+                "날짜 기준": calendar_type,
+                "양력 환산일": solar_birth_date.strftime("%Y-%m-%d"),
+                "기대 원국": case["expected"],
+                "산출 원국": actual,
+                "기대 대운수": expected_start_age,
+                "산출 대운수": actual_start_age,
+                "결과": "일치" if (origin_ok and age_ok) else ("원국 일치·대운수 불일치" if origin_ok else "불일치"),
+                "보정 후 시각": meta.get("corrected_dt", ""),
+                "야자시 적용": "적용" if meta.get("yajashee_applied") else "미적용",
+                "비고": case["note"],
+            })
+        except Exception:
+            rows.append({
+                "샘플": case["name"],
+                "날짜 기준": case.get("calendar_type", "양력"),
+                "양력 환산일": "-",
+                "기대 원국": case["expected"],
+                "산출 원국": "-",
+                "기대 대운수": case.get("expected_start_age", "-"),
+                "산출 대운수": "-",
+                "결과": "오류",
+                "보정 후 시각": "-",
+                "야자시 적용": "-",
+                "비고": "오류 발생. 입력 조건을 확인하세요.",
+            })
+    return rows
+
+
+# ============================================================
+# 케미 분석 유틸
+# ============================================================
+
+SIX_HARMONY = {
+    frozenset(["子", "丑"]): "자축합",
+    frozenset(["寅", "亥"]): "인해합",
+    frozenset(["卯", "戌"]): "묘술합",
+    frozenset(["辰", "酉"]): "진유합",
+    frozenset(["巳", "申"]): "사신합",
+    frozenset(["午", "未"]): "오미합",
+}
+
+DAY_BRANCH_CLASH_NAME = {
+    frozenset([a, b]): name for a, b, name in CLASHES
+}
+
+TRINE_GROUPS = {
+    "신자진 수국": {"申", "子", "辰"},
+    "해묘미 목국": {"亥", "卯", "未"},
+    "인오술 화국": {"寅", "午", "戌"},
+    "사유축 금국": {"巳", "酉", "丑"},
+}
+
+DIRECTION_GROUPS = {
+    "인묘진 목방": {"寅", "卯", "辰"},
+    "사오미 화방": {"巳", "午", "未"},
+    "신유술 금방": {"申", "酉", "戌"},
+    "해자축 수방": {"亥", "子", "丑"},
+}
+
+
+POSITION_LABELS_KO = {"year": "년지", "month": "월지", "day": "일지", "hour": "시지"}
+
+
+def _chart_branch_positions(chart: Chart, owner: str) -> List[Dict[str, str]]:
+    items = [
+        {"owner": owner, "pos": "year", "pos_label": "년지", "branch": chart.year.branch},
+        {"owner": owner, "pos": "month", "pos_label": "월지", "branch": chart.month.branch},
+        {"owner": owner, "pos": "day", "pos_label": "일지", "branch": chart.day.branch},
+    ]
+    if chart.hour is not None:
+        items.append({"owner": owner, "pos": "hour", "pos_label": "시지", "branch": chart.hour.branch})
+    return items
+
+
+def _branch_ko(branch: str) -> str:
+    info = BRANCHES.get(branch, {})
+    return f"{info.get('ko', branch)}({branch})"
+
+
+def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name: str = "나", fr_name: str = "상대") -> List[Dict[str, object]]:
+    """두 명식 사이에서 어떤 기둥의 어떤 지지가 합·충을 만드는지 구체화한다."""
+    my_items = _chart_branch_positions(my_chart, my_name)
+    fr_items = _chart_branch_positions(fr_chart, fr_name)
+    details: List[Dict[str, object]] = []
+
+    for a in my_items:
+        for b in fr_items:
+            pair = frozenset([a["branch"], b["branch"]])
+            left = f"{a['owner']} {a['pos_label']} {_branch_ko(a['branch'])}"
+            right = f"{b['owner']} {b['pos_label']} {_branch_ko(b['branch'])}"
+            if pair in SIX_HARMONY:
+                name = SIX_HARMONY[pair]
+                details.append({
+                    "kind": "합",
+                    "name": name,
+                    "left": left,
+                    "right": right,
+                    "impact": "두 글자가 서로 묶이는 결속 신호입니다. 편안함, 끌림, 협력감으로 체감될 수 있지만, 과하면 한쪽 방향으로 묶이는 느낌도 생길 수 있습니다.",
+                })
+            if pair in DAY_BRANCH_CLASH_NAME:
+                name = DAY_BRANCH_CLASH_NAME[pair]
+                details.append({
+                    "kind": "충",
+                    "name": name,
+                    "left": left,
+                    "right": right,
+                    "impact": "두 글자가 정면으로 부딪히는 변화 신호입니다. 갈등 단정이 아니라 자극, 이동, 일정 변경, 감정 속도 차이처럼 움직임이 커지는 포인트로 봅니다.",
+                })
+
+    combined = [("나", x) for x in my_items] + [("상대", x) for x in fr_items]
+    branch_set = {x[1]["branch"] for x in combined}
+    for name, group in TRINE_GROUPS.items():
+        if group.issubset(branch_set):
+            contributors = []
+            for owner, item in combined:
+                if item["branch"] in group:
+                    contributors.append(f"{item['owner']} {item['pos_label']} {_branch_ko(item['branch'])}")
+            if any(item["owner"] == my_name for _, item in combined if item["branch"] in group) and any(item["owner"] == fr_name for _, item in combined if item["branch"] in group):
+                details.append({
+                    "kind": "삼합",
+                    "name": name,
+                    "left": " + ".join(contributors[:4]),
+                    "right": "",
+                    "impact": "두 명식의 글자가 모여 한 오행 방향을 크게 키우는 신호입니다. 관계에서 특정 분위기나 주제가 강하게 살아날 수 있습니다.",
+                })
+    for name, group in DIRECTION_GROUPS.items():
+        if group.issubset(branch_set):
+            contributors = []
+            for owner, item in combined:
+                if item["branch"] in group:
+                    contributors.append(f"{item['owner']} {item['pos_label']} {_branch_ko(item['branch'])}")
+            if any(item["owner"] == my_name for _, item in combined if item["branch"] in group) and any(item["owner"] == fr_name for _, item in combined if item["branch"] in group):
+                details.append({
+                    "kind": "방합",
+                    "name": name,
+                    "left": " + ".join(contributors[:4]),
+                    "right": "",
+                    "impact": "계절 방향으로 글자가 모이는 신호입니다. 관계의 분위기가 한쪽 성질로 뚜렷해질 수 있습니다.",
+                })
+    return details
+
+
+def render_cross_chart_interaction_cards(compatibility: Dict[str, object]) -> None:
+    details = compatibility.get("cross_interactions") or []
+    st.markdown("#### 두 명식 사이의 합·충 세부 신호")
+    if not details:
+        st.caption("두 명식 사이에 크게 드러나는 합·충 신호는 적습니다. 대신 오행 보완성, 흐름 동조성, 조후 차이를 중심으로 케미를 봅니다.")
+        return
+    cards = []
+    for d in details[:12]:
+        kind = _clean_display_text(d.get("kind", "신호"))
+        name = _clean_display_text(d.get("name", ""))
+        left = _clean_display_text(d.get("left", ""))
+        right = _clean_display_text(d.get("right", ""))
+        connector = " ↔ " if right else ""
+        impact = _clean_display_text(d.get("impact", ""))
+        cards.append(
+            f"<div class='signal-card interaction-detail {html.escape(kind)}'>"
+            f"<div class='signal-title'>{html.escape(kind)} · {html.escape(name)}</div>"
+            f"<div class='signal-body'><b>{html.escape(left)}{connector}{html.escape(right)}</b><br>{html.escape(impact)}</div>"
+            f"</div>"
+        )
+    st.markdown("".join(cards), unsafe_allow_html=True)
+
+
+def element_relation_label(a: str, b: str) -> str:
+    if a == b:
+        return "같은 오행"
+    if GENERATES.get(a) == b:
+        return f"{a}生{b}"
+    if GENERATES.get(b) == a:
+        return f"{b}生{a}"
+    if CONTROLS.get(a) == b:
+        return f"{a}剋{b}"
+    if CONTROLS.get(b) == a:
+        return f"{b}剋{a}"
+    return "중립"
+
+
+def chart_existing_pillars(chart: Chart) -> List[Pillar]:
+    """시주 미상 Chart에서도 안전하게 실제 존재하는 기둥만 반환한다."""
+    pillars = [chart.year, chart.month, chart.day]
+    if chart.hour is not None:
+        pillars.append(chart.hour)
+    return pillars
+
+
+def compatibility_holistic_adjustment(
+    complement: float,
+    alliance: float,
+    tension: float,
+    sync: float,
+    day_relation: str,
+    day_clash: bool,
+    clash_count: int,
+    six_harmony_count: int,
+    trine_count: int,
+    positives: List[str],
+    cautions: List[str],
+) -> Dict[str, object]:
+    """
+    케미 전체 인상 보정 ±5점.
+
+    4축 점수만으로 설명하기 어려운 '전체 조화감'을 제한적으로 반영한다.
+    합·충·보완·흐름 중 하나가 중복 반영되어 최종 결론이 과하거나 박해지는 것을 막기 위한 안항목치다.
+    """
+    stability = 100 - tension
+    adjustment = 0.0
+    pos: List[str] = []
+    neg: List[str] = []
+
+    # 1. 네 축이 전반적으로 무난하면 전체 조화감 가점
+    if complement >= 60 and alliance >= 60 and stability >= 60 and sync >= 55:
+        adjustment += 1.2
+        pos.append("상호 보완성·동맹성·긴장 완충력·흐름 동조성이 모두 무난해 전체 조화감이 좋습니다.")
+
+    # 2. 보완성과 동맹성이 동시에 강하고 긴장도가 낮으면 체감 안정성 가점
+    if complement >= 72 and alliance >= 72 and tension <= 35:
+        adjustment += 1.1
+        pos.append("보완성과 결속성이 함께 강하고 긴장도가 낮아 관계 체감이 부드럽게 나타날 가능성이 있습니다.")
+
+    # 3. 일지 육합 또는 삼합·육합이 실제로 확인되고 긴장이 낮으면 소폭 가점
+    if ("육합" in str(day_relation) or six_harmony_count >= 2 or trine_count >= 1) and tension <= 45:
+        adjustment += 0.7
+        pos.append("합·결속 신호가 전체 긴장도를 과도하게 키우지 않는 방향으로 작동합니다.")
+
+    # 4. 무충 + 높은 보완성 + 높은 결속성 + 낮은 긴장도는 단순 합산보다 체감 안정성이 높을 수 있다.
+    if clash_count == 0 and complement >= 75 and alliance >= 75 and tension <= 35:
+        adjustment += 0.6
+        pos.append("직접 충이 없고 보완성·결속성이 높으며 긴장도가 낮아, 전체 관계 안정감에 소폭 가점했습니다.")
+
+    # 5. 특정 축이 매우 약하면 전체 인상 감점
+    weak_axes = []
+    if complement < 42:
+        weak_axes.append("상호 보완성")
+    if alliance < 42:
+        weak_axes.append("동맹성")
+    if stability < 42:
+        weak_axes.append("긴장 완충력")
+    if sync < 42:
+        weak_axes.append("흐름 동조성")
+    if weak_axes:
+        adjustment -= min(1.4, 0.6 * len(weak_axes))
+        neg.append(f"{', '.join(weak_axes)}이 낮아 전체 관계 인상이 흔들립니다.")
+
+    # 6. 충이 많고 보완성이 약하면 4축 평균보다 체감 난도가 높을 수 있음
+    if day_clash and complement < 58:
+        adjustment -= 1.0
+        neg.append("일지 충이 있고 상호 보완성이 충분하지 않아 가까운 관계에서 마찰 체감이 커질 수 있습니다.")
+    if clash_count >= 3 and tension >= 60:
+        adjustment -= 0.9
+        neg.append("충 신호가 다수라 조정 압력이 반복될 수 있습니다.")
+
+    # 7. 결속도 높지만 긴장도도 높으면 '끌림과 마찰'이 함께 있는 구조로 과대평가 방지
+    if alliance >= 75 and tension >= 60:
+        adjustment -= 0.7
+        neg.append("결속 신호는 강하지만 긴장도도 높아, 단순히 좋은 케미로 과대평가하지 않도록 조정했습니다.")
+
+    # 8. 긍정·주의 근거의 균형. 긍정 근거가 충분하고 주의 근거가 적으면 소폭 가점, 반대면 소폭 감점
+    if len(positives) >= len(cautions) + 3 and tension < 55:
+        adjustment += 0.4
+        pos.append("긍정 근거가 주의 근거보다 뚜렷해 전체 인상에 소폭 가점했습니다.")
+    elif len(cautions) >= len(positives) + 3 and tension > 50:
+        adjustment -= 0.4
+        neg.append("주의 근거가 긍정 근거보다 뚜렷해 전체 인상에 소폭 감점했습니다.")
+
+    adjustment = round(clamp(adjustment, -4.0, 4.0), 1)
+    if adjustment > 0:
+        summary = f"세부항목 합산보다 전체 조화감이 일부 과소평가되어 +{adjustment}점 보정"
+    elif adjustment < 0:
+        summary = f"세부항목 합산보다 관계 부담이 일부 과소평가되어 {adjustment}점 보정"
+    else:
+        summary = "세부항목 합산과 전체 인상이 대체로 일치하여 보정 없음"
+
+    return {
+        "adjustment": adjustment,
+        "summary": summary,
+        "positives": pos,
+        "cautions": neg,
+    }
+
+
+def compatibility_near_grade_notice(score: float) -> str:
+    """등급 경계권 안내. 점수를 억지 승격하지 않고 근접성을 별도 표시한다."""
+    if 74 <= score < 76:
+        return "든든한 조합 근접"
+    if 62 <= score < 64:
+        return "좋은 합의 케미 근접"
+    if 50 <= score < 52:
+        return "조율 가능한 케미 근접"
+    return ""
+
+
+def compatibility_grade_summary(score: float) -> Tuple[str, str]:
+    """케미 최종 점수에 따른 케미 유형과 요약."""
+    if score >= 86:
+        return "찰떡 호흡", "결속성과 보완성이 모두 강해, 오래 봐도 쉽게 끊기지 않는 관계 신호입니다."
+    if score >= 76:
+        return "든든한 조합", "강한 협력축 신호가 있고, 위기 때 같은 편으로 묶일 가능성이 큽니다."
+    if score >= 64:
+        return "좋은 합의 케미", "완전히 편한 관계라기보다 서로의 필요와 강점을 맞추면 잘 작동하는 조합입니다."
+    if score >= 52:
+        return "조율 가능한 케미", "협력과 견제가 함께 있습니다. 룰과 거리를 정하면 관계가 더 안정적으로 작동합니다."
+    if score >= 38:
+        return "마찰 관리형 케미", "충돌·견제 신호가 비교적 강합니다. 역할과 기대치를 분명히 해야 소모전을 줄일 수 있습니다."
+    return "속도가 다른 케미", "긴장 신호가 매우 강한 편입니다. 재미 표현일 뿐 실제 관계 단절이나 적대 관계를 단정하지 않습니다."
+
+
+# ============================================================
+# [SECTION 14] 케미 분석
+#
+# 이 섹션의 내용 요약: 두 사람의 4축 케미 분석을 담당합니다. 1:1 케미의 상호 보완성, 동맹성, 흐름, 긴장도를 계산합니다.
+# 주요 함수/상수: compatibility_analysis, RELATIONSHIP_WEIGHTS
+# 변경 시 영향: 1:1 케미 결과의 케미 점수.
+# ============================================================
+
+def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[str, object], relationship: str = "친구") -> Dict[str, object]:
+    """
+    케미 판정을 4축으로 분리해 평가한다.
+
+    합은 무조건 좋은 점수로 보지 않고 '동맹성/결속성'으로 반영한다.
+    충은 무조건 나쁜 점수로 보지 않고 '긴장도/변동성'으로 반영한다.
+    최종 결론은 상호 보완성, 동맹성, 흐름 동조성, 긴장도 완충력을 종합한다.
+    """
+    my_chart = my_payload["chart"]
+    fr_chart = friend_payload["chart"]
+    if relationship not in RELATIONSHIP_WEIGHTS:
+        relationship = "친구"
+    rel_weights = RELATIONSHIP_WEIGHTS[relationship]
+    day_branch_weight = rel_weights["day_branch"]
+    my_result = my_payload["result"]
+    fr_result = friend_payload["result"]
+    my_name_for_signal = _clean_display_text(my_payload.get("name", "나")) or "나"
+    fr_name_for_signal = _clean_display_text(friend_payload.get("name", "상대")) or "상대"
+    cross_interaction_details = describe_cross_chart_interactions(my_chart, fr_chart, my_name_for_signal, fr_name_for_signal)
+    cross_harmony_count = sum(1 for d in cross_interaction_details if d.get("kind") in {"합", "삼합", "방합"})
+    cross_clash_count = sum(1 for d in cross_interaction_details if d.get("kind") == "충")
+
+    positives: List[str] = []
+    cautions: List[str] = []
+    rows: List[Dict[str, object]] = []
+
+    # 기본 축
+    complement = 50.0       # 상호 보완성
+    alliance = 50.0         # 합·동질성에 따른 동맹성
+    tension = 35.0          # 충·극·부담 자극에 따른 긴장도. 높을수록 불리
+    sync = 55.0             # 대운·세운 흐름 동조성
+
+    # 1. 일간 오행 관계
+    my_dm_el = STEMS[my_chart.day_master]["element"]
+    fr_dm_el = STEMS[fr_chart.day_master]["element"]
+    rel = element_relation_label(my_dm_el, fr_dm_el)
+
+    if my_dm_el == fr_dm_el:
+        alliance += 8
+        complement += 2
+        positives.append("일간 오행이 같아 기본 반응 방식이 비슷한 편입니다.")
+    elif GENERATES.get(my_dm_el) == fr_dm_el or GENERATES.get(fr_dm_el) == my_dm_el:
+        complement += 12
+        alliance += 4
+        positives.append(f"일간 오행이 생의 관계({rel})라 서로를 보완하거나 북돋는 신호가 있습니다.")
+    elif CONTROLS.get(my_dm_el) == fr_dm_el or CONTROLS.get(fr_dm_el) == my_dm_el:
+        tension += 10
+        complement -= 3
+        cautions.append(f"일간 오행이 극의 관계({rel})라 견제와 긴장이 생길 수 있습니다. 다만 극이 곧 나쁨을 뜻하지는 않습니다.")
+
+    rows.append({"항목": "일간 오행 관계", "내 값": my_dm_el, "상대 값": fr_dm_el, "판정": rel})
+
+    # 2. 상호 보완 오행
+    my_primary = set(my_result["useful"].get("primary", []))
+    fr_primary = set(fr_result["useful"].get("primary", []))
+    my_burden = set(my_result["useful"].get("burden", []))
+    fr_burden = set(fr_result["useful"].get("burden", []))
+
+    # 케미 보완성은 겉으로 드러난 천간·지지뿐 아니라 지장간까지 포함한다.
+    # 그래야 오행 겹침 그래프와 보완성 판단이 서로 어긋나지 않는다.
+    my_elements = {STEMS[p.stem]["element"] for p in chart_existing_pillars(my_chart)}
+    my_elements |= {BRANCHES[b]["element"] for b in my_chart.branches}
+    my_elements |= {STEMS[hs]["element"] for b in my_chart.branches for hs, _r in BRANCHES[b]["hidden"]}
+    fr_elements = {STEMS[p.stem]["element"] for p in chart_existing_pillars(fr_chart)}
+    fr_elements |= {BRANCHES[b]["element"] for b in fr_chart.branches}
+    fr_elements |= {STEMS[hs]["element"] for b in fr_chart.branches for hs, _r in BRANCHES[b]["hidden"]}
+
+    fr_helps_me = sorted(list(my_primary & fr_elements))
+    me_helps_fr = sorted(list(fr_primary & my_elements))
+    fr_press_me = sorted(list(my_burden & fr_elements))
+    me_press_fr = sorted(list(fr_burden & my_elements))
+
+    if fr_helps_me:
+        complement += min(14, 5 * len(fr_helps_me))
+        positives.append(f"상대 원국에 내 보완 방향({', '.join(fr_helps_me)})이 포함되어 있습니다.")
+    if me_helps_fr:
+        complement += min(14, 5 * len(me_helps_fr))
+        positives.append(f"내 원국에 상대의 보완 방향({', '.join(me_helps_fr)})이 포함되어 있습니다.")
+    if fr_press_me:
+        tension += min(10, 3 * len(fr_press_me))
+        cautions.append(f"상대 원국이 내 부담 방향({', '.join(fr_press_me)})을 자극할 수 있습니다.")
+    if me_press_fr:
+        tension += min(10, 3 * len(me_press_fr))
+        cautions.append(f"내 원국이 상대의 부담 방향({', '.join(me_press_fr)})을 자극할 수 있습니다.")
+
+    rows.append({
+        "항목": "상호 보완 오행",
+        "내 값": ", ".join(sorted(my_primary)) or "-",
+        "상대 값": ", ".join(sorted(fr_primary)) or "-",
+        "판정": "상호 보완 강함" if (fr_helps_me and me_helps_fr) else ("부분 보완" if (fr_helps_me or me_helps_fr) else "보완 약함"),
+    })
+
+    # 3. 합: 결속성으로 반영. 무조건 길로 보지 않고 부담 오행과 결합하면 가점을 줄인다.
+    combined_branches = my_chart.branches + fr_chart.branches
+    day_pair = frozenset([my_chart.day.branch, fr_chart.day.branch])
+    six_harmony_hits = []
+    for b1 in my_chart.branches:
+        for b2 in fr_chart.branches:
+            pair = frozenset([b1, b2])
+            if pair in SIX_HARMONY:
+                six_harmony_hits.append(SIX_HARMONY[pair])
+
+    if day_pair in SIX_HARMONY:
+        alliance += 22 * day_branch_weight
+        positives.append(f"일지에 {SIX_HARMONY[day_pair]}이 있어 친밀한 결속 신호가 강합니다. 결속 신호로 반영")
+        day_relation = SIX_HARMONY[day_pair]
+    elif my_chart.day.branch == fr_chart.day.branch:
+        alliance += 12 * day_branch_weight
+        tension += 3 * day_branch_weight
+        positives.append("일지가 같아 생활감과 반응 패턴이 비슷할 수 있습니다.")
+        day_relation = "일지 동일"
+    elif day_pair in DAY_BRANCH_CLASH_NAME:
+        tension += 26 * day_branch_weight
+        alliance -= 6 * day_branch_weight
+        cautions.append(f"일지에 {DAY_BRANCH_CLASH_NAME[day_pair]}이 있어 가까운 관계에서 직접 충돌감이 커질 수 있습니다.")
+        day_relation = DAY_BRANCH_CLASH_NAME[day_pair]
+    else:
+        day_relation = "큰 일지 합충 없음"
+
+    extra_six = max(0, len(six_harmony_hits) - (1 if day_pair in SIX_HARMONY else 0))
+    if extra_six:
+        alliance += min(12, 4 * extra_six)
+        positives.append(f"원국 사이 육합 신호가 추가로 {extra_six}개 있습니다.")
+
+    trine_hits = []
+    half_trine_hits = []
+    direction_hits = []
+    branch_set = set(combined_branches)
+    for name, group in TRINE_GROUPS.items():
+        count = len(group & branch_set)
+        if count == 3:
+            trine_hits.append(name)
+            alliance += 8
+        elif count == 2:
+            half_trine_hits.append(name.replace("국", " 반합"))
+            alliance += 3
+    for name, group in DIRECTION_GROUPS.items():
+        if len(group & branch_set) == 3:
+            direction_hits.append(name)
+            alliance += 6
+
+    if trine_hits:
+        positives.append(f"삼합 성립 가능성: {', '.join(trine_hits)}")
+    if half_trine_hits:
+        positives.append(f"반합 신호: {', '.join(half_trine_hits[:3])}")
+    if direction_hits:
+        positives.append(f"방합 성립 가능성: {', '.join(direction_hits)}")
+
+    rows.append({
+        "항목": "합·동맹 신호",
+        "내 값": my_chart.day.branch,
+        "상대 값": fr_chart.day.branch,
+        "판정": f"{day_relation}; 육합 {len(six_harmony_hits)}개; 삼합 {len(trine_hits)}개; 반합 {len(half_trine_hits)}개",
+    })
+
+    # 4. 충: 긴장도로 반영. 부담 오행을 흔드는 충은 감점 일부 완화.
+    clash_count = 0
+    day_clash = False
+    clash_notes = []
+    burden_relief_count = 0
+
+    for b1 in my_chart.branches:
+        for b2 in fr_chart.branches:
+            pair = frozenset([b1, b2])
+            if pair in DAY_BRANCH_CLASH_NAME:
+                clash_count += 1
+                name = DAY_BRANCH_CLASH_NAME[pair]
+                clash_notes.append(name)
+                if pair == day_pair:
+                    day_clash = True
+
+                b1_el = BRANCHES[b1]["element"]
+                b2_el = BRANCHES[b2]["element"]
+                # 상대가 내 부담 오행을 건드리거나 내가 상대 부담 오행을 건드리는 경우,
+                # 충의 긴장은 있지만 구조 조정 효과가 있을 수 있으므로 일부 완화한다.
+                if b2_el in my_burden or b1_el in fr_burden:
+                    burden_relief_count += 1
+                    tension += 4
+                else:
+                    tension += 8
+
+    if day_clash:
+        tension += 14
+    if clash_count == 0:
+        tension -= 8
+        alliance += 3
+        positives.append("두 원국 사이 직접 충이 적어 기본 마찰이 과도하지 않습니다.")
+    else:
+        cautions.append(f"두 원국 사이 충이 {clash_count}개 감지됩니다. 충은 무조건 악재가 아니라 변화·긴장·조정 압력으로 봅니다.")
+        if burden_relief_count:
+            positives.append(f"그중 {burden_relief_count}개는 부담 오행을 흔드는 충으로 보아 감점을 일부 완화했습니다.")
+
+    rows.append({
+        "항목": "충·긴장 신호",
+        "내 값": "-",
+        "상대 값": "-",
+        "판정": f"충 {clash_count}개" + (f" ({', '.join(sorted(set(clash_notes)))})" if clash_notes else ""),
+    })
+
+    # 5. 팔자 총점 차이: 현재 모델에서는 케미 점수에 직접 반영하지 않고 참고 정보로만 표시한다.
+    total_gap = abs(float(my_result["total"]) - float(fr_result["total"]))
+    rows.append({"항목": "원국 원국 참고점 차이", "내 값": my_result["total"], "상대 값": fr_result["total"], "판정": f"{total_gap:.1f}점 차이 — 케미 점수에는 직접 반영하지 않음"})
+
+    # 6. 대운·세운 흐름 동조성
+    my_luck = my_payload.get("luck_flow")
+    fr_luck = friend_payload.get("luck_flow")
+    if my_luck and fr_luck and my_luck.get("sewun_rows") and fr_luck.get("sewun_rows"):
+        my_avg = sum(float(r["점수"]) for r in my_luck["sewun_rows"]) / len(my_luck["sewun_rows"])
+        fr_avg = sum(float(r["점수"]) for r in fr_luck["sewun_rows"]) / len(fr_luck["sewun_rows"])
+        flow_gap = abs(my_avg - fr_avg)
+        if flow_gap <= 4:
+            sync += 12
+            positives.append("향후 5년 세운 평균 차이가 작아 운의 온도 차이가 크지 않습니다.")
+        elif flow_gap >= 12:
+            sync -= 12
+            cautions.append("향후 5년 세운 평균 차이가 커서 체감 운의 온도 차이가 있을 수 있습니다.")
+        else:
+            sync -= 4
+
+        # 흐름 방향 보정: 평균만 비슷한지보다 함께 올라가거나 함께 내려가는지도 본다.
+        if len(my_luck["sewun_rows"]) >= 3 and len(fr_luck["sewun_rows"]) >= 3:
+            my_trend = float(my_luck["sewun_rows"][-1]["점수"]) - float(my_luck["sewun_rows"][0]["점수"])
+            fr_trend = float(fr_luck["sewun_rows"][-1]["점수"]) - float(fr_luck["sewun_rows"][0]["점수"])
+            if (my_trend >= 2 and fr_trend >= 2) or (my_trend <= -2 and fr_trend <= -2) or (abs(my_trend) < 2 and abs(fr_trend) < 2):
+                sync += 5
+                positives.append("향후 흐름의 방향이 비슷해 관계 리듬 동조성에 가점했습니다.")
+            elif (my_trend >= 2 and fr_trend <= -2) or (my_trend <= -2 and fr_trend >= 2):
+                sync -= 5
+                cautions.append("향후 흐름 방향이 엇갈려 체감 리듬 차이가 커질 수 있습니다.")
+
+        rows.append({"항목": "향후 5년 흐름 차이", "내 값": round(my_avg, 1), "상대 값": round(fr_avg, 1), "판정": f"{flow_gap:.1f}점 차이"})
+    else:
+        rows.append({"항목": "향후 5년 흐름 차이", "내 값": "-", "상대 값": "-", "판정": "자동 산출 자료 부족"})
+
+    # 복합 안정 보정: 무충 + 고보완 + 고결속 + 저긴장 조합은 단순 축 합산보다 안정적으로 본다.
+    if (
+        clash_count == 0
+        and complement >= 75
+        and alliance >= 75
+        and tension <= 35
+        and (day_relation == "일지 동일" or day_pair in SIX_HARMONY or len(six_harmony_hits) >= 1 or len(trine_hits) >= 1)
+    ):
+        alliance += 2
+        tension -= 3
+        positives.append("무충·고보완·고결속·저긴장 조건을 충족해 복합 안정 보정을 적용했습니다. 동맹성 +2, 긴장도 -3")
+
+    complement = round(max(0, min(100, complement)), 1)
+    alliance = round(max(0, min(100, alliance)), 1)
+    tension = round(max(0, min(100, tension)), 1)
+    sync = round(max(0, min(100, sync)), 1)
+    stability = round(max(0, min(100, 100 - tension)), 1)
+
+    # 기본 점수: 합과 충을 한 축에 단순 상쇄하지 않고 4축으로 분리해 반영한다.
+    base_score = round(
+        rel_weights["complement"] * complement +
+        rel_weights["alliance"] * alliance +
+        rel_weights["flow"] * sync +
+        rel_weights["buffer"] * stability,
+        1,
+    )
+
+    # 극단 조건: 일지 충 + 충 다수 + 보완 약함이면 하향, 일지 합 + 보완 강함 + 긴장 낮으면 상향
+    adjusted_base_score = base_score
+    if day_clash and clash_count >= 3 and complement < 50:
+        adjusted_base_score = min(adjusted_base_score, 42.0)
+    if day_pair in SIX_HARMONY and complement >= 65 and tension <= 35:
+        adjusted_base_score = max(adjusted_base_score, 76.0)
+    if day_pair in SIX_HARMONY and complement >= 75 and alliance >= 78 and tension <= 28:
+        adjusted_base_score = max(adjusted_base_score, 86.0)
+
+    # 전체 인상 보정: 세부항목 조화와 전체 관계 인상을 ±5점 범위에서 제한적으로 반영한다.
+    holistic = compatibility_holistic_adjustment(
+        complement=complement,
+        alliance=alliance,
+        tension=tension,
+        sync=sync,
+        day_relation=day_relation,
+        day_clash=day_clash,
+        clash_count=clash_count,
+        six_harmony_count=len(six_harmony_hits),
+        trine_count=len(trine_hits),
+        positives=positives,
+        cautions=cautions,
+    )
+    score = round(clamp(adjusted_base_score + float(holistic["adjustment"]), 0, 100), 1)
+    grade, summary = compatibility_grade_summary(score)
+
+    axis_rows = [
+        {"항목": "상호 보완성", "내 값": "-", "상대 값": "-", "판정": f"{complement}/100"},
+        {"항목": "동맹성·결속성", "내 값": "-", "상대 값": "-", "판정": f"{alliance}/100"},
+        {"항목": "긴장도", "내 값": "-", "상대 값": "-", "판정": f"{tension}/100 낮을수록 안정"},
+        {"항목": "흐름 동조성", "내 값": "-", "상대 값": "-", "판정": f"{sync}/100"},
+        {"항목": "케미 기본 점수", "내 값": "-", "상대 값": "-", "판정": f"{adjusted_base_score}/100"},
+        {"항목": "케미 전체 인상 보정", "내 값": "-", "상대 값": "-", "판정": f"{holistic['adjustment']:+.1f}점 — {holistic['summary']}"},
+        {"항목": "케미 최종 점수", "내 값": "-", "상대 값": "-", "판정": f"{score}/100"},
+    ]
+
+    return {
+        "score": score,
+        "base_score": adjusted_base_score,
+        "raw_base_score": base_score,
+        "grade": grade,
+        "summary": summary,
+        "relationship_mode": relationship,
+        "near_grade_notice": compatibility_near_grade_notice(score),
+        "holistic": holistic,
+        "positives": (positives + holistic.get("positives", []))[:8],
+        "cautions": (cautions + holistic.get("cautions", []))[:8],
+        "compat_profile": compatibility_profile_from_values(score, complement, alliance, tension, sync),
+        "rows": axis_rows + rows,
+        "axes": {
+            "상호 보완성": complement,
+            "동맹성": alliance,
+            "긴장도": tension,
+            "흐름 동조성": sync,
+            "긴장 완충력": stability,
+        },
+        "day_relation": day_relation,
+        "clash_count": max(clash_count, cross_clash_count),
+        "harmony_count": max(len(six_harmony_hits), cross_harmony_count),
+        "cross_interactions": cross_interaction_details,
+    }
+
+
+def battle_winner_label(diff: float, my_name: str, friend_name: str) -> str:
+    if diff > 0:
+        return f"{my_name} 승"
+    if diff < 0:
+        return f"{friend_name} 승"
+    return "비슷함"
+
+
+def make_battle_summary(my_payload: Dict[str, object], friend_payload: Dict[str, object]) -> Dict[str, object]:
+    my_result = my_payload["result"]
+    fr_result = friend_payload["result"]
+
+    total_diff = round(float(my_result["total"]) - float(fr_result["total"]), 1)
+    total_winner = battle_winner_label(total_diff, my_payload["name"], friend_payload["name"])
+
+    category_rows = category_comparison_rows(my_result, fr_result)
+    my_cat_wins = sum(1 for r in category_rows if r["판정"] == "나 쪽이 강함")
+    fr_cat_wins = sum(1 for r in category_rows if r["판정"] == "상대 쪽이 강함")
+
+    my_luck = my_payload.get("luck_flow")
+    fr_luck = friend_payload.get("luck_flow")
+    daewun_winner = "비교 불가"
+    daewun_diff = 0.0
+    if my_luck and fr_luck and my_luck.get("daewun_score") is not None and fr_luck.get("daewun_score") is not None:
+        daewun_diff = round(float(my_luck["daewun_score"]) - float(fr_luck["daewun_score"]), 1)
+        daewun_winner = battle_winner_label(daewun_diff, my_payload["name"], friend_payload["name"])
+
+    sewun_rows = sewun_comparison_rows(my_luck, fr_luck)
+    my_sewun_wins = sum(1 for r in sewun_rows if r["판정"] == "나 쪽이 강함")
+    fr_sewun_wins = sum(1 for r in sewun_rows if r["판정"] == "상대 쪽이 강함")
+
+    if total_diff > 0:
+        main_sentence = f"팔자 총점은 {my_payload['name']}이 {abs(total_diff):.1f}점 차이로 승리했습니다."
+    elif total_diff < 0:
+        main_sentence = f"팔자 총점은 {friend_payload['name']}이 {abs(total_diff):.1f}점 차이로 승리했습니다."
+    else:
+        main_sentence = "팔자 총점은 비슷함입니다."
+
+    sub_sentence = f"3대 카테고리는 {my_payload['name']} {my_cat_wins}승, {friend_payload['name']} {fr_cat_wins}승입니다."
+    if daewun_winner != "비교 불가":
+        sub_sentence += f" 현재 대운은 {daewun_winner}({daewun_diff:+.1f})입니다."
+    if sewun_rows:
+        sub_sentence += f" 향후 5년 세운은 {my_payload['name']} {my_sewun_wins}승, {friend_payload['name']} {fr_sewun_wins}승입니다."
+
+    return {
+        "total_diff": total_diff,
+        "total_winner": total_winner,
+        "category_rows": category_rows,
+        "daewun_diff": daewun_diff,
+        "daewun_winner": daewun_winner,
+        "sewun_rows": sewun_rows,
+        "my_cat_wins": my_cat_wins,
+        "fr_cat_wins": fr_cat_wins,
+        "my_sewun_wins": my_sewun_wins,
+        "fr_sewun_wins": fr_sewun_wins,
+        "summary": main_sentence + " " + sub_sentence,
+    }
+
+
+# ============================================================
+# 용어 설명·재미형 제목 유틸
+# ============================================================
+
+GLOSSARY = {
+    "원국": "태어난 연·월·일·시의 네 기둥, 즉 사주의 기본 8글자입니다. 이 앱의 핵심 분석 대상입니다.",
+    "천간": "각 기둥의 위 글자입니다. 갑·을·병·정·무·기·경·신·임·계의 10글자입니다.",
+    "지지": "각 기둥의 아래 글자입니다. 자·축·인·묘·진·사·오·미·신·유·술·해의 12글자입니다.",
+    "지장간": "지지 속에 숨어 있다고 보는 천간 성분입니다. 겉으로 보이는 지지의 내부 구조를 설명할 때 씁니다.",
+    "오행": "목·화·토·금·수의 다섯 기운입니다. 사주의 균형과 흐름을 보는 기본 틀입니다.",
+    "십성": "일간을 기준으로 다른 글자들이 어떤 역할을 하는지 분류한 것입니다. 비견, 겁재, 식신, 상관, 재성, 관성, 인성 등이 있습니다.",
+    "일간": "일주의 천간입니다. 사주 해석에서 자기 자신을 상징하는 기준점으로 씁니다.",
+    "일주": "태어난 날의 기둥입니다. 일간과 일지로 구성되며, 자기 자신과 가까운 관계성을 볼 때 자주 사용합니다.",
+    "일지": "일주의 아래 글자입니다. 생활감, 친밀한 관계, 배우자 자리 등을 볼 때 참고합니다.",
+    "월령": "월지의 계절적 힘입니다. 사주 전체의 기세를 판단할 때 매우 중요하게 봅니다.",
+    "통근": "천간의 기운이 지지나 지장간에 뿌리를 두고 있는지 보는 개념입니다.",
+    "투출": "지장간이나 내부 기운이 천간으로 드러난 상태를 말합니다.",
+    "조후": "사주가 너무 춥거나 덥거나, 너무 마르거나 습한지를 보는 균형 개념입니다.",
+    "한난조습": "춥고 더움, 건조하고 습함의 균형입니다. 조후 판단의 세부 표현입니다.",
+    "용신": "사주의 균형을 잡는 데 핵심적으로 필요하다고 보는 기운입니다. 학파별 차이가 있습니다.",
+    "희신": "용신을 돕거나 사주에 유익하게 작용한다고 보는 기운입니다.",
+    "기신": "사주 균형을 해치거나 부담을 키운다고 보는 기운입니다. 단정적으로 보기보다 구조상 부담 방향으로 이해하는 것이 안전합니다.",
+    "합": "두 글자 이상이 만나 결합·협력·변화의 신호를 보인다고 해석하는 관계입니다.",
+    "육합": "지지 두 글자 사이의 결합 관계입니다. 친화, 결속, 변화 가능성을 봅니다.",
+    "삼합": "세 지지가 모여 특정 오행의 큰 흐름을 만든다고 보는 관계입니다.",
+    "방합": "계절 방향이 같은 지지들이 모여 세력을 이루는 구조입니다.",
+    "반합": "삼합의 일부가 성립한 것으로, 완전한 삼합보다는 약하게 봅니다.",
+    "충": "지지끼리 부딪히는 관계입니다. 반드시 나쁘다기보다 변화, 충돌, 이동, 긴장을 의미할 수 있습니다.",
+    "형": "지지 간의 압박, 꼬임, 불편한 작용을 보는 관계입니다. 해석은 조심해야 합니다.",
+    "파": "관계가 깨지거나 약해지는 신호로 해석하는 지지 관계입니다.",
+    "해": "은근한 방해나 불편함을 보는 지지 관계입니다.",
+    "대운": "약 10년 단위로 흐르는 운의 큰 흐름입니다. 원국을 대체하지 않고 시기적 환경으로 봅니다.",
+    "세운": "해마다 들어오는 운입니다. 대운보다 짧은 1년 단위 흐름입니다.",
+    "야자시": "23시대 출생자의 날짜·시주 처리 기준에 관한 논점입니다. 학파와 프로그램에 따라 차이가 있습니다.",
+    "태양시 보정": "표준시와 실제 지역 태양시의 차이를 보정하는 방식입니다. 시주 경계 근처에서는 결과가 달라질 수 있습니다.",
+    "재성": "일간이 극하는 오행입니다. 남성 명식에서는 관계성 해석에 참고되지만 단정적 판단은 피해야 합니다.",
+    "관성": "일간을 극하는 오행입니다. 여성 명식에서는 관계성 해석에 참고되지만 단정적 판단은 피해야 합니다.",
+    "군겁쟁재": "비겁이 강해 재성을 다투는 구조로 설명되는 전통 용어입니다. 실제 해석은 전체 균형을 함께 보아야 합니다.",
+    "정편재 혼합": "정재와 편재가 함께 나타나는 구조입니다. 관계성·재물성 해석에 쓰이지만 단정적 판단은 피해야 합니다.",
+    "정편관 혼잡": "정관과 편관이 함께 나타나는 구조입니다. 관계성·사회성 해석에 쓰이지만 단정적 판단은 피해야 합니다.",
+    "케미": "두 원국의 상호작용을 보는 참고 분석입니다. 관계의 결론이나 사람의 가치를 단정하지 않습니다.",
+    "케미 판정": "1:1 케미 또는 1:1 관계에서 협력축과 긴장축을 비유적으로 보여주는 기능입니다. 상호 보완성, 동맹성, 긴장도, 흐름 동조성을 나누어 참고합니다. 실제 인간관계의 적대 관계를 단정하지 않습니다.",
+}
+
+
+def render_compact_privacy_notice() -> None:
+    st.markdown("""
+    <div class="privacy-notice">
+        <b>개인정보 안내</b>
+        <ul>
+            <li>실명 대신 10글자 이내 별명을 사용하세요.</li>
+            <li>타인의 생년월일시는 당사자의 동의를 받은 경우에만 입력하세요.</li>
+            <li>내 사주 저장 링크를 만들면 생년월일시 등 입력값이 URL에 포함됩니다. 링크를 타인에게 공유하지 마세요.</li>
+            <li>리포트 다운로드·화면 캡처·카톡 공유 시 개인정보가 노출되지 않도록 주의하세요.</li>
+            <li>자세한 내용은 화면 하단의 개인정보 처리방침에서 확인할 수 있습니다.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_algorithm_disclosure_notice(compact: bool = False) -> None:
+    """생성형 AI 사용 여부와 앱 산출 방식에 관한 정확한 고지."""
+    if compact:
+        st.caption("사주MRI 결과는 외부 생성형 AI가 실시간 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따른 참고 결과입니다.")
+        return
+    st.info(
+        "사주MRI는 명리학 기반 계산 로직과 앱 내부 산식을 활용해 사주 경향을 참고용으로 보여주는 서비스입니다. "
+        "개발 과정에서 코드 작성·점검 보조에 생성형 AI 도구를 활용했을 수 있으나, "
+        "사용자의 사주 분석 결과는 ChatGPT 등 외부 생성형 AI가 실시간으로 도출하거나 작성하는 구조가 아닙니다. "
+        "결과는 오락·자기이해 목적의 참고자료이며, 건강·법률·투자·채용·대출·혼인 등 중대한 의사결정의 근거로 사용해서는 안 됩니다."
+    )
+
+
+def render_privacy_policy() -> None:
+    """사주MRI 개인정보 처리방침 초안. 공개 배포 전 운영자 정보와 배포 환경에 맞게 보완한다."""
+    st.markdown("### 개인정보 처리방침")
+    st.caption("시행일: 2026-05-04 · 서비스명: 사주MRI")
+    st.markdown("""
+본 개인정보 처리방침은 **사주MRI**가 이용자의 개인정보를 어떤 목적으로 처리하고, 어떻게 보호하는지 안내하기 위한 문서입니다.  
+본 앱은 사주 원국 구조와 1:1 케미를 **오락·참고용**으로 제공하며, 결과를 법률·의료·투자·채용·혼인 등 중대한 의사결정의 근거로 사용해서는 안 됩니다.  
+사주MRI의 분석 결과는 외부 생성형 AI API가 실시간으로 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따라 산출됩니다. 개발 과정에서 생성형 AI 도구를 코드 작성·점검 보조에 활용했을 수 있으나, 서비스 실행 단계의 사주 분석 결과가 ChatGPT 등 외부 생성형 AI에 의해 도출되는 구조는 아닙니다.
+
+#### 1. 개인정보의 처리 목적
+
+사주MRI는 다음 목적을 위해 입력 정보를 처리합니다.
+
+- 생년월일시 자동 산출 또는 원국 직접 입력에 따른 사주 원국 분석
+- 1:1 케미, 케미 분석 결과 산출
+- 사용자가 선택한 참가자 보관함의 브라우저 세션 내 유지
+- 사용자가 직접 다운로드하는 결과 리포트 생성
+- 오류 예방, 앱 상태 진단, 화면 표시 안정화
+
+#### 2. 처리하는 개인정보 항목
+
+앱 기능 사용 과정에서 다음 정보가 입력될 수 있습니다.
+
+- 별명 또는 참가자명
+- 생년월일, 출생시각, 성별 기준, 양력·음력 여부
+- 출생지/태양시 보정 선택값, 야자시 모드 선택값, 대운 나이 기준
+- 원국 직접 입력 시 년주·월주·일주·시주의 천간·지지 8글자
+- 1:1 케미에서 사용자가 입력한 다른 참가자의 위 정보
+- 사용자가 직접 생성·다운로드한 리포트 파일의 내용
+- 사용자가 직접 생성한 내 사주 저장 링크에 포함되는 생년월일시, 성별, 날짜 기준 등 URL 쿼리 정보
+
+실명 입력은 권장하지 않습니다. 별명을 사용하더라도 대화방 맥락, 화면 캡처, 리포트 공유 방식에 따라 특정인이 추정될 수 있으므로 주의해야 합니다.
+
+#### 3. 개인정보의 보유 및 이용 기간
+
+현재 로컬 실행 및 기본 앱 구조에서는 입력값을 별도 데이터베이스에 저장하지 않습니다.
+
+- 분석을 위해 입력값은 계산 중 서버 메모리에 일시적으로 존재할 수 있습니다.
+- 참가자 보관함은 현재 브라우저 세션에서만 유지되는 것을 전제로 합니다.
+- 사용자가 리포트를 다운로드하면 해당 파일은 사용자 기기 또는 사용자가 저장한 위치에 남습니다.
+- 사용자가 화면을 캡처하거나 외부 메신저에 공유한 정보는 앱에서 삭제할 수 없습니다.
+- 내 사주 저장 링크는 서버 데이터베이스 저장 방식이 아니라 URL에 입력값을 담아 다시 불러오는 방식입니다. 링크를 북마크하거나 홈 화면에 추가하면 사용자 기기·브라우저·메신저에 해당 URL이 남을 수 있습니다.
+- Streamlit Cloud 등 외부 배포 환경에서는 접속 IP, 브라우저 정보, 접속 시각 등 일반 접속 로그가 배포 플랫폼에 남을 수 있습니다.
+
+#### 4. 개인정보의 제3자 제공
+
+사주MRI 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 없습니다.  
+다만 온라인 배포 시 이용자가 접속하는 호스팅 플랫폼, 클라우드 서버, 로그 관리 도구의 정책에 따라 일반 접속 로그가 처리될 수 있으므로 실제 배포 환경에 맞춘 별도 확인이 필요합니다.
+
+#### 5. 개인정보 처리업무의 위탁 및 국외 이전
+
+로컬 PC에서 실행하는 경우 별도 위탁이나 국외 이전은 예정되어 있지 않습니다.  
+Streamlit Cloud, GitHub, Render, Railway 등 외부 서비스를 이용하여 공개 배포하는 경우에는 해당 서비스 제공자가 인프라 운영 과정에서 접속 로그 등을 처리할 수 있으므로, 실제 배포 환경에 맞게 위탁·국외 이전 항목을 보완해야 합니다.
+
+#### 6. 14세 미만 아동의 개인정보 처리
+
+14세 미만 아동의 생년월일시 등 정보를 입력하는 경우 법정대리인의 동의가 필요할 수 있습니다.  
+타인의 정보를 입력할 때에는 반드시 해당 정보주체 또는 정당한 권한 있는 사람의 동의를 받은 정보만 입력해야 합니다.
+
+#### 7. 개인정보의 파기 및 삭제 방법
+
+앱 내에서는 다음 방식으로 정보를 정리할 수 있습니다.
+
+- “분석 결과만 지우기” 버튼으로 현재 분석 결과 삭제
+- “참가자 보관함만 지우기” 버튼으로 보관함 삭제
+- “분석 결과·보관함 모두 지우기” 버튼으로 세션 내 정보 삭제
+- 브라우저 새로고침, 탭 닫기, 서버 재시작 시 세션 정보가 사라질 수 있음
+
+다만 사용자가 이미 다운로드한 파일, 직접 캡처한 화면, 외부에 공유한 내용은 앱에서 삭제할 수 없습니다.
+
+#### 8. 정보주체와 법정대리인의 권리 행사
+
+이용자는 앱 화면의 삭제 버튼을 통해 세션 내 분석 결과와 보관함 정보를 삭제할 수 있습니다.  
+공개 서비스로 운영하는 경우에는 운영자의 연락처, 고충처리 부서, 권리 행사 방법을 별도로 기재해야 합니다.
+
+- 개인정보 보호책임자: 추후 기재
+- 문의 연락처: 추후 기재
+- 고충처리 부서: 추후 기재
+
+#### 9. 개인정보의 안전성 확보조치
+
+사주MRI는 개인정보 노출을 줄이기 위해 다음 원칙을 적용합니다.
+
+- 실명 대신 별명 사용 권장
+- 다운로드 파일명에 참가자명·생년월일시를 넣지 않음
+- 코드와 배포 ZIP에 실제 개인 명식·생년월일시 예시를 남기지 않음
+- 오류 메시지에 입력값이 직접 노출되지 않도록 안전 오류 메시지 사용
+- 사용자 입력을 HTML로 표시할 때 이스케이프 처리 적용
+- 화면 캡처와 리포트 공유 시 개인정보 노출 주의 문구 제공
+
+#### 10. 쿠키 및 행태정보
+
+현재 앱은 맞춤형 광고를 위한 행태정보를 수집·이용하지 않습니다.  
+다만 Streamlit 및 브라우저가 앱 세션 유지를 위해 기술적 쿠키 또는 세션 정보를 사용할 수 있습니다.
+
+#### 11. 자동화된 결정에 관한 안내
+
+사주MRI의 점수와 등급은 오락·참고용 계산 결과입니다.  
+이 결과는 법률상 권리·의무, 채용, 투자, 대출, 의료, 혼인 등 중대한 의사결정을 자동으로 결정하기 위한 것이 아니며, 그러한 용도로 사용해서는 안 됩니다.
+
+#### 12. 개인정보 처리방침의 변경
+
+본 처리방침은 앱 기능, 배포 방식, 저장 방식, 운영자 정보가 달라지는 경우 변경될 수 있습니다.  
+공개 배포 전에는 실제 운영자 정보, 서버 위치, 로그 보관 여부, 위탁·국외 이전 여부를 반영하여 최종 검토해야 합니다.
+""")
+
+def render_glossary_popovers(terms: List[str]) -> None:
+    valid_terms = [t for t in terms if t in GLOSSARY]
+    if not valid_terms:
+        return
+    text = " · ".join([f"{t}: {GLOSSARY[t]}" for t in valid_terms])
+    st.caption(f"용어 뜻 — {text}")
+
+
+def render_glossary_tab(filter_terms: List[str] | None = None) -> None:
+    terms = filter_terms or list(GLOSSARY.keys())
+    rows = [{"용어": t, "설명": GLOSSARY[t]} for t in terms if t in GLOSSARY]
+    safe_dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def quest_title(title: str, subtitle: str = "", terms: List[str] | None = None) -> None:
+    st.markdown(f"### {title}")
+    if subtitle:
+        st.caption(subtitle)
+    if terms:
+        render_glossary_popovers(terms)
+
+
+# ============================================================
+# 1:1 케미 유틸
+# ============================================================
+
+def participant_category_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for p in participants:
+        for row in category_totals(p["result"]["categorized_scores"]):
+            rows.append({
+                "참가자": p["name"],
+                "카테고리": row["카테고리"],
+                "점수": row["점수"],
+                "배점": row["배점"],
+                "비율": row["비율"],
+            })
+    return rows
+
+
+def participant_total_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    ordered = sorted(participants, key=lambda p: float(p["result"]["total"]), reverse=True)
+    rows: List[Dict[str, object]] = []
+    for rank, p in enumerate(ordered, start=1):
+        result = p["result"]
+        lf = p.get("luck_flow")
+        dw = lf.get("current_daewun") if lf else None
+        sewun_avg = "-"
+        if lf and lf.get("sewun_rows"):
+            sewun_avg = round(sum(float(r["점수"]) for r in lf["sewun_rows"]) / len(lf["sewun_rows"]), 1)
+
+        rows.append({
+            "순위": rank,
+            "참가자": p["name"],
+            "총점": result["total"],
+            "등급": result["grade_info"]["grade"],
+            "일간": p["chart"].day_master,
+            "원국": f"{p['chart'].year.stem}{p['chart'].year.branch} / {p['chart'].month.stem}{p['chart'].month.branch} / {p['chart'].day.stem}{p['chart'].day.branch} / {p['chart'].hour.stem}{p['chart'].hour.branch}",
+            "입력 방식": p.get("mode", "-"),
+            "대운 반영": daewun_status_label(p),
+            "현재 대운": dw.get("ganzhi") if dw else "-",
+            "대운 반영 참고점": lf.get("daewun_score") if lf else "-",
+            "향후 5년 세운 평균": sewun_avg,
+        })
+    return rows
+
+
+def participant_daewun_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for p in participants:
+        lf = p.get("luck_flow")
+        dw = lf.get("current_daewun") if lf else None
+        rows.append({
+            "참가자": p["name"],
+            "현재 나이": lf.get("age") if lf else ("삼주 간이" if p.get("unknown_time") else "직접 입력"),
+            "대운 반영": daewun_status_label(p),
+            "현재 대운": dw.get("ganzhi") if dw else "-",
+            "시작 나이": dw.get("start_age") if dw else "-",
+            "대운 반영 참고점": lf.get("daewun_score") if lf else "-",
+            "대운 변동": f"{lf.get('daewun_mod'):+.1f}" if lf else "-",
+            "대운 해석": lf.get("daewun_note") if lf else ("삼주 간이 분석은 대운 산출 제한" if p.get("unknown_time") else "직접 입력 모드는 대운 산출 없음"),
+        })
+    return rows
+
+
+def participant_sewun_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for p in participants:
+        lf = p.get("luck_flow")
+        if not lf or not lf.get("sewun_rows"):
+            continue
+        for r in lf["sewun_rows"]:
+            rows.append({
+                "참가자": p["name"],
+                "연도": r["연도"],
+                "세운": r["세운"],
+                "점수": r["점수"],
+                "변동": r["변동"],
+                "비고": r["비고"],
+            })
+    return rows
+
+
+def _safe_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _avg_numeric(values: List[object], default: object = "-") -> object:
+    nums = [_safe_float(v, None) for v in values]
+    nums = [n for n in nums if n is not None]
+    if not nums:
+        return default
+    return round(sum(nums) / len(nums), 1)
+
+
+def participant_origin_rank_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows = []
+    ordered = sorted(participants, key=lambda p: _safe_float(p.get("result", {}).get("total")), reverse=True)
+    for rank, p in enumerate(ordered, start=1):
+        result = p.get("result", {})
+        rows.append({
+            "순위": rank,
+            "참가자": p.get("name", f"참가자 {rank}"),
+            "점수": round(_safe_float(result.get("total")), 1),
+            "보조": result.get("grade_info", {}).get("grade", "-"),
+        })
+    return rows
+
+
+def participant_daewun_rank_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows = []
+    for p in participants:
+        lf = p.get("luck_flow") or {}
+        dw = lf.get("current_daewun") or {}
+        if lf.get("daewun_score") is None:
+            continue
+        rows.append({
+            "참가자": p.get("name", "참가자"),
+            "점수": round(_safe_float(lf.get("daewun_score")), 1),
+            "보조": f"{dw.get('ganzhi', '-')} · {lf.get('daewun_mod', 0):+.1f}",
+        })
+    rows.sort(key=lambda r: _safe_float(r.get("점수")), reverse=True)
+    for i, r in enumerate(rows, start=1):
+        r["순위"] = i
+    return rows
+
+
+def participant_sewun_average_rank_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows = []
+    for p in participants:
+        lf = p.get("luck_flow") or {}
+        sewun_rows = lf.get("sewun_rows") or []
+        if not sewun_rows:
+            continue
+        avg = _avg_numeric([r.get("점수") for r in sewun_rows])
+        if avg == "-":
+            continue
+        rows.append({
+            "참가자": p.get("name", "참가자"),
+            "점수": avg,
+            "보조": "향후 5년 평균",
+        })
+    rows.sort(key=lambda r: _safe_float(r.get("점수")), reverse=True)
+    for i, r in enumerate(rows, start=1):
+        r["순위"] = i
+    return rows
+
+
+def participant_day_rank_rows(participants: List[Dict[str, object]], target_date: date | None = None) -> List[Dict[str, object]]:
+    target_date = target_date or date.today()
+    try:
+        pillars = get_month_day_pillars_for_date(target_date)
+        day_gz = pillars.get("day", "")
+    except Exception:
+        day_gz = ""
+    rows = []
+    for p in participants:
+        result = p.get("result", {})
+        base = _safe_float(result.get("total"))
+        if day_gz and len(day_gz) >= 2:
+            mod, note = analyze_luck_interaction(day_gz, p.get("chart"), result.get("useful", {}), 8.0, result)
+            score = round(max(0, min(100, base + mod)), 1)
+            sub = f"{day_gz} · {mod:+.1f}"
+        else:
+            score = round(base, 1)
+            sub = "일운 산출 제한"
+        rows.append({
+            "참가자": p.get("name", "참가자"),
+            "점수": score,
+            "보조": sub,
+        })
+    rows.sort(key=lambda r: _safe_float(r.get("점수")), reverse=True)
+    for i, r in enumerate(rows, start=1):
+        r["순위"] = i
+    return rows
+
+
+def render_rank_pyramid(title: str, rows: List[Dict[str, object]], caption: str = "") -> None:
+    st.markdown(f"#### {title}")
+    if not rows:
+        st.caption("대운·세운 정보가 부족하여 이 항목은 비교하지 않습니다.")
+        return
+    max_score = max([_safe_float(r.get("점수")) for r in rows] + [1.0])
+    for idx, row in enumerate(rows[:6], start=1):
+        score = _safe_float(row.get("점수"))
+        width = max(30, min(100, score / max_score * 100)) if max_score else 30
+        safe_name = html.escape(str(row.get("참가자", "-")), quote=True)
+        safe_sub = html.escape(str(row.get("보조", "")), quote=True)
+        safe_rank = html.escape(str(row.get("순위", idx)), quote=True)
+        st.markdown(f"""
+        <div style="width:{width}%;margin:.28rem auto;padding:.55rem .75rem;border:1px solid rgba(230,164,184,.38);border-radius:16px;background:#fff;box-shadow:0 8px 18px rgba(214,66,115,.08);text-align:center;min-width:220px;">
+            <div style="font-weight:900;color:#5b3f4b;">{safe_rank}위 · {safe_name}</div>
+            <div style="font-weight:900;color:#d64273;font-size:1.05rem;">{score:.1f}점</div>
+            <div style="font-size:.82rem;color:#7a5665;">{safe_sub}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    if caption:
+        st.caption(caption)
+
+
+def render_battle_pyramid_overview(participants: List[Dict[str, object]]) -> None:
+    st.markdown("###  배틀 순위판")
+    st.caption("사람의 우열이 아니라, 이 앱의 원국·운 흐름 점수 모델상 오늘 비교가 어떻게 보이는지 압축해 보여줍니다.")
+    render_relationship_orientation_card(compatibility)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        render_rank_pyramid("🏯 원국 참고", participant_origin_rank_rows(participants), "원국 자체의 기본 골격 점수입니다.")
+    with c2:
+        render_rank_pyramid("🌊 대운 배틀", participant_daewun_rank_rows(participants), "자동 산출 참가자만 현재 대운 참고점으로 비교합니다.")
+    c3, c4 = st.columns(2)
+    with c3:
+        render_rank_pyramid("📆 5년 세운 흐름", participant_sewun_average_rank_rows(participants), "향후 5년 세운 점수 평균입니다.")
+    with c4:
+        render_rank_pyramid("☀️ 당일 일운 배틀", participant_day_rank_rows(participants), "오늘 일운이 각 원국에 주는 보정 흐름입니다.")
+
+
+def render_compact_chemistry_overview(participants: List[Dict[str, object]]) -> None:
+    rows = pairwise_compatibility_rows(participants)
+    if not rows:
+        st.caption("케미 조합을 만들 참가자가 부족합니다.")
+        return
+    ordered = sorted(rows, key=lambda r: _safe_float(r.get("케미 점수")), reverse=True)
+    best = ordered[0]
+    least = ordered[-1]
+    avg_score = _avg_numeric([r.get("케미 점수") for r in rows])
+    cols = st.columns(3)
+    cards = [
+        ("최고 케미", best.get("조합", "-"), f"{best.get('케미 점수', '-')}점 · {best.get('판정', '-')}", "서로 맞물리는 신호가 가장 강한 조합"),
+        ("평균 케미", "전체 조합", f"{avg_score}점", "전체 분위기의 평균 온도"),
+        ("조율 포인트", least.get("조합", "-"), f"{least.get('케미 점수', '-')}점 · {least.get('판정', '-')}", "나쁘다는 뜻이 아니라 맞춰가면 좋은 조합"),
+    ]
+    for col, (title, name, value, body) in zip(cols, cards):
+        with col:
+            st.markdown(f"""
+            <div class="mini-card">
+                <div class="mini-card-title">{html.escape(title, quote=True)}</div>
+                <div class="mini-card-value">{html.escape(str(name), quote=True)}</div>
+                <div style="color:#d64273;font-weight:900;margin-top:.35rem;">{html.escape(str(value), quote=True)}</div>
+                <div style="color:#7a5665;font-size:.86rem;margin-top:.35rem;line-height:1.45;">{html.escape(body, quote=True)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    if len(participants) >= 3:
+        power_map = diplomacy_narrative(participants)
+        st.markdown("#### 🌐 다자간 국면 요약")
+        role_rows = power_map.get("country_rows", [])
+        if role_rows:
+            display_rows = []
+            for r in role_rows:
+                display_rows.append({
+                    "참가자": r.get("참가자"),
+                    "관계 역할": r.get("세력 포지션"),
+                    "케미 평균": r.get("케미 평균"),
+                    "가까운 조합": r.get("가장 가까운 축"),
+                    "조율 포인트": r.get("가장 조심할 축"),
+                })
+            safe_dataframe(pd.DataFrame(display_rows), use_container_width=True, hide_index=True)
+        st.caption("동맹·협력·조율은 편 가르기가 아니라 관계 흐름을 설명하는 오락용 표현입니다. 조율 포인트는 피해야 한다는 뜻이 아니라 맞춰가면 좋은 축입니다.")
+    if safe_toggle("조합별 케미표 보기", value=False, key="compact_chem_pair_table"):
+        safe_dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def render_compact_participant_battle_summary(selected: Dict[str, object], prefix: str = "participant") -> None:
+    result = selected.get("result", {})
+    origin_text = friendly_origin_summary(result.get("origin_profile", {}))
+    char_name, char_desc = split_character_label(origin_text)
+    cols = st.columns(4)
+    metrics = [
+        ("총점", result.get("total", "-")),
+        ("등급", result.get("grade_info", {}).get("grade", "-")),
+        ("강한 축", participant_top_axis(selected)),
+        ("일간 강약", friendly_strength_summary(result)),
+    ]
+    for col, (label, value) in zip(cols, metrics):
+        with col:
+            safe_metric(label, value)
+    st.markdown(f"""
+    <div class="compact-detail-card">
+        <div class="compact-detail-title">원국 캐릭터 · {html.escape(str(char_name), quote=True)}</div>
+        <div class="compact-detail-body">{html.escape(str(char_desc), quote=True)}</div>
+        <div class="compact-detail-body">보완 방향: <b>{html.escape(str(friendly_useful_summary(result.get('useful', {}))), quote=True)}</b></div>
+    </div>
+    """, unsafe_allow_html=True)
+    if safe_toggle("만세력 원국 보기", value=False, key=f"{prefix}_origin_id"):
+        render_origin_identity_table(selected["chart"])
+    if selected.get("luck_flow"):
+        if safe_toggle("운의 파도 요약 보기", value=False, key=f"{prefix}_luck_wave"):
+            render_luck_wave_section(selected.get("luck_flow"))
+
+def pairwise_compatibility_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for i in range(len(participants)):
+        for j in range(i + 1, len(participants)):
+            a = participants[i]
+            b = participants[j]
+            comp = compatibility_analysis(a, b, "친구")
+            rows.append({
+                "A": a["name"],
+                "B": b["name"],
+                "조합": f"{a['name']} × {b['name']}",
+                "케미 점수": comp["score"],
+                "기본 점수": comp.get("base_score", comp["score"]),
+                "전체 인상 보정": f"{comp.get('holistic', {}).get('adjustment', 0):+.1f}",
+                "판정": comp["grade"],
+                "유형": comp.get("compat_profile", {}).get("summary", "표준 관계형"),
+                "상호 보완성": comp.get("axes", {}).get("상호 보완성", "-"),
+                "동맹성": comp.get("axes", {}).get("동맹성", "-"),
+                "긴장도": comp.get("axes", {}).get("긴장도", "-"),
+                "흐름 동조성": comp.get("axes", {}).get("흐름 동조성", "-"),
+                "요약": comp["summary"],
+            })
+    return rows
+
+
+def multi_battle_summary(participants: List[Dict[str, object]]) -> Dict[str, object]:
+    totals = participant_total_rows(participants)
+    if not totals:
+        return {"summary": "비교할 참가자가 없습니다.", "winner": "-", "top_score": "-"}
+    top = totals[0]
+    second = totals[1] if len(totals) > 1 else None
+    if second:
+        diff = round(float(top["총점"]) - float(second["총점"]), 1)
+        summary = f"총점 기준 1위는 {top['참가자']}입니다. 2위와의 차이는 {diff:+.1f}점입니다."
+    else:
+        diff = 0.0
+        summary = f"총점 기준 1위는 {top['참가자']}입니다."
+
+    auto_count = sum(1 for p in participants if p.get("mode") == "생년월일시 자동 산출")
+    direct_count = len(participants) - auto_count
+    summary += f" 자동 산출 {auto_count}명, 원국 직접 입력 {direct_count}명 기준으로 비교했습니다."
+
+    return {
+        "summary": summary,
+        "winner": top["참가자"],
+        "top_score": top["총점"],
+        "diff_to_second": diff,
+        "ranking_rows": totals,
+    }
+
+
+def participant_strongest_axis(participant: Dict[str, object]) -> str:
+    rows = category_totals(participant["result"]["categorized_scores"])
+    if not rows:
+        return "기운의 크기"
+    top = max(rows, key=lambda r: float(r.get("반영치", r.get("점수", 0))))
+    return category_plain_title(top["카테고리"])
+
+
+def axis_theme_color(axis_name: str) -> str:
+    if "크기" in axis_name:
+        return "#ff9fb5"
+    if "순환" in axis_name:
+        return "#72c6a1"
+    return "#7da6ff"
+
+
+def multi_role_recommendation(participant: Dict[str, object], diplomacy_row: Dict[str, object]) -> Dict[str, str]:
+    axis_name = participant_strongest_axis(participant)
+    position = diplomacy_row.get("세력 포지션", "독립형")
+    relation_style = diplomacy_row.get("관계 성향", "조율 혼합형")
+    close_axis = diplomacy_row.get("가장 가까운 축", "-")
+    caution_axis = diplomacy_row.get("가장 조심할 축", "-")
+
+    if "연결 허브" in position or "완충" in position:
+        role_title = " 연결 허브"
+        role_desc = "사람 사이 결을 맞추고, 어색한 흐름을 부드럽게 이어주는 역할이 잘 맞습니다."
+    elif "중심축 후보" in position:
+        role_title = "🧭 중심축"
+        role_desc = "전체의 기준과 방향을 잡는 축 역할이 자연스럽습니다."
+    elif "긴장 집중축" in position:
+        role_title = " 긴장 돌파형"
+        role_desc = "판을 흔들어 돌파구를 만들 수 있지만, 정면충돌을 줄이는 설계가 중요합니다."
+    elif "부분 협력축" in position:
+        role_title = "🛠 부분 협력형"
+        role_desc = "특정 사람 또는 특정 과업에서 힘이 잘 붙는 실전형 역할이 잘 맞습니다."
+    else:
+        role_title = "🌙 독립 플레이어"
+        role_desc = "자율성이 높아 혼자 맡는 구간에서 강점이 드러나는 타입입니다."
+
+    if "발현" in axis_name:
+        play_style = "실행·퍼포먼스 담당"
+        axis_desc = "가진 기운을 밖으로 꺼내고 밀어붙이는 실행축이 강합니다."
+    elif "순환" in axis_name:
+        play_style = "조율·흐름 설계 담당"
+        axis_desc = "순서, 소통, 연결 흐름을 맞추는 축이 강합니다."
+    else:
+        play_style = "기반·판짜기 담당"
+        axis_desc = "전체 판을 세우고 재료를 쌓는 기본 체력이 강합니다."
+
+    caution = f"조율하면 더 좋아지는 상대 축은 {caution_axis}입니다."
+    if "긴장 집중축" in position:
+        caution = f"자극이 쌓이면 역할과 권한을 먼저 나누면 더 편합니다. 조율 우선 축: {caution_axis}"
+    elif "독립형" in position:
+        caution = f"각자 하려는 힘이 강할 수 있어, 합의 기준을 먼저 정하면 더 잘 맞습니다. 조율 우선 축: {caution_axis}"
+
+    return {
+        "participant": participant["name"],
+        "role_title": role_title,
+        "role_desc": role_desc,
+        "play_style": play_style,
+        "axis_desc": axis_desc,
+        "position": position,
+        "relation_style": relation_style,
+        "close_axis": close_axis,
+        "caution": caution,
+        "axis_name": axis_name,
+    }
+
+
+def relation_bucket(score: float) -> Dict[str, object]:
+    if score >= 76:
+        return {"label": "동맹", "stroke": "#ff6f9c", "width": 4.6, "dash": "", "opacity": 0.95}
+    if score >= 64:
+        return {"label": "협력", "stroke": "#54b98b", "width": 3.6, "dash": "", "opacity": 0.9}
+    if score >= 52:
+        return {"label": "조율", "stroke": "#7d9bff", "width": 3.0, "dash": "7 6", "opacity": 0.88}
+    return {"label": "긴장", "stroke": "#ff9a68", "width": 3.8, "dash": "10 8", "opacity": 0.95}
+
+
+def build_multi_situation_svg(participants: List[Dict[str, object]], power_map: Dict[str, object]) -> str:
+    n = len(participants)
+    if n < 3:
+        return ""
+    # 앱 현재 구조상 최대 4명이 일반적이지만, 6명까지 도식 가능하게 설계
+    n = min(n, 6)
+    participants = participants[:n]
+    power_rows = {row["참가자"]: row for row in power_map.get("country_rows", [])}
+
+    width, height = 760, 640
+    cx, cy = 380, 315
+    radius = 210 if n <= 4 else 220
+
+    coords = []
+    for i, p in enumerate(participants):
+        angle = -math.pi / 2 + (2 * math.pi * i / n)
+        x = cx + radius * math.cos(angle)
+        y = cy + radius * math.sin(angle)
+        coords.append((p["name"], x, y))
+
+    coord_map = {name: (x, y) for name, x, y in coords}
+
+    parts = [
+        f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" aria-label="다자간 국면 도식표">'
+    ]
+    parts.append(f'<circle cx="{cx}" cy="{cy}" r="78" fill="#fff6fa" stroke="#ffc7d9" stroke-width="2"/>')
+    parts.append(f'<text x="{cx}" y="{cy-10}" text-anchor="middle" font-size="22" font-weight="900" fill="#7a5665">다자간 국면</text>')
+    parts.append(f'<text x="{cx}" y="{cy+18}" text-anchor="middle" font-size="13" font-weight="700" fill="#8b6b78">오행처럼 서로 주고받는 흐름</text>')
+    parts.append(f'<text x="{cx}" y="{cy+38}" text-anchor="middle" font-size="13" font-weight="700" fill="#8b6b78">동맹 · 협력 · 조율 · 긴장</text>')
+
+    # 관계선
+    pair_rows = pairwise_compatibility_rows(participants)
+    for row in pair_rows:
+        a = row["A"]
+        b = row["B"]
+        if a not in coord_map or b not in coord_map:
+            continue
+        score = float(row["케미 점수"])
+        bucket = relation_bucket(score)
+        x1, y1 = coord_map[a]
+        x2, y2 = coord_map[b]
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        label = bucket["label"]
+        parts.append(
+            f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
+            f'stroke="{bucket["stroke"]}" stroke-width="{bucket["width"]}" '
+            f'stroke-dasharray="{bucket["dash"]}" opacity="{bucket["opacity"]}" />'
+        )
+        parts.append(
+            f'<rect x="{mx-22}" y="{my-11}" width="44" height="22" rx="11" fill="white" '
+            f'stroke="{bucket["stroke"]}" stroke-width="1.2" opacity="0.97" />'
+        )
+        parts.append(
+            f'<text x="{mx}" y="{my+4}" text-anchor="middle" font-size="11" font-weight="900" fill="#5b3f4b">{label}</text>'
+        )
+
+    # 노드
+    for p in participants:
+        name = p["name"]
+        x, y = coord_map[name]
+        total = float(p["result"]["total"])
+        node_r = 33 + max(0, min(8, (total - 60) / 5))
+        power_row = power_rows.get(name, {})
+        role = multi_role_recommendation(p, power_row)
+        axis_name = role["axis_name"]
+        color = axis_theme_color(axis_name)
+        display_role = role["role_title"].replace(" ", "").replace("🧭 ", "").replace(" ", "").replace("🛠 ", "").replace("🌙 ", "")
+
+        parts.append(f'<circle cx="{x}" cy="{y}" r="{node_r}" fill="{color}" opacity="0.16" stroke="{color}" stroke-width="2.8"/>')
+        parts.append(f'<circle cx="{x}" cy="{y}" r="{node_r-8}" fill="white" stroke="{color}" stroke-width="2.4"/>')
+        parts.append(f'<text x="{x}" y="{y-2}" text-anchor="middle" font-size="16" font-weight="900" fill="#4b2d3a">{html.escape(name)}</text>')
+        parts.append(f'<text x="{x}" y="{y+17}" text-anchor="middle" font-size="11.5" font-weight="800" fill="#7a5665">{html.escape(display_role)}</text>')
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def render_multi_situation_map(participants: List[Dict[str, object]], power_map: Dict[str, object]) -> None:
+    """다자간 국면을 SVG 없이 카드형으로 표시한다."""
+    if len(participants) < 3:
+        st.caption("다자간 국면은 3명 이상일 때 표시됩니다.")
+        return
+
+    st.markdown("#### 다자간 국면")
+    st.caption("참가자 사이의 케미 결을 카드형으로 요약합니다. 조율 포인트는 피하라는 뜻이 아니라 맞춰가면 좋아지는 축입니다.")
+
+    pair_rows = pairwise_compatibility_rows(participants)
+    if pair_rows:
+        st.markdown("##### 관계선 요약")
+        rel_cols = st.columns(min(3, max(1, len(pair_rows))))
+        for idx, row in enumerate(pair_rows):
+            score = float(row.get("케미 점수", 0) or 0)
+            bucket = relation_bucket(score)
+            with rel_cols[idx % len(rel_cols)]:
+                st.markdown(f"**{row.get('A', '-')} ↔ {row.get('B', '-')}**")
+                safe_metric(str(bucket.get("label", "케미")), f"{score:.1f}")
+                st.progress(int(round(max(0.0, min(100.0, score)))))
+
+    st.markdown("##### 역할 카드")
+    power_rows = {row["참가자"]: row for row in power_map.get("country_rows", [])}
+    role_cols = st.columns(min(3, max(1, len(participants))))
+    for idx, p in enumerate(participants):
+        row = power_rows.get(p["name"], {})
+        role = multi_role_recommendation(p, row)
+        with role_cols[idx % len(role_cols)]:
+            st.markdown(f"**{role['participant']}**")
+            safe_write(role["role_title"])
+            st.caption(role["role_desc"])
+            safe_write(f"- 잘 맞는 역할: {role['play_style']}")
+            safe_write(f"- 강한 축: {role['axis_name']}")
+            safe_write(f"- 가까운 축: {role['close_axis']}")
+            safe_write(f"- 조율 포인트: {role['caution']}")
+
+
+def make_multi_report(participants: List[Dict[str, object]], summary: Dict[str, object]) -> str:
+    lines: List[str] = []
+    lines.append("# 사주MRI 1:1 케미 리포트")
+    lines.append("")
+    lines.append(f"- 최종 1위: {summary.get('winner')} ({summary.get('top_score')}점)")
+    lines.append(f"- 요약: {summary.get('summary')}")
+    lines.append("")
+    lines.append("## 총점 순위")
+    for row in participant_total_rows(participants):
+        lines.append(f"- {row['순위']}위 {row['참가자']}: {row['총점']}점, {row['등급']}등급, 원국 {row['원국']}")
+    lines.append("")
+    lines.append("## 3대 카테고리")
+    for row in participant_category_rows(participants):
+        lines.append(f"- {row['참가자']} / {row['카테고리']}: {row['점수']}/{row['배점']} ({row['비율']})")
+    lines.append("")
+    lines.append("## 케미 판정 조합")
+    for row in pairwise_compatibility_rows(participants):
+        lines.append(f"- {row['조합']}: {row['케미 점수']}점, {row['판정']} / {row.get('유형', '표준 관계형')} (기본 {row.get('기본 점수', row['케미 점수'])}, 전체 인상 {row.get('전체 인상 보정', '+0.0')}) — {row['요약']}")
+
+    if len(participants) >= 3:
+        diplomacy = diplomacy_narrative(participants)
+        lines.append("")
+        lines.append("## 다자간 국면")
+        lines.append(f"- 요약: {diplomacy['summary']}")
+        for row in diplomacy["country_rows"]:
+            lines.append(
+                f"- {row['참가자']}: {row['세력 포지션']} / {row['관계 성향']} / "
+                f"가장 가까운 축 {row['가장 가까운 축']} / 가장 조심할 축 {row['가장 조심할 축']}"
+            )
+        lines.append("")
+        lines.append("## 역할 추천")
+        role_map = {row['참가자']: row for row in diplomacy.get('country_rows', [])}
+        for p in participants:
+            role = multi_role_recommendation(p, role_map.get(p['name'], {}))
+            lines.append(
+                f"- {role['participant']}: {role['role_title']} / {role['play_style']} / "
+                f"강한 축 {role['axis_name']} / 가까운 축 {role['close_axis']} / 주의 {role['caution']}"
+            )
+    return "\n".join(lines)
+
+
+# ============================================================
+# 다자간 케미 세력구도 유틸
+# ============================================================
+
+def diplomacy_narrative(participants: List[Dict[str, object]]) -> Dict[str, object]:
+    """
+    3명 이상 1:1 케미에서 조합별 케미를 바탕으로 다자간 세력구도를 설명한다.
+    다자간 세력 비유 대신, 중심축·협력축·긴장축·완충축이라는 관계 구조 언어를 사용한다.
+    """
+    pair_rows = pairwise_compatibility_rows(participants)
+    if len(participants) < 3:
+        return {
+            "summary": "다자간 세력구도는 3명 이상일 때 표시됩니다.",
+            "allies": [],
+            "cooperative": [],
+            "tensions": [],
+            "cold": [],
+            "mediators": [],
+            "country_rows": [],
+            "comments": [],
+        }
+
+    score_map: Dict[str, List[Tuple[str, float]]] = {p["name"]: [] for p in participants}
+    for row in pair_rows:
+        left = row.get("A")
+        right = row.get("B")
+        if not left or not right:
+            try:
+                left, right = row["조합"].split(" × ")
+            except Exception:
+                continue
+        score = float(row["케미 점수"])
+        score_map[left].append((right, score))
+        score_map[right].append((left, score))
+
+    structure_rows = []
+    for p in participants:
+        name = p["name"]
+        rels = score_map.get(name, [])
+        scores = [s for _other, s in rels]
+        avg_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+        max_rel = max(rels, key=lambda x: x[1]) if rels else ("-", 0)
+        min_rel = min(rels, key=lambda x: x[1]) if rels else ("-", 0)
+        high_count = sum(1 for _other, s in rels if s >= 64)
+        low_count = sum(1 for _other, s in rels if s < 52)
+        total = float(p["result"]["total"])
+
+        if total >= 75 and avg_score >= 64:
+            position = "중심축 후보"
+        elif avg_score >= 68:
+            position = "연결 허브"
+        elif low_count == 0 and avg_score >= 58:
+            position = "완충·조율축"
+        elif low_count >= 2:
+            position = "긴장 집중축"
+        elif high_count >= 1:
+            position = "부분 협력축"
+        else:
+            position = "독립형"
+
+        if avg_score >= 75:
+            relation_style = "강한 결속형"
+        elif avg_score >= 64:
+            relation_style = "협력 우세형"
+        elif avg_score >= 52:
+            relation_style = "조율 혼합형"
+        else:
+            relation_style = "거리 조절형"
+
+        structure_rows.append({
+            "참가자": name,
+            "세력 포지션": position,
+            "케미 평균": avg_score,
+            "관계 성향": relation_style,
+            "가장 가까운 축": f"{max_rel[0]} ({max_rel[1]:.1f})",
+            "가장 조심할 축": f"{min_rel[0]} ({min_rel[1]:.1f})",
+            "고케미 수": high_count,
+            "긴장축 수": low_count,
+        })
+
+    allies = [row for row in pair_rows if row.get("판정") in ["찰떡 호흡", "든든한 조합"] or float(row["케미 점수"]) >= 76]
+    cooperative = [row for row in pair_rows if row.get("판정") == "좋은 합의 케미" or 64 <= float(row["케미 점수"]) < 76]
+    tensions = [row for row in pair_rows if row.get("판정") in ["마찰 관리형 케미", "속도가 다른 케미"] or float(row["케미 점수"]) < 52]
+    cold = [row for row in pair_rows if row.get("판정") == "조율 가능한 케미" or 52 <= float(row["케미 점수"]) < 64]
+
+    structure_sorted = sorted(structure_rows, key=lambda r: float(r["케미 평균"]), reverse=True)
+    # 연결 허브가 여러 명 반복되면 의미가 흐려지므로, 최고 평균 1명만 연결 허브로 두고 나머지는 완충·조율축으로 완화한다.
+    hub_seen = False
+    for row in structure_sorted:
+        if row.get("세력 포지션") == "연결 허브":
+            if hub_seen:
+                row["세력 포지션"] = "완충·조율축"
+            else:
+                hub_seen = True
+    mediators = []
+    for row in structure_sorted:
+        if int(row["긴장축 수"]) == 0 and float(row["케미 평균"]) >= 58:
+            mediators.append(row)
+    if not mediators and structure_sorted:
+        mediators.append(structure_sorted[0])
+
+    top_score = sorted(participants, key=lambda p: float(p["result"]["total"]), reverse=True)[0]
+    top_connector = structure_sorted[0] if structure_sorted else None
+
+    if allies:
+        alliance_text = "강한 협력축은 " + ", ".join([r["조합"] for r in allies[:3]]) + "입니다."
+    elif cooperative:
+        alliance_text = "강한 결속보다는 여러 조합의 협력 가능성이 분산되어 있습니다."
+    else:
+        alliance_text = "뚜렷한 협력축은 약하고 각자의 독립성이 더 강하게 보입니다."
+
+    if tensions:
+        tension_text = "긴장축은 " + ", ".join([r["조합"] for r in tensions[:3]]) + "에서 두드러집니다."
+    elif cold:
+        tension_text = "정면 충돌보다는 조율이 필요한 축이 일부 보입니다."
+    else:
+        tension_text = "직접적인 긴장축은 비교적 약합니다."
+
+    mediator_text = ""
+    if mediators:
+        mediator_text = f"완충·조율 역할은 {mediators[0]['참가자']}에게 가장 자연스럽게 보입니다."
+
+    summary = (
+        f"원국 참고점 기준 중심 후보는 {top_score['name']}입니다. "
+        f"다자간 케미 구조에서는 평균 케미가 높은 {top_connector['참가자'] if top_connector else '-'}가 대화와 흐름을 잇는 역할을 하기 쉽습니다. "
+        f"{alliance_text} {tension_text} {mediator_text}"
+    )
+
+    comments = []
+    for row in structure_rows:
+        comments.append(
+            f"{row['참가자']}은/는 {row['세력 포지션']}에 가깝고, 관계 성향은 {row['관계 성향']}입니다. "
+            f"가장 가까운 축은 {row['가장 가까운 축']}, 조율하면 좋은 축은 {row['가장 조심할 축']}입니다."
+        )
+
+    return {
+        "summary": summary,
+        "allies": allies,
+        "cooperative": cooperative,
+        "tensions": tensions,
+        "cold": cold,
+        "mediators": mediators,
+        "country_rows": structure_rows,
+        "comments": comments,
+    }
+
+
+# ============================================================
+# 투명성·안전성 보완 유틸
+# ============================================================
+
+def score_breakdown(result: Dict[str, object]) -> Dict[str, float]:
+    base = round(float(result.get("base_total", result.get("total", 0))), 1)
+    holistic = result.get("holistic", {}) or {}
+    adjustment = round(float(holistic.get("adjustment", 0.0)), 1)
+    shinsal = result.get("shinsal", {}) or {}
+    shinsal_adj = round(float(shinsal.get("adjustment", 0.0)), 1)
+    operability = result.get("operability", {}) or {}
+    operability_adj = round(float(operability.get("adjustment", 0.0)), 1)
+    final = round(float(result.get("total", base + shinsal_adj + operability_adj)), 1)
+    category_sum = round(sum(float(r["점수"]) for r in category_totals(result["categorized_scores"])), 1)
+    return {"기본 원국 참고점": base, "카테고리 합계": category_sum, "전체 인상 보정": adjustment, "신살·공망": shinsal_adj, "운용성 보정": operability_adj, "최종 점수": final}
+
+
+def axis_info_from_category(category_name: str) -> Dict[str, str]:
+    raw = str(category_name or "")
+    if "크기" in raw:
+        return {
+            "primary": "기초체력",
+            "legacy": "기운의 크기",
+            "icon": "💪",
+            "short": "오행·월령·통근·일간",
+            "meaning": "기본 체급과 버티는 힘입니다. 원국의 재료가 얼마나 단단하게 잡혀 있는지를 봅니다.",
+            "strong": "세 축 중 기초체력이 가장 두드러집니다. 기본 재료와 버티는 힘이 비교적 단단해 환경이 흔들려도 자기 구조를 유지하려는 힘이 강한 편입니다.",
+        }
+    if "순환" in raw:
+        return {
+            "primary": "흐름과 연결",
+            "legacy": "기운의 순환",
+            "icon": "🔄",
+            "short": "조후·십성 흐름",
+            "meaning": "기운이 막히지 않고 이어지는 힘입니다. 생각·자원·표현·역할이 서로 연결되는지를 봅니다.",
+            "strong": "세 축 중 흐름과 연결이 가장 두드러집니다. 혼자 힘을 쌓는 것보다 상황을 읽고 연결하며 흐름을 만들어내는 힘이 강한 편입니다.",
+        }
+    if "발현" in raw:
+        return {
+            "primary": "현실작동력",
+            "legacy": "기운의 발현",
+            "icon": "✨",
+            "short": "합충·현실 작동",
+            "meaning": "기운이 실제 행동, 관계, 역할 수행으로 드러나는 힘입니다. 현실에서 작동하는 방식을 봅니다.",
+            "strong": "세 축 중 현실작동력이 가장 두드러집니다. 생각이나 기질이 안에만 머물기보다 실제 행동, 관계, 역할 수행으로 또렷하게 드러나는 편입니다.",
+        }
+    return {"primary": str(category_name or "-"), "legacy": "", "icon": "•", "short": "", "meaning": "세부 항목별 반영치와 근거를 확인합니다.", "strong": ""}
+
+
+def category_plain_title(category_name: str) -> str:
+    return axis_info_from_category(category_name)["primary"]
+
+
+def category_legacy_title(category_name: str) -> str:
+    return axis_info_from_category(category_name).get("legacy", "")
+
+
+def category_short_meaning(category_name: str) -> str:
+    return axis_info_from_category(category_name)["meaning"]
+
+
+def render_category_reason_expanders(result: Dict[str, object], prefix: str = "cat") -> None:
+    """3대 카테고리의 하위 분석 근거를 터치/클릭으로 확인하는 영역."""
+    st.markdown("#### 세부 분석 근거")
+    st.caption("큰 점수는 3대 분류로 먼저 보고, 아래 펼침 영역에서 하위 항목별 근거를 확인할 수 있습니다.")
+    for category, sub_items in result["categorized_scores"].items():
+        score_sum = round(sum(float(v[0]) for v in sub_items.values()), 1)
+        max_sum = round(sum(float(v[1]) for v in sub_items.values()), 1)
+        title = category_plain_title(category)
+        if safe_toggle(f"{title} — {score_sum}/{max_sum}점", value=False, key=f"{prefix}_cat_{category}"):
+            safe_write(category_short_meaning(category))
+            rows = []
+            for name, (score, max_score, notes) in sub_items.items():
+                rows.append({
+                    "하위 항목": name,
+                    "점수": score,
+                    "배점": max_score,
+                    "비율": f"{(float(score) / float(max_score) * 100):.1f}%" if float(max_score) else "0.0%",
+                    "대표 근거": "; ".join(notes[:3]) if notes else "-",
+                })
+            safe_dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            for row in rows:
+                if safe_toggle(f"근거 보기 · {row['하위 항목']}", value=False, key=f"{prefix}_reason_{row['하위 항목']}"):
+                    safe_write(row["대표 근거"])
+
+
+def render_ability_axis_detail(result: Dict[str, object], axis_keyword: str) -> None:
+    """3대 능력치 중 하나의 하위 항목과 근거를 표시한다."""
+    matched = [
+        (category, sub_items)
+        for category, sub_items in result["categorized_scores"].items()
+        if axis_keyword in category
+    ]
+    if not matched:
+        st.info(f"{axis_keyword} 항목을 찾지 못했습니다.")
+        return
+
+    for category, sub_items in matched:
+        score_sum = round(sum(float(v[0]) for v in sub_items.values()), 1)
+        max_sum = round(sum(float(v[1]) for v in sub_items.values()), 1)
+        st.markdown(f"#### {category_plain_title(category)} — {score_sum}/{max_sum}점")
+        safe_write(category_short_meaning(category))
+        rows = []
+        for name, (score, max_score, notes) in sub_items.items():
+            rows.append({
+                "하위 항목": name,
+                "반영치": score,
+                "기준": max_score,
+                "비율": f"{(float(score) / float(max_score) * 100):.1f}%" if float(max_score) else "0.0%",
+                "대표 근거": "; ".join(notes[:3]) if notes else "-",
+            })
+        safe_dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def render_score_breakdown_card(result: Dict[str, object]) -> None:
+    bd = score_breakdown(result)
+    st.markdown(f"""
+    <div class="mini-card">
+        <div class="mini-card-title">점수 산식 공개</div>
+        <div class="mini-card-value">기초체력 + 흐름과 연결 + 현실작동력 + 신살·공망 = {bd['최종 점수']}</div>
+        <div style="color:rgba(75,45,58,0.74); margin-top:0.55rem; line-height:1.55;">
+            대표 참고점은 3대 능력치 합계에 신살·공망 체감 보정을 더한 값입니다. 전체 인상 보정은 해설용 참고 신호로만 표시합니다.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_ability_structure_map() -> None:
+    st.markdown("""
+    <div class="ability-map">
+        <div class="ability-card">
+            <div class="ability-card-title">기운의 크기</div>
+            <div class="ability-card-body">
+                오행 세력, 월령, 통근, 일간 강약, 격국 골격을 봅니다.<br>
+                원국의 기본 체급과 버티는 힘에 가까운 항목입니다.
+            </div>
+        </div>
+        <div class="ability-card">
+            <div class="ability-card-title">기운의 순환</div>
+            <div class="ability-card-body">
+                조후, 십성 순환, 식상생재, 재생관, 관인상생을 봅니다.<br>
+                기운이 막히지 않고 다음 단계로 이어지는지를 봅니다.
+            </div>
+        </div>
+        <div class="ability-card">
+            <div class="ability-card-title">기운의 발현</div>
+            <div class="ability-card-body">
+                합충형파해, 구조 안정성, 재성·관성 구조, 해석 정합성, 신살·공망 체감 신호를 봅니다.<br>
+                실제 관계·현실 작동성으로 드러나는 힘입니다.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def compatibility_confidence(payload_a: Dict[str, object], payload_b: Dict[str, object]) -> Dict[str, object]:
+    score = 100
+    reasons: List[str] = []
+
+    unknown_count = sum(
+        1 for payload in [payload_a, payload_b]
+        if payload.get("unknown_time") or payload.get("result", {}).get("unknown_time")
+    )
+    if unknown_count:
+        deduction = 18 if unknown_count == 1 else 30
+        score -= deduction
+        reasons.append(f"시주 미상 참가자 {unknown_count}명으로 케미 신뢰도 감점")
+
+    for label, payload in [("A", payload_a), ("B", payload_b)]:
+        auto_check = payload.get("auto_check")
+        warnings = payload.get("validation_warnings") or []
+        if auto_check:
+            stability = auto_check.get("stability")
+            if stability == "검증 필요":
+                score -= 30
+                reasons.append(f"{label}: 자동 산출 안정도 검증 필요")
+            elif stability == "주의":
+                score -= 15
+                reasons.append(f"{label}: 자동 산출 안정도 주의")
+            elif stability == "참고용":
+                score -= 8
+                reasons.append(f"{label}: 삼주 간이 분석으로 참고용")
+        else:
+            reasons.append(f"{label}: 원국 직접 입력 또는 자동 검증 정보 없음")
+        if warnings:
+            score -= min(15, 5 * len(warnings))
+            reasons.append(f"{label}: 원국 입력 확인 메모 {len(warnings)}개")
+    score = max(0, min(MAX_CONFIDENCE_DISPLAY, score))
+    level = "높음" if score >= 80 else ("주의" if score >= 55 else "낮음")
+    if not reasons:
+        reasons.append("두 원국 모두 입력 검증상 큰 경고가 없습니다.")
+    if score == MAX_CONFIDENCE_DISPLAY:
+        reasons.append("신뢰도는 모델 특성상 최대 95%까지만 표시합니다.")
+    return {"score": score, "level": level, "reasons": reasons}
+
+
+def render_compatibility_confidence(payload_a: Dict[str, object], payload_b: Dict[str, object]) -> None:
+    conf = compatibility_confidence(payload_a, payload_b)
+    if conf["level"] == "높음":
+        st.success(f"케미 판정 신뢰도: {conf['level']} ({conf['score']}/100)")
+    elif conf["level"] == "주의":
+        st.warning(f"케미 판정 신뢰도: {conf['level']} ({conf['score']}/100)")
+    else:
+        st.error(f"케미 판정 신뢰도: {conf['level']} ({conf['score']}/100)")
+    for reason in conf["reasons"]:
+        safe_write(f"- {reason}")
+
+
+def pairwise_compatibility_confidence_rows(participants: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for i in range(len(participants)):
+        for j in range(i + 1, len(participants)):
+            a = participants[i]
+            b = participants[j]
+            conf = compatibility_confidence(a, b)
+            rows.append({"조합": f"{a['name']} × {b['name']}", "신뢰도": conf["level"], "신뢰도 점수": conf["score"], "사유": "; ".join(conf["reasons"][:3])})
+    return rows
+
+
+def render_privacy_legal_notice() -> None:
+    st.markdown("### 개인정보·법적 고지")
+    safe_write("""
+이 앱은 사주 원국 구조와 케미 판정을 오락·참고 목적으로 분석하는 도구입니다.
+현재 코드에는 입력값을 외부 데이터베이스에 저장하거나 제3자 API로 전송하는 기능이 없습니다.
+또한 오류 처리 시 생년월일시, 이름, 원국, payload 등 구체 입력값을 화면 오류 메시지나 앱 로그에 남기지 않는 미기록 원칙으로 설계되어 있습니다.
+앱 설정은 Streamlit 상세 오류 표시를 끄고, 사용 통계 수집 옵션도 비활성화하도록 구성했습니다.
+다만 서버에서 계산하는 구조상 입력값은 계산 순간 서버 메모리에 일시적으로 존재할 수 있고, Streamlit Cloud·브라우저·배포 플랫폼의 일반 접속 로그 또는 오류 코드, 사용자가 직접 저장·공유한 리포트나 캡처는 별도로 남을 수 있습니다.
+""")
+    st.markdown("#### 입력 정보")
+    safe_write("""
+- 원국 직접 입력: 생년월일시를 입력하지 않고 8글자 원국만 사용합니다.
+- 자동 산출: 생년월일, 출생시각, 성별, 날짜 기준, 보정 옵션을 앱 실행 중 계산에 사용합니다. 출생시간을 모르면 시주를 확정하지 않고 삼주 간이 분석으로 표시합니다.
+- 1:1 케미: 타인의 정보를 입력할 수 있으므로 당사자의 동의를 받은 정보만 입력해야 합니다.
+
+- 실명 입력은 권장하지 않습니다. 1:1 케미에서는 A, B, 상대1, 참가자1 같은 별명을 사용하세요.
+- 별명을 쓰더라도 카톡방 맥락, 리포트 다운로드, 화면 캡처를 통해 특정인이 추정될 수 있으므로 공유에 주의하세요.
+""")
+    st.markdown("#### 이용상 제한")
+    safe_write("""
+- 결과는 법률, 의료, 투자, 채용, 혼인, 관계 단절 등 중대한 의사결정의 근거로 사용해서는 안 됩니다.
+- 케미 판정의 '속도가 다른 케미', '마찰 관리형 케미' 등 표현은 게임형 분류이며 실제 적대 관계를 뜻하지 않습니다.
+- 결과를 타인 비방, 조롱, 따돌림, 차별, 압박에 사용하지 마세요.
+""")
+    st.markdown("#### 운영자에게 권장되는 공개 배포 보완")
+    safe_write("""
+- 공개 서비스로 운영한다면 본 앱의 개인정보 처리방침을 실제 운영자·서버·로그 환경에 맞게 보완해 게시하세요.
+- 수집 항목, 이용 목적, 보유 기간, 제3자 제공 여부, 파기 방법을 명확히 고지하세요.
+- 오류 로그에 생년월일시가 출력되지 않도록 운영 환경을 점검하세요.
+""")
+    st.markdown("""
+#### 개인정보·공유 주의사항
+
+이 앱은 입력값을 별도 데이터베이스에 저장하지 않고, 오류 처리 시에도 생년월일시·이름·원국·payload 등 구체 입력값을 로그나 오류 메시지에 남기지 않도록 설계되어 있습니다.  
+다만 다음 위험은 구조상 완전히 제거할 수 없습니다.
+
+1. 서버에서 계산하는 구조상 입력값은 계산 순간 서버 메모리에 일시적으로 존재합니다.
+2. Streamlit Cloud 등 배포 플랫폼의 일반 접속 로그는 앱 코드로 완전히 통제할 수 없습니다.
+3. 사용자가 다운로드한 리포트 파일에는 이름·분석 결과가 남을 수 있습니다.
+4. 사용자가 화면을 캡처하거나 공유하면 정보가 외부로 나갈 수 있습니다.
+5. 운영자가 나중에 디버깅용 `print()`를 다시 추가하면 위험이 재발할 수 있습니다.
+6. 공개 GitHub 저장소에 실제 인물 예시값을 커밋하면 별도 노출 위험이 생깁니다.
+
+따라서 현재 버전은 Streamlit 구조에서 가능한 **미저장·미기록·고지 강화 안정판**입니다.  
+서버에도 생년월일시가 전혀 가지 않게 하려면 Streamlit이 아니라 **브라우저 내부에서만 계산하는 프론트엔드 웹앱 구조**로 전환해야 합니다.
+""")
+
+
+def audit_summary_rows() -> List[Dict[str, str]]:
+    return [
+        {"항목": "기계적 점수 계산 안정성", "판정": "양호", "보완": "항목별 safe_score 및 총점 clamp 유지"},
+        {"항목": "배점 초과 방지", "판정": "양호", "보완": "3대 카테고리와 최종 점수 산식 공개"},
+        {"항목": "총점 계산 구조", "판정": "대체로 양호", "보완": "기본 원국 참고점 + 전체 인상 보정 = 최종 점수 명시"},
+        {"항목": "중복 가감점", "판정": "일부 위험", "보완": "전체 인상 보정은 ±4점 제한, 향후 원인 태그 추적 권장"},
+        {"항목": "케미 반영", "판정": "참고형", "보완": "4축 분석 + 관계 유형 태그 + 전체 인상 보정 ±5점 + 복합 안정 보정 + 신뢰도 표시"},
+        {"항목": "주관 개입", "판정": "원국 중간 / 케미 높음", "보완": "점수와 유형 태그를 분리하고 오락·참고용 고지 강화"},
+        {"항목": "개인정보 저장 위험", "판정": "코드상 낮음", "보완": "DB 저장·외부 전송 없음, 오류 메시지 입력값 미기록"},
+        {"항목": "실정법상 주의", "판정": "개인정보·표현상 오해 관리 필요", "보완": "타인 정보 동의 및 중대 의사결정 금지 안내"},
+    ]
+
+
+# ============================================================
+# [SECTION 18] Streamlit 페이지
+#
+# 이 섹션의 내용 요약: 첫 화면, 입력 화면, 결과 화면의 라우팅과 레이아웃을 담당합니다. session_state와 버튼 흐름이 집중됩니다.
+# 주요 함수/상수: init_session_state, 메인 라우팅 로직
+# 변경 시 영향: 사용자 진입 흐름.
+# ============================================================
+
+APP_VERSION = "v5.140"
+APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
+
+# ============================================================
+# 12. Streamlit UI — 사주MRI
+# ============================================================
+
+import time as _time_module
+
+st.set_page_config(
+    page_title="사주MRI",
+    page_icon="",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+# v5.54 UI 보강 CSS
+st.markdown("""
+<style>
+.svg-radar-card,.chem-radar-card{background:#fff;border:1px solid rgba(230,164,184,.30);border-radius:20px;padding:.75rem;box-shadow:0 10px 22px rgba(255,125,165,.08);}
+.element-bar-row{display:grid;grid-template-columns:34px 1fr 54px;align-items:center;gap:.45rem;margin:.34rem 0;color:#5b3f4b;font-size:.88rem;}
+.element-bar-track,.chem-track{height:10px;background:#f7e4eb;border-radius:999px;overflow:hidden;}
+.element-bar-fill{height:100%;background:#d64273;border-radius:999px;}
+.chem-element-row{display:grid;grid-template-columns:34px 1fr;gap:.5rem;align-items:center;margin:.55rem 0;}
+.chem-element-label{font-weight:950;color:#4b2d3a;text-align:center;}
+.chem-line{display:grid;grid-template-columns:56px 1fr 54px;gap:.42rem;align-items:center;margin:.22rem 0;font-size:.82rem;color:#6f4f5c;}
+.chem-fill{height:100%;border-radius:999px;}
+.chem-fill.mine{background:#d64273;}
+.chem-fill.friend{background:#6b8cff;}
+.daewun-flow-track{display:flex;gap:.55rem;overflow-x:auto;padding:.35rem .1rem .55rem .1rem;}
+.daewun-flow-card{min-width:104px;background:#fff;border:2px solid #f1cbd7;border-radius:16px;padding:.75rem .65rem;text-align:center;box-shadow:0 8px 18px rgba(255,125,165,.10);}
+.daewun-flow-card.current{background:#fff0f5;border-color:#d64273;}
+.daewun-flow-badge{font-size:.74rem;color:#8b6775;font-weight:900;}
+.daewun-flow-age{font-size:.82rem;color:#7a5665;}
+.daewun-flow-gz{font-size:1.28rem;font-weight:950;color:#4b2d3a;}
+.daewun-flow-score{font-size:.85rem;color:#d64273;font-weight:900;}
+.daewun-flow-icon{font-size:1.15rem;height:1.3rem;}
+.radar-legend{display:flex;gap:1rem;justify-content:center;align-items:center;margin-top:.1rem;font-size:.88rem;color:#5b3f4b;font-weight:850;}
+.radar-legend span{display:inline-flex;gap:.35rem;align-items:center;}
+.radar-legend i{display:inline-block;width:12px;height:12px;border-radius:999px;}
+.chem-overlap-list{display:grid;gap:.35rem;margin-top:.45rem;}
+.chem-overlap-row{display:grid;grid-template-columns:34px 1fr 1fr;gap:.45rem;align-items:center;background:#fff8fb;border:1px solid rgba(230,164,184,.28);border-radius:12px;padding:.45rem .6rem;color:#5b3f4b;font-size:.86rem;}
+.chem-overlap-row b{color:#d64273;}
+.chem-overlap-row em{font-style:normal;color:#7a5665;text-align:right;}
+.luck-intensity-card{background:#fff;border:1px solid rgba(230,164,184,.32);border-radius:16px;padding:.75rem .85rem;margin:.35rem 0 .45rem 0;}
+.luck-intensity-label{color:#7a5665;font-size:.84rem;font-weight:850;}
+.luck-intensity-value{font-size:1.8rem;line-height:1.15;color:#d64273;font-weight:950;}
+.mini-meter{height:12px;background:#f6e5eb;border-radius:999px;overflow:hidden;margin-top:.35rem;}
+.mini-meter span{display:block;height:100%;background:linear-gradient(90deg,#8ab7ff,#f2c94c,#ef4444);border-radius:999px;}
+.flow-strength-row{margin:.5rem 0 .35rem 0;}
+.flow-strength-label{display:flex;justify-content:space-between;gap:.5rem;font-size:.76rem;color:#7a5665;font-weight:900;margin-bottom:.2rem;}
+.flow-strength-meter{height:9px;background:#eef2f7;border-radius:999px;overflow:hidden;}
+.flow-strength-meter span{display:block;height:100%;background:#64748b;border-radius:999px;}
+
+.small-muted{font-size:.82rem;color:#7a6a72;margin-top:.55rem;line-height:1.55;}
+.pipeline-card{padding:1rem;margin:.75rem 0;border-radius:18px;background:#fff;border:1px solid rgba(214,66,115,.14);box-shadow:0 8px 20px rgba(80,40,60,.06);}
+.flow-pipeline{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin:.7rem 0;}
+.flow-node{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:.55rem .7rem;border-radius:16px;background:#f8fbff;border:1px solid #dbeafe;color:#334155;}
+.flow-node b{font-size:.9rem;}
+.flow-node em{font-style:normal;font-weight:900;color:#2563eb;}
+.pipe-pipeline{gap:.55rem;align-items:center;flex-wrap:wrap;}
+.pipe-node{min-width:92px;background:#f8fbff;border-color:#dbeafe;box-shadow:0 6px 14px rgba(30,64,175,.06);}
+.pipe-wrap{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:74px;flex:1;max-width:164px;gap:.18rem;}
+.pipe-main{display:inline-flex;align-items:center;width:100%;min-width:58px;}
+.pipe-line{display:inline-block;border-radius:999px;min-width:44px;width:100%;box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
+.pipe-arrow{display:inline-block;width:0;height:0;margin-left:-1px;}
+.pipe-label{font-size:.68rem;font-weight:900;color:#7a5665;white-space:nowrap;line-height:1;}
+.pipe-good .pipe-line{height:18px;background:#334155;}
+.pipe-good .pipe-arrow{border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:13px solid #334155;}
+.pipe-mid .pipe-line{height:12px;background:#64748b;}
+.pipe-mid .pipe-arrow{border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:11px solid #64748b;}
+.pipe-thin .pipe-line{height:7px;background:repeating-linear-gradient(90deg,#94a3b8,#94a3b8 8px,transparent 8px,transparent 14px);box-shadow:none;}
+.pipe-thin .pipe-arrow{border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid #94a3b8;}
+.pipe-broken .pipe-main{position:relative;transform:rotate(-2deg);}
+.pipe-broken .pipe-line{height:5px;background:repeating-linear-gradient(90deg,#cbd5e1,#cbd5e1 6px,transparent 6px,transparent 12px);box-shadow:none;opacity:.9;}
+.pipe-broken .pipe-line::after{content:"";display:inline-block;width:12px;height:12px;border-right:3px solid #94a3b8;border-bottom:3px solid #94a3b8;transform:rotate(35deg);margin-left:8px;margin-top:-5px;}
+.pipe-broken .pipe-arrow{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid #cbd5e1;}
+.shinsal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:.85rem 0 1.1rem;}
+.shinsal-card{position:relative;overflow:hidden;border-radius:26px;padding:1.08rem 1.05rem;border:1px solid rgba(214,66,115,.17);background:linear-gradient(135deg,#fff7fb,#fffdf8);box-shadow:0 14px 30px rgba(80,40,60,.08);}
+.shinsal-card::after{content:"";position:absolute;right:-34px;top:-34px;width:116px;height:116px;border-radius:999px;background:rgba(214,66,115,.08);}
+.shinsal-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.55rem;position:relative;z-index:1;}
+.shinsal-icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:18px;background:#fff;box-shadow:0 8px 18px rgba(80,40,60,.08);font-size:2rem;line-height:1;flex:0 0 54px;}
+.shinsal-name{font-size:1.22rem;font-weight:950;color:#4b2d3a;letter-spacing:-.04em;line-height:1.1;}
+.shinsal-type{font-size:.78rem;color:#8b6b78;font-weight:900;margin-top:.18rem;}
+.shinsal-badge{display:inline-block;margin:.1rem 0 .45rem 0;padding:.22rem .62rem;border-radius:999px;background:rgba(214,66,115,.10);color:#d64273;font-weight:950;font-size:.8rem;}
+.shinsal-summary{font-size:.94rem;color:#4b2d3a;line-height:1.55;font-weight:780;margin:.35rem 0 .62rem;}
+.shinsal-detail{background:rgba(255,255,255,.74);border:1px solid rgba(230,164,184,.22);border-radius:16px;padding:.68rem .75rem;margin:.45rem 0;position:relative;z-index:1;}
+.shinsal-detail-title{font-size:.78rem;color:#d64273;font-weight:950;margin-bottom:.22rem;}
+.shinsal-detail-body{font-size:.84rem;color:#5b3f4b;line-height:1.52;font-weight:650;}
+.shinsal-pos{font-size:.78rem;color:#8b6b78;margin-top:.5rem;font-weight:800;}
+.shinsal-footnote{font-size:.78rem;color:#8b6b78;line-height:1.45;margin-top:.6rem;}
+
+
+/* v5.51: 모바일 색대비 보정 — 흰 글씨는 진한 배경에서만 사용 */
+@media (max-width: 768px) {
+    .hero-subtitle,
+    [data-testid="stCaptionContainer"],
+    .stCaptionContainer,
+    .caption,
+    small,
+    .small-muted,
+    .signal-body,
+    .signal-card,
+    .main-character-desc,
+    .shinsal-detail-body,
+    .shinsal-summary,
+    .privacy-notice,
+    .privacy-notice li {
+        color: #3f2a33 !important;
+    }
+
+    .summary-chip,
+    .viz-pill,
+    .shinsal-badge,
+    .signal-card,
+    .pipeline-card,
+    .mini-card,
+    .mode-card,
+    .luck-intensity-card,
+    .chem-overlap-row {
+        color: #3f2a33 !important;
+    }
+
+    
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="primary"] * {
+        color: #ffffff !important;
+        background-color: transparent;
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(90deg, #b91c5c, #9f1239) !important;
+        border-color: rgba(159, 18, 57, .85) !important;
+    }
+    }
+
+/* v5.51: 펼침/토글/키워드 보기 제목 색대비 보정 */
+details summary,
+details summary *,
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary *,
+[data-testid="stExpander"] label,
+[data-testid="stExpander"] label *,
+[data-testid="stToggle"] label,
+[data-testid="stToggle"] label *,
+[data-testid="stCheckbox"] label,
+[data-testid="stCheckbox"] label *,
+div[role="radiogroup"] label,
+div[role="radiogroup"] label *,
+label[data-baseweb="radio"],
+label[data-baseweb="radio"] *,
+label[data-baseweb="checkbox"],
+label[data-baseweb="checkbox"] * {
+    color: #3f2a33 !important;
+    -webkit-text-fill-color: #3f2a33 !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+}
+
+/* safe_section이 radio 기반으로 렌더링될 때 선택지 텍스트가 흰색으로 남는 현상 방지 */
+div[data-testid="stRadio"] label,
+div[data-testid="stRadio"] label *,
+div[data-testid="stRadio"] p,
+div[data-testid="stRadio"] span {
+    color: #3f2a33 !important;
+    -webkit-text-fill-color: #3f2a33 !important;
+    opacity: 1 !important;
+}
+
+/* v5.51: 결과 화면 제목 색대비 보정 */
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4,
+[data-testid="stMarkdownContainer"] h5,
+[data-testid="stMarkdownContainer"] h6,
+.stMarkdown h1,
+.stMarkdown h2,
+.stMarkdown h3,
+.stMarkdown h4,
+.stMarkdown h5,
+.stMarkdown h6,
+.result-arena h1,
+.result-arena h2,
+.result-arena h3,
+.result-arena h4,
+.result-arena h5,
+.result-arena h6 {
+    color: #3f2a33 !important;
+    -webkit-text-fill-color: #3f2a33 !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+}
+
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4 {
+    font-weight: 950 !important;
+}
+
+.saju-section-heading {
+    color: #3f2a33 !important;
+    -webkit-text-fill-color: #3f2a33 !important;
+    font-weight: 950 !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+}
+
+/* v5.51: 모바일 흐름 파이프 세로형 전환 */
+@media (max-width: 768px) {
+    .pipeline-card {
+        overflow-x: hidden !important;
+    }
+
+    .flow-pipeline.pipe-pipeline {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: .48rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .pipe-node {
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        padding: .62rem .72rem !important;
+        border-radius: 15px !important;
+    }
+
+    .pipe-wrap {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+        align-self: stretch !important;
+        margin: .02rem 0 .06rem 0 !important;
+    }
+
+    .pipe-main {
+        width: min(82%, 260px) !important;
+        min-width: 0 !important;
+        margin: 0 auto !important;
+    }
+
+    .pipe-line {
+        min-width: 0 !important;
+    }
+
+    .pipe-label {
+        font-size: .72rem !important;
+        margin-top: .05rem !important;
+        color: #3f2a33 !important;
+        -webkit-text-fill-color: #3f2a33 !important;
+    }
+
+    .pipe-good .pipe-line { height: 14px !important; }
+    .pipe-mid .pipe-line { height: 10px !important; }
+    .pipe-thin .pipe-line { height: 6px !important; }
+    .pipe-broken .pipe-main { transform: none !important; }
+
+    .flow-node {
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* v5.76: 만세력 원국 카드 매트릭스 복원 */
+.manse-wrap {
+    background: linear-gradient(135deg,#fffafc 0%,#fff7ed 48%,#f8fbff 100%);
+    border: 1px solid rgba(230,164,184,.36);
+    border-radius: 24px;
+    padding: 1rem .9rem;
+    box-shadow: 0 14px 30px rgba(214,66,115,.08);
+    margin: .7rem 0 1rem 0;
+}
+.manse-title {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:.6rem;
+    margin-bottom:.72rem;
+    color:#3f2a33 !important;
+}
+.manse-title b {
+    font-size:1.32rem;
+    font-weight:950;
+    color:#3f2a33 !important;
+}
+.manse-title span {
+    font-size:.8rem;
+    font-weight:850;
+    color:#7a5665 !important;
+}
+.manse-grid {
+    display:grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap:.42rem;
+}
+.manse-col {
+    background:#ffffff;
+    border:1px solid rgba(230,164,184,.32);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 8px 18px rgba(80,40,60,.05);
+}
+.manse-col.manse-day {
+    border:2px solid rgba(214,66,115,.50);
+    box-shadow:0 10px 24px rgba(214,66,115,.12);
+}
+.manse-head {
+    background:#fff0f5;
+    color:#3f2a33 !important;
+    text-align:center;
+    padding:.42rem .2rem;
+    font-weight:950;
+    font-size:.88rem;
+    border-bottom:1px solid rgba(230,164,184,.32);
+}
+.manse-role {
+    text-align:center;
+    color:#7a5665 !important;
+    font-weight:900;
+    font-size:.78rem;
+    padding:.32rem .18rem .15rem .18rem;
+    min-height:1.55rem;
+}
+.manse-big {
+    margin:.18rem auto;
+    width:58px;
+    height:58px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:2.08rem;
+    line-height:1;
+    font-weight:950;
+    border:2px solid rgba(63,42,51,.18);
+    color:#2f2028 !important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.65), 0 6px 14px rgba(80,40,60,.08);
+}
+.manse-big.stem { margin-top:.1rem; }
+.manse-big.branch { margin-bottom:.25rem; }
+.manse-el-목 { background:linear-gradient(135deg,#e7fff6,#bcebd9); }
+.manse-el-화 { background:linear-gradient(135deg,#fff0f4,#ffb6c9); }
+.manse-el-토 { background:linear-gradient(135deg,#fff7db,#efd07c); }
+.manse-el-금 { background:linear-gradient(135deg,#f8fafc,#d8dee8); }
+.manse-el-수 { background:linear-gradient(135deg,#eef6ff,#b7d7ff); }
+.manse-ko {
+    text-align:center;
+    color:#5b3f4b !important;
+    font-size:.72rem;
+    font-weight:820;
+    margin-top:-.05rem;
+}
+.manse-hidden {
+    border-top:1px dashed rgba(230,164,184,.45);
+    padding:.42rem .35rem .5rem .35rem;
+    min-height:4.4rem;
+    background:#fffafd;
+}
+.manse-hidden-title {
+    color:#7a5665 !important;
+    font-size:.72rem;
+    font-weight:950;
+    margin-bottom:.22rem;
+    text-align:center;
+}
+.manse-hidden-line {
+    color:#3f2a33 !important;
+    font-size:.72rem;
+    line-height:1.38;
+    font-weight:780;
+    text-align:center;
+    word-break:keep-all;
+}
+.manse-summary {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:.5rem;
+    margin-top:.7rem;
+}
+.manse-summary-card {
+    background:#ffffff;
+    border:1px solid rgba(230,164,184,.3);
+    border-radius:16px;
+    padding:.65rem .7rem;
+}
+.manse-summary-title {
+    color:#d64273 !important;
+    font-size:.78rem;
+    font-weight:950;
+    margin-bottom:.18rem;
+}
+.manse-summary-body {
+    color:#3f2a33 !important;
+    font-size:.84rem;
+    line-height:1.48;
+    font-weight:720;
+}
+
+.manse-luck-wrap {
+    margin:.95rem 0 1.05rem 0;
+    padding:.9rem .85rem;
+    border-radius:22px;
+    background:linear-gradient(135deg,#fffafc 0%,#fff7ed 56%,#f8fbff 100%);
+    border:1px solid rgba(230,164,184,.32);
+    box-shadow:0 12px 26px rgba(80,40,60,.055);
+}
+.manse-luck-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:.6rem;
+    margin-bottom:.68rem;
+}
+.manse-luck-title {
+    color:#3f2a33 !important;
+    font-size:1.06rem;
+    font-weight:950;
+    letter-spacing:-.035em;
+}
+.manse-luck-sub {
+    color:#7a5665 !important;
+    font-size:.78rem;
+    line-height:1.42;
+    font-weight:760;
+    margin-top:.13rem;
+}
+.manse-luck-chip {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:.28rem .54rem;
+    border-radius:999px;
+    background:#fff;
+    border:1px solid rgba(230,164,184,.34);
+    color:#d64273 !important;
+    font-size:.72rem;
+    font-weight:950;
+    white-space:nowrap;
+}
+.manse-luck-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(136px,1fr));
+    gap:.5rem;
+}
+.manse-luck-card {
+    position:relative;
+    min-height:136px;
+    background:#ffffff;
+    border:1px solid rgba(230,164,184,.34);
+    border-radius:18px;
+    padding:.66rem .62rem .7rem .62rem;
+    overflow:hidden;
+    box-shadow:0 8px 18px rgba(80,40,60,.045);
+}
+.manse-luck-card.current {
+    border:2px solid rgba(214,66,115,.52);
+    box-shadow:0 11px 24px rgba(214,66,115,.115);
+}
+.manse-luck-card.good { background:linear-gradient(135deg,#ffffff,#f1fff8); }
+.manse-luck-card.caution { background:linear-gradient(135deg,#ffffff,#fff7ed); }
+.manse-luck-card.hard { background:linear-gradient(135deg,#ffffff,#fff0f5); }
+.manse-luck-badge {
+    display:inline-flex;
+    padding:.18rem .43rem;
+    border-radius:999px;
+    background:#fff0f5;
+    color:#d64273 !important;
+    font-size:.66rem;
+    font-weight:950;
+    margin-bottom:.34rem;
+}
+.manse-luck-age {
+    color:#7a5665 !important;
+    font-size:.74rem;
+    font-weight:900;
+}
+.manse-luck-gz {
+    color:#2f2028 !important;
+    font-size:1.65rem;
+    line-height:1.05;
+    font-weight:950;
+    letter-spacing:-.04em;
+    margin:.12rem 0 .08rem 0;
+}
+.manse-luck-elrow {
+    display:flex;
+    gap:.25rem;
+    flex-wrap:wrap;
+    margin:.22rem 0 .38rem 0;
+}
+.manse-luck-el {
+    display:inline-flex;
+    padding:.15rem .36rem;
+    border-radius:999px;
+    border:1px solid rgba(63,42,51,.12);
+    color:#3f2a33 !important;
+    font-size:.68rem;
+    font-weight:880;
+}
+.manse-luck-el.el-목 { background:#e7fff6; }
+.manse-luck-el.el-화 { background:#fff0f4; }
+.manse-luck-el.el-토 { background:#fff7db; }
+.manse-luck-el.el-금 { background:#f8fafc; }
+.manse-luck-el.el-수 { background:#eef6ff; }
+.manse-luck-score {
+    color:#d64273 !important;
+    font-size:.82rem;
+    font-weight:950;
+}
+.manse-luck-note {
+    color:#5b3f4b !important;
+    font-size:.72rem;
+    line-height:1.38;
+    font-weight:720;
+    margin-top:.28rem;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+.manse-luck-mini {
+    position:absolute;
+    right:.54rem;
+    bottom:.48rem;
+    color:rgba(214,66,115,.18) !important;
+    font-size:2.1rem;
+    font-weight:950;
+    line-height:1;
+}
+.manse-sewun-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:.5rem;
+}
+.manse-sewun-card {
+    background:#ffffff;
+    border:1px solid rgba(230,164,184,.32);
+    border-radius:18px;
+    padding:.66rem .66rem .72rem .66rem;
+    box-shadow:0 8px 18px rgba(80,40,60,.045);
+}
+.manse-sewun-top {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:.4rem;
+    margin-bottom:.24rem;
+}
+.manse-sewun-year {
+    color:#7a5665 !important;
+    font-size:.76rem;
+    font-weight:950;
+}
+.manse-sewun-delta {
+    padding:.16rem .38rem;
+    border-radius:999px;
+    background:#fff0f5;
+    color:#d64273 !important;
+    font-size:.68rem;
+    font-weight:950;
+}
+.manse-sewun-gz {
+    color:#2f2028 !important;
+    font-size:1.45rem;
+    font-weight:950;
+    letter-spacing:-.04em;
+}
+.manse-sewun-score {
+    color:#d64273 !important;
+    font-size:.82rem;
+    font-weight:950;
+    margin:.1rem 0 .22rem 0;
+}
+.manse-sewun-note {
+    color:#5b3f4b !important;
+    font-size:.72rem;
+    line-height:1.38;
+    font-weight:720;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+@media (max-width: 768px) {
+    .manse-wrap { padding:.82rem .58rem; border-radius:20px; }
+    .manse-grid { gap:.25rem; }
+    .manse-head { font-size:.76rem; padding:.36rem .12rem; }
+    .manse-role { font-size:.68rem; min-height:1.35rem; padding:.25rem .08rem .1rem .08rem; }
+    .manse-big {
+        width:42px;
+        height:42px;
+        border-radius:10px;
+        font-size:1.6rem;
+    }
+    .manse-ko { font-size:.62rem; }
+    .manse-hidden { padding:.32rem .14rem .38rem .14rem; min-height:4.65rem; }
+    .manse-hidden-title { font-size:.64rem; }
+    .manse-hidden-line { font-size:.62rem; line-height:1.32; }
+    .manse-summary { grid-template-columns:1fr; gap:.38rem; }
+    .manse-title { align-items:flex-start; flex-direction:column; }
+    .manse-luck-wrap { padding:.75rem .58rem; border-radius:20px; }
+    .manse-luck-head { flex-direction:column; gap:.35rem; }
+    .manse-luck-grid, .manse-sewun-grid { grid-template-columns:1fr; }
+    .manse-luck-card { min-height:118px; }
+}
+
+
+/* v5.54: 사주 풍경도 */
+.saju-landscape-shell {
+    margin: .85rem 0 1.05rem 0;
+    padding: 1rem;
+    border-radius: 30px;
+    border: 1px solid rgba(70,92,120,.16);
+    background: linear-gradient(135deg,#f8fbff 0%,#fff8fb 56%,#fffdf7 100%);
+    box-shadow: 0 18px 36px rgba(40,64,90,.08);
+}
+.saju-landscape-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:.8rem;
+    margin-bottom:.72rem;
+}
+.saju-landscape-title {
+    color:#28384a !important;
+    -webkit-text-fill-color:#28384a !important;
+    font-size:1.38rem;
+    line-height:1.22;
+    font-weight:950;
+    letter-spacing:-.045em;
+}
+.saju-landscape-sub {
+    color:#6a5962 !important;
+    font-size:.86rem;
+    line-height:1.45;
+    font-weight:760;
+    margin-top:.2rem;
+}
+.saju-landscape-chip {
+    display:inline-flex;
+    align-items:center;
+    padding:.36rem .62rem;
+    border-radius:999px;
+    background:#ffffff;
+    border:1px solid rgba(70,92,120,.14);
+    color:#4b5b6b !important;
+    font-size:.74rem;
+    font-weight:900;
+    white-space:nowrap;
+}
+.saju-landscape-grid {
+    display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);
+    gap:.85rem;
+    align-items:stretch;
+}
+.saju-landscape-art {
+    background:#ffffff;
+    border:1px solid rgba(70,92,120,.12);
+    border-radius:24px;
+    padding:.58rem;
+    overflow:hidden;
+}
+.saju-landscape-art svg {
+    width:100%;
+    height:auto;
+    display:block;
+}
+.saju-landscape-panel {
+    background:#ffffff;
+    border:1px solid rgba(214,66,115,.14);
+    border-radius:24px;
+    padding:.86rem .9rem;
+}
+.saju-landscape-panel-title {
+    color:#d64273 !important;
+    font-size:.88rem;
+    font-weight:950;
+    margin:.02rem 0 .45rem 0;
+}
+.saju-landscape-card-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:.5rem;
+    margin-bottom:.72rem;
+}
+.saju-landscape-mini-card {
+    padding:.68rem .72rem;
+    border-radius:18px;
+    background:linear-gradient(135deg,#fff8fb,#f8fbff);
+    border:1px solid rgba(214,66,115,.12);
+}
+.saju-landscape-mini-label {
+    color:#d64273 !important;
+    font-size:.75rem;
+    font-weight:950;
+    margin-bottom:.14rem;
+}
+.saju-landscape-mini-body {
+    color:#3f2a33 !important;
+    font-size:.82rem;
+    line-height:1.45;
+    font-weight:780;
+}
+.saju-landscape-schema {
+    display:grid;
+    gap:.42rem;
+    margin-bottom:.72rem;
+}
+.saju-landscape-schema-row {
+    display:grid;
+    grid-template-columns:78px 1fr;
+    gap:.5rem;
+    align-items:flex-start;
+}
+.saju-landscape-schema-key {
+    color:#d64273 !important;
+    font-size:.75rem;
+    font-weight:950;
+}
+.saju-landscape-schema-val {
+    color:#3f2a33 !important;
+    font-size:.84rem;
+    line-height:1.45;
+    font-weight:780;
+}
+.saju-landscape-chipset {
+    display:flex;
+    flex-wrap:wrap;
+    gap:.28rem;
+}
+.saju-landscape-badge {
+    display:inline-flex;
+    align-items:center;
+    padding:.22rem .48rem;
+    border-radius:999px;
+    background:#f8fbff;
+    border:1px solid rgba(70,92,120,.12);
+    color:#435365 !important;
+    font-size:.72rem;
+    font-weight:860;
+}
+.saju-landscape-bars {
+    display:grid;
+    gap:.36rem;
+    margin-bottom:.68rem;
+}
+.saju-landscape-bar {
+    display:grid;
+    grid-template-columns:18px 1fr 42px;
+    gap:.42rem;
+    align-items:center;
+}
+.saju-landscape-bar-label {
+    color:#3f2a33 !important;
+    font-size:.74rem;
+    font-weight:950;
+}
+.saju-landscape-track {
+    height:10px;
+    background:#eef2f7;
+    border-radius:999px;
+    overflow:hidden;
+}
+.saju-landscape-fill {
+    height:100%;
+    border-radius:999px;
+}
+.saju-landscape-bar-pct {
+    color:#607082 !important;
+    font-size:.72rem;
+    font-weight:900;
+    text-align:right;
+}
+.saju-landscape-one {
+    margin-top:.3rem;
+    padding:.62rem .72rem;
+    border-radius:18px;
+    background:linear-gradient(135deg,#fff0f5,#fffaf0);
+    color:#3f2a33 !important;
+    font-size:.9rem;
+    line-height:1.45;
+    font-weight:900;
+}
+.share-landscape-mini {
+    margin:.55rem 0 .66rem 0;
+    border-radius:22px;
+    overflow:hidden;
+    border:1px solid rgba(70,92,120,.13);
+    background:#fff;
+}
+.share-landscape-mini svg { width:100%; height:auto; display:block; }
+@media (max-width: 768px) {
+    .saju-landscape-shell { padding:.82rem; border-radius:24px; }
+    .saju-landscape-head { flex-direction:column; gap:.4rem; }
+    .saju-landscape-grid { grid-template-columns:1fr; gap:.62rem; }
+    .saju-landscape-title { font-size:1.18rem; }
+    .saju-landscape-panel { padding:.75rem .78rem; }
+    .saju-landscape-card-grid { grid-template-columns:1fr; }
+    .saju-landscape-schema-row { grid-template-columns:74px 1fr; }
+}
+
+
+.saju-landscape-role {
+    margin-bottom:.72rem;
+    padding:.68rem .74rem;
+    border-radius:18px;
+    background:linear-gradient(135deg,#f8fbff,#fff8fb);
+    border:1px solid rgba(70,92,120,.12);
+    color:#3f2a33 !important;
+    font-size:.84rem;
+    line-height:1.48;
+    font-weight:790;
+}
+.saju-landscape-rule-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:.45rem;
+    margin-bottom:.72rem;
+}
+.saju-landscape-rule-card {
+    border-radius:16px;
+    padding:.58rem .62rem;
+    background:#ffffff;
+    border:1px dashed rgba(70,92,120,.18);
+}
+.saju-landscape-rule-key {
+    color:#435365 !important;
+    font-size:.72rem;
+    font-weight:950;
+    margin-bottom:.12rem;
+}
+.saju-landscape-rule-val {
+    color:#3f2a33 !important;
+    font-size:.78rem;
+    line-height:1.4;
+    font-weight:760;
+}
+.saju-landscape-limit {
+    margin-top:.46rem;
+    color:#7a5665 !important;
+    font-size:.75rem;
+    line-height:1.45;
+    font-weight:740;
+}
+
+/* v5.60: 공유 결과 카드 */
+.share-card-wrap {
+    margin: 1rem 0 1.1rem 0;
+    padding: 1.05rem;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 12% 10%, rgba(255,255,255,.95), transparent 34%),
+        linear-gradient(135deg,#fff7fb 0%,#fffdf8 56%,#f7fbff 100%);
+    border: 1px solid rgba(214,66,115,.22);
+    box-shadow: 0 16px 34px rgba(214,66,115,.10);
+}
+.share-card-kicker {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:.6rem;
+    color:#7a5665 !important;
+    font-size:.78rem;
+    font-weight:950;
+    margin-bottom:.5rem;
+}
+.share-card-logo {
+    color:#d64273 !important;
+    font-weight:950;
+    letter-spacing:-.03em;
+}
+.share-card-title {
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-size:clamp(1.65rem,4.2vw,2.35rem);
+    line-height:1.18;
+    letter-spacing:-.055em;
+    font-weight:950;
+    word-break:keep-all;
+    margin:.1rem 0 .75rem 0;
+}
+.share-card-grid {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:.55rem;
+}
+.share-card-box {
+    background:#ffffff;
+    border:1px solid rgba(230,164,184,.30);
+    border-radius:18px;
+    padding:.72rem .78rem;
+}
+.share-card-label {
+    color:#d64273 !important;
+    font-size:.76rem;
+    font-weight:950;
+    margin-bottom:.2rem;
+}
+.share-card-body {
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-size:.92rem;
+    line-height:1.5;
+    font-weight:780;
+    word-break:keep-all;
+}
+.share-card-line {
+    margin-top:.62rem;
+    background:linear-gradient(135deg,#fff0f5,#fffaf0);
+    border:1px solid rgba(214,66,115,.18);
+    border-radius:20px;
+    padding:.82rem .88rem;
+}
+.share-card-line .share-card-body {
+    font-size:1rem;
+    font-weight:900;
+}
+.share-card-footer {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:.7rem;
+    margin-top:.5rem;
+}
+.share-card-caption {
+    color:#7a5665 !important;
+    font-size:.78rem;
+    line-height:1.45;
+    font-weight:760;
+    flex:1 1 auto;
+}
+.share-card-badges {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    gap:.28rem;
+    margin-left:auto;
+}
+.share-card-badge {
+    display:inline-flex;
+    align-items:center;
+    padding:.28rem .52rem;
+    border-radius:999px;
+    background:#fff6ea;
+    border:1px solid rgba(214,66,115,.16);
+    color:#6a4552 !important;
+    font-size:.68rem;
+    font-weight:900;
+    white-space:nowrap;
+}
+.element-tone-grid {
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:.38rem;
+    margin-top:.45rem;
+}
+.element-tone-card {
+    border-radius:16px;
+    padding:.48rem .36rem .5rem .36rem;
+    text-align:center;
+    border:1px solid rgba(63,42,51,.08);
+    box-shadow:0 6px 14px rgba(63,42,51,.04);
+}
+.element-tone-symbol {
+    display:block;
+    font-size:1.22rem;
+    line-height:1;
+    margin-bottom:.16rem;
+}
+.element-tone-name {
+    display:block;
+    font-size:.72rem;
+    font-weight:950;
+    margin-bottom:.08rem;
+}
+.element-tone-pct {
+    display:block;
+    font-size:.72rem;
+    font-weight:820;
+    color:#3f2a33 !important;
+}
+@media (max-width: 768px) {
+    .share-card-wrap { padding:.88rem; border-radius:22px; }
+    .share-card-title { font-size:1.72rem; }
+    .share-card-grid { grid-template-columns:1fr; gap:.42rem; }
+    .share-card-box { padding:.64rem .7rem; }
+    .share-card-body { font-size:.88rem; }
+    .share-card-footer { flex-direction:column; align-items:flex-start; }
+    .share-card-badges { justify-content:flex-start; margin-left:0; }
+    .element-tone-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+
+/* v5.51: 오늘의 기운 나침반 */
+.today-compass {
+    margin: .9rem 0 1rem 0;
+    padding: 1rem 1.05rem;
+    border-radius: 24px;
+    border: 1px solid rgba(16,185,129,.24);
+    background:
+        radial-gradient(circle at 8% 12%, rgba(255,255,255,.96), transparent 34%),
+        linear-gradient(135deg,#ecfdf5 0%,#fff7fb 54%,#fffaf0 100%);
+    box-shadow: 0 14px 30px rgba(16,185,129,.08);
+}
+.today-compass-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:.7rem;
+    margin-bottom:.72rem;
+}
+.today-compass-title {
+    color:#064e3b !important;
+    -webkit-text-fill-color:#064e3b !important;
+    font-size:1.18rem;
+    font-weight:950;
+    letter-spacing:-.04em;
+}
+.today-compass-date {
+    color:#7a5665 !important;
+    font-size:.78rem;
+    font-weight:900;
+    white-space:nowrap;
+}
+.today-compass-grid {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:.5rem;
+}
+.today-compass-box {
+    background:#ffffff;
+    border:1px solid rgba(16,185,129,.18);
+    border-radius:17px;
+    padding:.68rem .72rem;
+}
+.today-compass-label {
+    color:#047857 !important;
+    font-size:.74rem;
+    font-weight:950;
+    margin-bottom:.2rem;
+}
+.today-compass-body {
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-size:.88rem;
+    line-height:1.45;
+    font-weight:780;
+    word-break:keep-all;
+}
+.today-compass-prescription {
+    margin-top:.62rem;
+    border-radius:18px;
+    padding:.78rem .86rem;
+    background:linear-gradient(135deg,#ffffff,#fff8fb);
+    border:1px solid rgba(214,66,115,.16);
+}
+.today-compass-prescription .today-compass-body {
+    font-size:.98rem;
+    font-weight:900;
+}
+.today-compass-note {
+    color:#7a5665 !important;
+    font-size:.76rem;
+    line-height:1.45;
+    margin-top:.46rem;
+    font-weight:760;
+}
+@media (max-width: 768px) {
+    .today-compass { padding:.86rem .76rem; border-radius:20px; }
+    .today-compass-head { flex-direction:column; align-items:flex-start; gap:.22rem; }
+    .today-compass-grid { grid-template-columns:1fr; gap:.42rem; }
+    .today-compass-box { padding:.62rem .68rem; }
+    .today-compass-body { font-size:.86rem; }
+}
+
+
+/* v5.84: 첫 화면 정보량 압축 카드 */
+.compact-glance-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:.72rem;
+    margin:.2rem 0 1rem 0;
+}
+.compact-glance-card{
+    background:linear-gradient(135deg,#ffffff,#fff8fb);
+    border:1px solid rgba(214,66,115,.18);
+    border-radius:20px;
+    padding:.9rem 1rem;
+    box-shadow:0 8px 20px rgba(214,66,115,.06);
+}
+.compact-glance-label{
+    font-size:.78rem;
+    font-weight:950;
+    color:#9a6b7b;
+    margin-bottom:.28rem;
+}
+.compact-glance-title{
+    font-size:1.02rem;
+    font-weight:950;
+    color:#3f2a33;
+    line-height:1.35;
+    word-break:keep-all;
+}
+.compact-glance-body{
+    margin-top:.32rem;
+    font-size:.86rem;
+    font-weight:760;
+    color:#735563;
+    line-height:1.55;
+    word-break:keep-all;
+}
+
+/* v5.79: 결과 상단 오늘의 기운 빠른 확인 카드 */
+.today-quick-card {
+    margin: .72rem 0 1rem 0;
+    padding: .9rem .95rem;
+    border-radius: 24px;
+    border: 1px solid rgba(14,165,233,.22);
+    background:
+        radial-gradient(circle at 8% 10%, rgba(255,255,255,.96), transparent 32%),
+        linear-gradient(135deg,#eefcff 0%,#fff7fb 58%,#fffaf0 100%);
+    box-shadow: 0 14px 30px rgba(14,165,233,.08);
+}
+.today-quick-top {
+    display:flex;
+    justify-content:space-between;
+    gap:.7rem;
+    align-items:flex-start;
+    margin-bottom:.66rem;
+}
+.today-quick-title {
+    color:#0f4c5c !important;
+    -webkit-text-fill-color:#0f4c5c !important;
+    font-size:1.16rem;
+    font-weight:950;
+    letter-spacing:-.04em;
+}
+.today-quick-sub {
+    margin-top:.18rem;
+    color:#6a5962 !important;
+    font-size:.82rem;
+    line-height:1.42;
+    font-weight:760;
+}
+.today-quick-pill {
+    padding:.32rem .58rem;
+    border-radius:999px;
+    background:#ffffff;
+    border:1px solid rgba(14,165,233,.18);
+    color:#0f4c5c !important;
+    font-size:.74rem;
+    font-weight:900;
+    white-space:nowrap;
+}
+.today-quick-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:.48rem;
+}
+.today-quick-box {
+    background:#ffffff;
+    border:1px solid rgba(14,165,233,.14);
+    border-radius:17px;
+    padding:.62rem .68rem;
+}
+.today-quick-label {
+    color:#0e7490 !important;
+    font-size:.72rem;
+    font-weight:950;
+    margin-bottom:.17rem;
+}
+.today-quick-body {
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-size:.86rem;
+    line-height:1.45;
+    font-weight:820;
+    word-break:keep-all;
+}
+.today-quick-action {
+    margin-top:.56rem;
+    color:#7a5665 !important;
+    font-size:.78rem;
+    font-weight:850;
+}
+@media (max-width: 768px) {
+    .today-quick-card { padding:.82rem .74rem; border-radius:20px; }
+    .today-quick-top { flex-direction:column; gap:.28rem; }
+    .today-quick-grid { grid-template-columns:1fr; gap:.38rem; }
+    .today-quick-body { font-size:.84rem; }
+}
+
+/* v5.51: 오늘 일운 합충파형해 표시 */
+.today-interactions {
+    margin-top: .62rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .38rem;
+}
+.today-interaction-row {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: .5rem;
+    align-items: start;
+    background: #ffffff;
+    border: 1px solid rgba(16,185,129,.16);
+    border-radius: 16px;
+    padding: .56rem .62rem;
+}
+.today-interaction-kind {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    border-radius: 999px;
+    font-weight: 950;
+    font-size: .78rem;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.today-interaction-kind.good { background: #047857; }
+.today-interaction-kind.change { background: #b45309; }
+.today-interaction-kind.caution { background: #9f1239; }
+.today-interaction-kind.soft { background: #5f3f4d; }
+.today-interaction-body {
+    color: #3f2a33 !important;
+    -webkit-text-fill-color: #3f2a33 !important;
+    font-size: .84rem;
+    line-height: 1.45;
+    font-weight: 760;
+    word-break: keep-all;
+}
+.today-interaction-body b {
+    color: #3f2a33 !important;
+    -webkit-text-fill-color: #3f2a33 !important;
+}
+.today-interaction-empty {
+    margin-top:.62rem;
+    background:#ffffff;
+    border:1px dashed rgba(16,185,129,.22);
+    border-radius:16px;
+    padding:.68rem .72rem;
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-size:.86rem;
+    line-height:1.45;
+    font-weight:780;
+}
+
+/* v5.51: 내 사주MRI 레이어 메뉴와 힘 쓰는 스타일 포인터 개선 */
+.operation-meter {
+    position: relative;
+    height: 16px;
+    border-radius: 999px;
+    margin: 1.1rem 0 .42rem 0;
+    background: linear-gradient(90deg,#8ab7ff 0%,#f2c94c 50%,#ef4444 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.62), 0 7px 18px rgba(80,40,60,.08);
+}
+.operation-marker {
+    position:absolute;
+    top:-21px;
+    transform:translateX(-50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0;
+    z-index:3;
+}
+.operation-marker-badge {
+    background:#3f2a33;
+    color:#ffffff !important;
+    -webkit-text-fill-color:#ffffff !important;
+    border-radius:999px;
+    padding:.18rem .48rem;
+    font-size:.68rem;
+    font-weight:950;
+    white-space:nowrap;
+    box-shadow:0 7px 16px rgba(63,42,51,.18);
+}
+.operation-marker-triangle {
+    width:0;
+    height:0;
+    border-left:7px solid transparent;
+    border-right:7px solid transparent;
+    border-top:8px solid #3f2a33;
+}
+.operation-axis-note {
+    margin-top:.35rem;
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-size:.92rem;
+    line-height:1.45;
+    font-weight:820;
+}
+.operation-axis-note b {
+    color:#d64273 !important;
+    -webkit-text-fill-color:#d64273 !important;
+}
+div[data-testid="stRadio"] > label {
+    color:#3f2a33 !important;
+    font-weight:950 !important;
+    font-size:1.03rem !important;
+    margin-bottom:.4rem !important;
+}
+div[data-testid="stRadio"] div[role="radiogroup"] label {
+    background:#fffafd !important;
+    border:1.5px solid rgba(214,66,115,.24) !important;
+    border-radius:999px !important;
+    padding:.58rem .95rem !important;
+    min-height:48px !important;
+    box-shadow:0 8px 18px rgba(214,66,115,.045);
+}
+div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked),
+div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] {
+    background:linear-gradient(135deg,#ffe5ef,#fff7fb) !important;
+    border-color:rgba(214,66,115,.78) !important;
+    box-shadow:0 10px 24px rgba(214,66,115,.14);
+}
+div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) *,
+div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
+    color:#3f2a33 !important;
+    -webkit-text-fill-color:#3f2a33 !important;
+    font-weight:950 !important;
+}
+.share-image-tools {
+    margin:.52rem 0 1rem 0;
+    padding:.72rem .82rem;
+    border-radius:18px;
+    background:#fffafd;
+    border:1px dashed rgba(214,66,115,.28);
+    color:#5b3f4b !important;
+    font-size:.86rem;
+    line-height:1.45;
+    font-weight:760;
+}
+@media (max-width:768px){
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        width:100% !important;
+        justify-content:flex-start !important;
+    }
+    .operation-marker-badge{font-size:.62rem;}
+}
+
+
+/* v5.85: 모바일 화면 구성 보강 — 첫 화면은 더 짧게, 버튼·카드는 더 크게 터치 */
+:root {
+    --mobile-card-radius: 18px;
+    --mobile-side-pad: .72rem;
+}
+.stApp { overflow-x: hidden !important; }
+[data-testid="stAppViewContainer"] { overflow-x: hidden !important; }
+[data-testid="stHeader"] { background: rgba(255,255,255,.82) !important; backdrop-filter: blur(10px); }
+/* 버튼형 내부 페이지 */
+.page-button-guide{font-size:.92rem;color:#7a5665;margin:.4rem 0 .55rem 0;}
+div[data-testid="stButton"] > button{border-radius:999px;min-height:42px;font-weight:700;}
+@media (max-width: 640px){
+  div[data-testid="column"] div[data-testid="stButton"] > button{font-size:.88rem;padding:.45rem .35rem;}
+}
+
+/* 재방문 안내 카드 */
+.revisit-guide-card{background:#fff9f1;border:1px solid #f0d8c0;border-radius:18px;padding:14px 16px;color:#4a2f32;margin-bottom:10px;}
+.revisit-guide-title{font-weight:800;color:#c04b72;margin-bottom:8px;font-size:1rem;}
+.revisit-guide-body{line-height:1.65;font-size:.95rem;}
+/* 핵심 메뉴는 selectbox/라디오 모두 모바일에서 터치하기 쉽게 */
+div[data-testid="stSelectbox"] label,
+div[data-testid="stRadio"] label,
+div[data-testid="stTextInput"] label,
+div[data-testid="stDateInput"] label,
+div[data-testid="stTimeInput"] label {
+    font-weight: 900 !important;
+}
+/* 결과 상단 정보칩은 모바일에서 과도하게 줄바꿈되지 않도록 */
+.summary-chip {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+/* 카드형 요약은 데스크톱 3열, 좁은 화면 1열 */
+.compact-glance-grid, .today-quick-grid, .today-compass-grid, .share-card-grid {
+    align-items: stretch;
+}
+/* 모바일 하단 여백: 마지막 버튼이 브라우저 UI에 가리지 않게 */
+.block-container::after {
+    content: "";
+    display: block;
+    height: 1.25rem;
+}
+@media (max-width: 768px) {
+    .block-container {
+        padding: .86rem .72rem 1.4rem .72rem !important;
+        max-width: 100% !important;
+    }
+    h1 { font-size: 1.82rem !important; line-height: 1.18 !important; margin-bottom: .5rem !important; }
+    h2 { font-size: 1.46rem !important; line-height: 1.22 !important; }
+    h3 { font-size: 1.22rem !important; line-height: 1.26 !important; }
+    h4, h5, h6 { font-size: 1.04rem !important; line-height: 1.3 !important; }
+    p, li, [data-testid="stMarkdownContainer"] { font-size: .95rem !important; line-height: 1.58 !important; }
+    .hero-wrap { padding: .95rem .82rem 1.0rem !important; margin-top: .1rem !important; border-radius: 22px !important; }
+    .hero-title { font-size: clamp(2.15rem, 15vw, 3.2rem) !important; line-height: 1.08 !important; word-break: keep-all !important; }
+    .hero-subtitle { font-size: .9rem !important; line-height: 1.55 !important; }
+    .summary-chip {
+        display: inline-flex !important;
+        width: auto !important;
+        max-width: 100% !important;
+        padding: .32rem .54rem !important;
+        margin: .08rem .08rem .12rem 0 !important;
+        font-size: .74rem !important;
+        line-height: 1.25 !important;
+        white-space: nowrap !important;
+    }
+    .main-character-card,
+    .today-quick-card,
+    .today-compass,
+    .compact-glance-card,
+    .mini-card,
+    .share-card-wrap,
+    .pipeline-card,
+    .shinsal-card,
+    .manse-pillar-card,
+    .manse-luck-card,
+    .manse-year-card {
+        border-radius: var(--mobile-card-radius) !important;
+        padding: .82rem .78rem !important;
+        margin: .46rem 0 !important;
+        box-shadow: 0 8px 18px rgba(80,40,60,.06) !important;
+    }
+    .main-character-name { font-size: 1.32rem !important; line-height: 1.22 !important; word-break: keep-all !important; }
+    .main-character-desc { font-size: .88rem !important; line-height: 1.48 !important; }
+    .today-quick-title { font-size: 1.12rem !important; line-height: 1.2 !important; }
+    .today-quick-sub, .today-quick-action { font-size: .82rem !important; line-height: 1.45 !important; }
+    .today-quick-pill { align-self:flex-start !important; font-size:.74rem !important; padding:.24rem .52rem !important; }
+    .compact-glance-grid, .today-quick-grid, .today-compass-grid, .share-card-grid, .shinsal-grid {
+        grid-template-columns: 1fr !important;
+        gap: .45rem !important;
+    }
+    .compact-glance-title, .today-quick-body, .today-compass-body, .share-card-body { font-size: .88rem !important; line-height: 1.42 !important; }
+    .compact-glance-body, .share-card-caption, .today-compass-note { font-size: .78rem !important; line-height: 1.43 !important; }
+    /* 모바일에서는 라디오가 화면 밖으로 밀리지 않고 세로 카드처럼 보이게 */
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        gap: .34rem !important;
+        width: 100% !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        min-height: 42px !important;
+        padding: .38rem .56rem !important;
+        border-radius: 14px !important;
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label * { font-size: .88rem !important; line-height: 1.25 !important; }
+    .stButton > button, .stDownloadButton > button {
+        width: 100% !important;
+        min-height: 44px !important;
+        padding: .62rem .8rem !important;
+        border-radius: 16px !important;
+        font-size: .94rem !important;
+    }
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stDateInput"] input,
+    div[data-testid="stTimeInput"] input,
+    div[data-testid="stNumberInput"] input,
+    textarea {
+        min-height: 42px !important;
+        font-size: 16px !important; /* iOS 확대 방지 */
+    }
+    .stDataFrame, div[data-testid="stTable"] { overflow-x: auto !important; max-width: 100% !important; }
+    img { max-width: 100% !important; height: auto !important; }
+    .element-bar-row { grid-template-columns: 28px 1fr 42px !important; gap: .32rem !important; font-size:.78rem !important; }
+    .radar-legend { flex-wrap: wrap !important; gap: .38rem !important; font-size: .78rem !important; }
+}
+@media (max-width: 420px) {
+    .block-container { padding-left: .58rem !important; padding-right: .58rem !important; }
+    .summary-chip { font-size:.70rem !important; max-width: 48vw !important; }
+    .main-character-name { font-size:1.22rem !important; }
+    .today-quick-box, .compact-glance-card, .share-card-box { padding:.62rem .64rem !important; }
+}
+
+
+/* v5.106: 모바일 UI 전반 트리밍 — 단정하고 임팩트 있게 */
+@media (max-width: 768px) {
+    :root {
+        --mobile-card-radius: 20px;
+    }
+
+    .block-container {
+        padding: .72rem .64rem 1.25rem .64rem !important;
+    }
+
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    .stMarkdown p,
+    .stMarkdown li {
+        margin-bottom: .32rem !important;
+        line-height: 1.5 !important;
+    }
+
+    [data-testid="stCaptionContainer"],
+    .small-muted,
+    .stCaptionContainer,
+    .caption,
+    small {
+        font-size: .78rem !important;
+        line-height: 1.42 !important;
+        color: #6a5560 !important;
+    }
+
+    h2, h3, h4 {
+        letter-spacing: -.02em !important;
+        margin-top: .18rem !important;
+        margin-bottom: .34rem !important;
+    }
+
+    .hero-wrap {
+        padding: .88rem .78rem .94rem !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.07) !important;
+    }
+
+    .hero-title {
+        font-size: clamp(1.96rem, 11vw, 2.7rem) !important;
+        line-height: 1.04 !important;
+        letter-spacing: -.04em !important;
+    }
+
+    .hero-subtitle {
+        font-size: .86rem !important;
+        line-height: 1.45 !important;
+    }
+
+    .summary-chip {
+        padding: .28rem .52rem !important;
+        border-radius: 999px !important;
+        font-size: .72rem !important;
+        font-weight: 850 !important;
+    }
+
+    .main-character-card,
+    .today-quick-card,
+    .today-compass,
+    .compact-glance-card,
+    .mini-card,
+    .share-card-wrap,
+    .pipeline-card,
+    .shinsal-card,
+    .manse-pillar-card,
+    .manse-luck-card,
+    .manse-year-card,
+    .svg-radar-card,
+    .chem-radar-card,
+    .luck-intensity-card,
+    .signal-card,
+    .mode-card,
+    .revisit-guide-card {
+        border-radius: 18px !important;
+        padding: .76rem .74rem !important;
+        margin: .38rem 0 !important;
+        box-shadow: 0 8px 18px rgba(80,40,60,.055) !important;
+    }
+
+    .main-character-label,
+    .signal-title,
+    .today-quick-pill,
+    .shinsal-type,
+    .revisit-guide-title {
+        font-size: .74rem !important;
+        letter-spacing: -.01em !important;
+    }
+
+    .main-character-name {
+        font-size: 1.22rem !important;
+        line-height: 1.16 !important;
+        letter-spacing: -.04em !important;
+    }
+
+    .main-character-desc,
+    .share-card-body,
+    .today-quick-body,
+    .today-compass-body,
+    .signal-body,
+    .revisit-guide-body {
+        font-size: .84rem !important;
+        line-height: 1.42 !important;
+    }
+
+    .compact-glance-title,
+    .today-quick-title {
+        font-size: 1rem !important;
+        line-height: 1.16 !important;
+        letter-spacing: -.02em !important;
+    }
+
+    .compact-glance-body,
+    .share-card-caption,
+    .today-compass-note {
+        font-size: .76rem !important;
+        line-height: 1.38 !important;
+    }
+
+    .shinsal-icon {
+        width: 46px !important;
+        height: 46px !important;
+        flex-basis: 46px !important;
+        font-size: 1.65rem !important;
+        border-radius: 14px !important;
+    }
+
+    .shinsal-name {
+        font-size: 1.06rem !important;
+    }
+
+    .stButton > button,
+    .stDownloadButton > button,
+    .stLinkButton > a {
+        width: 100% !important;
+        min-height: 46px !important;
+        border-radius: 16px !important;
+        font-size: .94rem !important;
+        font-weight: 900 !important;
+        letter-spacing: -.01em !important;
+        box-shadow: 0 8px 16px rgba(214,66,115,.10) !important;
+    }
+
+    .stButton > button {
+        border: 1px solid rgba(214,66,115,.18) !important;
+        background: linear-gradient(180deg,#fff,#fff7fb) !important;
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(180deg,#d64273,#bc275c) !important;
+        border-color: rgba(188,39,92,.92) !important;
+        box-shadow: 0 10px 18px rgba(214,66,115,.18) !important;
+        transform: translateY(0) !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"],
+    div[data-testid="stHorizontalBlock"] {
+        gap: .38rem !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        min-height: 40px !important;
+        padding: .34rem .54rem !important;
+        border-radius: 14px !important;
+    }
+
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stDateInput"] input,
+    div[data-testid="stTimeInput"] input,
+    div[data-testid="stNumberInput"] input,
+    textarea {
+        min-height: 42px !important;
+        border-radius: 14px !important;
+        padding-top: .54rem !important;
+        padding-bottom: .54rem !important;
+    }
+
+    .element-bar-row {
+        grid-template-columns: 26px 1fr 40px !important;
+        font-size: .76rem !important;
+        margin: .24rem 0 !important;
+    }
+
+    .chem-line {
+        grid-template-columns: 48px 1fr 44px !important;
+        font-size: .76rem !important;
+        margin: .18rem 0 !important;
+    }
+
+    .mini-meter,
+    .element-bar-track,
+    .chem-track {
+        height: 9px !important;
+    }
+
+    .signal-card {
+        padding: .68rem .72rem !important;
+    }
+
+    .signal-title {
+        font-size: .9rem !important;
+        margin-bottom: .18rem !important;
+    }
+
+    .revisit-guide-body b {
+        color: #4b2d3a !important;
+    }
+
+    [data-testid="stExpander"] {
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        border: 1px solid rgba(230,164,184,.22) !important;
+        background: #fff !important;
+    }
+
+    [data-testid="stExpander"] summary {
+        padding-top: .18rem !important;
+        padding-bottom: .18rem !important;
+        font-size: .92rem !important;
+        font-weight: 850 !important;
+    }
+
+    .stDataFrame, div[data-testid="stTable"] {
+        border-radius: 14px !important;
+        overflow: hidden !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .block-container { padding-left: .54rem !important; padding-right: .54rem !important; }
+    .hero-title { font-size: clamp(1.82rem, 10.5vw, 2.38rem) !important; }
+    .main-character-name { font-size: 1.15rem !important; }
+    .compact-glance-title, .today-quick-title { font-size: .96rem !important; }
+    .summary-chip { font-size: .68rem !important; }
+    .stButton > button, .stDownloadButton > button, .stLinkButton > a { min-height: 44px !important; }
+}
+
+
+/* v5.107: 첫 화면 프리미엄 정리 + 결과/케미 카드 다이어트 */
+.single-hero-premium,
+.chem-hero-premium {
+    position: relative;
+    overflow: hidden;
+}
+.single-hero-premium::before,
+.chem-hero-premium::before {
+    content: "";
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    right: -70px;
+    top: -90px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(214,66,115,.12), rgba(214,66,115,0));
+    pointer-events: none;
+}
+.single-hero-premium > *,
+.chem-hero-premium > * {
+    position: relative;
+    z-index: 1;
+}
+.single-hero-metrics > div {
+    min-height: 132px;
+}
+.page-button-guide {
+    font-size: .86rem;
+    color: #7a5665;
+    margin: .1rem 0 .45rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .single-hero-premium,
+    .chem-hero-premium {
+        padding: .98rem .78rem .86rem !important;
+        border-radius: 22px !important;
+        margin: .22rem 0 .72rem 0 !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.075) !important;
+    }
+
+    .single-hero-premium > div:nth-child(1),
+    .chem-hero-premium > div:nth-child(1) {
+        font-size: .78rem !important;
+        margin-bottom: .24rem !important;
+    }
+
+    .single-hero-premium > div:nth-child(3),
+    .chem-hero-premium > div:nth-child(2) {
+        font-size: clamp(1.55rem, 8.2vw, 2.05rem) !important;
+        line-height: 1.08 !important;
+        letter-spacing: -.055em !important;
+        margin-top: .12rem !important;
+    }
+
+    .single-hero-premium > div:nth-child(4),
+    .chem-hero-premium > div:nth-child(4),
+    .single-hero-premium > div:nth-child(7) {
+        font-size: .84rem !important;
+        line-height: 1.42 !important;
+        margin-top: .38rem !important;
+    }
+
+    .single-hero-premium > div:nth-child(5),
+    .chem-hero-premium > div:nth-child(5) {
+        margin-top: .46rem !important;
+        padding: .28rem .62rem !important;
+        font-size: .78rem !important;
+    }
+
+    .single-hero-metrics {
+        grid-template-columns: 1fr !important;
+        gap: .42rem !important;
+        margin-top: .72rem !important;
+    }
+
+    .single-hero-metrics > div {
+        min-height: auto !important;
+        padding: .66rem .7rem !important;
+        border-radius: 16px !important;
+        box-shadow: none !important;
+        display: grid !important;
+        grid-template-columns: 92px 1fr;
+        column-gap: .58rem;
+        align-items: center;
+    }
+
+    .single-hero-metrics > div > div:nth-child(1) {
+        grid-row: 1 / span 2;
+        font-size: .76rem !important;
+        color: #8b6775 !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) {
+        font-size: .98rem !important;
+        line-height: 1.24 !important;
+        margin-top: 0 !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(3),
+    .single-hero-metrics > div > div:nth-child(4) {
+        font-size: .76rem !important;
+        line-height: 1.34 !important;
+        margin-top: .12rem !important;
+    }
+
+    .page-button-guide {
+        display: none !important;
+    }
+
+    .main-character-card {
+        min-height: auto !important;
+    }
+
+    .main-character-card .main-character-label {
+        margin-bottom: .18rem !important;
+    }
+
+    .main-character-card .main-character-name {
+        font-size: 1.08rem !important;
+        line-height: 1.14 !important;
+    }
+
+    [data-testid="stHorizontalBlock"] .main-character-card {
+        margin-top: .28rem !important;
+        margin-bottom: .28rem !important;
+    }
+
+    .svg-radar-card {
+        padding: .54rem .42rem !important;
+    }
+
+    .svg-radar-card svg {
+        max-height: 300px !important;
+    }
+
+    .signal-card + .signal-card {
+        margin-top: .32rem !important;
+    }
+
+    .share-image-tools {
+        display: none !important;
+    }
+
+    .revisit-guide-card {
+        font-size: .82rem !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .single-hero-premium,
+    .chem-hero-premium {
+        padding-left: .68rem !important;
+        padding-right: .68rem !important;
+    }
+    .single-hero-metrics > div {
+        grid-template-columns: 82px 1fr;
+        column-gap: .46rem;
+    }
+}
+
+
+/* v5.110: 입력 화면 압축 */
+@media (max-width: 768px) {
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: .32rem !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        width: auto !important;
+        flex: 1 1 auto !important;
+        min-height: 38px !important;
+        padding: .30rem .46rem !important;
+        border-radius: 13px !important;
+        justify-content: center !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label * {
+        font-size: .82rem !important;
+        line-height: 1.18 !important;
+        white-space: nowrap !important;
+    }
+    div[data-testid="stCheckbox"] label {
+        min-height: 36px !important;
+        padding: .22rem .1rem !important;
+    }
+    div[data-testid="stCheckbox"] label * {
+        font-size: .82rem !important;
+        line-height: 1.22 !important;
+    }
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stDateInput"] label,
+    div[data-testid="stTimeInput"] label,
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stRadio"] label,
+    div[data-testid="stCheckbox"] label {
+        margin-bottom: .12rem !important;
+    }
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
+    textarea {
+        min-height: 39px !important;
+        padding-top: .42rem !important;
+        padding-bottom: .42rem !important;
+    }
+    .stAlert {
+        margin-top: .34rem !important;
+        margin-bottom: .34rem !important;
+    }
+}
+
+
+/* v5.111: 모바일 첫 결과화면 3대 요약 지표 가로 압축 */
+@media (max-width: 768px) {
+    .single-hero-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: .34rem !important;
+        margin-top: .68rem !important;
+    }
+
+    .single-hero-metrics > div {
+        min-height: 96px !important;
+        padding: .58rem .42rem !important;
+        border-radius: 15px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: .18rem !important;
+        box-shadow: none !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(1) {
+        grid-row: auto !important;
+        font-size: .68rem !important;
+        line-height: 1.18 !important;
+        color: #8b6775 !important;
+        white-space: nowrap !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) {
+        font-size: .86rem !important;
+        line-height: 1.18 !important;
+        margin-top: .04rem !important;
+        word-break: keep-all !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) span {
+        font-size: .66rem !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(3),
+    .single-hero-metrics > div > div:nth-child(4) {
+        font-size: .66rem !important;
+        line-height: 1.22 !important;
+        margin-top: .06rem !important;
+    }
+
+    /* 첫 결과화면에서는 설명보다 지표를 우선한다 */
+    .single-hero-metrics > div:nth-child(1) > div:nth-child(3),
+    .single-hero-metrics > div:nth-child(3) > div:nth-child(4) {
+        display: none !important;
+    }
+
+    /* 오행 알약은 모바일 첫 화면에서 너무 길어져 숨기고, 강/약 요약만 남긴다 */
+    .single-hero-metrics > div:nth-child(2) > div:nth-child(3) {
+        display: none !important;
+    }
+
+    .single-hero-metrics > div:nth-child(3) div[style*="height:10px"] {
+        width: 100% !important;
+        height: 7px !important;
+        margin: .20rem 0 0 0 !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .single-hero-metrics {
+        gap: .26rem !important;
+    }
+
+    .single-hero-metrics > div {
+        padding: .50rem .32rem !important;
+        min-height: 88px !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(1) {
+        font-size: .63rem !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) {
+        font-size: .78rem !important;
+    }
+}
+
+
+/* v5.112: 첫 결과화면 하단 재방문 안내 — QR 제거, 3단계 안내 */
+.revisit-guide-compact {
+    margin-top: .72rem !important;
+    background: linear-gradient(135deg,#fffdf8,#fff7fb) !important;
+    border: 1px solid rgba(230,164,184,.34) !important;
+}
+.revisit-mini-steps {
+    display: flex;
+    gap: .34rem;
+    flex-wrap: wrap;
+    margin-top: .58rem;
+}
+.revisit-mini-steps span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .28rem .52rem;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid rgba(230,164,184,.36);
+    color: #6a4552;
+    font-size: .78rem;
+    font-weight: 900;
+}
+.revisit-device-note {
+    margin-top: .48rem;
+    color: #8b6775;
+    font-size: .78rem;
+    line-height: 1.36;
+    font-weight: 760;
+}
+
+@media (max-width: 768px) {
+    .revisit-guide-compact {
+        margin-top: .54rem !important;
+        padding: .66rem .68rem !important;
+    }
+    .revisit-mini-steps {
+        gap: .24rem;
+        margin-top: .42rem;
+    }
+    .revisit-mini-steps span {
+        flex: 1 1 30%;
+        padding: .24rem .28rem;
+        font-size: .68rem;
+        white-space: nowrap;
+    }
+    .revisit-device-note {
+        font-size: .70rem;
+        margin-top: .36rem;
+    }
+}
+
+
+/* v5.118: 내 사주 인상 + 삼각 그래프 */
+.single-axis-triangle-wrap {
+    background: rgba(255,255,255,.84);
+    border: 1px solid rgba(230,164,184,.30);
+    border-radius: 20px;
+    padding: .85rem .75rem .5rem;
+}
+.single-axis-triangle-title {
+    font-size: .82rem;
+    color: #8b6775;
+    font-weight: 900;
+    margin-bottom: .12rem;
+}
+@media (max-width: 768px) {
+    .single-hero-metrics {
+        grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+        gap: .34rem !important;
+        margin-top: .68rem !important;
+    }
+    .single-hero-metrics > div {
+        min-height: 102px !important;
+        padding: .58rem .46rem !important;
+        border-radius: 15px !important;
+        text-align: left !important;
+    }
+    .single-axis-triangle-wrap {
+        padding: .58rem .34rem .20rem !important;
+        border-radius: 16px !important;
+    }
+    .single-axis-triangle-title {
+        font-size: .74rem !important;
+    }
+}
+
+
+/* v5.119: 첫 화면 추가 트리밍 */
+.single-hero-trimmed .main-character-desc { display:none !important; }
+.axis-bar-compact {
+    margin: .26rem 0 .44rem;
+}
+.axis-bar-top {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.5rem;
+    margin-bottom:.26rem;
+}
+.axis-bar-name {
+    font-size:.92rem;
+    font-weight:900;
+    color:#46313a;
+}
+.axis-bar-score {
+    font-size:.78rem;
+    font-weight:800;
+    color:#8b6775;
+    white-space:nowrap;
+}
+.axis-bar-track {
+    width:100%;
+    height:10px;
+    border-radius:999px;
+    background:#f5e7ee;
+    border:1px solid rgba(230,164,184,.22);
+    overflow:hidden;
+}
+.axis-bar-fill {
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg,#f7b1c7,#c1a6ff);
+}
+.axis-bar-desc {
+    font-size:.76rem;
+    color:#6f4f5c;
+    line-height:1.32;
+    margin-top:.20rem;
+}
+.single-axis-triangle-wrap {
+    background: rgba(255,255,255,.88);
+    border: 1px solid rgba(230,164,184,.28);
+    border-radius: 18px;
+    padding: .42rem .42rem .12rem;
+}
+@media (max-width: 768px) {
+    .single-hero-trimmed {
+        padding: .94rem .72rem .72rem !important;
+        margin: .18rem 0 .56rem 0 !important;
+        border-radius: 22px !important;
+    }
+    .single-hero-trimmed > div:nth-child(3) {
+        font-size: 1.62rem !important;
+        margin-top: .38rem !important;
+    }
+    .single-hero-trimmed > div:nth-child(4) {
+        font-size: .86rem !important;
+        margin-top: .16rem !important;
+    }
+    .single-hero-metrics {
+        gap: .28rem !important;
+        margin-top: .56rem !important;
+    }
+    .single-hero-metrics > div {
+        min-height: 90px !important;
+        padding: .52rem .42rem !important;
+        border-radius: 14px !important;
+    }
+    .single-axis-triangle-wrap {
+        padding: .22rem .16rem .06rem !important;
+        border-radius: 14px !important;
+    }
+    .axis-bar-compact {
+        margin: .18rem 0 .34rem !important;
+    }
+    .axis-bar-name {
+        font-size: .86rem !important;
+    }
+    .axis-bar-score {
+        font-size: .72rem !important;
+    }
+    .axis-bar-track {
+        height: 9px !important;
+    }
+    .axis-bar-desc {
+        font-size: .72rem !important;
+        margin-top: .16rem !important;
+    }
+}
+
+
+/* v5.123: 삼각 그래프 + 3대 축 한 줄 압축 */
+.axis-bar-inline {
+    margin: .10rem 0 .34rem !important;
+}
+.axis-bar-inline .axis-bar-name {
+    font-size: .90rem !important;
+}
+.axis-bar-inline .axis-bar-score {
+    font-size: .74rem !important;
+}
+.axis-bar-inline .axis-bar-track {
+    height: 11px !important;
+}
+.axis-bar-inline .axis-bar-desc {
+    font-size: .72rem !important;
+    margin-top: .18rem !important;
+}
+@media (max-width: 768px) {
+    .axis-bar-inline {
+        margin: .08rem 0 .28rem !important;
+    }
+    .axis-bar-inline .axis-bar-name {
+        font-size: .84rem !important;
+    }
+    .axis-bar-inline .axis-bar-score {
+        font-size: .70rem !important;
+    }
+    .axis-bar-inline .axis-bar-track {
+        height: 10px !important;
+    }
+    .axis-bar-inline .axis-bar-desc {
+        font-size: .70rem !important;
+        line-height: 1.28 !important;
+        margin-top: .14rem !important;
+    }
+}
+
+
+/* v5.124: 상태형 3축 미터 */
+.axis-bar-state {
+    font-size: .75rem;
+    font-weight: 900;
+    color: #a34d71;
+    background: rgba(248, 179, 202, .18);
+    border: 1px solid rgba(230,164,184,.30);
+    border-radius: 999px;
+    padding: .12rem .48rem;
+    white-space: nowrap;
+}
+@media (max-width: 768px) {
+    .axis-bar-state {
+        font-size: .70rem !important;
+        padding: .10rem .42rem !important;
+    }
+}
+
+
+/* v5.125: 삼각형 + 상태형 막대 한 줄 레이아웃 보정 */
+@media (max-width: 768px) {
+    .stColumn > div[data-testid="stVerticalBlock"] {
+        gap: 0.35rem !important;
+    }
+}
+
+
+/* v5.127: 편향 해석이 보이는 3축 그래프 */
+@media (max-width: 768px) {
+    .stCaptionContainer, [data-testid="stCaptionContainer"] {
+        line-height: 1.32 !important;
+    }
+}
+
+
+/* v5.129: 오늘의 기운 첫 화면 4개 핵심 카드 */
+.today-quick-card-v5129 .today-quick-sub {
+    font-size: .80rem !important;
+}
+.today-quick-grid-v5129 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+.today-quick-muted {
+    display: inline-block;
+    margin-top: .18rem;
+    color: #7a5665 !important;
+    font-size: .78rem;
+    line-height: 1.36;
+    font-weight: 760;
+}
+@media (max-width: 768px) {
+    .today-quick-grid-v5129 {
+        grid-template-columns: 1fr !important;
+    }
+    .today-quick-card-v5129 .today-quick-box {
+        padding: .58rem .62rem !important;
+    }
+    .today-quick-card-v5129 .today-quick-body {
+        font-size: .83rem !important;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+def init_session_state():
+    defaults = {
+        "show_details": False,
+        "payload": None,
+        "pending_payload": None,
+        "result_revealed": True,
+        "saved_participants": [],
+        "selected_main_mode": None,
+        "last_input_mode": None,
+        "meal_roulette_reveal": False,
+        "prefill_roulette_participants": None,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+init_session_state()
+
+
+# ============================================================
+# v5.51 익명 방문·이벤트 통계
+# ============================================================
+
+EVENT_LOG_LOCAL_PATH = "/tmp/saju_mri_events.jsonl"
+
+
+def _qp_value(name: str, default: str = "") -> str:
+    """Streamlit query params 호환 안전 접근."""
+    try:
+        value = st.query_params.get(name, default)
+        if isinstance(value, list):
+            return str(value[0]) if value else default
+        return str(value) if value is not None else default
+    except Exception:
+        try:
+            params = st.experimental_get_query_params()
+            value = params.get(name, [default])
+            return str(value[0]) if isinstance(value, list) and value else str(value)
+        except Exception:
+            return default
+
+
+
+def _safe_bool_qp(name: str, default: bool = False) -> bool:
+    val = _qp_value(name, "1" if default else "0").strip().lower()
+    return val in ["1", "true", "yes", "y", "on"]
+
+
+def _set_text_state_pair(key: str, value: str) -> None:
+    st.session_state[key] = str(value)
+    st.session_state[f"{key}__last_value"] = str(value)
+
+
+def apply_my_saju_query_prefill_once() -> None:
+    """내 사주 저장 링크의 URL 값을 입력칸에 1회 반영한다.
+
+    서버 DB 저장이 아니라 링크의 query parameter를 이용한 재입력 보조 기능이다.
+    """
+    if st.session_state.get("_my_saju_query_prefilled_v5138"):
+        return
+    if _qp_value("my_saju", "") != "1":
+        return
+
+    st.session_state["_my_saju_query_prefilled_v5138"] = True
+    st.session_state.selected_main_mode = "혼자 보기"
+    st.session_state["single_view_mode_selector_v5116"] = "생년월일시 자동 산출"
+
+    name = sanitize_display_name(_qp_value("n", "나"), "나")
+    gender = _qp_value("g", "남자")
+    if gender not in ["남자", "여자"]:
+        gender = "남자"
+    cal = _qp_value("cal", "양력")
+    if cal not in CALENDAR_TYPES:
+        cal = "양력"
+
+    bd = _qp_value("bd", "").strip()
+    bt = _qp_value("bt", "").strip()
+    unknown = _safe_bool_qp("unk", False)
+    yaja = _safe_bool_qp("yaja", False)
+
+    st.session_state["single_auto_name"] = name
+    st.session_state["gender_auto"] = gender
+    st.session_state["single_calendar_compact_v5110"] = cal
+    st.session_state["single_time_unknown"] = unknown
+    st.session_state["single_auto_yaja"] = yaja
+    st.session_state["auto_consent"] = True
+
+    if bd:
+        _set_text_state_pair("single_date_text", bd)
+    if not unknown and bt:
+        _set_text_state_pair("single_time_text", bt)
+
+    # run=1이면 바로가기 접속 시 입력 화면에 멈추지 않고 결과까지 자동 실행한다.
+    st.session_state["_my_saju_auto_run_pending_v5140"] = _safe_bool_qp("run", True)
+    st.session_state["_my_saju_prefill_notice_v5138"] = True
+
+
+def build_my_saju_save_params(
+    name: str,
+    birth_date: date | None,
+    birth_time: time | None,
+    gender: str,
+    calendar_type: str,
+    time_unknown: bool,
+    use_yajashee: bool,
+    auto_run: bool = True,
+) -> Dict[str, str]:
+    if birth_date is None:
+        return {}
+    params = {
+        "my_saju": "1",
+        "run": "1" if auto_run else "0",
+        "n": sanitize_display_name(name or "나", "나"),
+        "bd": birth_date.strftime("%Y-%m-%d"),
+        "g": gender if gender in ["남자", "여자"] else "남자",
+        "cal": calendar_type if calendar_type in CALENDAR_TYPES else "양력",
+        "unk": "1" if time_unknown else "0",
+        "yaja": "1" if use_yajashee else "0",
+    }
+    if not time_unknown and birth_time is not None:
+        params["bt"] = birth_time.strftime("%H:%M")
+    return params
+
+
+def build_my_saju_save_url(
+    name: str,
+    birth_date: date | None,
+    birth_time: time | None,
+    gender: str,
+    calendar_type: str,
+    time_unknown: bool,
+    use_yajashee: bool,
+    auto_run: bool = True,
+) -> str:
+    params = build_my_saju_save_params(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=auto_run)
+    if not params:
+        return ""
+    return APP_PUBLIC_URL.rstrip("/") + "?" + urllib.parse.urlencode(params, doseq=False)
+
+
+def _apply_my_saju_params_to_current_url(params: Dict[str, str]) -> bool:
+    """현재 브라우저 주소창에 내 사주 저장용 query params를 적용한다."""
+    if not params:
+        return False
+    try:
+        st.query_params.clear()
+        for k, v in params.items():
+            st.query_params[k] = v
+        return True
+    except Exception:
+        try:
+            st.experimental_set_query_params(**params)
+            return True
+        except Exception:
+            return False
+
+
+def render_my_saju_save_link_tool(
+    name: str,
+    birth_date: date | None,
+    birth_time: time | None,
+    gender: str,
+    calendar_type: str,
+    time_unknown: bool,
+    use_yajashee: bool,
+    key_prefix: str = "my_saju_save",
+) -> None:
+    """내 사주 저장 링크 생성 UI.
+
+    서버에 저장하지 않고, URL에 입력값을 담아 같은 기기에서 다시 열 수 있게 한다.
+    """
+    with st.expander("내 사주 저장하기"):
+        st.caption("서버에 별도 저장하지 않고, 생년월일시 입력값이 들어간 개인용 바로가기 링크를 만듭니다. 이 링크를 북마크하거나 홈 화면에 추가하면 다음에 다시 입력하지 않아도 됩니다.")
+        st.caption("주의: 링크 안에 생년월일시·성별 등 입력값이 포함됩니다. 카톡방이나 타인에게 공유하지 마세요.")
+
+        if birth_date is None:
+            st.info("생년월일을 올바르게 입력하면 저장 링크를 만들 수 있습니다.")
+            return
+        if not time_unknown and birth_time is None:
+            st.info("태어난 시간을 올바르게 입력하거나 '시간 모름'을 선택하면 저장 링크를 만들 수 있습니다.")
+            return
+
+        params = build_my_saju_save_params(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=True)
+        link = build_my_saju_save_url(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=True)
+        st.text_input("내 사주 바로가기 링크", value=link, key=f"{key_prefix}_link", help="이 링크는 개인 정보가 포함된 개인용 링크입니다.")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("현재 주소를 내 사주 바로가기로 바꾸기", key=f"{key_prefix}_apply_url", use_container_width=True):
+                if _apply_my_saju_params_to_current_url(params):
+                    st.success("현재 주소창이 내 사주 바로가기 주소로 바뀌었습니다. 이제 이 페이지를 북마크하거나 홈 화면에 추가하세요.")
+                else:
+                    st.warning("주소창 자동 변경이 제한되었습니다. 아래 링크를 복사해 북마크하거나 다시 여세요.")
+        with c2:
+            if hasattr(st, "link_button"):
+                st.link_button("내 사주 바로 열기", link, use_container_width=True)
+            else:
+                st.markdown(f"[내 사주 바로 열기]({link})")
+        st.caption("저장 링크로 접속하면 입력값을 불러온 뒤 결과 화면까지 바로 이동합니다. 앱 설치가 아니라 개인용 URL 바로가기 방식입니다.")
+
+
+apply_my_saju_query_prefill_once()
+
+def _streamlit_secrets_file_exists() -> bool:
+    """로컬 실행에서 secrets.toml이 없을 때 st.secrets 접근 경고가 반복되는 것을 막는다."""
+    try:
+        candidates = [
+            Path.cwd() / ".streamlit" / "secrets.toml",
+            Path.home() / ".streamlit" / "secrets.toml",
+        ]
+        return any(p.exists() for p in candidates)
+    except Exception:
+        return False
+
+
+def _secret_value(name: str, default: str = "") -> str:
+    """
+    로컬에서는 secrets.toml이 없으면 st.secrets에 접근하지 않는다.
+    Streamlit Cloud/환경변수에 값이 있으면 os.environ을 우선 사용한다.
+    """
+    try:
+        env_val = os.environ.get(name)
+        if env_val is not None:
+            return str(env_val)
+    except Exception:
+        pass
+
+    if not _streamlit_secrets_file_exists():
+        return default
+
+    try:
+        val = st.secrets.get(name, default)
+        return str(val) if val is not None else default
+    except Exception:
+        return default
+
+
+def analytics_admin_key_configured() -> bool:
+    return bool(_secret_value("ADMIN_KEY", "").strip())
+
+
+def is_admin_mode() -> bool:
+    configured = _secret_value("ADMIN_KEY", "").strip()
+    supplied = _qp_value("admin_key", "").strip()
+    return bool(configured and supplied and supplied == configured)
+
+
+def analytics_source() -> str:
+    src = _qp_value("src", "").strip().lower()
+    if not src:
+        return "direct"
+    # 너무 긴 값/이상한 값 방지
+    cleaned = "".join(ch for ch in src if ch.isalnum() or ch in ["_", "-"])[:32]
+    return cleaned or "direct"
+
+
+def visitor_session_id() -> str:
+    if "visitor_session_id" not in st.session_state:
+        st.session_state.visitor_session_id = uuid.uuid4().hex[:16]
+    return str(st.session_state.visitor_session_id)
+
+
+def analytics_storage_configured() -> bool:
+    return bool(_secret_value("SUPABASE_URL", "").strip() and _secret_value("SUPABASE_ANON_KEY", "").strip())
+
+
+def _supabase_endpoint(path: str) -> str:
+    base = _secret_value("SUPABASE_URL", "").strip().rstrip("/")
+    return f"{base}/rest/v1/{path.lstrip('/')}"
+
+
+def _analytics_payload(event_name: str, page_name: str, metadata: Dict[str, object] | None = None) -> Dict[str, object]:
+    return {
+        "created_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "session_id": visitor_session_id(),
+        "event_name": str(event_name)[:64],
+        "page_name": str(page_name)[:64],
+        "source": analytics_source(),
+        "app_version": APP_VERSION,
+        "is_admin": bool(is_admin_mode()),
+        "metadata": metadata or {},
+    }
+
+
+def _insert_event_supabase(payload: Dict[str, object]) -> bool:
+    if not analytics_storage_configured():
+        return False
+    url = _supabase_endpoint("app_events")
+    key = _secret_value("SUPABASE_ANON_KEY", "").strip()
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method="POST",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
+            return 200 <= int(resp.status) < 300
+    except Exception:
+        return False
+
+
+def _insert_event_local(payload: Dict[str, object]) -> bool:
+    try:
+        with open(EVENT_LOG_LOCAL_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        return True
+    except Exception:
+        return False
+
+
+def log_event(event_name: str, page_name: str = "app", metadata: Dict[str, object] | None = None, once_key: str | None = None) -> None:
+    """개인정보 없는 익명 이벤트 로그. 관리자 접속은 기록하지 않는다."""
+    if is_admin_mode():
+        return
+    if once_key:
+        state_key = f"analytics_once_{once_key}"
+        if st.session_state.get(state_key):
+            return
+        st.session_state[state_key] = True
+
+    payload = _analytics_payload(event_name, page_name, metadata)
+    ok = _insert_event_supabase(payload)
+    if not ok:
+        _insert_event_local(payload)
+
+
+def read_analytics_events(limit: int = 1000) -> List[Dict[str, object]]:
+    """관리자 화면용 이벤트 읽기. Supabase 설정이 있으면 Supabase, 없으면 임시 로컬 로그."""
+    events: List[Dict[str, object]] = []
+    if analytics_storage_configured():
+        key = _secret_value("SUPABASE_ANON_KEY", "").strip()
+        url = _supabase_endpoint(f"app_events?select=created_at,session_id,event_name,page_name,source,app_version,is_admin,metadata&order=created_at.desc&limit={int(limit)}")
+        req = urllib.request.Request(
+            url,
+            method="GET",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {key}",
+                "Accept": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=4.0) as resp:
+                raw = resp.read().decode("utf-8")
+                data = json.loads(raw)
+                if isinstance(data, list):
+                    events = [x for x in data if isinstance(x, dict)]
+        except Exception:
+            events = []
+    else:
+        try:
+            with open(EVENT_LOG_LOCAL_PATH, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        events.append(json.loads(line))
+                    except Exception:
+                        pass
+            events = list(reversed(events[-int(limit):]))
+        except Exception:
+            events = []
+    return events
+
+
+def analytics_setup_sql() -> str:
+    return """create table if not exists public.app_events (
+  id bigint generated by default as identity primary key,
+  created_at timestamptz not null default now(),
+  session_id text,
+  event_name text,
+  page_name text,
+  source text,
+  app_version text,
+  is_admin boolean default false,
+  metadata jsonb default '{}'::jsonb
+);
+
+alter table public.app_events enable row level security;
+
+drop policy if exists "insert_events" on public.app_events;
+create policy "insert_events"
+on public.app_events
+for insert
+to anon
+with check (true);
+
+drop policy if exists "select_events" on public.app_events;
+create policy "select_events"
+on public.app_events
+for select
+to anon
+using (true);"""
+
+
+def render_admin_analytics_dashboard() -> None:
+    if not is_admin_mode():
+        return
+
+    st.markdown(
+        "<div class='signal-card' style='border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,#ecfdf5,#fff7fb);'>"
+        "<div class='signal-title'>🔐 관리자 테스트 모드</div>"
+        "<div class='signal-body'>이 접속은 앱 방문 통계에서 제외됩니다. Streamlit 기본 Analytics에는 별도로 잡힐 수 있습니다.</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("📊 방문 통계 대시보드", expanded=False):
+        if not analytics_storage_configured():
+            st.warning("Supabase 저장소가 아직 설정되지 않았습니다. 현재는 임시 로컬 로그만 표시되며 Streamlit 재배포/재시작 시 사라질 수 있습니다.")
+            st.markdown("**Streamlit Secrets에 필요한 값**")
+            st.text_area("Secrets 예시", value='ADMIN_KEY = "원하는관리자키"\nSUPABASE_URL = "https://xxxx.supabase.co"\nSUPABASE_ANON_KEY = "Supabase anon public key"', height=100, disabled=True)
+            st.markdown("**Supabase SQL Editor에서 1회 실행할 SQL**")
+            st.text_area("Supabase SQL", value=analytics_setup_sql(), height=260, disabled=True)
+
+        events = read_analytics_events(limit=1500)
+        if not events:
+            st.info("아직 표시할 이벤트 로그가 없습니다. 일반 접속자가 앱을 열거나 기능을 실행하면 기록됩니다.")
+            return
+
+        df = pd.DataFrame(events)
+        if "created_at" in df.columns:
+            df["created_at_dt"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
+            df["date"] = df["created_at_dt"].dt.strftime("%Y-%m-%d")
+        else:
+            df["date"] = "-"
+
+        # 관리자 로그는 원칙상 기록하지 않지만, 혹시 남아 있으면 제외
+        if "is_admin" in df.columns:
+            df = df[df["is_admin"] != True]
+
+        total_events = int(len(df))
+        unique_sessions = int(df["session_id"].nunique()) if "session_id" in df.columns else 0
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today_events = int((df["date"] == today).sum()) if "date" in df.columns else 0
+        visit_count = int((df["event_name"] == "visit").sum()) if "event_name" in df.columns else 0
+
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            safe_metric("총 이벤트", total_events)
+        with c2:
+            safe_metric("익명 세션", unique_sessions)
+        with c3:
+            safe_metric("오늘 이벤트", today_events)
+        with c4:
+            safe_metric("방문 이벤트", visit_count)
+
+        if "event_name" in df.columns:
+            st.markdown("**이벤트별 사용량**")
+            event_counts = df["event_name"].value_counts().reset_index()
+            event_counts.columns = ["event_name", "count"]
+            safe_dataframe(event_counts, hide_index=True)
+
+        if "source" in df.columns:
+            st.markdown("**유입 경로별 사용량**")
+            source_counts = df["source"].fillna("direct").value_counts().reset_index()
+            source_counts.columns = ["source", "count"]
+            safe_dataframe(source_counts, hide_index=True)
+
+        if "date" in df.columns:
+            st.markdown("**날짜별 이벤트**")
+            date_counts = df["date"].fillna("-").value_counts().sort_index(ascending=False).reset_index()
+            date_counts.columns = ["date", "count"]
+            safe_dataframe(date_counts.head(30), hide_index=True)
+
+        st.markdown("**최근 이벤트**")
+        show_cols = [c for c in ["created_at", "event_name", "page_name", "source", "app_version"] if c in df.columns]
+        safe_dataframe(df[show_cols].head(80), hide_index=True)
+
+
+log_event("visit", "app", {"path": _qp_value("src", "direct")}, once_key="visit")
+render_admin_analytics_dashboard()
+
+
+def scroll_to_top() -> None:
+    """결과 화면 진입 직후 최상단으로 이동한다.
+
+    v5.80: 입력폼 하단에서 결과 보기 버튼을 눌렀을 때 브라우저가 이전 스크롤 위치를
+    유지하는 문제를 줄이기 위해, 결과 공개 직후 한 번만 부모 창을 최상단으로 이동시킨다.
+    """
+    if not st.session_state.get("scroll_result_top_pending"):
+        return
+    st.session_state.scroll_result_top_pending = False
+    try:
+        components.html(
+            """
+            <script>
+            const scrollTop = () => {
+              try { window.parent.scrollTo({top: 0, left: 0, behavior: 'auto'}); }
+              catch(e) { try { window.parent.scrollTo(0, 0); } catch(_) {} }
+            };
+            scrollTop();
+            setTimeout(scrollTop, 80);
+            </script>
+            """,
+            height=0,
+        )
+    except Exception:
+        return
+
+
+def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> None:
+    """결과/입력 상태를 정리하고 지정 메뉴로 이동한다. 보관함은 기본적으로 유지한다."""
+    saved = st.session_state.get("saved_participants", []) if keep_roster else []
+    st.session_state.payload = None
+    st.session_state.pending_payload = None
+    st.session_state.result_revealed = True
+    st.session_state.show_details = False
+    st.session_state.meal_roulette_reveal = False
+    st.session_state.selected_main_mode = mode
+    st.session_state.last_input_mode = mode
+    st.session_state.saved_participants = saved
+
+
+def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
+    """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼."""
+    cols = st.columns(3)
+    with cols[0]:
+        if st.button("🏠 메인화면", use_container_width=True, key=f"{prefix}_go_home"):
+            log_event("menu_click", "navigation", {"target": "home"})
+            reset_navigation_to(None)
+            st.rerun()
+    with cols[1]:
+        if st.button("🌸 내 사주MRI", use_container_width=True, key=f"{prefix}_go_single"):
+            log_event("menu_click", "navigation", {"target": "solo"})
+            reset_navigation_to("혼자 보기")
+            st.rerun()
+    with cols[2]:
+        if st.button(" 1:1 케미", use_container_width=True, key=f"{prefix}_go_battle"):
+            log_event("menu_click", "navigation", {"target": "chemistry"})
+            reset_navigation_to("1:1 케미")
+            st.rerun()
+
+
+BG_IMAGE_B64 = load_background_image_base64()
+
+st.markdown("""
+<style>
+:root {
+    --palja-bg: #fff7fb;
+    --palja-panel: #ffffff;
+    --palja-panel-2: #fff3f8;
+    --palja-line: rgba(235, 122, 160, 0.22);
+    --palja-text: #4b2d3a;
+    --palja-muted: rgba(75,45,58,0.66);
+    --palja-accent: #ff6f9f;
+    --palja-accent-2: #9b7cff;
+    --palja-mint: #66cfa3;
+    --palja-warm: #ffb86b;
+}
+.stApp {
+    background:
+        radial-gradient(circle at top left, rgba(255, 183, 203, 0.45), transparent 32%),
+        radial-gradient(circle at top right, rgba(184, 235, 214, 0.38), transparent 30%),
+        linear-gradient(135deg, #fff8fb 0%, #fff4ec 45%, #f7fbff 100%);
+    color: var(--palja-text);
+}
+.block-container { max-width: 1180px; padding-top: 1.35rem; padding-bottom: 4rem; }
+[data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none; }
+
+.hero-wrap {
+    padding: 1.35rem 1.5rem 1.15rem 1.5rem;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 15% 15%, rgba(255,255,255,0.95), transparent 32%),
+        linear-gradient(135deg, rgba(255,255,255,0.94), rgba(255,239,246,0.98));
+    border: 1px solid rgba(255, 145, 180, 0.24);
+    box-shadow: 0 16px 38px rgba(255, 125, 165, 0.16);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+.hero-title {
+    font-size: clamp(4.2rem, 8.6vw, 6.8rem);
+    font-weight: 950;
+    letter-spacing: -0.065em;
+    line-height: 1.02;
+}
+.hero-title span {
+    background: linear-gradient(92deg, #ff5f93 0%, #ff8a72 48%, #9b7cff 90%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.hero-subtitle {
+    color: var(--palja-muted);
+    font-size: 1rem;
+    margin-top: 0.65rem;
+    line-height: 1.65;
+}
+.glass-panel, .result-arena, .detail-wrap {
+    padding: 1.18rem 1.24rem;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(255,145,180,0.24);
+    box-shadow: 0 14px 34px rgba(255, 125, 165, 0.13);
+    margin-bottom: 1rem;
+    color: var(--palja-text);
+}
+.result-arena { margin-top: 1rem; }
+.detail-wrap { margin-top: 1rem; }
+
+.mode-card {
+    min-height: 178px;
+    padding: 1.15rem 1.15rem;
+    border-radius: 26px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,241,247,0.96));
+    border: 1px solid rgba(255,145,180,0.25);
+    box-shadow: 0 14px 30px rgba(255, 125, 165, 0.12);
+    margin-bottom: 0.75rem;
+}
+.mode-card h3 {
+    color: #e94f85;
+    font-weight: 900;
+    margin-bottom: 0.4rem;
+}
+.mode-card p {
+    color: rgba(75,45,58,0.70);
+    line-height: 1.58;
+}
+.mode-icon {
+    font-size: 2.4rem;
+    margin-bottom: 0.45rem;
+}
+
+label, .stRadio label, .stCheckbox label {
+    color: rgba(75,45,58,0.92) !important;
+    font-weight: 760 !important;
+}
+[data-testid="stCaptionContainer"] { color: rgba(63,42,51,0.82) !important; }
+div[data-baseweb="input"] > div,
+.stDateInput input, .stTimeInput input, .stTextInput input, .stNumberInput input {
+    background: #ffffff !important;
+    color: #3d2a34 !important;
+}
+.stButton > button {
+    border-radius: 999px;
+    padding: 0.64rem 1.14rem;
+    font-weight: 850;
+    border: 1px solid rgba(255, 115, 158, 0.30);
+    background: #ffffff;
+    color: #d94478;
+    box-shadow: 0 8px 18px rgba(255, 120, 165, 0.12);
+    transition: all 0.16s ease;
+}
+.stButton > button:hover {
+    background: #fff1f6;
+    border-color: rgba(255, 115, 158, 0.65);
+    transform: translateY(-1px);
+}
+.stButton > button[kind="primary"] {
+    background: linear-gradient(90deg, #b91c5c, #9f1239);
+    border: 1px solid rgba(159, 18, 57, 0.70);
+    color: #ffffff;
+}
+.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(90deg, #9f1239, #831843);
+}
+.summary-chip {
+    display: inline-block;
+    padding: 0.42rem 0.72rem;
+    border-radius: 999px;
+    background: rgba(255, 240, 246, 0.95);
+    border: 1px solid rgba(255, 135, 170, 0.24);
+    color: rgba(75,45,58,0.84);
+    margin: 0.16rem 0.22rem 0.16rem 0;
+    font-weight: 750;
+}
+.mini-card {
+    padding: 1.0rem 1.08rem;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #fff4f8, #f7f1ff);
+    border: 1px solid rgba(255, 145, 180, 0.20);
+    box-shadow: 0 8px 18px rgba(255, 125, 165, 0.08);
+    height: 100%;
+    color: #4b2d3a;
+}
+.mini-card-title { color: rgba(75,45,58,0.68); font-size:0.9rem; font-weight:800; }
+.mini-card-value { color:#e94f85; font-size:1.35rem; font-weight:900; margin-top:0.2rem; }
+.score-number {
+    font-size: clamp(3rem, 8vw, 4rem);
+    font-weight: 950;
+    letter-spacing: -0.08em;
+    color: #e94f85;
+}
+.score-label { color: rgba(63,42,51,0.82); font-weight: 750; margin-top: -0.45rem; }
+.stAlert { border-radius: 16px; }
+button[data-baseweb="tab"] { color: rgba(75,45,58,0.84); font-weight: 800; }
+hr { border-color: rgba(255,145,180,0.22); }
+div[data-testid="stAlert"] {
+    background: #fff7df !important;
+    color: #4b2d3a !important;
+    border: 1px solid rgba(255, 180, 105, 0.42) !important;
+    border-radius: 16px !important;
+}
+div[data-testid="stAlert"] * {
+    color: #4b2d3a !important;
+}
+div[data-testid="stAlert"] svg {
+    color: #e9893f !important;
+    fill: #e9893f !important;
+}
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] li,
+div[data-testid="stAlert"] span,
+div[data-testid="stAlert"] div {
+    color: #4b2d3a !important;
+}
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] *,
+[data-testid="stMarkdownContainer"] p,
+.stRadio,
+.stRadio *,
+.stCheckbox,
+.stCheckbox *,
+.stSelectbox label,
+.stSelectbox label *,
+.stTextInput label,
+.stTextInput label *,
+.stDateInput label,
+.stDateInput label *,
+.stTimeInput label,
+.stTimeInput label *,
+.stNumberInput label,
+.stNumberInput label *,
+div[role="radiogroup"],
+div[role="radiogroup"] *,
+label[data-baseweb="radio"],
+label[data-baseweb="radio"] *,
+div[data-baseweb="radio"],
+div[data-baseweb="radio"] *,
+div[data-baseweb="checkbox"],
+div[data-baseweb="checkbox"] * {
+    color: #4b2d3a !important;
+}
+
+/* radio/checkbox 선택 표시 색상 */
+.stRadio svg,
+.stCheckbox svg,
+div[data-baseweb="radio"] svg,
+div[data-baseweb="checkbox"] svg {
+    color: #e94f85 !important;
+    fill: #e94f85 !important;
+}
+
+/* 버튼은 별도 관리: 일반 버튼은 핑크 텍스트, primary 버튼은 흰색 유지 */
+.stButton > button,
+.stButton > button *,
+button[kind="secondary"],
+button[kind="secondary"] * {
+    color: #d94478 !important;
+}
+.stButton > button[kind="primary"],
+.stButton > button[kind="primary"] * {
+    color: #ffffff !important;
+}
+
+/* 입력창 내부 placeholder와 선택값 */
+input,
+textarea,
+input::placeholder,
+textarea::placeholder,
+div[data-baseweb="input"] *,
+input::placeholder,
+textarea::placeholder {
+    opacity: 0.65 !important;
+}
+:root {
+    --palja-readable-text: #3f2a33;
+    --palja-readable-muted: #674b57;
+    --palja-readable-title: #d94378;
+}
+
+/* 웹 화면에서 상단 히어로가 잘리는 느낌 보정 */
+.block-container {
+    padding-top: 2.4rem !important;
+}
+.hero-wrap {
+    padding-top: 1.9rem !important;
+    padding-bottom: 1.35rem !important;
+    margin-top: 0.2rem !important;
+    overflow: visible !important;
+}
+.hero-title {
+    font-size: clamp(4.2rem, 8.6vw, 6.8rem) !important;
+    line-height: 1.08 !important;
+    padding-top: 0.12rem !important;
+    padding-bottom: 0.16rem !important;
+    overflow: visible !important;
+}
+.hero-title span {
+    line-height: 1.16 !important;
+    display: inline-block !important;
+    padding-top: 0.06rem !important;
+    padding-bottom: 0.10rem !important;
+}
+
+/* 본문은 귀엽지만 읽기 쉬운 둥근 계열 폰트 우선. 제목은 굵고 선명하게. */
+html, body, .stApp, p, li, span, div, label, input, textarea, button,
+[data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"] {
+    font-family: "Nunito", "Arial Rounded MT Bold", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
+    color: var(--palja-readable-text) !important;
+    font-size: 1.01rem;
+    line-height: 1.68;
+}
+
+h1, h2, h3, h4, h5, h6,
+.hero-title, .hero-title span,
+.mini-card-title, .mini-card-value,
+.score-number, .score-label {
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
+    letter-spacing: -0.03em;
+    color: var(--palja-readable-text) !important;
+    -webkit-text-fill-color: var(--palja-readable-text) !important;
+}
+
+/* 설명 텍스트는 충분히 진하게 */
+.hero-subtitle,
+[data-testid="stCaptionContainer"],
+.stCaptionContainer,
+.caption,
+small {
+    color: var(--palja-readable-muted) !important;
+    -webkit-text-fill-color: var(--palja-readable-muted) !important;
+    font-size: 0.98rem !important;
+    line-height: 1.7 !important;
+}
+
+/* 본문 카드 내부 글자 크기와 대비 보정 */
+.glass-panel, .result-arena, .detail-wrap, .mini-card, .mode-card {
+    color: var(--palja-readable-text) !important;
+}
+.mode-card h3 {
+    font-size: 1.36rem !important;
+    line-height: 1.35 !important;
+    color: var(--palja-readable-title) !important;
+}
+.mode-card p {
+    font-size: 1.02rem !important;
+    line-height: 1.72 !important;
+    color: var(--palja-readable-muted) !important;
+}
+.mini-card-title {
+    font-size: 0.98rem !important;
+    color: #745563 !important;
+}
+.mini-card-value {
+    font-size: 1.28rem !important;
+    line-height: 1.42 !important;
+    color: #d94378 !important;
+}
+
+/* 위젯 라벨·선택지는 무조건 진하게 */
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] *,
+.stRadio *, .stCheckbox *, .stSelectbox *, .stTextInput *,
+.stDateInput *, .stTimeInput *, .stNumberInput *,
+div[role="radiogroup"] *, label[data-baseweb="radio"] * {
+    color: var(--palja-readable-text) !important;
+    font-size: 1rem !important;
+}
+
+/* 표 글자도 흰색 잔존 방지 및 크기 보정 */
+[data-testid="stDataFrame"] *,
+[data-testid="stTable"] *,
+div[data-testid="stDataFrame"] div,
+div[data-testid="stTable"] div {
+    color: #33222a !important;
+    font-size: 0.95rem !important;
+}
+
+/* 탭, 알림, expander도 대비 확보 */
+button[data-baseweb="tab"],
+button[data-baseweb="tab"] * {
+    color: #4b2d3a !important;
+    font-size: 0.98rem !important;
+    font-weight: 800 !important;
+}
+div[data-testid="stAlert"],
+div[data-testid="stAlert"] * {
+    color: #4b2d3a !important;
+    font-size: 0.99rem !important;
+    line-height: 1.66 !important;
+}
+
+/* primary 버튼만 흰 글씨 유지 */
+.stButton > button[kind="primary"],
+.stButton > button[kind="primary"] * {
+    color: #ffffff !important;
+}
+
+/* 모바일/좁은 화면 상단 잘림 완화 */
+@media (max-width: 768px) {
+    .block-container {
+        padding-top: 1.8rem !important;
+    }
+    .hero-wrap {
+        padding-top: 1.55rem !important;
+        border-radius: 22px !important;
+    }
+    .hero-title {
+        font-size: 3.15rem !important;
+        line-height: 1.12 !important;
+    }
+    html, body, .stApp, p, li, span, div, label {
+        font-size: 1rem !important;
+    }
+}
+.compact-result-card {
+    padding: 1.1rem 1.15rem;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.97);
+    border: 1px solid rgba(255,145,180,0.24);
+    box-shadow: 0 14px 34px rgba(255, 125, 165, 0.12);
+    margin-bottom: 1rem;
+}
+.step-panel {
+    padding: 1.25rem 1.2rem;
+    border-radius: 26px;
+    background: linear-gradient(135deg, #fff8fb, #fff2f7);
+    border: 1px solid rgba(255,145,180,0.26);
+    box-shadow: 0 16px 36px rgba(255, 125, 165, 0.14);
+    text-align: center;
+    margin: 1rem 0;
+}
+.step-panel h3 {
+    color: #e94f85 !important;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.45rem;
+}
+.step-panel p {
+    color: #674b57 !important;
+    margin: 0;
+    line-height: 1.75;
+}
+.compact-kpi {
+    text-align:center;
+    padding: 1rem;
+    border-radius: 20px;
+    background: #fff6fa;
+    border: 1px solid rgba(255,145,180,0.20);
+    min-height: 112px;
+}
+.compact-kpi .kpi-label {
+    color: #745563 !important;
+    font-weight: 800;
+    font-size: 0.96rem;
+}
+.compact-kpi .kpi-value {
+    color: #d94378 !important;
+    font-weight: 950;
+    font-size: 1.65rem;
+    margin-top: 0.2rem;
+    line-height: 1.25;
+}
+.ability-map {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 0.8rem 0 1rem 0;
+}
+.ability-card {
+    background: #fff6fa;
+    border: 1px solid rgba(255,145,180,0.22);
+    border-radius: 20px;
+    padding: 1rem 1rem;
+    min-height: 150px;
+}
+.ability-card-title {
+    color: #d94378 !important;
+    font-weight: 950;
+    font-size: 1.08rem;
+    margin-bottom: 0.45rem;
+}
+.ability-card-body {
+    color: #4b2d3a !important;
+    font-size: 0.98rem;
+    line-height: 1.65;
+}
+@media (max-width: 900px) {
+    .ability-map {
+        grid-template-columns: 1fr;
+    }
+}
+.support-menu-wrap {
+    margin-top: 1.15rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgba(255,145,180,0.35);
+}
+.support-menu-title {
+    color: #745563 !important;
+    font-size: 0.92rem !important;
+    font-weight: 850 !important;
+    margin-bottom: 0.15rem;
+}
+.support-menu-caption {
+    color: #7a606b !important;
+    font-size: 0.88rem !important;
+    line-height: 1.55 !important;
+}
+.privacy-notice {
+    margin: 0.65rem 0 0.9rem 0;
+    padding: 0.82rem 0.95rem;
+    border-radius: 18px;
+    background: #fff8df;
+    border: 1px solid rgba(255, 180, 105, 0.42);
+    color: #4b2d3a !important;
+    font-size: 0.96rem;
+    line-height: 1.65;
+}
+.privacy-notice b {
+    color: #d45f31 !important;
+}
+.privacy-notice ul {
+    margin: 0.35rem 0 0 1.1rem;
+    padding: 0;
+}
+.privacy-notice li {
+    margin: 0.15rem 0;
+    color: #4b2d3a !important;
+}
+.meal-participant-caption {
+    color: #d94378 !important;
+    font-weight: 900 !important;
+    font-size: 1.03rem !important;
+    margin: 0.15rem 0 0.55rem 0 !important;
+}
+.storage-panel {
+    padding: 1rem 1.05rem;
+    border-radius: 20px;
+    background: #fff8fb;
+    border: 1px solid rgba(255,145,180,0.25);
+    margin: 0.8rem 0 1rem 0;
+}
+.storage-panel-title {
+    color: #d94378 !important;
+    font-size: 1.08rem !important;
+    font-weight: 950 !important;
+    margin-bottom: 0.35rem;
+}
+.storage-panel-caption {
+    color: #674b57 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.58 !important;
+}
+.native-summary-card {
+    padding: 1rem 1.05rem;
+    border-radius: 20px;
+    background: #fff6fa;
+    border: 1px solid rgba(255,145,180,0.24);
+    margin: 0.75rem 0;
+}
+.manual-input-hint {
+    color: #745563 !important;
+    font-size: 0.92rem !important;
+    margin-top: -0.25rem;
+}
+div[role="radiogroup"] {
+    gap: 0.35rem !important;
+}
+div[role="radiogroup"] label {
+    background: #fff8fb !important;
+    border: 1px solid rgba(255,145,180,0.22) !important;
+    border-radius: 999px !important;
+    padding: 0.35rem 0.58rem !important;
+    margin: 0.12rem 0.12rem 0.12rem 0 !important;
+}
+div[role="radiogroup"] label * {
+    color: #3f2a33 !important;
+}
+div[role="radiogroup"] {
+    gap: 0.35rem !important;
+    flex-wrap: wrap !important;
+}
+div[role="radiogroup"] label {
+    background: #fff8fb !important;
+    border: 1px solid rgba(255,145,180,0.28) !important;
+    border-radius: 999px !important;
+    padding: 0.36rem 0.62rem !important;
+    margin: 0.14rem 0.14rem 0.14rem 0 !important;
+    min-height: 38px !important;
+}
+div[role="radiogroup"] label * {
+    color: #3f2a33 !important;
+    font-weight: 800 !important;
+}
+div[role="radiogroup"] label:has(input:checked),
+div[role="radiogroup"] label[aria-checked="true"] {
+    background: #ffe7f0 !important;
+    border-color: rgba(233, 79, 133, 0.55) !important;
+}
+
+/* 보관함 불러오기 메뉴 */
+.roster-reuse-panel {
+    padding: 0.95rem 1rem;
+    border-radius: 20px;
+    background: #fff8fb;
+    border: 1px solid rgba(255,145,180,0.26);
+    margin: 0.9rem 0 1rem 0;
+}
+.roster-reuse-title {
+    color: #d94378 !important;
+    font-weight: 950 !important;
+    font-size: 1.08rem !important;
+}
+.roster-reuse-caption {
+    color: #674b57 !important;
+    font-size: 0.94rem !important;
+    line-height: 1.6 !important;
+}
+div[data-testid="stCheckbox"] label {
+    background: #fff8fb !important;
+    border: 1px solid rgba(255,145,180,0.24) !important;
+    border-radius: 16px !important;
+    padding: 0.55rem 0.75rem !important;
+    margin: 0.22rem 0 !important;
+}
+div[data-testid="stCheckbox"] label * {
+    color: #3f2a33 !important;
+    font-weight: 850 !important;
+}
+div[data-testid="stCheckbox"] svg {
+    color: #d94378 !important;
+    fill: #d94378 !important;
+}
+
+.result-arena h4,
+.result-arena h3,
+.result-arena .quest-title {
+    color:#4b2d3a !important;
+}
+.result-arena [data-testid="stToggle"] label,
+.result-arena [data-testid="stCheckbox"] label {
+    background:#fff8fb !important;
+    border:1px solid rgba(255,145,180,0.22) !important;
+    border-radius:14px !important;
+    padding:.42rem .62rem !important;
+}
+.main-character-card {
+    background: linear-gradient(135deg, #fff8fb 0%, #fffdf8 100%);
+    border: 1px solid rgba(255, 145, 180, 0.28);
+    border-radius: 20px;
+    padding: 1rem 1.1rem;
+    margin: 0.9rem 0 0.8rem 0;
+}
+.main-character-label {
+    color: #7a5665;
+    font-size: 0.92rem;
+    font-weight: 850;
+}
+.main-character-name {
+    color: #d64273;
+    font-size: 1.45rem;
+    font-weight: 950;
+    margin-top: 0.2rem;
+}
+.main-character-desc {
+    color: #5b3f4b;
+    font-size: 0.98rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+    line-height: 1.55;
+}
+.ability-bar-row {
+    background: #fffafc;
+    border: 1px solid rgba(230,164,184,0.35);
+    border-radius: 15px;
+    padding: 0.72rem 0.86rem;
+    margin: 0.55rem 0;
+}
+.ability-bar-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.7rem;
+    align-items: baseline;
+    margin-bottom: 0.42rem;
+}
+.ability-bar-title {
+    color: #4b2d3a;
+    font-weight: 900;
+}
+.ability-bar-score {
+    color: #d64273;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.ability-bar-track {
+    height: 13px;
+    border-radius: 999px;
+    background: #f6dfe8;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(75,45,58,0.08);
+}
+.ability-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ff8fab, #d64273);
+}
+.battle-board {
+    background: linear-gradient(135deg, #fff7fb 0%, #fffdf7 100%);
+    border: 1px solid rgba(255,145,180,0.32);
+    border-radius: 24px;
+    padding: 1.15rem;
+    margin: 0.9rem 0 1rem 0;
+}
+.battle-board-title {
+    color: #7a5665;
+    font-weight: 900;
+    font-size: 1rem;
+}
+.battle-board-verdict {
+    color: #d64273;
+    font-weight: 950;
+    font-size: 1.75rem;
+    line-height: 1.2;
+    margin: 0.35rem 0 0.95rem 0;
+}
+.battle-card-sub,
+.battle-card-line {
+    color:#5b3f4b;
+    font-size:0.95rem;
+    line-height:1.55;
+    margin-top:0.25rem;
+}
+.battle-compare-row {
+    background:#fffafc;
+    border:1px solid rgba(230,164,184,0.35);
+    border-radius:16px;
+    padding:.78rem .88rem;
+    margin:.58rem 0;
+}
+.battle-compare-title {
+    color:#4b2d3a;
+    font-weight:930;
+    margin-bottom:.45rem;
+}
+.battle-compare-line {
+    display:grid;
+    grid-template-columns: minmax(74px, 0.7fr) 3fr 58px;
+    gap:.55rem;
+    align-items:center;
+    margin:.3rem 0;
+}
+.battle-compare-name {
+    color:#5b3f4b;
+    font-weight:850;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.battle-compare-score {
+    color:#d64273;
+    font-weight:930;
+    text-align:right;
+}
+.battle-compare-track {
+    height:12px;
+    background:#f4dfe7;
+    border-radius:999px;
+    overflow:hidden;
+}
+.battle-compare-fill {
+    height:100%;
+    border-radius:999px;
+}
+.battle-compare-fill.mine {
+    background:linear-gradient(90deg,#ff8fab,#d64273);
+}
+.battle-compare-fill.friend {
+    background:linear-gradient(90deg,#8ec5ff,#2563eb);
+}
+.battle-chemistry-card {
+    background:#fff;
+    border:1px solid rgba(230,164,184,0.35);
+    border-radius:18px;
+    padding:.95rem 1rem;
+    margin:1rem 0;
+}
+.battle-chemistry-title {
+    color:#7a5665;
+    font-weight:900;
+}
+.battle-chemistry-score {
+    color:#d64273;
+    font-size:1.16rem;
+    font-weight:950;
+    margin-top:.2rem;
+}
+.battle-chemistry-text {
+    color:#5b3f4b;
+    line-height:1.6;
+    margin-top:.35rem;
+    font-weight:700;
+}
+@media (max-width: 760px) {
+        .battle-board-verdict {
+        font-size:1.38rem;
+    }
+    .battle-compare-line {
+        grid-template-columns: 70px 1fr 48px;
+    }
+}
+.multi-situation-wrap {
+    background: linear-gradient(135deg, #fff7fb 0%, #fffdf8 100%);
+    border: 1px solid rgba(255,145,180,0.28);
+    border-radius: 22px;
+    padding: 1rem 1rem 0.9rem 1rem;
+    margin: 0.85rem 0 1rem 0;
+}
+.multi-situation-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.4rem 0 0.55rem 0;
+}
+.legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.62rem;
+    border-radius: 999px;
+    font-size: 0.86rem;
+    font-weight: 900;
+    background: #fff;
+    border: 1px solid rgba(230,164,184,0.36);
+    color: #5b3f4b;
+}
+.legend-pill.ally { border-color: #ff6f9c; color: #c63d69; }
+.legend-pill.coop { border-color: #54b98b; color: #2b8f63; }
+.legend-pill.tune { border-color: #7d9bff; color: #4d63c9; }
+.legend-pill.tense { border-color: #ff9a68; color: #d5642b; }
+.multi-situation-caption {
+    color: #6c5560;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    margin-bottom: 0.9rem;
+}
+.multi-role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0.35rem 0 0.3rem 0;
+}
+.multi-role-card {
+    background: #ffffff;
+    border: 1px solid rgba(230,164,184,0.34);
+    border-radius: 18px;
+    padding: 0.82rem 0.9rem;
+}
+.multi-role-name {
+    color: #4b2d3a;
+    font-size: 1.08rem;
+    font-weight: 950;
+}
+.multi-role-title {
+    color: #d64273;
+    font-size: 1rem;
+    font-weight: 930;
+    margin-top: 0.15rem;
+}
+.multi-role-body {
+    color: #5b3f4b;
+    line-height: 1.58;
+    font-weight: 700;
+    margin-top: 0.28rem;
+}
+.multi-role-meta {
+    color: #6b5460;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    margin-top: 0.28rem;
+}
+@media (max-width: 760px) {
+    .multi-role-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* v5.04: 오늘의 뽑기 대기 화면 — 밝은 카드형으로 가독성 우선 */
+.meal-stage-wrap {
+    background: linear-gradient(135deg, #fffafc 0%, #fff7ed 52%, #fff1f5 100%);
+    border: 1px solid rgba(230,164,184,0.42);
+    border-radius: 26px;
+    padding: 1.15rem 1.15rem;
+    margin: 0.9rem 0 1rem 0;
+    color: #4b2d3a;
+    box-shadow: 0 14px 34px rgba(214,66,115,0.10);
+}
+.meal-stage-kicker {
+    display: inline-block;
+    color: #9f1239;
+    background: #ffe4ee;
+    border: 1px solid rgba(214,66,115,0.24);
+    border-radius: 999px;
+    padding: 0.22rem 0.68rem;
+    font-size: 0.86rem;
+    font-weight: 950;
+}
+.meal-stage-title {
+    color: #5b3f4b;
+    font-size: 1.55rem;
+    font-weight: 950;
+    margin-top: 0.55rem;
+    line-height: 1.2;
+}
+.meal-stage-copy {
+    color: #6f4f5c;
+    font-size: 0.98rem;
+    line-height: 1.7;
+    margin-top: 0.55rem;
+    font-weight: 760;
+}
+.meal-stage-alert {
+    color: #d64273;
+    font-size: 1.08rem;
+    font-weight: 950;
+    margin: 0.72rem 0 0.75rem 0;
+}
+.meal-ready-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.62rem;
+}
+.meal-ready-card {
+    background: #ffffff;
+    border: 1px solid rgba(230,164,184,0.38);
+    border-radius: 18px;
+    padding: 0.72rem 0.78rem;
+    box-shadow: 0 8px 20px rgba(214,66,115,0.07);
+}
+.meal-ready-name {
+    color: #5b3f4b;
+    font-size: 1.05rem;
+    font-weight: 950;
+}
+.meal-ready-spokes {
+    color: #d64273;
+    font-size: 1.32rem;
+    font-weight: 950;
+    line-height: 1.25;
+    margin-top: 0.18rem;
+}
+.meal-ready-sub {
+    color: #7a5665;
+    font-size: 0.88rem;
+    font-weight: 780;
+    margin-top: 0.12rem;
+}
+
+.pick-suspense-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.62rem;
+    margin: 0.85rem 0 0.15rem 0;
+}
+.pick-sealed-card {
+    background: linear-gradient(135deg,#ffffff 0%,#fff0f5 100%);
+    border: 1px solid rgba(214,66,115,0.30);
+    border-radius: 18px;
+    padding: 0.78rem 0.7rem;
+    text-align: center;
+    box-shadow: 0 10px 22px rgba(214,66,115,0.08);
+}
+.pick-sealed-icon {
+    font-size: 1.7rem;
+    line-height: 1.1;
+}
+.pick-sealed-title {
+    color: #5b3f4b;
+    font-weight: 950;
+    margin-top: 0.18rem;
+}
+.pick-sealed-sub {
+    color: #7a5665;
+    font-size: 0.82rem;
+    font-weight: 760;
+    margin-top: 0.12rem;
+}
+@media (max-width: 680px) {
+    .pick-suspense-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 680px) {
+    .meal-ready-grid {
+        grid-template-columns: 1fr;
+    }
+    .meal-stage-title {
+        font-size: 1.34rem;
+    }
+}
+.logic-mini-panel {
+    background: #fffdf8;
+    border: 1px dashed rgba(180, 128, 148, 0.38);
+    border-radius: 16px;
+    padding: 0.72rem 0.82rem;
+    margin: 0.65rem 0 0.9rem 0;
+}
+.logic-mini-panel h5 {
+    color: #5b3f4b !important;
+    margin-bottom: 0.25rem !important;
+}
+.logic-mini-panel [data-testid="stDataFrame"] {
+    font-size: 0.92rem;
+}
+.compact-battle-detail {
+    padding-top: 0.75rem;
+}
+.compact-detail-card {
+    background: #fffafc;
+    border: 1px solid rgba(230,164,184,0.35);
+    border-radius: 18px;
+    padding: 0.9rem 1rem;
+    margin: 0.65rem 0 0.85rem 0;
+}
+.compact-detail-title {
+    color: #d64273;
+    font-size: 1.12rem;
+    font-weight: 950;
+    margin-bottom: 0.35rem;
+}
+.compact-detail-body {
+    color: #5b3f4b;
+    line-height: 1.62;
+    font-weight: 720;
+    margin: 0.18rem 0;
+}
+
+
+.safe-table-wrap { overflow-x:auto; margin:.4rem 0 1rem 0; }
+.safe-table { width:100%; border-collapse:separate; border-spacing:0; font-size:.88rem; background:#fff; border:1px solid rgba(230,164,184,.35); border-radius:14px; overflow:hidden; }
+.safe-table th { text-align:left; background:#fff3f7; color:#5b3f4b; padding:.62rem .7rem; border-bottom:1px solid rgba(230,164,184,.35); white-space:nowrap; }
+.safe-table td { padding:.58rem .7rem; border-bottom:1px solid rgba(230,164,184,.22); color:#5f4550; vertical-align:top; }
+.safe-table tr:last-child td { border-bottom:0; }
+.viz-pill { display:inline-flex; align-items:center; gap:.35rem; background:#fff5f8; border:1px solid rgba(230,164,184,.35); color:#6a4554; border-radius:999px; padding:.32rem .6rem; font-size:.82rem; font-weight:850; margin:.15rem .22rem .15rem 0; }
+.signal-card { background:#fff; border:1px solid rgba(230,164,184,.30); border-radius:18px; padding:.85rem .9rem; margin:.45rem 0; box-shadow:0 8px 18px rgba(255,125,165,.07); }
+.signal-title { color:#5b3f4b; font-weight:950; margin-bottom:.25rem; }
+.signal-body { color:#6f4f5c; line-height:1.55; font-size:.92rem; }
+.thermo-track { height:22px; background:#f1edf0; border-radius:999px; overflow:hidden; border:1px solid rgba(110,82,94,.18); position:relative; }
+.thermo-fill { height:100%; border-radius:999px; }
+.thermo-pin { position:absolute; top:50%; width:30px; height:30px; transform:translate(-50%,-50%); border-radius:999px; background:#fff; border:3px solid #4b2d3a; box-shadow:0 4px 12px rgba(0,0,0,.16); }
+
+/* v5.106: 모바일 UI 전반 트리밍 — 단정하고 임팩트 있게 */
+@media (max-width: 768px) {
+    :root {
+        --mobile-card-radius: 20px;
+    }
+
+    .block-container {
+        padding: .72rem .64rem 1.25rem .64rem !important;
+    }
+
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    .stMarkdown p,
+    .stMarkdown li {
+        margin-bottom: .32rem !important;
+        line-height: 1.5 !important;
+    }
+
+    [data-testid="stCaptionContainer"],
+    .small-muted,
+    .stCaptionContainer,
+    .caption,
+    small {
+        font-size: .78rem !important;
+        line-height: 1.42 !important;
+        color: #6a5560 !important;
+    }
+
+    h2, h3, h4 {
+        letter-spacing: -.02em !important;
+        margin-top: .18rem !important;
+        margin-bottom: .34rem !important;
+    }
+
+    .hero-wrap {
+        padding: .88rem .78rem .94rem !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.07) !important;
+    }
+
+    .hero-title {
+        font-size: clamp(1.96rem, 11vw, 2.7rem) !important;
+        line-height: 1.04 !important;
+        letter-spacing: -.04em !important;
+    }
+
+    .hero-subtitle {
+        font-size: .86rem !important;
+        line-height: 1.45 !important;
+    }
+
+    .summary-chip {
+        padding: .28rem .52rem !important;
+        border-radius: 999px !important;
+        font-size: .72rem !important;
+        font-weight: 850 !important;
+    }
+
+    .main-character-card,
+    .today-quick-card,
+    .today-compass,
+    .compact-glance-card,
+    .mini-card,
+    .share-card-wrap,
+    .pipeline-card,
+    .shinsal-card,
+    .manse-pillar-card,
+    .manse-luck-card,
+    .manse-year-card,
+    .svg-radar-card,
+    .chem-radar-card,
+    .luck-intensity-card,
+    .signal-card,
+    .mode-card,
+    .revisit-guide-card {
+        border-radius: 18px !important;
+        padding: .76rem .74rem !important;
+        margin: .38rem 0 !important;
+        box-shadow: 0 8px 18px rgba(80,40,60,.055) !important;
+    }
+
+    .main-character-label,
+    .signal-title,
+    .today-quick-pill,
+    .shinsal-type,
+    .revisit-guide-title {
+        font-size: .74rem !important;
+        letter-spacing: -.01em !important;
+    }
+
+    .main-character-name {
+        font-size: 1.22rem !important;
+        line-height: 1.16 !important;
+        letter-spacing: -.04em !important;
+    }
+
+    .main-character-desc,
+    .share-card-body,
+    .today-quick-body,
+    .today-compass-body,
+    .signal-body,
+    .revisit-guide-body {
+        font-size: .84rem !important;
+        line-height: 1.42 !important;
+    }
+
+    .compact-glance-title,
+    .today-quick-title {
+        font-size: 1rem !important;
+        line-height: 1.16 !important;
+        letter-spacing: -.02em !important;
+    }
+
+    .compact-glance-body,
+    .share-card-caption,
+    .today-compass-note {
+        font-size: .76rem !important;
+        line-height: 1.38 !important;
+    }
+
+    .shinsal-icon {
+        width: 46px !important;
+        height: 46px !important;
+        flex-basis: 46px !important;
+        font-size: 1.65rem !important;
+        border-radius: 14px !important;
+    }
+
+    .shinsal-name {
+        font-size: 1.06rem !important;
+    }
+
+    .stButton > button,
+    .stDownloadButton > button,
+    .stLinkButton > a {
+        width: 100% !important;
+        min-height: 46px !important;
+        border-radius: 16px !important;
+        font-size: .94rem !important;
+        font-weight: 900 !important;
+        letter-spacing: -.01em !important;
+        box-shadow: 0 8px 16px rgba(214,66,115,.10) !important;
+    }
+
+    .stButton > button {
+        border: 1px solid rgba(214,66,115,.18) !important;
+        background: linear-gradient(180deg,#fff,#fff7fb) !important;
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(180deg,#d64273,#bc275c) !important;
+        border-color: rgba(188,39,92,.92) !important;
+        box-shadow: 0 10px 18px rgba(214,66,115,.18) !important;
+        transform: translateY(0) !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"],
+    div[data-testid="stHorizontalBlock"] {
+        gap: .38rem !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        min-height: 40px !important;
+        padding: .34rem .54rem !important;
+        border-radius: 14px !important;
+    }
+
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stDateInput"] input,
+    div[data-testid="stTimeInput"] input,
+    div[data-testid="stNumberInput"] input,
+    textarea {
+        min-height: 42px !important;
+        border-radius: 14px !important;
+        padding-top: .54rem !important;
+        padding-bottom: .54rem !important;
+    }
+
+    .element-bar-row {
+        grid-template-columns: 26px 1fr 40px !important;
+        font-size: .76rem !important;
+        margin: .24rem 0 !important;
+    }
+
+    .chem-line {
+        grid-template-columns: 48px 1fr 44px !important;
+        font-size: .76rem !important;
+        margin: .18rem 0 !important;
+    }
+
+    .mini-meter,
+    .element-bar-track,
+    .chem-track {
+        height: 9px !important;
+    }
+
+    .signal-card {
+        padding: .68rem .72rem !important;
+    }
+
+    .signal-title {
+        font-size: .9rem !important;
+        margin-bottom: .18rem !important;
+    }
+
+    .revisit-guide-body b {
+        color: #4b2d3a !important;
+    }
+
+    [data-testid="stExpander"] {
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        border: 1px solid rgba(230,164,184,.22) !important;
+        background: #fff !important;
+    }
+
+    [data-testid="stExpander"] summary {
+        padding-top: .18rem !important;
+        padding-bottom: .18rem !important;
+        font-size: .92rem !important;
+        font-weight: 850 !important;
+    }
+
+    .stDataFrame, div[data-testid="stTable"] {
+        border-radius: 14px !important;
+        overflow: hidden !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .block-container { padding-left: .54rem !important; padding-right: .54rem !important; }
+    .hero-title { font-size: clamp(1.82rem, 10.5vw, 2.38rem) !important; }
+    .main-character-name { font-size: 1.15rem !important; }
+    .compact-glance-title, .today-quick-title { font-size: .96rem !important; }
+    .summary-chip { font-size: .68rem !important; }
+    .stButton > button, .stDownloadButton > button, .stLinkButton > a { min-height: 44px !important; }
+}
+
+
+/* v5.107: 첫 화면 프리미엄 정리 + 결과/케미 카드 다이어트 */
+.single-hero-premium,
+.chem-hero-premium {
+    position: relative;
+    overflow: hidden;
+}
+.single-hero-premium::before,
+.chem-hero-premium::before {
+    content: "";
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    right: -70px;
+    top: -90px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(214,66,115,.12), rgba(214,66,115,0));
+    pointer-events: none;
+}
+.single-hero-premium > *,
+.chem-hero-premium > * {
+    position: relative;
+    z-index: 1;
+}
+.single-hero-metrics > div {
+    min-height: 132px;
+}
+.page-button-guide {
+    font-size: .86rem;
+    color: #7a5665;
+    margin: .1rem 0 .45rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .single-hero-premium,
+    .chem-hero-premium {
+        padding: .98rem .78rem .86rem !important;
+        border-radius: 22px !important;
+        margin: .22rem 0 .72rem 0 !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.075) !important;
+    }
+
+    .single-hero-premium > div:nth-child(1),
+    .chem-hero-premium > div:nth-child(1) {
+        font-size: .78rem !important;
+        margin-bottom: .24rem !important;
+    }
+
+    .single-hero-premium > div:nth-child(3),
+    .chem-hero-premium > div:nth-child(2) {
+        font-size: clamp(1.55rem, 8.2vw, 2.05rem) !important;
+        line-height: 1.08 !important;
+        letter-spacing: -.055em !important;
+        margin-top: .12rem !important;
+    }
+
+    .single-hero-premium > div:nth-child(4),
+    .chem-hero-premium > div:nth-child(4),
+    .single-hero-premium > div:nth-child(7) {
+        font-size: .84rem !important;
+        line-height: 1.42 !important;
+        margin-top: .38rem !important;
+    }
+
+    .single-hero-premium > div:nth-child(5),
+    .chem-hero-premium > div:nth-child(5) {
+        margin-top: .46rem !important;
+        padding: .28rem .62rem !important;
+        font-size: .78rem !important;
+    }
+
+    .single-hero-metrics {
+        grid-template-columns: 1fr !important;
+        gap: .42rem !important;
+        margin-top: .72rem !important;
+    }
+
+    .single-hero-metrics > div {
+        min-height: auto !important;
+        padding: .66rem .7rem !important;
+        border-radius: 16px !important;
+        box-shadow: none !important;
+        display: grid !important;
+        grid-template-columns: 92px 1fr;
+        column-gap: .58rem;
+        align-items: center;
+    }
+
+    .single-hero-metrics > div > div:nth-child(1) {
+        grid-row: 1 / span 2;
+        font-size: .76rem !important;
+        color: #8b6775 !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) {
+        font-size: .98rem !important;
+        line-height: 1.24 !important;
+        margin-top: 0 !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(3),
+    .single-hero-metrics > div > div:nth-child(4) {
+        font-size: .76rem !important;
+        line-height: 1.34 !important;
+        margin-top: .12rem !important;
+    }
+
+    .page-button-guide {
+        display: none !important;
+    }
+
+    .main-character-card {
+        min-height: auto !important;
+    }
+
+    .main-character-card .main-character-label {
+        margin-bottom: .18rem !important;
+    }
+
+    .main-character-card .main-character-name {
+        font-size: 1.08rem !important;
+        line-height: 1.14 !important;
+    }
+
+    [data-testid="stHorizontalBlock"] .main-character-card {
+        margin-top: .28rem !important;
+        margin-bottom: .28rem !important;
+    }
+
+    .svg-radar-card {
+        padding: .54rem .42rem !important;
+    }
+
+    .svg-radar-card svg {
+        max-height: 300px !important;
+    }
+
+    .signal-card + .signal-card {
+        margin-top: .32rem !important;
+    }
+
+    .share-image-tools {
+        display: none !important;
+    }
+
+    .revisit-guide-card {
+        font-size: .82rem !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .single-hero-premium,
+    .chem-hero-premium {
+        padding-left: .68rem !important;
+        padding-right: .68rem !important;
+    }
+    .single-hero-metrics > div {
+        grid-template-columns: 82px 1fr;
+        column-gap: .46rem;
+    }
+}
+
+
+/* v5.110: 입력 화면 압축 */
+@media (max-width: 768px) {
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: .32rem !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        width: auto !important;
+        flex: 1 1 auto !important;
+        min-height: 38px !important;
+        padding: .30rem .46rem !important;
+        border-radius: 13px !important;
+        justify-content: center !important;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] label * {
+        font-size: .82rem !important;
+        line-height: 1.18 !important;
+        white-space: nowrap !important;
+    }
+    div[data-testid="stCheckbox"] label {
+        min-height: 36px !important;
+        padding: .22rem .1rem !important;
+    }
+    div[data-testid="stCheckbox"] label * {
+        font-size: .82rem !important;
+        line-height: 1.22 !important;
+    }
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stDateInput"] label,
+    div[data-testid="stTimeInput"] label,
+    div[data-testid="stNumberInput"] label,
+    div[data-testid="stRadio"] label,
+    div[data-testid="stCheckbox"] label {
+        margin-bottom: .12rem !important;
+    }
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
+    textarea {
+        min-height: 39px !important;
+        padding-top: .42rem !important;
+        padding-bottom: .42rem !important;
+    }
+    .stAlert {
+        margin-top: .34rem !important;
+        margin-bottom: .34rem !important;
+    }
+}
+
+
+/* v5.111: 모바일 첫 결과화면 3대 요약 지표 가로 압축 */
+@media (max-width: 768px) {
+    .single-hero-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: .34rem !important;
+        margin-top: .68rem !important;
+    }
+
+    .single-hero-metrics > div {
+        min-height: 96px !important;
+        padding: .58rem .42rem !important;
+        border-radius: 15px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: .18rem !important;
+        box-shadow: none !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(1) {
+        grid-row: auto !important;
+        font-size: .68rem !important;
+        line-height: 1.18 !important;
+        color: #8b6775 !important;
+        white-space: nowrap !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) {
+        font-size: .86rem !important;
+        line-height: 1.18 !important;
+        margin-top: .04rem !important;
+        word-break: keep-all !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) span {
+        font-size: .66rem !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(3),
+    .single-hero-metrics > div > div:nth-child(4) {
+        font-size: .66rem !important;
+        line-height: 1.22 !important;
+        margin-top: .06rem !important;
+    }
+
+    /* 첫 결과화면에서는 설명보다 지표를 우선한다 */
+    .single-hero-metrics > div:nth-child(1) > div:nth-child(3),
+    .single-hero-metrics > div:nth-child(3) > div:nth-child(4) {
+        display: none !important;
+    }
+
+    /* 오행 알약은 모바일 첫 화면에서 너무 길어져 숨기고, 강/약 요약만 남긴다 */
+    .single-hero-metrics > div:nth-child(2) > div:nth-child(3) {
+        display: none !important;
+    }
+
+    .single-hero-metrics > div:nth-child(3) div[style*="height:10px"] {
+        width: 100% !important;
+        height: 7px !important;
+        margin: .20rem 0 0 0 !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .single-hero-metrics {
+        gap: .26rem !important;
+    }
+
+    .single-hero-metrics > div {
+        padding: .50rem .32rem !important;
+        min-height: 88px !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(1) {
+        font-size: .63rem !important;
+    }
+
+    .single-hero-metrics > div > div:nth-child(2) {
+        font-size: .78rem !important;
+    }
+}
+
+
+/* v5.112: 첫 결과화면 하단 재방문 안내 — QR 제거, 3단계 안내 */
+.revisit-guide-compact {
+    margin-top: .72rem !important;
+    background: linear-gradient(135deg,#fffdf8,#fff7fb) !important;
+    border: 1px solid rgba(230,164,184,.34) !important;
+}
+.revisit-mini-steps {
+    display: flex;
+    gap: .34rem;
+    flex-wrap: wrap;
+    margin-top: .58rem;
+}
+.revisit-mini-steps span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .28rem .52rem;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid rgba(230,164,184,.36);
+    color: #6a4552;
+    font-size: .78rem;
+    font-weight: 900;
+}
+.revisit-device-note {
+    margin-top: .48rem;
+    color: #8b6775;
+    font-size: .78rem;
+    line-height: 1.36;
+    font-weight: 760;
+}
+
+@media (max-width: 768px) {
+    .revisit-guide-compact {
+        margin-top: .54rem !important;
+        padding: .66rem .68rem !important;
+    }
+    .revisit-mini-steps {
+        gap: .24rem;
+        margin-top: .42rem;
+    }
+    .revisit-mini-steps span {
+        flex: 1 1 30%;
+        padding: .24rem .28rem;
+        font-size: .68rem;
+        white-space: nowrap;
+    }
+    .revisit-device-note {
+        font-size: .70rem;
+        margin-top: .36rem;
+    }
+}
+
+
+/* v5.118: 내 사주 인상 + 삼각 그래프 */
+.single-axis-triangle-wrap {
+    background: rgba(255,255,255,.84);
+    border: 1px solid rgba(230,164,184,.30);
+    border-radius: 20px;
+    padding: .85rem .75rem .5rem;
+}
+.single-axis-triangle-title {
+    font-size: .82rem;
+    color: #8b6775;
+    font-weight: 900;
+    margin-bottom: .12rem;
+}
+@media (max-width: 768px) {
+    .single-hero-metrics {
+        grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+        gap: .34rem !important;
+        margin-top: .68rem !important;
+    }
+    .single-hero-metrics > div {
+        min-height: 102px !important;
+        padding: .58rem .46rem !important;
+        border-radius: 15px !important;
+        text-align: left !important;
+    }
+    .single-axis-triangle-wrap {
+        padding: .58rem .34rem .20rem !important;
+        border-radius: 16px !important;
+    }
+    .single-axis-triangle-title {
+        font-size: .74rem !important;
+    }
+}
+
+
+/* v5.119: 첫 화면 추가 트리밍 */
+.single-hero-trimmed .main-character-desc { display:none !important; }
+.axis-bar-compact {
+    margin: .26rem 0 .44rem;
+}
+.axis-bar-top {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.5rem;
+    margin-bottom:.26rem;
+}
+.axis-bar-name {
+    font-size:.92rem;
+    font-weight:900;
+    color:#46313a;
+}
+.axis-bar-score {
+    font-size:.78rem;
+    font-weight:800;
+    color:#8b6775;
+    white-space:nowrap;
+}
+.axis-bar-track {
+    width:100%;
+    height:10px;
+    border-radius:999px;
+    background:#f5e7ee;
+    border:1px solid rgba(230,164,184,.22);
+    overflow:hidden;
+}
+.axis-bar-fill {
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg,#f7b1c7,#c1a6ff);
+}
+.axis-bar-desc {
+    font-size:.76rem;
+    color:#6f4f5c;
+    line-height:1.32;
+    margin-top:.20rem;
+}
+.single-axis-triangle-wrap {
+    background: rgba(255,255,255,.88);
+    border: 1px solid rgba(230,164,184,.28);
+    border-radius: 18px;
+    padding: .42rem .42rem .12rem;
+}
+@media (max-width: 768px) {
+    .single-hero-trimmed {
+        padding: .94rem .72rem .72rem !important;
+        margin: .18rem 0 .56rem 0 !important;
+        border-radius: 22px !important;
+    }
+    .single-hero-trimmed > div:nth-child(3) {
+        font-size: 1.62rem !important;
+        margin-top: .38rem !important;
+    }
+    .single-hero-trimmed > div:nth-child(4) {
+        font-size: .86rem !important;
+        margin-top: .16rem !important;
+    }
+    .single-hero-metrics {
+        gap: .28rem !important;
+        margin-top: .56rem !important;
+    }
+    .single-hero-metrics > div {
+        min-height: 90px !important;
+        padding: .52rem .42rem !important;
+        border-radius: 14px !important;
+    }
+    .single-axis-triangle-wrap {
+        padding: .22rem .16rem .06rem !important;
+        border-radius: 14px !important;
+    }
+    .axis-bar-compact {
+        margin: .18rem 0 .34rem !important;
+    }
+    .axis-bar-name {
+        font-size: .86rem !important;
+    }
+    .axis-bar-score {
+        font-size: .72rem !important;
+    }
+    .axis-bar-track {
+        height: 9px !important;
+    }
+    .axis-bar-desc {
+        font-size: .72rem !important;
+        margin-top: .16rem !important;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+BLANK = ""
+stem_options = [BLANK] + list(STEMS.keys())
+branch_options = [BLANK] + list(BRANCHES.keys())
+
+
+def display_stem(x: str) -> str:
+    if x == BLANK:
+        return "선택"
+    return f"{x}({STEMS[x]['ko']})"
+
+
+def display_branch(x: str) -> str:
+    if x == BLANK:
+        return "선택"
+    return f"{x}({BRANCHES[x]['ko']})"
+
+
+def ganji_text(chart: Chart) -> str:
+    hour_text = f"{chart.hour.stem}{chart.hour.branch}" if chart.hour is not None else "시주 미상"
+    return f"{chart.year.stem}{chart.year.branch} / {chart.month.stem}{chart.month.branch} / {chart.day.stem}{chart.day.branch} / {hour_text}"
+
+
+def category_comparison_rows(my_result: Dict[str, object], friend_result: Dict[str, object]) -> List[Dict[str, object]]:
+    mine = category_totals(my_result["categorized_scores"])
+    theirs = category_totals(friend_result["categorized_scores"])
+    rows = []
+    for a, b in zip(mine, theirs):
+        diff = round(float(a["점수"]) - float(b["점수"]), 1)
+        rows.append({
+            "카테고리": a["카테고리"],
+            "내 점수": a["점수"],
+            "상대 점수": b["점수"],
+            "차이": f"{diff:+.1f}",
+            "판정": "나 쪽이 강함" if diff > 0 else ("상대 쪽이 강함" if diff < 0 else "비슷함"),
+        })
+    return rows
+
+
+def sewun_comparison_rows(my_luck: Dict[str, object], friend_luck: Dict[str, object]) -> List[Dict[str, object]]:
+    my_rows = my_luck.get("sewun_rows", []) if my_luck else []
+    fr_rows = friend_luck.get("sewun_rows", []) if friend_luck else []
+    rows = []
+    by_year = {r["연도"]: r for r in fr_rows}
+    for r in my_rows:
+        f = by_year.get(r["연도"])
+        if not f:
+            continue
+        diff = round(float(r["점수"]) - float(f["점수"]), 1)
+        rows.append({
+            "연도": r["연도"],
+            "내 세운": r["세운"],
+            "내 점수": r["점수"],
+            "상대 세운": f["세운"],
+            "상대 점수": f["점수"],
+            "차이": f"{diff:+.1f}",
+            "판정": "나 쪽이 강함" if diff > 0 else ("상대 쪽이 강함" if diff < 0 else "비슷함"),
+        })
+    return rows
+
+
+def parse_manual_date(value: str) -> date | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    try:
+        if len(digits) == 8:
+            return date(int(digits[0:4]), int(digits[4:6]), int(digits[6:8]))
+        normalized = re.sub(r"[./\s]+", "-", raw)
+        return datetime.strptime(normalized, "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def parse_manual_time(value: str) -> time | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    try:
+        if len(digits) == 4:
+            hh, mm = int(digits[:2]), int(digits[2:])
+            return time(hh, mm)
+        if len(digits) == 3:
+            hh, mm = int(digits[:1]), int(digits[1:])
+            return time(hh, mm)
+        normalized = raw.replace(".", ":").replace(" ", "")
+        return datetime.strptime(normalized, "%H:%M").time()
+    except Exception:
+        return None
+
+
+def _stable_text_input(label: str, default_value: str, key: str, help: str = "", disabled: bool = False) -> str:
+    """성별/옵션 변경 rerun 시에도 생년월일·시간 원문을 최대한 유지하는 입력 위젯."""
+    backup_key = f"{key}__last_value"
+    if backup_key not in st.session_state:
+        st.session_state[backup_key] = str(default_value)
+    if key not in st.session_state:
+        st.session_state[key] = str(st.session_state.get(backup_key, default_value))
+
+    def _remember_input_value() -> None:
+        try:
+            st.session_state[backup_key] = str(st.session_state.get(key, default_value))
+        except Exception:
+            pass
+
+    raw = st.text_input(
+        label,
+        key=key,
+        help=help,
+        disabled=disabled,
+        on_change=_remember_input_value,
+    )
+    if raw is not None:
+        st.session_state[backup_key] = str(raw)
+    return str(raw or "")
+
+
+def manual_date_input(label: str, default_value: date, key: str) -> date | None:
+    raw = _stable_text_input(label, default_value.strftime("%Y%m%d"), key=key, help="예: YYYYMMDD 또는 YYYY-MM-DD")
+    parsed = parse_manual_date(raw)
+    st.markdown("<div class='manual-input-hint'>예: YYYYMMDD 또는 YYYY-MM-DD 형식으로 입력</div>", unsafe_allow_html=True)
+    if parsed is None:
+        st.warning(f"{label}은 8자리 숫자 또는 YYYY-MM-DD 형식으로 입력해 주세요. 예: YYYYMMDD")
+    return parsed
+
+
+def manual_time_input(label: str, default_value: time, key: str) -> time | None:
+    raw = _stable_text_input(label, default_value.strftime("%H%M"), key=key, help="예: HHMM 또는 HH:MM")
+    parsed = parse_manual_time(raw)
+    st.markdown("<div class='manual-input-hint'>예: HHMM 또는 HH:MM 형식으로 입력</div>", unsafe_allow_html=True)
+    if parsed is None:
+        st.warning(f"{label}은 3~4자리 숫자 또는 HH:MM 형식으로 입력해 주세요. 예: HHMM")
+    return parsed
+
+
+def auto_input_panel(prefix: str, title: str, default_date: date, default_time: time):
+    st.markdown(f"#### {title}")
+
+    c1, c2 = st.columns([1.15, 1])
+    with c1:
+        b_date = manual_date_input("생년월일", default_date, key=f"{prefix}_date_text")
+    with c2:
+        calendar_type = compact_calendar_selector(prefix)
+
+    c3, c4 = st.columns([1.15, 1])
+    with c3:
+        time_unknown = st.checkbox("시간 모름", value=False, key=f"{prefix}_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
+        if time_unknown:
+            st.text_input("태어난 시간", value="미상", disabled=True, key=f"{prefix}_time_disabled")
+            b_time = None
+        else:
+            b_time = manual_time_input("태어난 시간", default_time, key=f"{prefix}_time_text")
+    with c4:
+        gender = st.radio("성별", ["남자", "여자"], horizontal=True, key=f"{prefix}_gender")
+
+    if time_unknown:
+        st.info("출생시간 미상: 년주·월주·일주 기반으로 간이 분석합니다.")
+    return b_date, b_time, gender, calendar_type, time_unknown
+
+
+def participant_top_axis(payload: Dict[str, object]) -> str:
+    rows = category_totals(payload["result"]["categorized_scores"])
+    if not rows:
+        return "-"
+    top = max(rows, key=lambda r: float(r.get("반영치", r.get("점수", 0))))
+    return category_plain_title(top["카테고리"])
+
+
+def participant_axis_score(payload: Dict[str, object], axis_keyword: str) -> Tuple[float, float]:
+    rows = category_totals(payload["result"]["categorized_scores"])
+    for row in rows:
+        if axis_keyword in str(row["카테고리"]):
+            return float(row.get("반영치", row.get("점수", 0))), float(row.get("기준", row.get("배점", 0)) or 0)
+    return 0.0, 0.0
+
+
+def render_battle_compare_bar(label: str, mine: Dict[str, object], friend: Dict[str, object], mine_score: float, friend_score: float, max_score: float | None = None) -> None:
+    if max_score is None:
+        max_score = max(mine_score, friend_score, 1.0)
+    mine_pct = max(0, min(100, (mine_score / max_score * 100) if max_score else 0))
+    friend_pct = max(0, min(100, (friend_score / max_score * 100) if max_score else 0))
+    safe_label = html.escape(str(label), quote=True)
+    safe_mine_name = html.escape(str(mine.get("name", "나")), quote=True)
+    safe_friend_name = html.escape(str(friend.get("name", "친구")), quote=True)
+    st.markdown(f"""
+    <div class="battle-compare-row">
+        <div class="battle-compare-title">{safe_label}</div>
+        <div class="battle-compare-line">
+            <div class="battle-compare-name">{safe_mine_name}</div>
+            <div class="battle-compare-track"><div class="battle-compare-fill mine" style="width:{mine_pct:.1f}%;"></div></div>
+            <div class="battle-compare-score">{mine_score:.1f}</div>
+        </div>
+        <div class="battle-compare-line">
+            <div class="battle-compare-name">{safe_friend_name}</div>
+            <div class="battle-compare-track"><div class="battle-compare-fill friend" style="width:{friend_pct:.1f}%;"></div></div>
+            <div class="battle-compare-score">{friend_score:.1f}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ============================================================
+# v5.51: 시각화 중심 1차 화면 / 캐릭터 / 1:1 케미 UI 헬퍼
+# ============================================================
+
+def _safe_pct_dict(result: Dict[str, object]) -> Dict[str, float]:
+    """result 안의 오행 비율을 0~100 퍼센트 dict로 안전하게 반환한다."""
+    raw = result.get("adjusted_pct") or result.get("seasonal_pct") or result.get("base_pct") or {}
+    pct: Dict[str, float] = {}
+    if isinstance(raw, dict):
+        for el in ELEMENTS:
+            try:
+                pct[el] = float(raw.get(el, 0) or 0)
+            except Exception:
+                pct[el] = 0.0
+    total = sum(pct.values())
+    if total and total > 130:  # 혹시 점수 원자료가 들어오면 퍼센트로 정규화
+        pct = {el: (pct.get(el, 0.0) / total * 100.0) for el in ELEMENTS}
+    return pct
+
+
+def _has_sayu_chuk_metal_frame(chart: Chart, result: Dict[str, object]) -> bool:
+    """巳·酉·丑 세 글자가 원국 지지에 모두 있을 때만 사유축 금국으로 본다."""
+    branches = set(chart.branches)
+    return {"巳", "酉", "丑"}.issubset(branches)
+
+
+def _climate_character_axis(chart: Chart, result: Dict[str, object]) -> Dict[str, str]:
+    """캐릭터의 온도 축. 단순 화·수 수치뿐 아니라 계절과 합국에 따른 조후 약화를 함께 본다."""
+    pct = _safe_pct_dict(result)
+    season = str(result.get("season", ""))
+    fire = float(pct.get("화", 0) or 0)
+    water = float(pct.get("수", 0) or 0)
+    metal = float(pct.get("금", 0) or 0)
+    wood = float(pct.get("목", 0) or 0)
+
+    fire_support = fire
+    caution_notes: List[str] = []
+
+    # 사유축 금국이 실제 원국에 성립할 때만 사화의 조후 역할 약화를 반영한다.
+    if _has_sayu_chuk_metal_frame(chart, result):
+        fire_support *= 0.65
+        caution_notes.append("巳·酉·丑 금국이 성립해 불의 온기 역할을 일부 약하게 봄")
+
+    # 겨울·가을 금수 강세는 체감 온도를 낮춘다.
+    cold_pressure = water + metal * 0.35
+    warm_pressure = fire_support + wood * 0.18
+    if "겨울" in season:
+        cold_pressure += 8
+    elif "여름" in season:
+        warm_pressure += 8
+    elif "가을" in season:
+        cold_pressure += 3
+    elif "봄" in season:
+        warm_pressure += 2
+
+    balance_gap = warm_pressure - cold_pressure
+
+    if balance_gap >= 12:
+        return {
+            "adj": "활기 있게 표현하는",
+            "tone": "불과 계절감이 살아 있어 따뜻한 추진력과 표현 에너지가 먼저 느껴집니다.",
+            "color": "#ef4444",
+            "climate_note": "표현과 추진 쪽으로 기울어져 생동감, 속도감, 표현력이 강하게 체감됩니다.",
+        }
+    if balance_gap <= -12:
+        note = "차가운 기운과 금수의 압력이 커서 판단력·거리감·정리력이 먼저 느껴집니다."
+        if caution_notes:
+            note += " " + " / ".join(caution_notes) + "."
+        return {
+            "adj": "차분하게 구조화하는",
+            "tone": note,
+            "color": "#3b82f6",
+            "climate_note": "차분하고 냉철한 쪽으로 기울어져 판단력과 거리감이 살아나지만, 따뜻한 보완이 필요할 수 있습니다.",
+        }
+
+    if caution_notes:
+        return {
+            "adj": "겉은 부드럽고 속은 냉철한",
+            "tone": "겉으로는 균형감이 있지만, 합국 구조상 온기가 금 쪽으로 끌려가 실제 체감은 조금 서늘하게 볼 수 있습니다.",
+            "color": "#f59e0b",
+            "climate_note": "표면상 균형과 실제 온도 체감이 다를 수 있습니다. " + " / ".join(caution_notes) + ".",
+        }
+
+    return {
+        "adj": "부드럽게 균형 잡는",
+        "tone": "화와 수가 한쪽으로 크게 치우치지 않아 과열되거나 차갑게 식는 느낌이 덜한 편입니다.",
+        "color": "#10b981",
+        "climate_note": "전체 온도감과 반응 속도는 비교적 고른 편입니다. 다만 합충과 운의 흐름에 따라 체감은 달라질 수 있습니다.",
+    }
+
+
+def energy_operation_display_name(raw_name: str) -> str:
+    """내부 라벨을 앱 화면용 자연어로 바꾼다."""
+    mapping = {
+        "고압 엔진형": "힘이 강하게 몰리는 타입",
+        "강압 추진형": "직진 추진 타입",
+        "자기 엔진형": "스스로 움직이는 타입",
+        "자력 추진형": "자기 주도 타입",
+        "지원 증폭형": "준비가 힘이 되는 타입",
+        "균형 조율형": "균형을 맞추는 타입",
+        "압력 조율형": "책임에 반응하는 타입",
+        "방출 조율형": "표현으로 푸는 타입",
+        "보강 적응형": "기반을 다지면 강한 타입",
+        "환경 활용형": "상황을 읽는 타입",
+        "유연 적응형": "흐름에 맞추는 타입",
+        "기반 회복형": "루틴을 세우면 살아나는 타입",
+        "외부 연결형": "연결로 힘을 얻는 타입",
+    }
+    return mapping.get(str(raw_name or ""), str(raw_name or "-"))
+
+
+def energy_operation_user_tips(operation: Dict[str, str]) -> Dict[str, str]:
+    """힘 쓰는 스타일을 사용자용 생활 문장으로 바꾼다."""
+    name = str(operation.get("name", "") or "")
+    display_name = energy_operation_display_name(name)
+    desc = str(operation.get("desc", "") or "")
+
+    tips = {
+        "고압 엔진형": {
+            "best": "스스로 방향을 정하고 책임 범위가 분명한 환경",
+            "caution": "힘이 한곳에 몰리면 과속·고집으로 보일 수 있어 중간 배출구가 필요합니다.",
+        },
+        "강압 추진형": {
+            "best": "목표와 마감이 분명하고 빠르게 밀어붙일 수 있는 환경",
+            "caution": "속도보다 방향 조절을 먼저 잡으면 에너지가 낭비되지 않습니다.",
+        },
+        "자기 엔진형": {
+            "best": "자율성이 있고, 혼자 판단해 움직일 여지가 있는 환경",
+            "caution": "혼자 끌고 가려는 부담이 커질 수 있어 역할 분담을 의식하면 좋습니다.",
+        },
+        "자력 추진형": {
+            "best": "목표가 분명하고 스스로 실행 계획을 짤 수 있는 환경",
+            "caution": "과속하면 주변과 박자가 어긋날 수 있으니 중간 점검이 필요합니다.",
+        },
+        "지원 증폭형": {
+            "best": "자료, 조언, 배움, 좋은 시스템이 갖춰진 환경",
+            "caution": "준비와 검토가 길어지면 실행이 늦어질 수 있어 작은 실행 단위가 필요합니다.",
+        },
+        "균형 조율형": {
+            "best": "상황에 따라 밀고 당길 수 있는 유연한 환경",
+            "caution": "장점이 무난함으로만 보이지 않도록 우선순위를 분명히 하면 좋습니다.",
+        },
+        "압력 조율형": {
+            "best": "책임과 권한이 함께 주어지는 환경",
+            "caution": "외부 기준을 너무 의식하면 피로가 커질 수 있어 자기 기준도 필요합니다.",
+        },
+        "방출 조율형": {
+            "best": "생각과 아이디어를 결과물로 꺼낼 수 있는 환경",
+            "caution": "많이 쏟아내기보다 리듬을 나눠야 오래 갑니다.",
+        },
+        "보강 적응형": {
+            "best": "좋은 루틴, 안정된 팀, 믿을 만한 지원 체계가 있는 환경",
+            "caution": "무리하게 혼자 버티기보다 판을 먼저 갖추는 편이 좋습니다.",
+        },
+        "환경 활용형": {
+            "best": "사람, 기회, 현실 조건을 읽고 연결할 수 있는 환경",
+            "caution": "상황에 맞추는 힘이 장점이지만, 끌려다니지 않도록 기준선을 정해야 합니다.",
+        },
+        "유연 적응형": {
+            "best": "변화에 맞춰 역할을 조정할 수 있는 환경",
+            "caution": "너무 맞춰주면 자기 리듬이 흐려질 수 있어 회복 시간이 필요합니다.",
+        },
+        "기반 회복형": {
+            "best": "속도보다 안정, 회복, 루틴을 먼저 세울 수 있는 환경",
+            "caution": "확장보다 기반 만들기가 먼저일 때 힘이 살아납니다.",
+        },
+        "외부 연결형": {
+            "best": "혼자보다 팀, 제도, 멘토, 네트워크와 연결되는 환경",
+            "caution": "좋은 판을 고르는 것이 중요하고, 무리한 독주에는 피로가 큽니다.",
+        },
+    }
+
+    base = tips.get(name, {
+        "best": "에너지가 자연스럽게 쓰이는 환경을 찾는 것이 중요합니다.",
+        "caution": "강점과 부담이 함께 있으므로 상황에 맞게 조율하는 편이 좋습니다.",
+    })
+
+    return {
+        "display_name": display_name,
+        "summary": desc or "힘을 쓰는 방식과 환경 적응 방식을 함께 본 캐릭터 포인트입니다.",
+        "best": base["best"],
+        "caution": base["caution"],
+    }
+
+
+def energy_operation_profile(result: Dict[str, object]) -> Dict[str, str]:
+    """일간의 힘 배치를 사용자 친화적인 스타일 문장으로 번역한다."""
+    raw_label = str(result.get("strength_label", "중화") or "중화")
+    strength_idx = result.get("strength_index", "-")
+    detail = result.get("strength_detail", {}) or {}
+    if not isinstance(detail, dict):
+        detail = {}
+
+    peer = float(detail.get("비겁", 0) or 0)
+    resource = float(detail.get("인성", 0) or 0)
+    output = float(detail.get("식상", 0) or 0)
+    wealth = float(detail.get("재성", 0) or 0)
+    officer = float(detail.get("관성", 0) or 0)
+
+    refined, refined_desc = refined_strength_interpretation(result)
+
+    if raw_label == "극신강":
+        if resource >= max(peer * 1.1, 24):
+            name = "지원 증폭형"
+            desc = "주변 자원과 배움의 힘까지 받아 내부 에너지가 크게 증폭되는 방식입니다. 방향을 잘 잡으면 오래 밀고 가지만, 과부하와 고집은 조절 포인트입니다."
+        elif peer >= max(resource * 1.05, 24):
+            name = "고압 엔진형"
+            desc = "자기 체급과 버티는 힘이 매우 강한 방식입니다. 추진력은 강하지만, 힘을 어디로 배출할지 정하지 않으면 답답함이 커질 수 있습니다."
+        else:
+            name = "강압 추진형"
+            desc = "기본 체급이 매우 강해 스스로 밀어붙이는 힘이 큽니다. 속도보다 방향 조절이 핵심입니다."
+    elif raw_label == "신강":
+        if "생조형" in refined:
+            name = "지원 증폭형"
+            desc = "배움, 정보, 보호 자원이 힘을 보태는 방식입니다. 혼자만의 힘보다 기반을 갖출수록 더 안정적으로 움직입니다."
+        elif "자력형" in refined:
+            name = "자기 엔진형"
+            desc = "내부 체급과 버티는 힘으로 먼저 움직이는 방식입니다. 독립성과 추진력이 장점이고, 유연한 분산이 보완 포인트입니다."
+        else:
+            name = "자력 추진형"
+            desc = "스스로 밀고 나가는 힘이 비교적 강합니다. 목표가 분명할수록 성과가 빨라지고, 과속은 조절하면 좋습니다."
+    elif raw_label == "중화":
+        if officer >= 25:
+            name = "압력 조율형"
+            desc = "외부 기준, 책임, 역할 압력을 감지하며 균형을 잡는 방식입니다. 규칙과 자유 사이의 조율이 중요합니다."
+        elif output + wealth >= 42:
+            name = "방출 조율형"
+            desc = "생각과 행동을 밖으로 풀어 결과를 만드는 방식입니다. 무리하게 쏟아내기보다 리듬을 나눌 때 안정됩니다."
+        else:
+            name = "균형 조율형"
+            desc = "한쪽으로 과하게 쏠리기보다 상황에 맞춰 밀고 당기는 방식입니다. 유연성과 판단 균형이 장점입니다."
+    elif raw_label == "신약":
+        if resource + peer >= output + wealth + officer:
+            name = "보강 적응형"
+            desc = "자기 기반을 보강하면서 움직일 때 안정되는 방식입니다. 좋은 환경과 루틴을 만들수록 힘이 살아납니다."
+        elif output + wealth >= 38:
+            name = "환경 활용형"
+            desc = "주변 흐름, 기회, 현실 조건을 읽고 활용하는 방식입니다. 혼자 버티기보다 연결과 역할 배치가 중요합니다."
+        else:
+            name = "유연 적응형"
+            desc = "강하게 밀어붙이기보다 상황 변화에 맞춰 조절하는 방식입니다. 관계와 환경을 잘 읽을수록 장점이 살아납니다."
+    else:  # 극신약
+        if resource + peer >= 18:
+            name = "기반 회복형"
+            desc = "먼저 자기 기반과 루틴을 회복해야 힘이 살아나는 방식입니다. 무리한 확장보다 안전한 구조가 중요합니다."
+        else:
+            name = "외부 연결형"
+            desc = "혼자 밀어붙이기보다 사람, 환경, 제도, 루틴과 연결될 때 힘이 생기는 방식입니다. 좋은 판을 고르는 것이 핵심입니다."
+
+    raw_hint = f"{raw_label}"
+    if strength_idx != "-":
+        raw_hint += f" · 지수 {strength_idx}"
+    return {
+        "name": name,
+        "desc": desc,
+        "raw": raw_label,
+        "hint": raw_hint,
+        "refined": refined,
+        "refined_desc": refined_desc,
+    }
+
+
+def role_display_name(role: str) -> str:
+    """십성 역할을 사용자 화면용 직관 표현으로 바꾼다."""
+    mapping = {
+        "독립가": "자기 기준형",
+        "아이디어 뱅크": "아이디어 설계가",
+        "전략가": "현실 전략가",
+        "리더": "책임 조율가",
+        "책사": "분석 설계가",
+        "밸런서": "균형 조율가",
+    }
+    return mapping.get(str(role or ""), str(role or "균형 조율가"))
+
+
+def _tone_group_from_adj(adj: str) -> str:
+    adj = str(adj or "")
+    if "차분" in adj or "냉철" in adj or "서늘" in adj:
+        return "cool"
+    if "활기" in adj or "뜨겁" in adj or "표현" in adj:
+        return "warm"
+    if "겉은" in adj or "속은" in adj:
+        return "mixed"
+    return "mild"
+
+
+def _noun_descriptor(noun: str, tone_group: str) -> str:
+    """물상 이미지를 제목에 바로 와닿는 성격어로 풀어준다."""
+    noun = str(noun or "")
+    table = {
+        "거목": {
+            "cool": "차분하게 큰 흐름을 세우는",
+            "warm": "힘 있게 뻗어 나가는",
+            "mixed": "부드럽지만 중심이 굵은",
+            "mild": "큰 흐름을 안정적으로 세우는",
+        },
+        "화초": {
+            "cool": "섬세하게 방향을 잡는",
+            "warm": "햇살을 받으면 빠르게 피어나는",
+            "mixed": "부드럽지만 속은 예민한",
+            "mild": "유연하게 길을 찾는",
+        },
+        "태양": {
+            "cool": "밝지만 판단이 차분한",
+            "warm": "분위기를 크게 밝히는",
+            "mixed": "겉은 밝고 속은 신중한",
+            "mild": "따뜻하게 분위기를 여는",
+        },
+        "불꽃": {
+            "cool": "작지만 집중력이 선명한",
+            "warm": "순간 집중력이 강한",
+            "mixed": "부드럽게 보이지만 속불이 있는",
+            "mild": "은근히 불을 붙이는",
+        },
+        "태산": {
+            "cool": "차분하고 듬직한",
+            "warm": "큰 판을 힘 있게 버티는",
+            "mixed": "겉은 부드럽고 속은 묵직한",
+            "mild": "큰 판을 든든하게 받치는",
+        },
+        "대지": {
+            "cool": "차분하게 기반을 다지는",
+            "warm": "현실감을 살려 판을 넓히는",
+            "mixed": "부드럽지만 기준이 있는",
+            "mild": "기반을 안정적으로 다지는",
+        },
+        "바위": {
+            "cool": "차분한 기준이 단단한",
+            "warm": "단단한 기준으로 밀어붙이는",
+            "mixed": "겉은 부드럽고 기준은 단단한",
+            "mild": "든든한 기준을 가진",
+        },
+        "보석": {
+            "cool": "정교하고 냉철한",
+            "warm": "감각을 선명하게 드러내는",
+            "mixed": "부드럽지만 판단이 예리한",
+            "mild": "정교하게 다듬는",
+        },
+        "바다": {
+            "cool": "깊고 차분하게 판을 읽는",
+            "warm": "큰 흐름을 움직이는",
+            "mixed": "겉은 잔잔하고 속은 깊은",
+            "mild": "넓게 흐름을 받아들이는",
+        },
+        "맑은 물": {
+            "cool": "섬세하게 흐름을 읽는",
+            "warm": "흐름에 생기를 더하는",
+            "mixed": "부드럽게 스미되 판단은 맑은",
+            "mild": "맑게 흐름을 정리하는",
+        },
+    }
+    return table.get(noun, {}).get(tone_group, f"{noun}처럼 작동하는")
+
+
+def compose_character_title(adj: str, noun: str, role: str) -> str:
+    """온도감·일간 물상·작동 방식을 사용자에게 바로 와닿는 제목으로 조합한다."""
+    tone_group = _tone_group_from_adj(adj)
+    role_label = role_display_name(role)
+    descriptor = _noun_descriptor(noun, tone_group)
+
+    # 특정 조합은 제목이 길거나 추상적으로 보이지 않게 한 번 더 정리한다.
+    special = {
+        ("바위", "아이디어 뱅크", "cool"): "차분한 구조형 아이디어 설계가",
+        ("바위", "아이디어 뱅크", "mild"): "단단한 기준의 아이디어 설계가",
+        ("보석", "아이디어 뱅크", "cool"): "정교하게 다듬는 아이디어 설계가",
+        ("대지", "아이디어 뱅크", "cool"): "차분하게 정리하는 아이디어 설계가",
+        ("태산", "아이디어 뱅크", "cool"): "든든한 기준의 아이디어 설계가",
+        ("맑은 물", "전략가", "cool"): "차분하게 흐름을 읽는 현실 전략가",
+        ("바다", "전략가", "cool"): "깊고 차분하게 판을 읽는 현실 전략가",
+        ("불꽃", "책사", "cool"): "작지만 선명하게 짚는 분석 설계가",
+        ("보석", "책사", "cool"): "정교하고 냉철한 분석 설계가",
+    }
+    return special.get((noun, role, tone_group), f"{descriptor} {role_label}")
+
+
+def get_mbti_character(chart: Chart, result: Dict[str, object]) -> Dict[str, str]:
+    """1축 조후 + 2축 일간 물상 + 3축 십성 무기를 조합한 캐릭터명."""
+    pct = _safe_pct_dict(result)
+    day_el = STEMS[chart.day_master]["element"]
+
+    climate = _climate_character_axis(chart, result)
+    adj = climate["adj"]
+    tone = climate["tone"]
+    accent = climate["color"]
+
+    day_master_objects = {
+        "甲": "거목", "乙": "화초", "丙": "태양", "丁": "불꽃",
+        "戊": "태산", "己": "대지", "庚": "바위", "辛": "보석",
+        "壬": "바다", "癸": "맑은 물",
+    }
+    noun = day_master_objects.get(chart.day_master, "자연")
+
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+    forces = {
+        "독립가": float(pct.get(day_el, 0)),
+        "아이디어 뱅크": float(pct.get(output_el, 0)),
+        "전략가": float(pct.get(wealth_el, 0)),
+        "리더": float(pct.get(officer_el, 0)),
+        "책사": float(pct.get(resource_el, 0)),
+    }
+    role = max(forces, key=forces.get) if forces else "밸런서"
+    role_score = forces.get(role, 0.0)
+    operation = energy_operation_profile(result)
+    operation_display = energy_operation_display_name(operation.get("name", "-"))
+
+    return {
+        "title": compose_character_title(adj, noun, role),
+        "adj": adj,
+        "noun": noun,
+        "role": role,
+        "role_display": role_display_name(role),
+        "tone": tone,
+        "color": accent,
+        "role_score": f"{role_score:.1f}%",
+        "climate_note": climate.get("climate_note", ""),
+        "operation": operation_display,
+        "operation_raw": operation.get("name", "-"),
+        "operation_desc": operation.get("desc", ""),
+        "operation_hint": operation.get("hint", ""),
+        "operation_refined": operation.get("refined", ""),
+    }
+
+
+def _single_front_snapshot(payload: Dict[str, object]) -> Dict[str, object]:
+    """혼자보기 첫 화면과 공유카드에서 함께 쓰는 쉬운 요약 데이터."""
+    result = payload.get("result", {}) or {}
+    pct = _safe_pct_dict(result)
+    dominant, weak = _dominant_and_weak_elements(result)
+
+    order = ["기초체력", "흐름과 연결", "현실작동력"]
+    score_map: Dict[str, Dict[str, float]] = {name: {"score": 0.0, "max": 0.0, "pct": 0.0} for name in order}
+    display_total = 0.0
+    display_max = 0.0
+    for row in category_totals(result.get("categorized_scores", {})):
+        info = axis_info_from_category(row.get("카테고리", ""))
+        primary = info.get("primary", "")
+        score = float(row.get("점수", row.get("반영치", 0)) or 0)
+        max_score = float(row.get("배점", row.get("기준", 0)) or 0)
+        display_total += score
+        display_max += max_score
+        if primary in score_map:
+            pct_score = 0.0 if max_score <= 0 else max(0.0, min(100.0, score / max_score * 100.0))
+            score_map[primary] = {"score": score, "max": max_score, "pct": pct_score}
+
+    shinsal = result.get("shinsal", {}) or {}
+    shinsal_adj = float(shinsal.get("adjustment", 0) or 0)
+    display_total = round(max(0.0, min(100.0, display_total + shinsal_adj)), 1)
+    display_max = 100.0 if display_max <= 0 else round(display_max, 1)
+
+    water = float(pct.get("수", 0) or 0)
+    fire = float(pct.get("화", 0) or 0)
+    temp = max(0.0, min(100.0, 50 + fire * 0.9 - water * 0.9))
+    if temp >= 70:
+        climate_label = "뜨거운 편"
+        climate_note = "열이 강한 쪽으로 기울 수 있어 식히고 정리하는 방향을 함께 봅니다."
+        climate_color = "#ef4444"
+    elif temp > 50:
+        climate_label = "따뜻한 편"
+        climate_note = "온기가 살아 있는 편입니다. 과열 여부를 함께 보면 좋습니다."
+        climate_color = "#f2c94c"
+    else:
+        climate_label = "차가운 편"
+        climate_note = "차분하고 냉정한 쪽으로 기울 수 있어 온기 보완 여부를 함께 봅니다."
+        climate_color = "#3b82f6"
+
+    return {
+        "dominant": dominant,
+        "weak": weak,
+        "elements": pct,
+        "scores": score_map,
+        "display_total": display_total,
+        "display_max": display_max,
+        "temp": temp,
+        "climate_label": climate_label,
+        "climate_note": climate_note,
+        "climate_color": climate_color,
+    }
+
+
+
+
+
+def _axis_bias_summary(score_map: Dict[str, Dict[str, float]]) -> Dict[str, str]:
+    order = ["기초체력", "흐름과 연결", "현실작동력"]
+    label_short = {
+        "기초체력": "기초체력",
+        "흐름과 연결": "흐름",
+        "현실작동력": "작동력",
+    }
+    pcts = {name: float((score_map.get(name, {}) or {}).get("pct", 0.0) or 0.0) for name in order}
+    top = max(order, key=lambda n: pcts[n])
+    low = min(order, key=lambda n: pcts[n])
+    spread = pcts[top] - pcts[low]
+
+    if spread < 6:
+        headline = "세 축이 비교적 고르게 분포"
+        subline = "한쪽으로 크게 치우치기보다 전반적으로 균형에 가깝습니다."
+    else:
+        headline = f"{label_short[top]} 쪽이 더 두드러짐"
+        subline = f"{label_short[top]} 축이 상대적으로 강하고, {label_short[low]} 축은 상대적으로 약한 편입니다."
+
+    return {
+        "headline": headline,
+        "subline": subline,
+        "top": label_short[top],
+        "low": label_short[low],
+    }
+
+
+def _triangle_axis_svg(score_map: Dict[str, Dict[str, float]]) -> str:
+    """차이를 더 극적으로 보여주는 3축 삼각 그래프."""
+    import math as _math
+
+    order = ["기초체력", "흐름과 연결", "현실작동력"]
+    labels = {
+        "기초체력": "기초체력",
+        "흐름과 연결": "흐름",
+        "현실작동력": "작동력",
+    }
+    raw = [float((score_map.get(name, {}) or {}).get("pct", 0.0) or 0.0) for name in order]
+    lo, hi = min(raw), max(raw)
+    span = max(hi - lo, 1e-6)
+
+    def dramatic_pct(v: float) -> float:
+        rel = (v - lo) / span if span > 0 else 0.5
+        rel_scaled = 32.0 + rel * 58.0
+        abs_scaled = 26.0 + v * 0.62
+        return max(22.0, min(94.0, rel_scaled * 0.68 + abs_scaled * 0.32))
+
+    display = [dramatic_pct(v) for v in raw]
+
+    cx, cy, r = 160, 156, 104
+    angles = [(-90 + i * 120) * _math.pi / 180 for i in range(3)]
+
+    grid = []
+    for idx, ratio in enumerate((0.22, 0.44, 0.66, 0.88, 1.0), start=1):
+        pts = [f"{cx + _math.cos(a) * r * ratio:.1f},{cy + _math.sin(a) * r * ratio:.1f}" for a in angles]
+        opacity = 0.08 if idx < 5 else 0.20
+        width = 1.0 if idx < 5 else 1.6
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(214,66,115,{opacity})' stroke-width='{width}'/>")
+
+    axes = []
+    labels_svg = []
+    points = []
+    for name, ang, disp_v, raw_v in zip(order, angles, display, raw):
+        px = cx + _math.cos(ang) * r * (disp_v / 100.0)
+        py = cy + _math.sin(ang) * r * (disp_v / 100.0)
+        points.append(f"{px:.1f},{py:.1f}")
+        ax = cx + _math.cos(ang) * r
+        ay = cy + _math.sin(ang) * r
+        axes.append(f"<line x1='{cx}' y1='{cy}' x2='{ax:.1f}' y2='{ay:.1f}' stroke='rgba(110,82,98,.18)' stroke-width='1.2'/>")
+
+        lx = cx + _math.cos(ang) * (r + 34)
+        ly = cy + _math.sin(ang) * (r + 30)
+        anchor = "middle"
+        if lx < cx - 12:
+            anchor = "end"
+        elif lx > cx + 12:
+            anchor = "start"
+
+        labels_svg.append(
+            f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='14' font-weight='900' fill='#4f3742'>{html.escape(labels[name])}</text>"
+        )
+        labels_svg.append(
+            f"<text x='{lx:.1f}' y='{ly + 18:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='12' font-weight='900' fill='#a34d71'>{raw_v:.0f}</text>"
+        )
+
+    poly_shadow = f"<polygon points='{' '.join(points)}' fill='rgba(214,66,115,.10)' stroke='none' transform='translate(0,2)'/>"
+    poly = f"<polygon points='{' '.join(points)}' fill='rgba(214,66,115,.22)' stroke='#d64273' stroke-width='4.0'/>"
+    dots = "".join([f"<circle cx='{p.split(',')[0]}' cy='{p.split(',')[1]}' r='6' fill='#d64273' stroke='#fff' stroke-width='1.8'/>" for p in points])
+    center_glow = f"<circle cx='{cx}' cy='{cy}' r='16' fill='rgba(214,66,115,.07)'/>"
+
+    return (
+        "<div style='background:rgba(255,255,255,.96);border:1px solid rgba(230,164,184,.30);border-radius:18px;"
+        "padding:.30rem .24rem .14rem;box-sizing:border-box;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;'>"
+        "<svg viewBox='0 0 320 330' width='100%' height='100%' role='img' style='display:block;margin:auto;'>"
+        + center_glow + "".join(grid + axes) + poly_shadow + poly + dots + "".join(labels_svg) +
+        "</svg></div>"
+    )
+
+
+def render_triangle_axis_chart(score_map: Dict[str, Dict[str, float]]) -> None:
+    """본문에 raw HTML이 노출되지 않도록 components.html로 렌더링한다."""
+    html_doc = f"""
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body {{
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}}
+</style>
+</head>
+<body>
+{_triangle_axis_svg(score_map)}
+</body>
+</html>
+"""
+    components.html(html_doc, height=340, scrolling=False)
+
+
+def render_mbti_character_hero(payload: Dict[str, object]) -> Dict[str, str]:
+    chart = payload["chart"]
+    result = payload["result"]
+    char = get_mbti_character(chart, result)
+    snap = _single_front_snapshot(payload)
+
+    dominant_el, dominant_pct = snap.get("dominant", ("-", 0.0))
+    weak_el, weak_pct = snap.get("weak", ("-", 0.0))
+    temp = float(snap.get("temp", 50) or 50)
+    climate_label = str(snap.get("climate_label", "균형권"))
+    climate_note = str(snap.get("climate_note", "차갑고 뜨거운 균형 감각"))
+
+    st.markdown("#### 내 사주 인상")
+    try:
+        hero = st.container(border=True)
+    except TypeError:
+        hero = st.container()
+
+    with hero:
+        st.markdown(f"### {char.get('title', '사주MRI 캐릭터')}")
+        st.caption(str(char.get("tone", "")))
+        st.markdown(
+            f"`{char.get('role_display', char.get('role', '핵심 강점'))} · {char.get('role_score', '-')}` "
+            f"`{char.get('adj', '-')}` `{char.get('operation', '-')}`"
+        )
+
+        badges = _shinsal_badge_items(chart, result, limit=3)
+        if badges:
+            st.caption(" · ".join([f"{b.get('share_icon', '•')} {b.get('name', '보조 신호')}" for b in badges]))
+
+        c1, c2 = st.columns(2)
+        with c1:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                st.markdown("**🧱 오행**")
+                st.markdown(f"강한 {dominant_el} {float(dominant_pct):.1f}%")
+                st.caption(f"약한 {weak_el} {float(weak_pct):.1f}%")
+        with c2:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                st.markdown("**🌡 조후**")
+                st.markdown(f"{climate_label} · {temp:.0f}/100")
+                st.caption(climate_note)
+
+
+    return char
+
+def operation_axis_profile(op: Dict[str, str], result: Dict[str, object]) -> Dict[str, object]:
+    """환경 반응 ↔ 자력 추진 축을 포인터로 표시하기 위한 요약."""
+    raw = str(op.get("raw", "") or result.get("strength_label", "") or "")
+    name = str(op.get("name", "") or "")
+    try:
+        idx = float(result.get("strength_index", 50) or 50)
+    except Exception:
+        idx = 50.0
+
+    env_names = {"지원 증폭형", "보강 적응형", "환경 활용형", "유연 적응형", "기반 회복형", "외부 연결형"}
+    self_names = {"고압 엔진형", "강압 추진형", "자기 엔진형", "자력 추진형"}
+
+    if name in env_names or raw in ["신약", "극신약"]:
+        pos = 28 if raw == "극신약" else 36
+        label = "환경 반응 우위"
+        note = "자료·정보·사람·루틴 같은 기반이 갖춰질 때 힘이 더 안정적으로 살아납니다."
+    elif name in self_names or raw in ["신강", "극신강"]:
+        pos = 76 if raw == "극신강" else 68
+        label = "자력 추진 우위"
+        note = "스스로 방향을 잡고 밀고 갈 때 힘이 잘 드러납니다. 다만 중간 점검이 필요합니다."
+    else:
+        # 중화권은 계산 지수로 살짝 이동만 준다.
+        pos = max(42, min(58, idx))
+        label = "균형 조율권"
+        note = "환경을 받는 힘과 스스로 미는 힘이 함께 작동합니다. 상황에 맞는 조율이 핵심입니다."
+
+    return {"pos": pos, "label": label, "note": note}
+
+
+
+def render_strength_operation_spotlight(payload: Dict[str, object]) -> None:
+    """힘을 쓰는 스타일을 크게 보여주는 별도 카드."""
+    result = payload["result"]
+    op = energy_operation_profile(result)
+    raw = html.escape(str(op.get("raw", "-")), quote=True)
+    hint = html.escape(str(op.get("hint", "-")), quote=True)
+    display_name = energy_operation_display_name(str(op.get("name", "-")))
+    name = html.escape(display_name, quote=True)
+    desc = html.escape(str(op.get("desc", "")), quote=True)
+    refined = html.escape(str(op.get("refined", "-")), quote=True)
+    axis = operation_axis_profile(op, result)
+    marker_pos = float(axis.get("pos", 50))
+    axis_label = html.escape(str(axis.get("label", "균형 조율권")), quote=True)
+    axis_note = html.escape(str(axis.get("note", "")), quote=True)
+    left_label, right_label = "환경 반응", "자력 추진"
+
+    st.markdown(f"""
+    <div class="main-character-card" style="border-color:rgba(16,185,129,.24);background:linear-gradient(135deg,#f0fdf4,#fff7fb);margin:.35rem 0 1rem;">
+        <div class="main-character-label">힘 쓰는 스타일</div>
+        <div class="main-character-name">{name}</div>
+        <div class="main-character-desc">{desc}</div>
+        <div style="margin-top:.7rem;">
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;color:#7a5665;font-weight:950;">
+                <span>{html.escape(left_label)}</span><span>{html.escape(right_label)}</span>
+            </div>
+            <div class="operation-meter">
+                <div class="operation-marker" style="left:{marker_pos:.0f}%;">
+                    <div class="operation-marker-badge">{axis_label}</div>
+                    <div class="operation-marker-triangle"></div>
+                </div>
+            </div>
+            <div class="operation-axis-note"><b>{axis_label}</b> · {axis_note}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _radar_svg_single(values: List[float], labels: List[str], stroke: str = "#d64273", fill: str = "rgba(214,66,115,.20)") -> str:
+    """JS 없이 표시되는 5각형 SVG 레이더 차트."""
+    import math as _math
+    cx, cy, max_r = 150, 150, 104
+    max_val = max(40.0, max(values or [0]) + 8.0)
+    angles = [(-90 + i * 72) * _math.pi / 180 for i in range(5)]
+    grid = []
+    for ratio in [0.25, 0.5, 0.75, 1.0]:
+        pts = []
+        for a in angles:
+            pts.append(f"{cx + _math.cos(a) * max_r * ratio:.1f},{cy + _math.sin(a) * max_r * ratio:.1f}")
+        grid.append(f"<polygon points='{ ' '.join(pts) }' fill='none' stroke='#f1d2dc' stroke-width='1'/>")
+    axes = []
+    label_nodes = []
+    points = []
+    for val, label, a in zip(values, labels, angles):
+        axes.append(f"<line x1='{cx}' y1='{cy}' x2='{cx + _math.cos(a) * max_r:.1f}' y2='{cy + _math.sin(a) * max_r:.1f}' stroke='#f4dde5' stroke-width='1'/>")
+        lx = cx + _math.cos(a) * (max_r + 30)
+        ly = cy + _math.sin(a) * (max_r + 23)
+        anchor = 'middle'
+        if lx < cx - 10:
+            anchor = 'end'
+        elif lx > cx + 10:
+            anchor = 'start'
+        label_nodes.append(f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='13' font-weight='800' fill='#6f4f5c'>{html.escape(label)}</text>")
+        r = max_r * max(0.0, min(1.0, float(val or 0) / max_val))
+        points.append(f"{cx + _math.cos(a) * r:.1f},{cy + _math.sin(a) * r:.1f}")
+    polygon = f"<polygon points='{ ' '.join(points) }' fill='{fill}' stroke='{stroke}' stroke-width='3'/>"
+    dots = ""
+    for p in points:
+        x, y = p.split(',')
+        dots += f"<circle cx='{x}' cy='{y}' r='4' fill='{stroke}'/>"
+    return "<svg viewBox='0 0 300 300' width='100%' height='300' role='img'>" + "".join(grid + axes) + polygon + dots + "".join(label_nodes) + "</svg>"
+
+
+def render_radar_chart(result: Dict[str, object], title: str = "오행 밸런스") -> None:
+    pct = _safe_pct_dict(result)
+    labels = ["목", "화", "토", "금", "수"]
+    vals = [float(pct.get(el, 0) or 0) for el in ELEMENTS]
+    svg = _radar_svg_single(vals, labels)
+    bars = []
+    for el, val in zip(ELEMENTS, vals):
+        width = max(2, min(100, val * 2.2))
+        bars.append(
+            f"<div class='element-bar-row'><span>{html.escape(el)}</span><div class='element-bar-track'><div class='element-bar-fill' style='width:{width:.1f}%;'></div></div><b>{val:.1f}%</b></div>"
+        )
+    st.markdown(
+        "<div class='svg-radar-card'>" + svg + "<div class='element-bars'>" + "".join(bars) + "</div>"
+        "<div class='small-muted'>오행 비율은 천간, 지지의 중심 기운, 지장간을 모두 가중치로 반영한 값입니다.</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _radar_svg_dual(vals_a: List[float], vals_b: List[float], labels: List[str], name_a: str, name_b: str, max_val: float = 60.0) -> str:
+    import math as _math
+    cx, cy = 150, 150
+    max_r = 92
+    angles = [-_math.pi / 2 + i * 2 * _math.pi / len(labels) for i in range(len(labels))]
+    grid = []
+    for ratio in [0.25, 0.5, 0.75, 1.0]:
+        pts = [f"{cx + _math.cos(a) * max_r * ratio:.1f},{cy + _math.sin(a) * max_r * ratio:.1f}" for a in angles]
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(110,82,98,.18)' stroke-width='1'/>")
+    axes = []
+    label_nodes = []
+    for a, label in zip(angles, labels):
+        x = cx + _math.cos(a) * max_r
+        y = cy + _math.sin(a) * max_r
+        axes.append(f"<line x1='{cx}' y1='{cy}' x2='{x:.1f}' y2='{y:.1f}' stroke='rgba(110,82,98,.14)'/>")
+        lx = cx + _math.cos(a) * (max_r + 24)
+        ly = cy + _math.sin(a) * (max_r + 24)
+        anchor = 'middle'
+        if lx < cx - 10:
+            anchor = 'end'
+        elif lx > cx + 10:
+            anchor = 'start'
+        label_nodes.append(f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='13' font-weight='850' fill='#6f4f5c'>{html.escape(label)}</text>")
+
+    def pts_for(vals):
+        pts = []
+        for a, val in zip(angles, vals):
+            r = max_r * max(0.0, min(1.0, float(val or 0) / max_val))
+            pts.append(f"{cx + _math.cos(a) * r:.1f},{cy + _math.sin(a) * r:.1f}")
+        return pts
+
+    pts_a = pts_for(vals_a)
+    pts_b = pts_for(vals_b)
+    dots = ""
+    for pnt in pts_a:
+        x, y = pnt.split(',')
+        dots += f"<circle cx='{x}' cy='{y}' r='3.8' fill='#d64273'/>"
+    for pnt in pts_b:
+        x, y = pnt.split(',')
+        dots += f"<circle cx='{x}' cy='{y}' r='3.8' fill='#3b82f6'/>"
+    legend = (
+        f"<div class='radar-legend'><span><i style='background:#d64273'></i>{html.escape(name_a)}</span>"
+        f"<span><i style='background:#3b82f6'></i>{html.escape(name_b)}</span></div>"
+    )
+    svg = (
+        "<svg viewBox='0 0 300 300' width='100%' height='310' role='img'>"
+        + ''.join(grid + axes)
+        + f"<polygon points='{' '.join(pts_a)}' fill='rgba(214,66,115,.24)' stroke='#d64273' stroke-width='3'/>"
+        + f"<polygon points='{' '.join(pts_b)}' fill='rgba(59,130,246,.18)' stroke='#3b82f6' stroke-width='3'/>"
+        + dots + ''.join(label_nodes) + "</svg>"
+    )
+    return svg + legend
+
+
+def render_two_person_element_radar(mine: Dict[str, object], friend: Dict[str, object]) -> None:
+    """두 사람의 오행 오각형을 겹쳐 보여준다. Plotly 없이 순수 SVG로 구현해 Arrow 경로를 차단한다."""
+    my_pct = _safe_pct_dict(mine["result"])
+    fr_pct = _safe_pct_dict(friend["result"])
+    my_name = _clean_display_text(mine.get("name", "나")) or "나"
+    fr_name = _clean_display_text(friend.get("name", "상대")) or "상대"
+    labels = ["목", "화", "토", "금", "수"]
+    my_vals = [float(my_pct.get(el, 0) or 0) for el in ELEMENTS]
+    fr_vals = [float(fr_pct.get(el, 0) or 0) for el in ELEMENTS]
+    svg = _radar_svg_dual(my_vals, fr_vals, labels, my_name, fr_name)
+    st.markdown("<div class='svg-radar-card dual-radar'>" + svg + "</div>", unsafe_allow_html=True)
+
+    rows = []
+    for el in ELEMENTS:
+        my_v = float(my_pct.get(el, 0) or 0)
+        fr_v = float(fr_pct.get(el, 0) or 0)
+        gap = abs(my_v - fr_v)
+        if gap <= 5:
+            note = "비슷하게 겹침"
+        elif my_v > fr_v:
+            note = f"{my_name} 쪽이 더 강함"
+        else:
+            note = f"{fr_name} 쪽이 더 강함"
+        rows.append(f"<div class='chem-overlap-row'><b>{html.escape(el)}</b><span>{my_v:.1f}% / {fr_v:.1f}%</span><em>{html.escape(note)}</em></div>")
+    st.markdown("<div class='chem-overlap-list'>" + ''.join(rows) + "</div>", unsafe_allow_html=True)
+
+def render_climate_thermometer(result: Dict[str, object]) -> None:
+    pct = _safe_pct_dict(result)
+    water = float(pct.get("수", 0) or 0)
+    fire = float(pct.get("화", 0) or 0)
+    temp = max(0, min(100, 50 + fire * 0.9 - water * 0.9))
+    if temp >= 70:
+        label = "뜨거운 편"
+        note = "열이 강하게 느껴지는 구조입니다. 식히고 정리하는 방향을 함께 봅니다."
+        color = "#ef4444"
+    elif temp > 50:
+        label = "따뜻한 편"
+        note = "온기가 살아 있는 구조입니다. 과열 여부를 함께 봅니다."
+        color = "#f2c94c"
+    else:
+        label = "차가운 편"
+        note = "차분하고 냉정한 쪽으로 기울 수 있습니다. 온기 보완 여부를 함께 봅니다."
+        color = "#3b82f6"
+    pin = max(2, min(98, temp))
+    fill = pin
+    st.markdown("#### 🌡️ 조후 온도계")
+    st.markdown(f"""
+    <div style="background:#fff;border:1px solid rgba(230,164,184,.30);border-radius:18px;padding:.85rem .9rem;margin:.3rem 0 .45rem 0;">
+        <div style="display:flex;justify-content:space-between;color:#7a5665;font-size:.82rem;font-weight:850;margin-bottom:.45rem;">
+            <span>차가움</span><span>따뜻함</span><span>뜨거움</span>
+        </div>
+        <div class="thermo-track">
+            <div class="thermo-fill" style="width:{fill:.1f}%;background:{color};"></div>
+            <div class="thermo-pin" style="left:{pin:.1f}%;"></div>
+        </div>
+        <div style="margin-top:.58rem;color:#5b3f4b;font-weight:900;">{html.escape(label)} · 온도감 {temp:.0f}/100</div>
+        <div style="margin-top:.24rem;color:#7a5665;font-size:.88rem;">화 {fire:.1f}% / 수 {water:.1f}% · {html.escape(note)}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _axis_score_lookup(result: Dict[str, object], keyword: str) -> Tuple[float, float]:
+    for row in category_totals(result.get("categorized_scores", {})):
+        if keyword in str(row.get("카테고리", "")):
+            return float(row.get("점수", 0) or 0), float(row.get("기준", 0) or 0)
+    return 0.0, 0.0
+
+
+def _axis_percent(score: float, max_score: float) -> int:
+    if max_score <= 0:
+        return 0
+    return int(max(0, min(100, round(score / max_score * 100))))
+
+
+def _dominant_and_weak_elements(result: Dict[str, object]) -> Tuple[Tuple[str, float], Tuple[str, float]]:
+    pct = _safe_pct_dict(result)
+    if not pct:
+        return ("-", 0.0), ("-", 0.0)
+    dominant = max(pct.items(), key=lambda x: x[1])
+    weak = min(pct.items(), key=lambda x: x[1])
+    return dominant, weak
+
+
+POSITION_LABEL_KO = {"year": "년주", "month": "월주", "day": "일주", "hour": "시주"}
+
+def _element_sources_for_chart(chart: Chart, element: str) -> List[str]:
+    """해당 오행이 원국의 어느 글자에서 확인되는지 천간·지지·지장간까지 표시한다."""
+    sources: List[str] = []
+    pillars = [("year", chart.year), ("month", chart.month), ("day", chart.day)]
+    if chart.hour is not None:
+        pillars.append(("hour", chart.hour))
+
+    for pos, p in pillars:
+        label = POSITION_LABEL_KO.get(pos, pos)
+        stem_el = STEMS[p.stem]["element"]
+        if stem_el == element:
+            sources.append(f"{label} 천간 {p.stem}({STEMS[p.stem]['ko']})")
+
+        branch_el = BRANCHES[p.branch]["element"]
+        if branch_el == element:
+            sources.append(f"{label} 지지 {p.branch}({BRANCHES[p.branch]['ko']})")
+
+        hidden_hits = []
+        for hidden_stem, ratio in BRANCHES[p.branch]["hidden"]:
+            if STEMS[hidden_stem]["element"] == element:
+                hidden_hits.append(f"{hidden_stem}({STEMS[hidden_stem]['ko']}, {int(round(ratio * 100))}%)")
+        if hidden_hits:
+            sources.append(f"{label} 지장간 " + ", ".join(hidden_hits))
+    return sources
+
+
+def _flow_elements_for_name(chart: Chart, flow_name: str) -> List[Tuple[str, str]]:
+    day_el = STEMS[chart.day_master]["element"]
+    output_el = GENERATES[day_el]
+    wealth_el = CONTROLS[day_el]
+    officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
+    resource_el = next(e for e in ELEMENTS if GENERATES[e] == day_el)
+    name = str(flow_name or "")
+    if "식상생재" in name:
+        return [("표현·아이디어", output_el), ("현실 결과", wealth_el)]
+    if "재생관" in name:
+        return [("성과·자원", wealth_el), ("책임·신뢰", officer_el)]
+    if "관인상생" in name:
+        return [("책임·압박", officer_el), ("배움·정리", resource_el), ("나", day_el)]
+    if "재관인상생" in name:
+        return [("성과·자원", wealth_el), ("책임·신뢰", officer_el), ("배움·정리", resource_el), ("나", day_el)]
+    if "상관패인" in name or "살인상생" in name or "식신제살" in name:
+        return [("표현·압박", output_el), ("책임·압박", officer_el), ("정리·흡수", resource_el)]
+    return []
+
+
+def _flow_sources_sentence(chart: Chart, flow_name: str) -> str:
+    parts = []
+    for role, el in _flow_elements_for_name(chart, flow_name):
+        src = _element_sources_for_chart(chart, el)
+        if src:
+            parts.append(f"{role}({el})은 " + "; ".join(src[:3]) + "에서 확인")
+        else:
+            parts.append(f"{role}({el})은 원국에서 약하게 확인")
+    return " / ".join(parts)
+
+
+def _flow_strength_visual(strength: str) -> Dict[str, object]:
+    """흐름 강도에 따라 전체 파이프의 기본 굵기를 정한다."""
+    s = str(strength or "")
+    if "강함" in s:
+        return {"meter": 88, "note": "통로 확보", "base": 78}
+    if "중간" in s:
+        return {"meter": 62, "note": "부분 작동", "base": 58}
+    if "형태" in s:
+        return {"meter": 36, "note": "좁은 통로", "base": 36}
+    if "낮음" in s:
+        return {"meter": 18, "note": "흐름 약함", "base": 18}
+    return {"meter": 0, "note": "특수 구조 후보", "base": 0}
+
+
+def _flow_segment_score(chart: Chart, result: Dict[str, object], src_el: str, dst_el: str, base: float) -> Tuple[int, str]:
+    """두 오행 사이 파이프 굵기. 좋고 나쁨이 아니라 통로 확보 정도를 뜻한다."""
+    pct = _safe_pct_dict(result)
+    src_pct = float(pct.get(src_el, 0) or 0)
+    dst_pct = float(pct.get(dst_el, 0) or 0)
+    score = base * 0.35 + min(src_pct, 30) * 0.8 + min(dst_pct, 30) * 0.8
+
+    src_stem = has_stem_element(chart, src_el)
+    dst_stem = has_stem_element(chart, dst_el)
+    src_root = has_hidden_or_branch_element(chart, src_el)
+    dst_root = has_hidden_or_branch_element(chart, dst_el)
+
+    if src_stem:
+        score += 8
+    if dst_stem:
+        score += 8
+    if src_root:
+        score += 7
+    if dst_root:
+        score += 7
+
+    # 생의 방향이 맞으면 파이프 해석으로 보고, 아니면 보수적으로 낮춘다.
+    if GENERATES.get(src_el) == dst_el:
+        score += 6
+    else:
+        score -= 10
+
+    score = int(max(8, min(100, round(score))))
+
+    reasons = []
+    if src_stem or dst_stem:
+        reasons.append("천간에 드러난 기운 있음")
+    if src_root and dst_root:
+        reasons.append("양쪽 모두 지지·지장간 근거 있음")
+    elif src_root or dst_root:
+        reasons.append("한쪽 지지·지장간 근거 확인")
+    else:
+        reasons.append("뿌리 근거 약함")
+
+    if score >= 75:
+        label = "구간 연결 좋음"
+    elif score >= 55:
+        label = "구간 연결 보통"
+    elif score >= 35:
+        label = "구간 연결 약함"
+    else:
+        label = "우회·끊김"
+
+    return score, f"{label} · " + ", ".join(reasons[:2])
+
+
+def _pipe_segment_html(score: int) -> str:
+    """색보다 선의 모양으로 흐름 상태를 보여준다."""
+    if score >= 75:
+        cls, label = "pipe-good", "구간 연결 좋음"
+    elif score >= 55:
+        cls, label = "pipe-mid", "구간 연결 보통"
+    elif score >= 35:
+        cls, label = "pipe-thin", "구간 연결 약함"
+    else:
+        cls, label = "pipe-broken", "우회·끊김"
+
+    return (
+        f"<span class='pipe-wrap {cls}'>"
+        "<span class='pipe-main'>"
+        "<span class='pipe-line'></span>"
+        "<span class='pipe-arrow'></span>"
+        "</span>"
+        f"<span class='pipe-label'>{html.escape(label)}</span>"
+        "</span>"
+    )
+
+
+def _render_flow_pipeline_card(chart: Chart, result: Dict[str, object], row: Dict[str, object]) -> None:
+    raw_name = str(row.get("구조", ""))
+    title = _flow_plain_name(raw_name)
+    strength = str(row.get("강도", "-"))
+    desc = _flow_plain_desc(row)
+    elements = _flow_elements_for_name(chart, raw_name)
+    source_sentence = _flow_sources_sentence(chart, raw_name)
+    visual = _flow_strength_visual(strength)
+
+    if not elements or visual["base"] <= 0:
+        return
+
+    nodes = []
+    segment_notes = []
+    for idx, (role, el) in enumerate(elements):
+        nodes.append(
+            f"<span class='flow-node pipe-node'><b>{html.escape(role)}</b><em>{html.escape(el)}</em></span>"
+        )
+        if idx < len(elements) - 1:
+            next_role, next_el = elements[idx + 1]
+            seg_score, seg_note = _flow_segment_score(chart, result, el, next_el, visual["base"])
+            segment_notes.append(f"{el}→{next_el}: {seg_note}")
+            nodes.append(_pipe_segment_html(seg_score))
+
+    st.markdown(
+        "<div class='pipeline-card'>"
+        f"<div class='signal-title'>{html.escape(title)} <span class='viz-pill'>{html.escape(strength)}</span> <span class='viz-pill'>{html.escape(str(visual['note']))}</span></div>"
+        f"<div class='flow-strength-row'><div class='flow-strength-label'><span>흐름 전체 작동도</span><span>{int(visual['meter'])}%</span></div><div class='flow-strength-meter'><span style='width:{int(visual['meter'])}%;'></span></div></div>"
+        f"<div class='small-muted'>위 퍼센트는 이 흐름 전체가 얼마나 힘 있게 굴러가는지, 아래 라벨은 각 구간의 연결 상태를 뜻합니다.</div>"
+        f"<div class='flow-pipeline pipe-pipeline'>{''.join(nodes)}</div>"
+        f"<div class='signal-body'>{html.escape(desc)}</div>"
+        f"<div class='small-muted'>{html.escape(' / '.join(segment_notes[:3]))}</div>"
+        f"<div class='small-muted'>{html.escape(source_sentence)}</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _flow_strength_rank(strength: str) -> int:
+    s = str(strength or "")
+    if "강함" in s:
+        return 4
+    if "중간" in s:
+        return 3
+    if "형태" in s:
+        return 2
+    if "낮음" in s:
+        return 1
+    return 0
+
+
+def _flow_key(row: Dict[str, object]) -> str:
+    return str(row.get("구조", "") or "")
+
+
+def _flow_strength_rank(strength: str) -> int:
+    s = str(strength or "")
+    if "강함" in s:
+        return 4
+    if "중간" in s:
+        return 3
+    if "형태" in s:
+        return 2
+    if "낮음" in s:
+        return 1
+    return 0
+
+
+def _flow_key(row: Dict[str, object]) -> str:
+    return str(row.get("구조", "") or "")
+
+
+def _compress_flow_rows_for_display(flows: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    """흐름 보기는 사라지지 않게 한다. 강한 흐름은 크게, 약한 흐름은 작게 표시한다."""
+    all_rows = [f for f in (flows or []) if _flow_key(f) and _flow_key(f) not in {"식신제살/상관패인"}]
+    if not all_rows:
+        return []
+
+    active = [f for f in all_rows if f.get("강도") in ["중간", "중간~강함", "강함"]]
+    weak = [f for f in all_rows if f.get("강도") in ["형태만 있음", "해당 낮음"]]
+
+    # 강한 흐름이 있으면 강한 흐름 중심, 없으면 약한 흐름도 작게 보여준다.
+    candidates = active if active else weak
+    by_key = {_flow_key(f): f for f in candidates}
+    hidden_keys = set()
+
+    composite = by_key.get("재관인상생")
+    if composite and _flow_strength_rank(str(composite.get("강도", ""))) >= 3:
+        for sub in ["재생관", "관인상생"]:
+            if sub in by_key:
+                hidden_keys.add(sub)
+
+    unique: Dict[str, Dict[str, object]] = {}
+    for row in candidates:
+        key = _flow_key(row)
+        if key in hidden_keys:
+            continue
+        if key not in unique or _flow_strength_rank(str(row.get("강도", ""))) > _flow_strength_rank(str(unique[key].get("강도", ""))):
+            unique[key] = row
+
+    order = ["식상생재", "재관인상생", "재생관", "관인상생", "상관패인", "살인상생"]
+    result = []
+    for key in order:
+        if key in unique:
+            result.append(unique[key])
+    for key, row in unique.items():
+        if key not in order:
+            result.append(row)
+
+    # 강한 흐름이 전혀 없는 경우에도 최소 2개까지 약한 통로를 보여준다.
+    return result[:5] if active else result[:3]
+
+
+def _flow_plain_name(name: str) -> str:
+    text = str(name or "")
+    mapping = {
+        "식상생재": "표현·아이디어가 현실 결과로 이어지는 흐름",
+        "재생관": "성과·자원이 책임과 신뢰로 이어지는 흐름",
+        "관인상생": "책임·압박을 배움과 정리력으로 흡수하는 흐름",
+        "상관패인": "튀는 표현을 정리력으로 다듬는 흐름",
+        "살인상생": "압박을 학습과 성장으로 바꾸는 흐름",
+    }
+    for key, val in mapping.items():
+        if key in text:
+            return val
+    return text or "흐름 신호"
+
+
+def _flow_plain_desc(row: Dict[str, object]) -> str:
+    raw_name = str(row.get("구조", ""))
+    raw_flow = str(row.get("흐름", ""))
+    if "식상생재" in raw_name or "식상생재" in raw_flow:
+        return "표현력과 아이디어가 일의 결과, 돈, 현실적 성과로 이어지는 통로입니다. 어느 글자에서 이 흐름이 확인되는지는 아래 근거에 표시합니다."
+    if "재생관" in raw_name or "재생관" in raw_flow:
+        return "돈·결과·현실 감각으로 잡힌 기운이 책임감, 신뢰, 역할 의식으로 이어지는 통로입니다. 어느 글자에서 이 흐름이 확인되는지는 아래 근거에 표시합니다."
+    if "관인상생" in raw_name or "관인상생" in raw_flow:
+        return "책임과 압박을 배움, 정리력, 자격으로 흡수하는 통로입니다."
+    if "상관패인" in raw_name or "상관패인" in raw_flow:
+        return "강한 표현력이나 튀는 생각을 분석과 정리력으로 다듬는 통로입니다."
+    if "살인상생" in raw_name or "살인상생" in raw_flow:
+        return "부담스럽게 들어오는 압박을 공부와 성장 동력으로 바꾸는 통로입니다."
+    desc = raw_flow if raw_flow and raw_flow != "-" else str(row.get("비고", ""))
+    return desc or "기운이 한곳에 머물지 않고 다음 작용으로 이어지는 정도를 봅니다."
+
+
+def _interaction_plain_note(it: Dict[str, object]) -> str:
+    typ = str(it.get("type", ""))
+    name = str(it.get("name") or typ or "신호")
+    el = it.get("element")
+    if typ in {"삼합", "방합", "반합"}:
+        extra = ""
+        if typ == "삼합" and ("巳酉丑" in name or all(x in name for x in ["巳", "酉", "丑"])) and str(el) == "금":
+            extra = " 특히 사화가 불로만 남기보다 금 기운 쪽으로 끌려가므로, 조후상 온기 역할은 보수적으로 봅니다."
+        return f"{name}: 여러 지지가 한 방향으로 모여 {el or '특정'} 기운 덩어리를 키우는 구조입니다. 그래서 발현 신호라기보다 ‘기운이 커지는 신호’에 가깝습니다.{extra}"
+    if typ == "육합":
+        return f"{name}: 두 지지가 서로 묶여 결속감이나 연결감을 만드는 구조입니다."
+    if typ == "충":
+        return f"{name}: 서로 부딪혀 변화·이동·자극을 만드는 구조입니다. 나쁨이 아니라 움직임이 커지는 표시입니다."
+    if typ == "형":
+        return f"{name}: 내부 긴장이나 예민한 조율 포인트가 생기는 구조입니다."
+    return f"{name}: 원국 안에서 참고할 만한 구조 신호입니다."
+
+
+def _root_plain_detail(raw: str) -> List[str]:
+    raw = str(raw or "")
+    notes = []
+    for part in [p.strip() for p in raw.split(';') if p.strip()]:
+        part = part.replace("좌하통근 제한", "뿌리 자리 신호가 뚜렷하지 않음")
+        part = part.replace("통근", "뿌리")
+        part = part.replace("지장간 중기", "숨어 있는 중간 기운")
+        part = part.replace("지장간 본기", "숨어 있는 중심 기운")
+        part = part.replace("지장간 여기 미약", "숨어 있는 약한 기운")
+        notes.append(part)
+    return notes
+
+
+def _markdown_signal_cards(items: List[str]) -> None:
+    for item in items[:8]:
+        st.markdown(
+            f"<div class='signal-card'><div class='signal-body'>{html.escape(str(item))}</div></div>",
+            unsafe_allow_html=True,
+        )
+
+def _friendly_root_note(raw: str) -> str:
+    raw = str(raw or "")
+    if not raw or raw == "통근 정보 없음":
+        return "뿌리 신호는 약하게 잡힙니다."
+    count = raw.count("통근")
+    if count >= 2:
+        return f"내 기운이 뿌리내린 자리 {count}곳이 잡힙니다. 쉽게 흔들리지 않는 구조입니다."
+    if count == 1:
+        return "내 기운이 뿌리내린 자리가 1곳 잡힙니다. 기본 지지대가 있습니다."
+    return "뿌리 신호는 보조적으로만 잡힙니다."
+
+
+def _friendly_interaction_lists(interactions: List[Dict[str, object]]) -> Tuple[List[str], List[str], List[str]]:
+    bind_types = {"삼합", "방합", "반합", "육합"}
+    tension_types = {"충", "형"}
+    bindings, tensions, special = [], [], []
+    for it in interactions or []:
+        name = str(it.get("name") or it.get("type") or "-")
+        typ = str(it.get("type") or "")
+        el = it.get("element")
+        if typ in bind_types:
+            bindings.append(name)
+            if typ in {"삼합", "방합", "반합"}:
+                special.append(f"{name}: 흩어진 글자들이 한 방향으로 모여 {el or '특정'} 기운을 키우는 신호")
+            else:
+                special.append(f"{name}: 두 글자가 서로 묶여 관계성·결속감을 만드는 신호")
+        elif typ in tension_types:
+            tensions.append(name)
+            special.append(f"{name}: 충돌·변화·자극이 생기는 신호. 나쁘다는 뜻이 아니라 움직임이 커지는 표시")
+    return bindings, tensions, special
+
+
+def _render_signal_list(title: str, items: List[str], empty: str) -> None:
+    st.markdown(f"**{title}**")
+    if not items:
+        st.caption(empty)
+        return
+    for item in items[:5]:
+        st.caption(f"- {item}")
+
+
+ELEMENT_VISUALS = {
+    "목": {"icon": "🌿", "bg": "#ecfdf5", "fg": "#166534"},
+    "화": {"icon": "🔥", "bg": "#fff1f2", "fg": "#be123c"},
+    "토": {"icon": "⛰️", "bg": "#fff7ed", "fg": "#9a3412"},
+    "금": {"icon": "⚔️", "bg": "#f8fafc", "fg": "#475569"},
+    "수": {"icon": "💧", "bg": "#eff6ff", "fg": "#1d4ed8"},
+}
+
+
+def _element_tone_cards_html(pct: Dict[str, float]) -> str:
+    cards = []
+    for el in ELEMENTS:
+        meta = ELEMENT_VISUALS.get(el, {"icon": "•", "bg": "#ffffff", "fg": "#3f2a33"})
+        cards.append(
+            "<div class='element-tone-card' style='background:{bg};color:{fg};'>"
+            "<span class='element-tone-symbol'>{icon}</span>"
+            "<span class='element-tone-name'>{name}</span>"
+            "<span class='element-tone-pct'>{pct:.1f}%</span>"
+            "</div>".format(bg=meta['bg'], fg=meta['fg'], icon=meta['icon'], name=el, pct=float(pct.get(el, 0) or 0))
+        )
+    return "<div class='element-tone-grid'>" + "".join(cards) + "</div>"
+
+
+def render_visual_analysis_core(payload: Dict[str, object]) -> None:
+    """사용자가 먼저 보는 1차 화면: 전문용어보다 시각 요약과 쉬운 말 중심."""
+    result = payload["result"]
+    chart = payload["chart"]
+    pct = _safe_pct_dict(result)
+    dominant, weak = _dominant_and_weak_elements(result)
+    interactions = result.get("interactions", []) or []
+    flows = result.get("flows", []) or []
+    strength_detail = result.get("strength_detail", {}) or {}
+
+    size_score, size_max = _axis_score_lookup(result, "크기")
+    flow_score, flow_max = _axis_score_lookup(result, "순환")
+    express_score, express_max = _axis_score_lookup(result, "발현")
+
+    gathering_notes = [_interaction_plain_note(it) for it in interactions if str(it.get("type", "")) in {"삼합", "방합", "반합"}]
+    binding_notes = [_interaction_plain_note(it) for it in interactions if str(it.get("type", "")) == "육합"]
+    tension_notes = [_interaction_plain_note(it) for it in interactions if str(it.get("type", "")) in {"충", "형"}]
+    flow_rows = _compress_flow_rows_for_display(flows)
+
+    st.markdown("<h3 class=\"saju-section-heading\">기운 정밀 분석</h3>", unsafe_allow_html=True)
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown("<h4 class=\"saju-section-heading\">🧱 기운의 성질</h4>", unsafe_allow_html=True)
+        safe_metric("가장 큰 오행", f"{dominant[0]} {dominant[1]:.1f}%")
+        st.caption(f"가장 약한 오행: {weak[0]} {weak[1]:.1f}% · 일간: {STEMS[chart.day_master]['ko']}({STEMS[chart.day_master]['element']})")
+        st.markdown(_element_tone_cards_html(pct), unsafe_allow_html=True)
+        st.caption("목·화·토·금·수의 상징 색과 아이콘으로 현재 비중을 표시합니다.")
+    with c2:
+        st.markdown("<h4 class=\"saju-section-heading\">💪 기운의 크기</h4>", unsafe_allow_html=True)
+        safe_metric("기본 체급", f"{size_score:.1f}/{size_max:.0f}")
+        st.progress(_axis_percent(size_score, size_max))
+        st.caption("원국 안에서 특정 기운이 얼마나 크게 자리 잡는지를 봅니다.")
+    with c3:
+        st.markdown("<h4 class=\"saju-section-heading\">🌊 기운의 흐름</h4>", unsafe_allow_html=True)
+        safe_metric("흐름", f"{flow_score:.1f}/{flow_max:.0f}")
+        st.progress(_axis_percent(flow_score, flow_max))
+        if flow_rows:
+            st.caption(" · ".join(_flow_plain_name(str(f.get("구조", ""))) for f in flow_rows[:2]))
+        else:
+            st.caption("큰 흐름은 약하지만, 흐름 보기에서 약한 통로를 확인할 수 있습니다.")
+    with c4:
+        st.markdown("<h4 class=\"saju-section-heading\">✨ 기운의 발현</h4>", unsafe_allow_html=True)
+        safe_metric("현실 작동", f"{express_score:.1f}/{express_max:.0f}")
+        st.progress(_axis_percent(express_score, express_max))
+        if binding_notes or tension_notes:
+            preview = []
+            if binding_notes:
+                preview.append("결속 " + str(len(binding_notes)))
+            if tension_notes:
+                preview.append("변화·자극 " + str(len(tension_notes)))
+            st.caption(" / ".join(preview) + "개 신호가 있습니다.")
+        else:
+            st.caption("관계·행동으로 바로 튀는 합충 신호는 비교적 적습니다.")
+
+    if _detail_radio_open("💪 기운의 크기 세부 설명", key="visual_size_detail_open"):
+        st.caption("이 항목은 원국 안에서 특정 기운이 실제로 얼마나 강하게 작동하는지 보는 참고 항목입니다. 세부 용어는 아래에 풀어서 표시합니다.")
+        roots = _root_plain_detail(strength_detail.get("통근메모", ""))
+        if roots:
+            st.markdown("**뿌리 신호**")
+            for r in roots:
+                st.markdown(f"- {html.escape(r)}")
+        if gathering_notes:
+            st.markdown("**합국·방합으로 커지는 기운**")
+            _markdown_signal_cards(gathering_notes)
+        if not roots and not gathering_notes:
+            st.caption("특별히 크게 부풀어 오르는 구조는 약하게 잡힙니다.")
+
+    if flows and _detail_radio_open("🌊 흐름 보기", key="visual_flow_detail_open"):
+        st.caption("각 흐름은 어떤 역할의 기운이 다음 역할로 이어지는지 봅니다. 위의 ‘흐름 전체 작동도’는 그 흐름 전체가 얼마나 힘 있게 돌아가는지, 파이프 옆 ‘구간 연결 좋음/보통/약함’은 각 구간이 얼마나 매끄럽게 이어지는지 뜻합니다. 모바일에서는 잘리지 않도록 세로형 흐름으로 표시됩니다.")
+        if flow_rows:
+            for row in flow_rows:
+                _render_flow_pipeline_card(chart, result, row)
+        else:
+            st.info("자동으로 크게 잡히는 흐름은 약하지만, 상세 분석에서는 특수 구조 후보와 약한 통로를 따로 확인할 수 있습니다.")
+
+    if (binding_notes or tension_notes) and _detail_radio_open("✨ 발현 신호 보기", key="visual_expression_detail_open"):
+        if binding_notes:
+            st.markdown("**연결·결속 신호**")
+            _markdown_signal_cards(binding_notes)
+        if tension_notes:
+            st.markdown("**변화·자극 신호**")
+            _markdown_signal_cards(tension_notes)
+
+
+def render_character_axis_cards(payload: Dict[str, object], char: Dict[str, str]) -> None:
+    """캐릭터 조합축. 일간의 힘 배치를 생활형 스타일로 보여준다."""
+    result = payload["result"]
+    chart = payload["chart"]
+    origin_profile = result.get("origin_profile", {}) or {}
+    tags = origin_profile.get("tags") or origin_profile.get("all_tags") or []
+    dominant, weak = _dominant_and_weak_elements(result)
+    operation = energy_operation_profile(result)
+
+    def _friendly_tag(tag: str) -> str:
+        try:
+            return FRIENDLY_ORIGIN_TAGS.get(str(tag), str(tag))
+        except Exception:
+            return str(tag)
+
+    friendly_tags = [_friendly_tag(t) for t in tags[:3]]
+    role_desc = {
+        "독립가": "자기 기준과 추진력이 먼저 드러나는 작동 방식",
+        "아이디어 뱅크": "떠오른 생각을 기준 있게 정리해 쓸 수 있는 형태로 다듬는 방식",
+        "전략가": "현실 조건을 읽고 결과를 설계하는 방식",
+        "리더": "책임감·기준·역할 의식이 먼저 드러나는 작동 방식",
+        "책사": "관찰하고 정리해 핵심을 짚는 방식",
+        "밸런서": "한쪽으로 과하게 튀지 않는 조율형 작동 방식",
+    }.get(char.get("role", ""), "겉으로 가장 두드러지는 행동 방식")
+
+    energy_name = f"{dominant[0]} 중심"
+    energy_desc = f"가장 크게 잡힌 오행은 {dominant[0]} {dominant[1]:.1f}%이고, 가장 약한 오행은 {weak[0]} {weak[1]:.1f}%입니다."
+    style_name = friendly_tags[0] if friendly_tags else "균형형"
+    style_desc = "강점이 어디에 또렷하게 드러나는지 보여주는 보조 설명입니다." if friendly_tags else "한쪽으로 과하게 몰리기보다 전체 균형이 먼저 보이는 타입입니다."
+
+    st.markdown("#### 🧬 캐릭터 조합 축")
+    axis_rows = [
+        ("기본 상징", char.get("noun", "-"), f"{chart.day_master} 일간의 기본 이미지"),
+        ("주된 작동 방식", char.get("role_display", char.get("role", "-")), role_desc),
+        ("힘 쓰는 스타일", char.get("operation", "-"), operation.get("desc", "")),
+        ("에너지 구조", energy_name, energy_desc),
+        ("온도감", char.get("adj", "-"), char.get("climate_note", "계절감과 화·수 균형으로 본 캐릭터의 분위기")),
+        ("강점이 드러나는 방식", style_name, style_desc),
+    ]
+
+    for group in [axis_rows[:3], axis_rows[3:]]:
+        cols = st.columns(3)
+        for col, (label, value, desc) in zip(cols, group):
+            with col:
+                st.markdown(f"""
+                <div class="main-character-card">
+                    <div class="main-character-label">{html.escape(label)}</div>
+                    <div class="main-character-name">{html.escape(str(value))}</div>
+                    <div class="main-character-desc">{html.escape(str(desc))}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    if _detail_radio_open("힘 쓰는 스타일 자세히 보기", key="character_operation_detail_open"):
+        tips = energy_operation_user_tips(operation)
+        st.caption("이 캐릭터가 힘을 내기 쉬운 환경과 조율 포인트를 정리했습니다.")
+        safe_dataframe([
+            ("힘 쓰는 스타일", tips.get("display_name", char.get("operation", "-")), tips.get("summary", "")),
+            ("잘 맞는 환경", "추천", tips.get("best", "")),
+            ("조율 포인트", "주의", tips.get("caution", "")),
+        ])
+
+    if friendly_tags and _detail_radio_open("원국 구조 키워드 보기", key="character_origin_keyword_open"):
+        for tag in friendly_tags:
+            st.markdown(f"<span class='viz-pill'>{html.escape(str(tag))}</span>", unsafe_allow_html=True)
+
+
+def korea_today() -> date:
+    """앱 기본 대상 지역을 한국으로 보고 한국시간 오늘 날짜를 반환한다."""
+    try:
+        return (datetime.utcnow() + timedelta(hours=9)).date()
+    except Exception:
+        return date.today()
+
+
+def element_daily_theme(el: str) -> Dict[str, str]:
+    themes = {
+        "목": {
+            "keyword": "성장·시작",
+            "use": "작은 계획을 세우고, 미뤄둔 일을 시작하기 좋습니다.",
+            "overload": "벌리는 일이 많아지면 집중이 흐려질 수 있습니다.",
+        },
+        "화": {
+            "keyword": "표현·활력",
+            "use": "말하기, 알리기, 분위기 살리기에 힘을 쓰기 좋습니다.",
+            "overload": "속도가 빨라지면 말이 앞서거나 감정이 뜨거워질 수 있습니다.",
+        },
+        "토": {
+            "keyword": "정리·안정",
+            "use": "정리, 점검, 루틴 만들기, 약속 확정에 좋습니다.",
+            "overload": "생각이 무거워지면 결정이 늦어질 수 있습니다.",
+        },
+        "금": {
+            "keyword": "판단·정돈",
+            "use": "기준 세우기, 문서 검토, 불필요한 것 덜어내기에 좋습니다.",
+            "overload": "기준이 날카로워지면 사람에게 차갑게 보일 수 있습니다.",
+        },
+        "수": {
+            "keyword": "흡수·관찰",
+            "use": "배우기, 듣기, 관찰하기, 정보를 모으기 좋습니다.",
+            "overload": "생각이 깊어지면 실행이 늦어질 수 있습니다.",
+        },
+    }
+    return themes.get(el, {"keyword": "균형", "use": "무리하지 않고 리듬을 고르는 데 좋습니다.", "overload": "컨디션을 살피며 속도를 조절하세요."})
+
+
+def _daily_interaction_maps() -> Dict[str, Dict[frozenset, str]]:
+    """오늘 일지와 원국 지지 사이의 합·충·파·형·해 간단 판정표."""
+    harmony = {frozenset([a, b]): name.replace("合", "합") for a, b, _el, name in SIX_HARMONIES}
+    clash = {frozenset([a, b]): name.replace("沖", "충") for a, b, name in CLASHES}
+    break_pairs = {
+        frozenset(["子", "酉"]): "자유파",
+        frozenset(["丑", "辰"]): "축진파",
+        frozenset(["寅", "亥"]): "인해파",
+        frozenset(["卯", "午"]): "묘오파",
+        frozenset(["巳", "申"]): "사신파",
+        frozenset(["未", "戌"]): "미술파",
+    }
+    harm_pairs = {
+        frozenset(["子", "未"]): "자미해",
+        frozenset(["丑", "午"]): "축오해",
+        frozenset(["寅", "巳"]): "인사해",
+        frozenset(["卯", "辰"]): "묘진해",
+        frozenset(["申", "亥"]): "신해해",
+        frozenset(["酉", "戌"]): "유술해",
+    }
+    penalty_pairs = {frozenset([a, b]): name.replace("刑", "형") for a, b, name in PENALTIES}
+    return {"합": harmony, "충": clash, "파": break_pairs, "형": penalty_pairs, "해": harm_pairs}
+
+
+def daily_interaction_impact(kind: str, pos_label: str, name: str) -> str:
+    pos_note = {
+        "년지": "외부 환경·큰 분위기 쪽",
+        "월지": "일·생활 리듬과 책임 영역",
+        "일지": "내 감정 반응과 가까운 관계",
+        "시지": "생각의 끝, 후반 일정, 개인 루틴",
+    }.get(pos_label, "해당 자리")
+
+    if kind == "합":
+        return f"{pos_note}에서 묶임과 협력감이 생기기 쉽습니다. 다만 한 방향으로 너무 끌려가지 않게 균형을 봅니다."
+    if kind == "충":
+        return f"{pos_note}에 변동·자극이 생기기 쉽습니다. 일정 변경, 말투, 속도 조절을 먼저 챙기면 좋습니다."
+    if kind == "파":
+        return f"{pos_note}에서 작게 어긋나거나 깨지는 느낌이 생길 수 있습니다. 약속·세부 조건을 다시 확인하세요."
+    if kind == "형":
+        return f"{pos_note}에 예민함이나 압박감이 올라올 수 있습니다. 참기보다 규칙과 절차를 분명히 하는 편이 낫습니다."
+    if kind == "해":
+        return f"{pos_note}에서 은근한 오해나 피로가 생길 수 있습니다. 직접 확인하고 돌려 말하지 않는 것이 좋습니다."
+    return f"{pos_note}에 작은 변화 신호가 있습니다."
+
+
+
+def _daily_interaction_group_name(rows: List[Dict[str, str]]) -> Tuple[str, str, str]:
+    """동일 지지쌍에서 합·형·파가 중첩될 때 첫 화면 혼란을 줄이기 위해 묶어 표시한다."""
+    if not rows:
+        return "", "", ""
+    kinds = [str(r.get("kind", "")) for r in rows if r.get("kind")]
+    names = [str(r.get("name", "")) for r in rows if r.get("name")]
+    priority = ["충", "합", "형", "파", "해"]
+    primary_kind = next((k for k in priority if k in kinds), kinds[0] if kinds else "")
+
+    # 巳申은 여러 표준표에서 합·형·파가 동시에 잡히는 대표 중첩쌍.
+    # 실제 규칙은 인정하되, 첫 화면에는 따로 세 줄로 나누지 않고 하나로 묶는다.
+    if "사신합" in names and ("사신형" in names or "사신파" in names):
+        suffix = []
+        if "사신형" in names:
+            suffix.append("형")
+        if "사신파" in names:
+            suffix.append("파")
+        label = "사신합"
+        if suffix:
+            label += f"({'·'.join(suffix)} 중첩)"
+        return primary_kind, label, "합·형·파 중첩"
+
+    # 일반 중첩쌍: 우선순위 높은 이름 하나 + 괄호 안에 나머지 종류
+    primary_name = ""
+    for k in priority:
+        for r in rows:
+            if r.get("kind") == k:
+                primary_name = str(r.get("name", "") or k)
+                break
+        if primary_name:
+            break
+    extra_kinds = [k for k in priority if k in kinds and k != primary_kind]
+    if extra_kinds:
+        return primary_kind, f"{primary_name}({'·'.join(extra_kinds)} 중첩)", "·".join(kinds)
+    return primary_kind, primary_name or primary_kind, "·".join(kinds)
+
+
+def _group_daily_interactions(rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    if not rows:
+        return []
+    grouped: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
+    order_keys: List[Tuple[str, str]] = []
+    for row in rows:
+        key = (str(row.get("target", "")), str(row.get("pos_label", "")))
+        if key not in grouped:
+            grouped[key] = []
+            order_keys.append(key)
+        grouped[key].append(row)
+
+    result_rows: List[Dict[str, str]] = []
+    for key in order_keys:
+        group = grouped[key]
+        if len(group) == 1:
+            one = dict(group[0])
+            one["kinds"] = str(one.get("kind", ""))
+            result_rows.append(one)
+            continue
+
+        primary_kind, display_name, kinds_label = _daily_interaction_group_name(group)
+        pos_label = str(group[0].get("pos_label", ""))
+        target = str(group[0].get("target", ""))
+        if "중첩" in display_name:
+            impact = (
+                f"{pos_label}에서 {display_name} 신호가 함께 잡힙니다. "
+                "전통 규칙상 한 쌍에 여러 관계가 겹칠 수 있어, 실제 해석은 협력과 예민함이 함께 생기는 복합 신호로 봅니다."
+            )
+        else:
+            impact = daily_interaction_impact(primary_kind, pos_label, display_name)
+
+        result_rows.append({
+            "kind": primary_kind,
+            "kinds": kinds_label,
+            "name": display_name,
+            "pos_label": pos_label,
+            "target": target,
+            "impact": impact,
+        })
+    return result_rows
+
+
+def daily_branch_interactions(chart: Chart, day_branch: str) -> List[Dict[str, str]]:
+    """오늘 일지와 원국 지지 사이의 합·충·파·형·해를 간단히 정리한다."""
+    if not day_branch or day_branch not in BRANCHES:
+        return []
+
+    maps = _daily_interaction_maps()
+    positions = _chart_branch_positions(chart, "원국")
+    raw_rows: List[Dict[str, str]] = []
+
+    # 일반 2글자 관계
+    for item in positions:
+        target = item.get("branch", "")
+        if not target:
+            continue
+        pair = frozenset([day_branch, target])
+        for kind in ["합", "충", "파", "형", "해"]:
+            name = maps[kind].get(pair)
+            if not name:
+                continue
+            raw_rows.append({
+                "kind": kind,
+                "name": name,
+                "pos_label": str(item.get("pos_label", "")),
+                "target": target,
+                "impact": daily_interaction_impact(kind, str(item.get("pos_label", "")), name),
+            })
+
+    # 자형: 辰辰, 午午, 酉酉, 亥亥
+    self_penalty_names = {"辰": "진진형", "午": "오오형", "酉": "유유형", "亥": "해해형"}
+    if day_branch in self_penalty_names:
+        for item in positions:
+            target = item.get("branch", "")
+            if target == day_branch:
+                raw_rows.append({
+                    "kind": "형",
+                    "name": self_penalty_names[day_branch],
+                    "pos_label": str(item.get("pos_label", "")),
+                    "target": target,
+                    "impact": daily_interaction_impact("형", str(item.get("pos_label", "")), self_penalty_names[day_branch]),
+                })
+
+    rows = _group_daily_interactions(raw_rows)
+    priority = {"충": 0, "합": 1, "형": 2, "파": 3, "해": 4}
+    rows.sort(key=lambda r: (priority.get(r["kind"], 9), ["일지", "월지", "시지", "년지"].index(r["pos_label"]) if r["pos_label"] in ["일지", "월지", "시지", "년지"] else 9))
+    return rows[:6]
+
+
+def daily_interaction_summary(interactions: List[Dict[str, str]]) -> str:
+    if not interactions:
+        return "오늘 일운과 원국 지지 사이에 크게 표시할 합·충·파·형·해 신호는 약합니다."
+    kinds = []
+    for row in interactions:
+        raw_kinds = str(row.get("kinds", row.get("kind", "")) or "")
+        for k in ["충", "합", "형", "파", "해"]:
+            if k in raw_kinds and k not in kinds:
+                kinds.append(k)
+        if not raw_kinds and row.get("kind") not in kinds:
+            kinds.append(row["kind"])
+    if "충" in kinds:
+        return "오늘은 변동·자극 신호가 있으니 일정, 말투, 약속 확인을 조금 더 부드럽게 챙기세요."
+    if "합" in kinds and not any(k in kinds for k in ["형", "파", "해"]):
+        return "오늘은 묶임과 협력 신호가 비교적 좋습니다. 사람·일정·자료를 연결하기에 괜찮습니다."
+    if any(k in kinds for k in ["형", "파", "해"]):
+        return "오늘은 작은 어긋남이나 예민함을 줄이는 쪽이 좋습니다. 확인과 거리 조절이 처방입니다."
+    return "오늘은 큰 충돌보다 조율 중심으로 쓰기 좋은 날입니다."
+
+
+
+def month_background_summary(month_gz: str) -> str:
+    """월운을 단순 간지가 아니라 한 달 배경 기운으로 번역한다."""
+    if not month_gz or len(str(month_gz)) < 2:
+        return "월운 산출이 제한되어 이번 달 배경 기운은 간단 참고만 가능합니다."
+    gz = str(month_gz)[:2]
+    stem, branch = gz[0], gz[1]
+    if stem not in STEMS or branch not in BRANCHES:
+        return f"월운 {gz} · 한 달의 배경값으로 참고합니다."
+
+    stem_el = STEMS[stem]["element"]
+    branch_el = BRANCHES[branch]["element"]
+    stem_theme = element_daily_theme(stem_el)
+    branch_theme = element_daily_theme(branch_el)
+    if stem_el == branch_el:
+        return f"월운 {gz} · {stem_el} 기운이 한 달 배경으로 깔립니다. {stem_theme['use']}"
+    return (
+        f"월운 {gz} · {stem_el}/{branch_el} 기운이 함께 깔리는 달입니다. "
+        f"{stem_el}은 {stem_theme['keyword']}, {branch_el}은 {branch_theme['keyword']} 쪽 배경으로 참고합니다."
+    )
+
+
+
+def _today_luck_identity(chart: Chart, day_gz: str) -> Dict[str, str]:
+    """오늘 일운 간지를 사용자에게 바로 보이도록 천간/지지/오행/십성으로 풀어준다."""
+    if not day_gz or len(str(day_gz)) < 2:
+        return {
+            "day_luck_title": "일운 산출 제한",
+            "day_luck_detail": "오늘 들어온 간지 정보를 확인하지 못했습니다.",
+            "day_stem_detail": "천간 정보 제한",
+            "day_branch_detail": "지지 정보 제한",
+            "day_tengod_summary": "십성 정보 제한",
+        }
+    gz = str(day_gz)[:2]
+    stem, branch = gz[0], gz[1]
+    if stem not in STEMS or branch not in BRANCHES:
+        return {
+            "day_luck_title": gz,
+            "day_luck_detail": "오늘 일운 간지의 세부 해석이 제한됩니다.",
+            "day_stem_detail": "천간 정보 제한",
+            "day_branch_detail": "지지 정보 제한",
+            "day_tengod_summary": "십성 정보 제한",
+        }
+
+    stem_ko = STEMS[stem].get("ko", "")
+    branch_ko = BRANCHES[branch].get("ko", "")
+    stem_el = STEMS[stem].get("element", "")
+    branch_el = BRANCHES[branch].get("element", "")
+    stem_tg = relation_to_day(chart.day_master, stem)
+    branch_tg = relation_to_day(chart.day_master, branch)
+    return {
+        "day_luck_title": f"{gz} 일운",
+        "day_luck_detail": f"오늘은 {stem}{stem_ko}({stem_el})가 위에 뜨고, {branch}{branch_ko}({branch_el})가 아래에서 받치는 날입니다.",
+        "day_stem_detail": f"천간 {stem}{stem_ko} · {stem_el} · {stem_tg}",
+        "day_branch_detail": f"지지 {branch}{branch_ko} · {branch_el} · {branch_tg}",
+        "day_tengod_summary": f"내 일간 기준 {stem_tg}/{branch_tg} 흐름",
+    }
+
+
+DAILY_TEN_GOD_USAGE = {
+    "겁재": {
+        "title": "겁재 사용법",
+        "good": "비교심이나 경쟁심을 미뤄둔 일을 밀어붙이는 실행력으로 바꾸기 좋은 날입니다.",
+        "caution": "돈·역할·책임·약속 문제에서 감정적으로 내 몫을 주장하면 마찰이 커질 수 있습니다.",
+        "action": "지출·분담·책임은 먼저 선을 정하고, 경쟁심은 오늘 끝낼 일 하나에 집중해서 쓰세요.",
+        "short": "내 몫·역할 선 정리",
+    },
+    "비견": {
+        "title": "비견 사용법",
+        "good": "내 기준과 자존감이 또렷해지는 날입니다. 남의 속도보다 내 리듬을 잡기 좋습니다.",
+        "caution": "고집이 세지면 대화가 막힐 수 있으니, 결정 전에 한 번만 더 확인하세요.",
+        "action": "혼자 책임질 일과 같이 나눌 일을 구분하세요.",
+        "short": "내 기준 세우기",
+    },
+    "상관": {
+        "title": "상관 사용법",
+        "good": "표현력과 문제제기 감각이 살아나는 날입니다. 막힌 일을 말이나 아이디어로 풀기 좋습니다.",
+        "caution": "말이 앞서거나 직설이 강해지면 불필요한 충돌이 생길 수 있습니다.",
+        "action": "비판보다 제안 형태로 말하면 기운을 좋게 쓸 수 있습니다.",
+        "short": "말은 제안형으로",
+    },
+    "식신": {
+        "title": "식신 사용법",
+        "good": "꾸준히 만들고 정리하는 힘이 살아나는 날입니다. 반복 작업이나 콘텐츠 정리에 좋습니다.",
+        "caution": "편한 쪽으로 늘어지면 속도가 늦어질 수 있습니다.",
+        "action": "작은 산출물을 하나 남기는 방식으로 쓰세요.",
+        "short": "작은 산출물 만들기",
+    },
+    "편재": {
+        "title": "편재 사용법",
+        "good": "기회 포착과 거래 감각이 살아나는 날입니다. 사람·돈·정보의 흐름을 보기 좋습니다.",
+        "caution": "즉흥 지출이나 과한 약속은 부담으로 돌아올 수 있습니다.",
+        "action": "돈과 약속은 규모를 작게 잡고 확인 후 움직이세요.",
+        "short": "돈·약속 확인",
+    },
+    "정재": {
+        "title": "정재 사용법",
+        "good": "현실 감각과 관리 능력이 살아나는 날입니다. 정산, 정리, 계획에 좋습니다.",
+        "caution": "계산이 많아지면 마음이 좁아질 수 있습니다.",
+        "action": "수입·지출·일정을 숫자로 정리해보세요.",
+        "short": "정산·관리",
+    },
+    "편관": {
+        "title": "편관 사용법",
+        "good": "긴장감과 돌파력이 올라오는 날입니다. 어려운 일을 짧고 강하게 처리하기 좋습니다.",
+        "caution": "압박감이 커지면 말투나 결정이 거칠어질 수 있습니다.",
+        "action": "무리한 정면돌파보다 위험요소를 먼저 체크하세요.",
+        "short": "압박은 체크리스트로",
+    },
+    "정관": {
+        "title": "정관 사용법",
+        "good": "규칙, 책임, 신뢰를 세우기 좋은 날입니다. 공식적인 일 처리에 유리합니다.",
+        "caution": "너무 반듯하게만 보려 하면 융통성이 줄 수 있습니다.",
+        "action": "절차와 기준을 정리하되 사람의 사정도 함께 보세요.",
+        "short": "기준·절차 정리",
+    },
+    "편인": {
+        "title": "편인 사용법",
+        "good": "관찰력과 직감이 살아나는 날입니다. 자료 조사와 재해석에 좋습니다.",
+        "caution": "생각이 많아지면 실행이 늦어질 수 있습니다.",
+        "action": "자료를 모은 뒤 결론 하나만 정해보세요.",
+        "short": "조사 후 결론 하나",
+    },
+    "정인": {
+        "title": "정인 사용법",
+        "good": "흡수력과 안정감이 살아나는 날입니다. 배우고 정리하고 도움을 받기 좋습니다.",
+        "caution": "기다리기만 하면 기회가 지나갈 수 있습니다.",
+        "action": "도움받은 내용을 바로 한 가지 행동으로 연결하세요.",
+        "short": "배운 것 실행",
+    },
+}
+
+
+def _daily_ten_god_usage(chart: Chart, day_gz: str) -> Dict[str, object]:
+    if not day_gz or len(str(day_gz)) < 2:
+        return {"ten_gods": [], "focus": "", "title": "", "good": "", "caution": "", "action": "", "short": ""}
+    gz = str(day_gz)[:2]
+    stem, branch = gz[0], gz[1]
+    ten_gods: List[str] = []
+    if stem in STEMS:
+        ten_gods.append(relation_to_day(chart.day_master, stem))
+    if branch in BRANCHES:
+        ten_gods.append(relation_to_day(chart.day_master, branch))
+
+    priority = ["겁재", "상관", "편관", "편재", "비견", "정재", "정관", "식신", "편인", "정인"]
+    focus = next((tg for tg in priority if tg in ten_gods and tg in DAILY_TEN_GOD_USAGE), "")
+    guide = DAILY_TEN_GOD_USAGE.get(focus, {}) if focus else {}
+    return {
+        "ten_gods": ten_gods,
+        "focus": focus,
+        "title": guide.get("title", ""),
+        "good": guide.get("good", ""),
+        "caution": guide.get("caution", ""),
+        "action": guide.get("action", ""),
+        "short": guide.get("short", ""),
+    }
+
+
+def daily_interaction_overview(interactions: List[Dict[str, str]], limit: int = 4) -> str:
+    if not interactions:
+        return "합·충·형·파·해 특이 신호 약함"
+    parts: List[str] = []
+    for row in interactions[:limit]:
+        name = str(row.get("name", "") or "")
+        kind = str(row.get("kind", "") or "")
+        pos = str(row.get("pos_label", "") or "")
+        label = name if name else kind
+        if pos:
+            label = f"{label}({pos})"
+        if label and label not in parts:
+            parts.append(label)
+    return " · ".join(parts) if parts else "합·충·형·파·해 특이 신호 약함"
+
+
+def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: date | None = None) -> Dict[str, str]:
+    today = target_date or korea_today()
+    useful = result.get("useful", {}) or {}
+    try:
+        pillars = get_month_day_pillars_for_date(today)
+        day_gz = str(pillars.get("day", "") or "")
+        month_gz = str(pillars.get("month", "") or "")
+    except Exception:
+        day_gz = ""
+        month_gz = ""
+
+    if not day_gz or len(day_gz) < 2 or day_gz[0] not in STEMS or day_gz[1] not in BRANCHES:
+        dominant, weak = _dominant_and_weak_elements(result)
+        theme = element_daily_theme(dominant[0])
+        reactivity = luck_reactivity_profile(chart, result, {dominant[0]})
+        return {
+            "date": today.strftime("%Y-%m-%d"),
+            "day_gz": "일진 산출 제한",
+            "day_luck_title": "일운 산출 제한",
+            "day_luck_detail": "오늘 들어온 간지 정보를 확인하지 못했습니다.",
+            "day_stem_detail": "천간 정보 제한",
+            "day_branch_detail": "지지 정보 제한",
+            "day_tengod_summary": "십성 정보 제한",
+            "month_gz": "-",
+            "month_background": "월운 산출이 제한되어 이번 달 배경 기운은 간단 참고만 가능합니다.",
+            "main_element": dominant[0],
+            "keyword": theme["keyword"],
+            "direction": f"오늘은 원국에서 큰 {dominant[0]} 기운을 무리 없이 쓰는 쪽으로 봅니다.",
+            "overload": theme["overload"],
+            "prescription": f"{weak[0]} 기운이 약하게 잡히므로, 부족한 쪽을 억지로 밀기보다 작은 보완 루틴을 하나만 잡아보세요.",
+            "note": "lunar_python 일진 산출 제한 · " + format_luck_reactivity_note(reactivity),
+            "reactivity": format_luck_reactivity_note(reactivity),
+            "interactions": [],
+            "interaction_summary": "일진 산출이 제한되어 합·충·파·형·해 신호는 표시하지 않습니다.",
+            "interaction_overview": "일진 산출 제한",
+            "ten_god_focus": "",
+            "ten_god_title": "",
+            "ten_god_good": "",
+            "ten_god_caution": "",
+            "ten_god_action": "",
+            "ten_god_short": "",
+        }
+
+    stem, branch = day_gz[0], day_gz[1]
+    day_identity = _today_luck_identity(chart, day_gz)
+    ten_god_usage = _daily_ten_god_usage(chart, day_gz)
+    stem_el = STEMS[stem]["element"]
+    branch_el = BRANCHES[branch]["element"]
+    main_el = branch_el if branch_el else stem_el
+    theme = element_daily_theme(main_el)
+
+    mod, luck_note = analyze_luck_interaction(day_gz, chart, useful, 8.0, result)
+    primary = set(useful.get("primary", []))
+    burden = set(useful.get("burden", []))
+
+    day_elements = {stem_el, branch_el}
+    if day_elements & primary and mod >= 0:
+        direction = f"{', '.join(day_elements & primary)} 보완 신호가 들어와 부족한 부분을 채우기 좋은 날입니다."
+        prescription = f"{theme['use']} 크게 벌리기보다 오늘 들어온 보완 기운을 한 가지 행동으로 옮겨보세요."
+    elif day_elements & burden and mod < 0:
+        direction = f"{', '.join(day_elements & burden)} 부담 신호가 있어 속도를 줄이고 정리하는 쪽이 낫습니다."
+        prescription = "새로 밀어붙이기보다 확인, 정리, 말의 온도 조절을 우선해 보세요."
+    else:
+        direction = theme["use"]
+        prescription = f"오늘의 키워드는 {theme['keyword']}입니다. 무리한 확장보다 내 리듬에 맞는 작은 실행 하나가 좋습니다."
+
+    if "충" in luck_note or "변동" in luck_note:
+        overload = "변동 신호가 있어 일정·말투·약속을 조금 더 부드럽게 조율하세요."
+    elif mod < -2:
+        overload = theme["overload"]
+    elif mod > 2:
+        overload = "기운이 받쳐주는 만큼 과속만 조심하면 좋습니다."
+    else:
+        overload = theme["overload"]
+
+    if ten_god_usage.get("focus"):
+        direction = ten_god_usage.get("good") or direction
+        prescription = ten_god_usage.get("action") or prescription
+        tg_caution = str(ten_god_usage.get("caution", "") or "")
+        if tg_caution:
+            if "충" in luck_note or "변동" in luck_note:
+                overload = f"{overload} {tg_caution}"
+            else:
+                overload = tg_caution
+
+    interactions = daily_branch_interactions(chart, branch)
+    interaction_summary = daily_interaction_summary(interactions)
+    interaction_overview = daily_interaction_overview(interactions)
+    reactivity = luck_reactivity_profile(chart, result, {stem_el, branch_el})
+
+    return {
+        "date": today.strftime("%Y-%m-%d"),
+        "day_gz": day_gz,
+        "day_luck_title": day_identity.get("day_luck_title", day_gz),
+        "day_luck_detail": day_identity.get("day_luck_detail", ""),
+        "day_stem_detail": day_identity.get("day_stem_detail", ""),
+        "day_branch_detail": day_identity.get("day_branch_detail", ""),
+        "day_tengod_summary": day_identity.get("day_tengod_summary", ""),
+        "month_gz": month_gz or "-",
+        "month_background": month_background_summary(month_gz or "-"),
+        "main_element": main_el,
+        "keyword": theme["keyword"],
+        "direction": direction,
+        "overload": overload,
+        "prescription": prescription,
+        "note": luck_note,
+        "reactivity": format_luck_reactivity_note(reactivity),
+        "interactions": interactions,
+        "interaction_summary": interaction_summary,
+        "interaction_overview": interaction_overview,
+        "ten_god_focus": ten_god_usage.get("focus", ""),
+        "ten_god_title": ten_god_usage.get("title", ""),
+        "ten_god_good": ten_god_usage.get("good", ""),
+        "ten_god_caution": ten_god_usage.get("caution", ""),
+        "ten_god_action": ten_god_usage.get("action", ""),
+        "ten_god_short": ten_god_usage.get("short", ""),
+    }
+
+
+def render_today_compass_card(payload: Dict[str, object]) -> None:
+    """혼자보기 결과에 작게 붙이는 오늘의 기운 나침반."""
+    chart = payload.get("chart")
+    result = payload.get("result", {}) or {}
+    if chart is None:
+        return
+    compass = today_compass_payload(chart, result)
+    interactions = compass.get("interactions", []) or []
+    kind_class = {"합": "good", "충": "change", "파": "caution", "형": "caution", "해": "soft"}
+    if interactions:
+        interaction_rows = []
+        for row in interactions[:6]:
+            kind = html.escape(str(row.get("kind", "-")), quote=True)
+            cls = kind_class.get(str(row.get("kind", "")), "soft")
+            name = html.escape(str(row.get("name", "-")), quote=True)
+            pos = html.escape(str(row.get("pos_label", "-")), quote=True)
+            target = html.escape(_branch_ko(str(row.get("target", ""))), quote=True)
+            impact = html.escape(str(row.get("impact", "")), quote=True)
+            interaction_rows.append(
+                f"<div class='today-interaction-row'>"
+                f"<div class='today-interaction-kind {cls}'>{kind}</div>"
+                f"<div class='today-interaction-body'><b>{name}</b> · 오늘 일지 ↔ 원국 {pos} {target}<br>{impact}</div>"
+                f"</div>"
+            )
+        interaction_html = (
+            "<div class='today-compass-prescription'>"
+            "<div class='today-compass-label'>오늘 일운 합·충·파·형·해</div>"
+            f"<div class='today-compass-body'>{html.escape(str(compass.get('interaction_summary', '')), quote=True)}</div>"
+            "<div class='today-interactions'>" + "".join(interaction_rows) + "</div>"
+            "</div>"
+        )
+    else:
+        interaction_html = (
+            "<div class='today-interaction-empty'>"
+            "<b>오늘 일운 합·충·파·형·해</b><br>"
+            f"{html.escape(str(compass.get('interaction_summary', '오늘은 크게 표시할 합충파형해 신호가 약합니다.')), quote=True)}"
+            "</div>"
+        )
+
+    st.markdown("### 🧭 오늘의 기운 나침반")
+    st.caption("오늘 날짜의 일진을 내 원국과 가볍게 맞춰보는 컨디션형 카드입니다. 예언이 아니라 하루의 사용 방향으로만 봅니다.")
+    st.markdown(f"""
+    <div class="today-compass">
+        <div class="today-compass-head">
+            <div class="today-compass-title">오늘의 기운 방향</div>
+            <div class="today-compass-date">{html.escape(compass['date'])} · 일진 {html.escape(compass['day_gz'])}</div>
+        </div>
+        <div class="today-compass-grid">
+            <div class="today-compass-box">
+                <div class="today-compass-label">오늘 들어온 일운</div>
+                <div class="today-compass-body">{html.escape(str(compass.get('day_luck_title', compass.get('day_gz', '-'))))}<br>{html.escape(str(compass.get('day_tengod_summary', '')))}</div>
+            </div>
+            <div class="today-compass-box">
+                <div class="today-compass-label">일운 천간·지지</div>
+                <div class="today-compass-body">{html.escape(str(compass.get('day_stem_detail', '-')))}<br>{html.escape(str(compass.get('day_branch_detail', '-')))}</div>
+            </div>
+            <div class="today-compass-box">
+                <div class="today-compass-label">이번 달 배경 기운</div>
+                <div class="today-compass-body">{html.escape(compass.get('month_background', '-'))}</div>
+            </div>
+            <div class="today-compass-box">
+                <div class="today-compass-label">오늘 강해지는 기운</div>
+                <div class="today-compass-body">{html.escape(compass['main_element'])} · {html.escape(compass['keyword'])}</div>
+            </div>
+            <div class="today-compass-box">
+                <div class="today-compass-label">잘 쓰는 방향</div>
+                <div class="today-compass-body">{html.escape(compass['direction'])}</div>
+            </div>
+            <div class="today-compass-box">
+                <div class="today-compass-label">운 반응성</div>
+                <div class="today-compass-body">{html.escape(compass.get('reactivity', compass.get('note', '-')))}</div>
+            </div>
+            <div class="today-compass-box">
+                <div class="today-compass-label">십성 사용법</div>
+                <div class="today-compass-body">{html.escape(str(compass.get('ten_god_title') or '오늘의 사용법'))}<br>{html.escape(str(compass.get('ten_god_action') or compass.get('prescription') or '-'))}</div>
+            </div>
+        </div>
+        {interaction_html}
+        <div class="today-compass-prescription">
+            <div class="today-compass-label">한 줄 처방</div>
+            <div class="today-compass-body">{html.escape(compass['prescription'])}</div>
+        </div>
+        <div class="today-compass-note">※ 오늘의 나침반은 매일의 기운을 가볍게 보는 보조 카드입니다. 중요한 결정은 현실 조건을 우선하세요.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+
+def _today_luck_background_line(payload: Dict[str, object]) -> str:
+    """오늘 카드 상단에서 대운·세운 배경을 짧게 보여준다."""
+    luck_flow = payload.get("luck_flow") or {}
+    if not isinstance(luck_flow, dict) or not luck_flow:
+        return "대운·세운은 자동 산출 정보가 있을 때 함께 참고합니다."
+    parts: List[str] = []
+    current = luck_flow.get("current_daewun") or {}
+    if isinstance(current, dict) and current.get("ganzhi"):
+        parts.append(f"대운 {current.get('ganzhi')} · {current.get('start_age', '-')}세부터")
+    rows = luck_flow.get("sewun_rows") or []
+    this_year = f"{date.today().year}년"
+    if isinstance(rows, list):
+        for row in rows:
+            if isinstance(row, dict) and str(row.get("연도", "")) == this_year:
+                parts.append(f"세운 {row.get('세운', '-')}")
+                break
+    return " / ".join(parts) if parts else "대운·세운은 큰 배경, 일운은 오늘의 체감 바람으로 봅니다."
+
+
+def render_today_quick_entry(payload: Dict[str, object]) -> None:
+    """오늘의 기운 첫 화면: 핵심 4개만 Streamlit 기본 컴포넌트로 표시한다."""
+    chart = payload.get("chart")
+    result = payload.get("result", {}) or {}
+    if chart is None:
+        return
+
+    compass = today_compass_payload(chart, result)
+    bg_line = _today_luck_background_line(payload)
+
+    ten_god_title = "십성 흐름"
+    ten_god_body = str(compass.get("day_tengod_summary") or compass.get("ten_god_focus") or "십성 정보 제한")
+    prescription = str(compass.get("ten_god_action") or compass.get("prescription") or compass.get("ten_god_short") or "-")
+    interaction_overview = str(compass.get("interaction_overview") or "합·충·형·파·해 특이 신호 약함")
+
+    st.markdown("### 🌤 오늘의 기운")
+    st.caption(f"{compass.get('date', '-')} · 일진 {compass.get('day_gz', '-')}")
+
+    try:
+        shell = st.container(border=True)
+    except TypeError:
+        shell = st.container()
+
+    with shell:
+        top_left, top_right = st.columns(2)
+        with top_left:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                st.markdown("**오늘 들어온 일운 / 큰 배경**")
+                st.markdown(str(compass.get("day_luck_title", compass.get("day_gz", "-"))))
+                st.caption(str(bg_line))
+
+        with top_right:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                st.markdown(f"**{ten_god_title}**")
+                st.markdown(ten_god_body)
+
+        bottom_left, bottom_right = st.columns(2)
+        with bottom_left:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                st.markdown("**합·충·형·파·해**")
+                st.markdown(interaction_overview)
+
+        with bottom_right:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                st.markdown("**한 줄 처방**")
+                st.markdown(prescription)
+
+    if "중첩" in interaction_overview:
+        st.caption("※ 같은 지지쌍에서 합·형·파가 함께 잡히는 경우는 복합 신호로 묶어 표시합니다.")
+    st.caption("세부 천간·지지, 원국 반응, 합충 상세는 아래 상세 보기에서 확인하세요.")
+
+    detail_choice = _ORIGINAL_ST_RADIO(
+        "🌤 오늘의 기운 상세 보기",
+        ["감추기", "상세 보기"],
+        index=0,
+        horizontal=True,
+        key="today_luck_detail_visibility_v5130",
+        help="첫 화면은 핵심만 보고, 필요할 때만 상세 내용을 펼칩니다.",
+    )
+    if detail_choice == "상세 보기":
+        render_today_compass_card(payload)
+
+
+def share_card_strength_keywords(char: Dict[str, str], result: Dict[str, object]) -> List[str]:
+    role = str(char.get("role", "") or "")
+    role_keywords = {
+        "독립가": ["자기 기준 선명", "밀어붙이는 힘", "버티는 체력"],
+        "아이디어 뱅크": ["발상 정리력", "구조화 감각", "실행 설계력"],
+        "전략가": ["판 읽는 현실감", "정리·설계 능력", "결과 계산 감각"],
+        "리더": ["책임을 붙잡는 힘", "기준 세우는 능력", "역할 장악력"],
+        "책사": ["깊게 읽는 분석력", "빈틈 보는 관찰력", "구조화 능력"],
+        "밸런서": ["관계 조율력", "흐름 균형감", "환경 적응력"],
+    }
+    keywords = list(role_keywords.get(role, []))
+    dominant, _weak = _dominant_and_weak_elements(result)
+    element_keywords = {
+        "목": "성장 추진력",
+        "화": "표현 추진력",
+        "토": "버티는 안정감",
+        "금": "기준 판단력",
+        "수": "흐름 파악력",
+    }
+    el_key = element_keywords.get(dominant[0])
+    if el_key and el_key not in keywords:
+        keywords.append(el_key)
+    return keywords[:4] if keywords else ["균형감", "관찰력", "회복력"]
+
+
+def share_card_overload_signal(char: Dict[str, str], result: Dict[str, object]) -> str:
+    operation = str(char.get("operation", "") or "")
+    role = str(char.get("role", "") or "")
+
+    if "준비가 힘" in operation:
+        return "준비가 부족하면 쉽게 지치고, 기준이 높아질 수 있음"
+    if "스스로" in operation or "자기 주도" in operation:
+        return "혼자 끌고 가려다 속도와 부담이 같이 올라갈 수 있음"
+    if "상황을 읽" in operation or "흐름에 맞" in operation:
+        return "너무 맞추다 보면 자기 리듬이 흐려질 수 있음"
+    if "균형" in operation:
+        return "모두를 맞추려다 결정이 늦어질 수 있음"
+    if "연결" in operation:
+        return "주변 환경이 흔들리면 에너지 회복이 늦어질 수 있음"
+
+    role_overload = {
+        "전략가": "계산이 많아지면 시작이 늦어질 수 있음",
+        "책사": "생각이 깊어질수록 실행 타이밍을 놓칠 수 있음",
+        "리더": "책임감이 과해지면 혼자 떠안기 쉬움",
+        "아이디어 뱅크": "생각이 많아지면 정리 전 에너지가 흩어질 수 있음",
+        "독립가": "기준이 강해지면 주변과 박자가 어긋날 수 있음",
+    }
+    return role_overload.get(role, "강점이 과해질 때는 잠깐 멈춰 리듬을 조정하는 편이 좋음")
+
+
+def share_card_one_liner(char: Dict[str, str], result: Dict[str, object]) -> str:
+    title = str(char.get("title", "") or "")
+    operation = str(char.get("operation", "") or "")
+    role = str(char.get("role", "") or "")
+
+    if "화초" in title:
+        return "천천히 뿌리내릴수록 오래 강해지는 타입"
+    if "바위" in title or "보석" in title:
+        return "기준이 잡힐수록 판단과 설계가 또렷해지는 타입"
+    if "태양" in title or "불꽃" in title:
+        return "불이 붙으면 주변까지 함께 움직이게 만드는 타입"
+    if "바다" in title or "맑은 물" in title or "물길" in title:
+        return "흐름을 읽고 필요한 방향으로 조용히 움직이는 타입"
+    if "거목" in title:
+        return "시간을 들여 큰 흐름을 세울수록 힘이 나는 타입"
+
+    if "준비가 힘" in operation:
+        return "준비가 갖춰질수록 힘이 깊고 오래 가는 타입"
+    if role == "전략가":
+        return "판을 읽고 필요한 순간에 정확히 들어가는 타입"
+    if role == "책사":
+        return "조용히 보다가 핵심을 정확히 짚어내는 타입"
+    return "자기 리듬을 잡을수록 강점이 선명해지는 타입"
+
+
+def share_card_operation_interpretation(char: Dict[str, str], result: Dict[str, object]) -> str:
+    """공유카드의 메타 설명 대신 실제 작동 해석을 만든다."""
+    op = energy_operation_profile(result)
+    axis = operation_axis_profile(op, result)
+    label = str(axis.get("label", "균형 조율권"))
+    note = str(axis.get("note", ""))
+    operation = str(char.get("operation", "") or "")
+    if "준비가 힘" in operation:
+        return f"{label}. 준비와 정보가 채워질수록 판단이 정교해지고, 한 번 잡은 판은 끝까지 정리하는 힘이 살아납니다."
+    if "스스로" in operation or "자기 주도" in operation:
+        return f"{label}. 내 방향을 먼저 정한 뒤 밀어붙일 때 존재감이 강하게 살아납니다."
+    if "상황을 읽" in operation or "흐름에 맞" in operation:
+        return f"{label}. 상황의 흐름을 읽고 타이밍을 맞출수록 장점이 살아납니다."
+    if "균형" in operation:
+        return f"{label}. 사람과 상황 사이에서 우선순위를 잡을 때 안정적인 결과를 만듭니다."
+    return f"{label}. {note or '자기 리듬을 잡을수록 강점이 선명해집니다.'}"
+
+
+
+LANDSCAPE_ELEMENT_META = {
+    "목": {"icon": "🌿", "tone": "초목", "color": "#22c55e"},
+    "화": {"icon": "☀️", "tone": "빛과 온기", "color": "#f97316"},
+    "토": {"icon": "⛰️", "tone": "땅과 지반", "color": "#b7791f"},
+    "금": {"icon": "◇", "tone": "바위와 금속", "color": "#64748b"},
+    "수": {"icon": "💧", "tone": "물길과 흐름", "color": "#2563eb"},
+}
+
+STEM_SCENE_OBJECT = {
+    "甲": "큰 나무", "乙": "화초와 덩굴", "丙": "태양", "丁": "등불",
+    "戊": "산", "己": "밭과 흙", "庚": "바위와 광맥", "辛": "보석",
+    "壬": "큰 강", "癸": "계곡물",
+}
+
+STEM_LANDSCAPE_META = {
+    "甲": {"label": "큰 나무", "yin_yang": "양목", "visual": "tree_yang", "short": "곧게 치솟는 큰 나무"},
+    "乙": {"label": "화초와 덩굴", "yin_yang": "음목", "visual": "tree_yin", "short": "휘어 오르는 화초와 덩굴"},
+    "丙": {"label": "태양", "yin_yang": "양화", "visual": "sun_yang", "short": "멀리 퍼지는 큰 햇빛"},
+    "丁": {"label": "등불", "yin_yang": "음화", "visual": "fire_yin", "short": "집중된 작은 불빛"},
+    "戊": {"label": "산", "yin_yang": "양토", "visual": "mountain_yang", "short": "큰 덩어리의 산과 둔덕"},
+    "己": {"label": "밭과 흙", "yin_yang": "음토", "visual": "soil_yin", "short": "고르게 다져진 밭흙"},
+    "庚": {"label": "바위와 광맥", "yin_yang": "양금", "visual": "metal_yang", "short": "거칠고 날 선 바위"},
+    "辛": {"label": "보석", "yin_yang": "음금", "visual": "metal_yin", "short": "작고 맑게 빛나는 보석"},
+    "壬": {"label": "강과 바다", "yin_yang": "양수", "visual": "water_yang", "short": "넓고 크게 움직이는 물"},
+    "癸": {"label": "시냇물과 계곡물", "yin_yang": "음수", "visual": "water_yin", "short": "가늘고 섬세하게 스미는 물"},
+}
+
+SEASON_SCENE = {
+    "봄": ("새싹이 오르는 봄 풍경", "#dff7e8", "#c8efd3"),
+    "여름": ("빛과 열이 강한 여름 풍경", "#fff1c7", "#ffe0a3"),
+    "가을": ("건조하고 선명한 가을 풍경", "#fff3d7", "#ead0a8"),
+    "겨울": ("차고 고요한 겨울 풍경", "#e8f4ff", "#d6e8f7"),
+    "봄말/토": ("초목과 흙이 함께 잡히는 봄말 풍경", "#e8f5df", "#d9e7c7"),
+    "여름말/토": ("열기와 흙이 두꺼운 여름말 풍경", "#fff0cf", "#e8c58c"),
+    "가을말/토": ("마른 흙과 바위가 드러나는 가을말 풍경", "#f7ead6", "#d6c0a1"),
+    "겨울말/토": ("차고 습한 흙이 받치는 겨울말 풍경", "#e6f0f7", "#c8d8e2"),
+}
+
+
+def _count_visible_stems(chart: Chart, targets: set[str]) -> int:
+    return sum(1 for s in chart.stems if s in targets)
+
+
+def _count_hidden_stems(chart: Chart, targets: set[str]) -> int:
+    count = 0
+    for branch in chart.branches:
+        for stem, _ratio in BRANCHES.get(branch, {}).get("hidden", []):
+            if stem in targets:
+                count += 1
+    return count
+
+
+def _count_branches(chart: Chart, targets: set[str]) -> int:
+    return sum(1 for b in chart.branches if b in targets)
+
+
+def _water_mode_from_chart(chart: Chart, season: str) -> str:
+    visible = _count_visible_stems(chart, {"壬", "癸"})
+    hidden = _count_hidden_stems(chart, {"壬", "癸"})
+    branch_water = _count_branches(chart, {"子", "亥"})
+    wet_earth = _count_branches(chart, {"丑", "辰"})
+    day = chart.day_master
+    if day == "壬":
+        return "riversea"
+    if day == "癸":
+        return "stream"
+    if visible >= 1:
+        return "surface"
+    if branch_water >= 2:
+        return "brook"
+    if branch_water >= 1 and hidden >= 2:
+        return "moisture"
+    if hidden >= 2 or wet_earth >= 2 or "겨울" in season:
+        return "moisture"
+    return "none"
+
+
+def _light_mode_from_chart(chart: Chart, season: str, primary: List[str]) -> str:
+    visible_bing = _count_visible_stems(chart, {"丙"})
+    visible_ding = _count_visible_stems(chart, {"丁"})
+    day = chart.day_master
+    if day == "丙" or visible_bing >= 1:
+        return "sun"
+    if day == "丁" or visible_ding >= 1:
+        return "lamp"
+    if "화" in primary or "여름" in season:
+        return "glow"
+    return "none"
+
+
+def _water_mode_label(mode: str) -> str:
+    return {
+        "riversea": "넓은 강·바다형 수상",
+        "stream": "시냇물·계곡물형 수상",
+        "surface": "겉으로 보이는 수기",
+        "brook": "얕은 개울형 수상",
+        "moisture": "습기·젖은 흙 중심",
+        "none": "뚜렷한 겉물 없음",
+    }.get(mode, mode)
+
+
+
+def _metal_mode_from_chart(chart: Chart, pct: Dict[str, float]) -> str:
+    visible_geng = _count_visible_stems(chart, {"庚"})
+    visible_sin = _count_visible_stems(chart, {"辛"})
+    day = chart.day_master
+    metal_pct = float(pct.get("금", 0) or 0)
+    if day == "庚" or visible_geng >= 1 or metal_pct >= 28:
+        return "rock"
+    if day == "辛" or visible_sin >= 1 or metal_pct >= 18:
+        return "jewel"
+    return "none"
+
+
+def _wood_density_from_chart(day_stem: str, pct: Dict[str, float], season_base: str) -> str:
+    wood_pct = float(pct.get("목", 0) or 0)
+    base = 2 if day_stem in {"甲", "乙"} else 0
+    if season_base in {"봄", "여름"}:
+        base += 1
+    elif season_base in {"가을", "겨울"}:
+        base -= 1
+    score = wood_pct + (base * 4)
+    if score >= 24:
+        return "lush"
+    if score >= 12:
+        return "moderate"
+    return "sparse"
+
+
+def _metal_supports_water(chart: Chart, pct: Dict[str, float], water_mode: str) -> bool:
+    metal_visible = _count_visible_stems(chart, {"庚", "辛"})
+    metal_branch = _count_branches(chart, {"申", "酉"})
+    metal_pct = float(pct.get("금", 0) or 0)
+    if water_mode not in {"riversea", "stream", "surface", "brook", "moisture"}:
+        return False
+    return metal_visible >= 1 or metal_branch >= 1 or metal_pct >= 18
+
+
+def _season_base_name(season: str) -> str:
+    s = str(season or "")
+    if "봄" in s and "말" not in s:
+        return "봄"
+    if "여름" in s and "말" not in s:
+        return "여름"
+    if "가을" in s and "말" not in s:
+        return "가을"
+    if "겨울" in s and "말" not in s:
+        return "겨울"
+    return s or "계절"
+
+
+def _branch_support_phrase(chart: Chart) -> str:
+    day_el = STEMS.get(chart.day_master, {}).get("element", "")
+    rooted = []
+    for label, branch in [("년지", chart.year.branch), ("월지", chart.month.branch), ("일지", chart.day.branch)] + ([("시지", chart.hour.branch)] if chart.hour else []):
+        if BRANCHES.get(branch, {}).get("element") == day_el:
+            rooted.append(label)
+            continue
+        for hidden_stem, _ratio in BRANCHES.get(branch, {}).get("hidden", []):
+            if STEMS.get(hidden_stem, {}).get("element") == day_el:
+                rooted.append(label)
+                break
+    if len(rooted) >= 2:
+        return f"{', '.join(rooted[:3])}에서 일간을 받치는 뿌리가 확인됩니다."
+    if len(rooted) == 1:
+        return f"{rooted[0]}에서 일간을 받치는 뿌리가 한 곳 확인됩니다."
+    return "일간을 직접 받치는 뿌리는 약하게 잡혀, 주변 환경의 보완이 중요합니다."
+
+
+LANDSCAPE_DIAGRAM_TYPES = {
+    "winter_silence": {"label": "차고 고요한 겨울형", "short": "설원·얇은 물길·작은 인물", "tone": "고요함, 내면 집중, 절제"},
+    "valley_stream": {"label": "계곡 수기형", "short": "바위 틈 샘물·계곡물·금생수", "tone": "섬세함, 관찰력, 흐름 감각"},
+    "great_water": {"label": "큰 강·바다형", "short": "넓은 물결·수평선·큰 흐름", "tone": "스케일, 이동성, 확장"},
+    "sun_cliff": {"label": "태양·절벽형", "short": "강한 태양·절벽·깊은 바다", "tone": "발산, 추진, 존재감"},
+    "inner_lamp": {"label": "등불·내열형", "short": "차가운 배경 속 작은 불빛", "tone": "집중, 온기, 조용한 지속성"},
+    "rock_structure": {"label": "바위·구조형", "short": "바위산·결정·선명한 기준", "tone": "단단함, 판단력, 구조화"},
+    "field_growth": {"label": "들판·생장형", "short": "초목·상승 곡선·성장", "tone": "생기, 확장, 방향성"},
+}
+
+
+def _classify_landscape_diagram_type(
+    day_stem: str,
+    day_el: str,
+    season_base: str,
+    water_mode: str,
+    light_mode: str,
+    metal_mode: str,
+    wood_density: str,
+    metal_supports_water: bool,
+    pct: Dict[str, float],
+) -> str:
+    fire_pct = float(pct.get("화", 0) or 0)
+    water_pct = float(pct.get("수", 0) or 0)
+    metal_pct = float(pct.get("금", 0) or 0)
+    wood_pct = float(pct.get("목", 0) or 0)
+
+    if day_stem == "癸":
+        return "valley_stream"
+    if day_stem == "壬":
+        return "great_water"
+    if day_stem == "丁":
+        return "inner_lamp"
+    if day_stem == "丙":
+        return "sun_cliff"
+    if day_stem in {"庚", "辛"}:
+        return "rock_structure"
+    if day_stem in {"甲", "乙"} and (season_base == "봄" or wood_density in {"moderate", "lush"}):
+        return "field_growth"
+
+    if metal_supports_water and water_mode in {"stream", "surface", "brook", "moisture"}:
+        return "valley_stream"
+    if season_base == "겨울" and water_pct >= 10:
+        return "winter_silence"
+    if light_mode == "sun" and fire_pct >= 18:
+        return "sun_cliff"
+    if metal_mode in {"rock", "jewel"} or metal_pct >= 24:
+        return "rock_structure"
+    if wood_density == "lush" or wood_pct >= 24:
+        return "field_growth"
+    if water_mode == "riversea" or water_pct >= 28:
+        return "great_water"
+    if water_mode in {"stream", "surface", "brook", "moisture"}:
+        return "valley_stream"
+    if season_base == "겨울":
+        return "winter_silence"
+    return "rock_structure" if metal_pct >= fire_pct else "sun_cliff"
+
+
+def build_saju_landscape_model(payload: Dict[str, object]) -> Dict[str, object]:
+    chart = payload["chart"]
+    result = payload["result"]
+    pct = _safe_pct_dict(result)
+    season = str(result.get("season", "") or "")
+    season_base = _season_base_name(season)
+    season_desc, sky, ground = SEASON_SCENE.get(season, SEASON_SCENE.get(season_base, ("원국의 계절 배경", "#eef6ff", "#e7dbc7")))
+    day_stem = chart.day_master
+    day_el = STEMS.get(day_stem, {}).get("element", "")
+    stem_meta = STEM_LANDSCAPE_META.get(day_stem, {"label": STEM_SCENE_OBJECT.get(day_stem, "중심 기운"), "yin_yang": "", "visual": "", "short": ""})
+    day_name = stem_meta.get("label", STEM_SCENE_OBJECT.get(day_stem, "중심 기운"))
+    dominant, weak = _dominant_and_weak_elements(result)
+    useful = result.get("useful", {}) or {}
+    primary = list(dict.fromkeys(useful.get("primary", []) or []))[:2]
+    burden = list(dict.fromkeys(useful.get("burden", []) or []))[:2]
+    visible_stems = [s for s in chart.stems if s != day_stem]
+    visible_labels = [f"{s}{STEMS.get(s, {}).get('ko','')}({STEMS.get(s, {}).get('element','')})" for s in visible_stems[:3]]
+    branch_labels = [f"{b}{BRANCHES.get(b, {}).get('ko','')}({BRANCHES.get(b, {}).get('element','')})" for b in chart.branches[:4]]
+    branch_elements = [BRANCHES.get(b, {}).get("element", "") for b in chart.branches]
+    flow_rows = _compress_flow_rows_for_display(result.get("flows", []) or [])
+    flow_label = _flow_plain_name(str(flow_rows[0].get("구조", ""))) if flow_rows else "기본 흐름은 잠재되어 있습니다"
+
+    visible_elements = [STEMS.get(s, {}).get("element", "") for s in visible_stems]
+    root_positions: List[str] = []
+    for label, branch in [("년지", chart.year.branch), ("월지", chart.month.branch), ("일지", chart.day.branch)] + ([('시지', chart.hour.branch)] if chart.hour else []):
+        if BRANCHES.get(branch, {}).get("element") == day_el:
+            root_positions.append(label)
+            continue
+        for hidden_stem, _ratio in BRANCHES.get(branch, {}).get("hidden", []):
+            if STEMS.get(hidden_stem, {}).get("element") == day_el:
+                root_positions.append(label)
+                break
+    root_strength = len(root_positions)
+
+    water_mode = _water_mode_from_chart(chart, season)
+    light_mode = _light_mode_from_chart(chart, season, primary)
+    metal_mode = _metal_mode_from_chart(chart, pct)
+    wood_density = _wood_density_from_chart(day_stem, pct, season_base)
+    metal_supports_water = _metal_supports_water(chart, pct, water_mode)
+    diagram_type = _classify_landscape_diagram_type(
+        day_stem=day_stem,
+        day_el=day_el,
+        season_base=season_base,
+        water_mode=water_mode,
+        light_mode=light_mode,
+        metal_mode=metal_mode,
+        wood_density=wood_density,
+        metal_supports_water=metal_supports_water,
+        pct=pct,
+    )
+    diagram_meta = LANDSCAPE_DIAGRAM_TYPES.get(diagram_type, LANDSCAPE_DIAGRAM_TYPES["rock_structure"])
+    has_cloud = water_mode in {"riversea", "stream", "surface", "brook", "moisture"} or season_base == "겨울"
+    has_water = water_mode in {"riversea", "stream", "surface", "brook", "moisture"}
+    has_sun = light_mode in {"sun", "lamp", "glow"}
+
+    earth_count = sum(1 for e in visible_elements + branch_elements if e == "토")
+    if season_base == "겨울":
+        soil_kind = "차고 습한 겨울 흙"
+    elif season_base == "여름":
+        soil_kind = "열을 머금은 여름 흙"
+    elif season_base == "가을":
+        soil_kind = "마르고 단단한 가을 흙"
+    elif season_base == "봄":
+        soil_kind = "부드럽고 젖은 봄 흙"
+    else:
+        soil_kind = "기본 바탕 흙"
+    if earth_count >= 3:
+        soil_kind = "두껍고 존재감이 강한 흙층"
+    if day_stem == "戊":
+        soil_kind = soil_kind + " · 스케일은 무토형 산세"
+    elif day_stem == "己":
+        soil_kind = soil_kind + " · 질감은 기토형 밭흙"
+
+    fire_visible = [s for s in visible_stems if s in {"丙", "丁"}]
+    if light_mode == "sun":
+        if day_stem == "丙" or "丙" in fire_visible:
+            sun_reason = "병화는 태양처럼 크게 퍼지는 불입니다. 풍경의 빛을 넓고 직접적인 태양광으로 잡았습니다."
+        else:
+            sun_reason = "화 기운이 밖으로 크게 드러나 태양형 조명으로 표현했습니다."
+    elif light_mode == "lamp":
+        sun_reason = "정화는 촛불·등불 같은 작은 불입니다. 넓은 태양보다 한 점에 모이는 불빛으로 표현했습니다."
+    elif light_mode == "glow":
+        sun_reason = "화가 보완 포인트라서 장면 전체에 은은한 온기를 깔았습니다."
+    else:
+        sun_reason = "강한 불빛보다는 차분한 하늘 쪽이 더 어울리는 구조입니다."
+
+    if water_mode == "riversea":
+        water_reason = "임수형 수상이라 넓고 크게 움직이는 강·바다 스케일로 그렸습니다."
+    elif water_mode == "stream":
+        if metal_supports_water:
+            water_reason = "계수형 수상이라 시냇물·계곡물처럼 가늘게 흐르되, 금 기운이 물을 생하는 구조를 반영해 바위·광물 틈에서 샘물이 이어지는 모습으로 표현했습니다."
+        else:
+            water_reason = "계수형 수상이라 시냇물·계곡물처럼 가늘고 선명한 물길로 그렸습니다."
+    elif water_mode == "surface":
+        if metal_supports_water:
+            water_reason = "겉으로 보이는 수 기운에 금생수의 결이 있어, 금의 자리에서 물길이 시작되는 형상으로 표현했습니다."
+        else:
+            water_reason = "천간에 수가 드러나 있어 겉으로 보이는 물길을 두었습니다."
+    elif water_mode == "brook":
+        if metal_supports_water:
+            water_reason = "지지의 수기가 배경에서 살아 있고 금이 수를 받쳐, 바위 틈 샘물 같은 얕은 개울로 표현했습니다."
+        else:
+            water_reason = "지지의 수기가 배경에서 살아 있어 얕은 개울 정도로만 드러냈습니다."
+    elif water_mode == "moisture":
+        if metal_supports_water:
+            water_reason = "수는 겉으로 크게 흐르기보다 숨은 습기로 작동하지만, 금생수의 결을 반영해 바위 주변에 스민 물기와 샘기운을 더했습니다."
+        else:
+            water_reason = "수는 숨거나 스며드는 쪽이라 큰 물길 대신 젖은 흙·안개·얕은 수분막으로 표현했습니다."
+    else:
+        water_reason = "뚜렷한 겉물은 약해, 물길보다 건조한 바탕을 우선했습니다."
+
+    flow_target = format_element_list(primary, "보완 방향") if primary else flow_label
+    if water_mode in {"riversea", "stream", "surface", "brook"}:
+        flow_reason = f"보이는 흐름은 {flow_target} 쪽으로 향하게 잡았습니다."
+    elif water_mode == "moisture":
+        flow_reason = f"겉으로 흐르기보다 바닥에 스며드는 방향이 강해, 보완 축은 {flow_target} 쪽으로 읽습니다."
+    else:
+        flow_reason = f"뚜렷한 물길은 약하지만 에너지는 {flow_target} 쪽으로 정리됩니다."
+
+    if day_stem == "戊":
+        soil_reason = f"무토는 큰 산과 둔덕 쪽입니다. 흙을 {soil_kind}처럼 큰 덩어리감으로 잡았습니다."
+    elif day_stem == "己":
+        soil_reason = f"기토는 밭흙·고운 흙 쪽입니다. 흙을 {soil_kind}처럼 고르게 펴진 바탕으로 잡았습니다."
+    else:
+        soil_reason = f"흙은 {soil_kind}으로 잡아 지지의 받침을 표현했습니다."
+
+    support_reason = _branch_support_phrase(chart)
+    strength_reason = f"주된 분위기는 {dominant[0]}가, 약한 축은 {weak[0]}가 맡습니다."
+    root_reason = (f"뿌리는 {', '.join(root_positions)} 쪽에서 확인됩니다." if root_positions else "직접 받치는 뿌리는 약한 편입니다.")
+    scene_signature = f"{season_desc} · {soil_kind} · {_water_mode_label(water_mode)}" + (" · 금생수 형상" if metal_supports_water else "")
+
+    one = f"{season_desc} 위에 {stem_meta.get('yin_yang','')}의 {day_name}이 중심이 되고, {dominant[0]} 기운이 장면의 주조를 이룹니다."
+    if metal_supports_water and water_mode in {"stream", "surface", "brook", "moisture"}:
+        one += " 금이 물을 생하는 결을 살려, 바위·광물 틈에서 물기가 이어지는 형상을 반영했습니다."
+    if primary:
+        one += f" 보완 포인트는 {format_element_list(primary, '추가 보완')}입니다."
+
+    explain_cards = [("빛", sun_reason), ("물", water_reason), ("흐름", flow_reason), ("흙", soil_reason)]
+    notes = [
+        f"주인공: {day_stem}{STEMS.get(day_stem, {}).get('ko','')} · {stem_meta.get('yin_yang','')} → {day_name}",
+        f"천간: {', '.join(visible_labels) if visible_labels else '뚜렷한 투출 약함'}",
+        f"지지: {', '.join(branch_labels) if branch_labels else '기본 받침만 존재'}",
+        f"뿌리: {root_reason}",
+        f"흐름: {flow_label}",
+        f"수상: {_water_mode_label(water_mode)}",
+        f"강약: {strength_reason}",
+        f"받침: {support_reason}",
+    ]
+    notes.append(f"유형: {diagram_meta.get('label', '구조형')} · {diagram_meta.get('short', '')}")
+    if metal_supports_water:
+        notes.append("생조: 금 기운이 수 기운을 받쳐 금생수 형상이 보입니다.")
+    if burden:
+        notes.append(f"부담: {format_element_list(burden, '뚜렷하지 않음')}")
+
+    return {
+        "season": season,
+        "season_base": season_base,
+        "season_desc": season_desc,
+        "scene_signature": scene_signature,
+        "sky": sky,
+        "ground": ground,
+        "day_stem": day_stem,
+        "day_el": day_el,
+        "day_name": day_name,
+        "day_short": stem_meta.get("short", day_name),
+        "yin_yang": stem_meta.get("yin_yang", ""),
+        "day_visual": stem_meta.get("visual", ""),
+        "dominant": dominant,
+        "weak": weak,
+        "primary": primary,
+        "burden": burden,
+        "visible_stems": visible_stems[:3],
+        "visible_labels": visible_labels,
+        "branch_labels": branch_labels,
+        "branch_elements": branch_elements,
+        "pct": pct,
+        "notes": notes,
+        "one_liner": one,
+        "explain_cards": explain_cards,
+        "sun_reason": sun_reason,
+        "water_reason": water_reason,
+        "flow_reason": flow_reason,
+        "soil_reason": soil_reason,
+        "support_reason": support_reason,
+        "has_sun": has_sun,
+        "has_cloud": has_cloud,
+        "has_water": has_water,
+        "soil_kind": soil_kind,
+        "flow_target": flow_target,
+        "root_strength": root_strength,
+        "root_positions": root_positions,
+        "water_mode": water_mode,
+        "light_mode": light_mode,
+        "metal_mode": metal_mode,
+        "wood_density": wood_density,
+        "metal_supports_water": metal_supports_water,
+        "water_mode_label": _water_mode_label(water_mode),
+        "diagram_type": diagram_type,
+        "diagram_type_label": diagram_meta.get("label", "구조형"),
+        "diagram_type_short": diagram_meta.get("short", ""),
+        "diagram_type_tone": diagram_meta.get("tone", ""),
+        "art_style": "경량 도식형 사주 풍경",
+    }
+
+
+def _svg_el_badge(el: str, x: int, y: int, r: int = 18) -> str:
+    meta = LANDSCAPE_ELEMENT_META.get(el, {"icon": el, "color": "#888"})
+    return f"<circle cx='{x}' cy='{y}' r='{r}' fill='{meta['color']}' opacity='.88'/><text x='{x}' y='{y+5}' text-anchor='middle' font-size='14' font-weight='900' fill='white'>{html.escape(el)}</text>"
+
+
+def _svg_label(x: int, y: int, text_value: str, size: int = 13, color: str = "#1f2937", weight: int = 900) -> str:
+    return f"<text x='{x}' y='{y}' font-size='{size}' font-weight='{weight}' fill='{color}'>{html.escape(str(text_value))}</text>"
+
+
+def _svg_pill(x: int, y: int, label: str, fill: str = "#ffffff", stroke: str = "#e2e8f0") -> str:
+    safe = html.escape(str(label))
+    width = max(56, 13 * len(safe) + 26)
+    return (
+        f"<g><rect x='{x}' y='{y}' width='{width}' height='28' rx='14' fill='{fill}' stroke='{stroke}'/>"
+        f"<text x='{x + 13}' y='{y + 19}' font-size='12' font-weight='900' fill='#334155'>{safe}</text></g>"
+    )
+
+
+def _svg_element_dots(pct: Dict[str, float], x: int, y: int) -> str:
+    parts = []
+    for idx, el in enumerate(["목", "화", "토", "금", "수"]):
+        val = float(pct.get(el, 0) or 0)
+        meta = LANDSCAPE_ELEMENT_META.get(el, {"color": "#94a3b8"})
+        r = max(8, min(22, int(7 + val * 0.38)))
+        cx = x + idx * 46
+        parts.append(f"<circle cx='{cx}' cy='{y}' r='{r}' fill='{meta['color']}' opacity='.86'/>")
+        parts.append(f"<text x='{cx}' y='{y+5}' text-anchor='middle' font-size='12' font-weight='950' fill='white'>{el}</text>")
+    return "".join(parts)
+
+
+
+def saju_landscape_svg(model: Dict[str, object], compact: bool = False) -> str:
+    dtype = str(model.get("diagram_type", "rock_structure"))
+    dmeta = LANDSCAPE_DIAGRAM_TYPES.get(dtype, LANDSCAPE_DIAGRAM_TYPES["rock_structure"])
+    label = str(dmeta.get("label", "구조형"))
+    subtitle = str(dmeta.get("short", ""))
+    tone = str(dmeta.get("tone", ""))
+    day_name = str(model.get("day_name", "주인공"))
+    day_stem = str(model.get("day_stem", ""))
+    yin_yang = str(model.get("yin_yang", ""))
+    season_desc = str(model.get("season_desc", "원국 배경"))
+    water_label = str(model.get("water_mode_label", ""))
+    pct = model.get("pct", {}) or {}
+    primary = model.get("primary", []) or []
+    metal_supports_water = bool(model.get("metal_supports_water", False))
+    root_strength = int(model.get("root_strength", 0) or 0)
+    has_cloud = bool(model.get("has_cloud", False))
+    day_visual = str(model.get("day_visual", ""))
+    water_mode = str(model.get("water_mode", "none"))
+    light_mode = str(model.get("light_mode", "none"))
+    season_base = str(model.get("season_base", ""))
+
+    W, H = (760, 470) if compact else (860, 530)
+    cx = W // 2
+    horizon = 250 if compact else 286
+    field_top = horizon + 74
+
+    palette_map = {
+        "winter_silence": {"bg1": "#c9d9e8", "bg2": "#eef3f8", "band": "#dbe5ef", "sun1": "#f7fbff", "sun2": "#dfe7ef", "mount1": "#d7e0ea", "mount2": "#bdc9d7", "mount3": "#93a4b8", "ground": "#f4f6f8", "field": "#dfe5ea"},
+        "valley_stream": {"bg1": "#e6f2ea", "bg2": "#f7fbf5", "band": "#dbeadb", "sun1": "#f6e27a", "sun2": "#ffb84d", "mount1": "#d4e6d4", "mount2": "#b9d7ba", "mount3": "#94bc98", "ground": "#c7dbab", "field": "#bed39d"},
+        "great_water": {"bg1": "#d9ecf8", "bg2": "#f3f9fd", "band": "#d0e2ef", "sun1": "#eff7ff", "sun2": "#aac5e8", "mount1": "#d5e1ec", "mount2": "#aec3d7", "mount3": "#7a96b6", "ground": "#d0d5dc", "field": "#bfc5ce"},
+        "sun_cliff": {"bg1": "#f6c27c", "bg2": "#fff0c4", "band": "#f8d59e", "sun1": "#ffe15d", "sun2": "#ffad34", "mount1": "#efd0a4", "mount2": "#dcb37b", "mount3": "#b78548", "ground": "#d5ae71", "field": "#c79b5f"},
+        "inner_lamp": {"bg1": "#e2eadf", "bg2": "#f7f7ef", "band": "#e8ecdf", "sun1": "#ffe28a", "sun2": "#ffae47", "mount1": "#d7dfd0", "mount2": "#bccab8", "mount3": "#93a28e", "ground": "#c8c5b3", "field": "#bbb59d"},
+        "rock_structure": {"bg1": "#e7ecef", "bg2": "#f8f7f2", "band": "#e4e8eb", "sun1": "#f7efd7", "sun2": "#d7c39e", "mount1": "#dbe1e4", "mount2": "#bfc7ce", "mount3": "#8a97a4", "ground": "#d3ccbe", "field": "#c8c1b0"},
+        "field_growth": {"bg1": "#dff1dc", "bg2": "#f6fbef", "band": "#e2efdb", "sun1": "#f7e17a", "sun2": "#ffb84d", "mount1": "#d7ead0", "mount2": "#b8d5b0", "mount3": "#8fbe92", "ground": "#cfe1a6", "field": "#bfd58e"},
+    }
+    pal = palette_map.get(dtype, palette_map["rock_structure"])
+
+    title_block = (
+        f"<rect x='26' y='20' width='{W-52}' height='64' rx='22' fill='white' opacity='.88' stroke='#e5e7eb'/>"
+        + _svg_label(50, 48, label, 21, "#172033", 950)
+        + _svg_label(50, 70, f"{day_stem} · {yin_yang} · {day_name}", 13, "#475569", 850)
+        + _svg_pill(W-260, 38, season_desc[:18])
+    )
+    legend = (
+        f"<g opacity='.96'><rect x='28' y='{H-74}' width='{W-56}' height='48' rx='20' fill='white' stroke='#e5e7eb'/>"
+        + _svg_label(50, H-44, f"수상: {water_label}", 13, "#334155", 900)
+        + _svg_label(W-288, H-44, f"톤: {tone}", 13, "#334155", 900)
+        + "</g>"
+    )
+    element_dots = f"<g>{_svg_element_dots(pct, 58, 112)}</g>"
+
+    bands = "".join(
+        f"<rect x='0' y='{92 + i*32}' width='{W}' height='28' fill='{pal['band']}' opacity='{0.18 + i*0.03:.2f}'/>"
+        for i in range(5)
+    )
+    mountain_layers = f"""
+      <polygon points='0,{horizon+40} {int(W*0.16)},{horizon-8} {int(W*0.33)},{horizon+38} {int(W*0.51)},{horizon-28} {int(W*0.67)},{horizon+44} {int(W*0.84)},{horizon-18} {W},{horizon+36} {W},{H} 0,{H}' fill='{pal['mount1']}'/>
+      <polygon points='0,{horizon+66} {int(W*0.10)},{horizon+18} {int(W*0.28)},{horizon+74} {int(W*0.49)},{horizon+6} {int(W*0.64)},{horizon+80} {int(W*0.79)},{horizon+26} {W},{horizon+70} {W},{H} 0,{H}' fill='{pal['mount2']}'/>
+      <polygon points='0,{horizon+92} {int(W*0.12)},{horizon+44} {int(W*0.28)},{horizon+94} {int(W*0.47)},{horizon+34} {int(W*0.64)},{horizon+104} {int(W*0.82)},{horizon+44} {W},{horizon+96} {W},{H} 0,{H}' fill='{pal['mount3']}' opacity='.88'/>
+    """
+    ground_base = f"""
+      <rect x='0' y='{field_top}' width='{W}' height='{H-field_top}' fill='{pal['ground']}'/>
+      <rect x='0' y='{field_top+12}' width='{W}' height='{H-field_top-12}' fill='{pal['field']}' opacity='.78'/>
+      <ellipse cx='{cx}' cy='{H-76}' rx='{int(W*0.18)}' ry='18' fill='#8b6f4d' opacity='.42'/>
+    """
+
+    speckles = []
+    seed_colors = ["#d9c58f", "#e8bc7a", "#b4c98e", "#d89b7f", "#cdb09e", "#a9ba87", "#b98d5d"]
+    for i in range(26 if compact else 42):
+        xx = 26 + (i * 71) % (W - 50)
+        yy = field_top + 28 + ((i * 29) % max(70, H - field_top - 44))
+        rx = 8 + (i % 4) * 4
+        ry = 4 + (i % 3) * 2
+        color = seed_colors[i % len(seed_colors)]
+        speckles.append(f"<ellipse cx='{xx}' cy='{yy}' rx='{rx}' ry='{ry}' fill='{color}' opacity='.30' transform='rotate({(i*17)%50-25} {xx} {yy})'/>")
+    wind = []
+    for i in range(16 if compact else 24):
+        xx = 40 + (i * 53) % (W - 80)
+        yy = 104 + ((i * 41) % (field_top - 120))
+        wind.append(f"<line x1='{xx}' y1='{yy}' x2='{xx+18+(i%3)*10}' y2='{yy-3+(i%5)}' stroke='#e0b27d' stroke-width='4' opacity='.25' stroke-linecap='round'/>")
+
+    cloud = ""
+    if has_cloud or dtype in {"winter_silence", "great_water"}:
+        cloud = f"""
+          <g opacity='.76' fill='white'>
+            <ellipse cx='{int(W*0.18)}' cy='130' rx='36' ry='18'/><ellipse cx='{int(W*0.22)}' cy='122' rx='42' ry='20'/><ellipse cx='{int(W*0.26)}' cy='132' rx='28' ry='14'/>
+            <ellipse cx='{int(W*0.76)}' cy='176' rx='38' ry='16'/><ellipse cx='{int(W*0.81)}' cy='176' rx='30' ry='14'/>
+          </g>
+        """
+
+    sun = ""
+    if light_mode == "sun" or dtype in {"sun_cliff", "field_growth", "valley_stream"}:
+        sx = W - 140
+        sy = 138 if compact else 154
+        sun = (
+            f"<circle cx='{sx}' cy='{sy}' r='54' fill='{pal['sun1']}' opacity='.38'/>"
+            f"<circle cx='{sx+26}' cy='{sy-6}' r='42' fill='{pal['sun1']}' opacity='.32'/>"
+            f"<circle cx='{sx+18}' cy='{sy-2}' r='28' fill='{pal['sun2']}' opacity='.92'/>"
+            + "".join(f"<line x1='{sx+18}' y1='{sy-2}' x2='{sx+18 + dx}' y2='{sy-2 + dy}' stroke='{pal['sun2']}' stroke-width='4' opacity='.55' stroke-linecap='round'/>" for dx,dy in [(0,-56),(42,-34),(58,0),(42,34),(0,54),(-44,34),(-58,0),(-40,-38)])
+        )
+    elif light_mode == "lamp" or dtype == "inner_lamp":
+        sx = W - 122
+        sy = 138 if compact else 154
+        sun = f"<ellipse cx='{sx}' cy='{sy}' rx='24' ry='28' fill='#fde68a' opacity='.95'/><path d='M{sx} {sy-36} C{sx-18} {sy-8}, {sx-8} {sy+6}, {sx} {sy+10} C{sx+10} {sy+6}, {sx+18} {sy-8}, {sx} {sy-36}' fill='#fb923c'/><rect x='{sx-14}' y='{sy+10}' width='28' height='22' rx='8' fill='#8b5a2b'/><circle cx='{sx}' cy='{sy}' r='52' fill='#fde68a' opacity='.16'/>"
+
+    figures = ""
+    if dtype == "winter_silence":
+        fx = int(W*0.33)
+        fy = field_top - 18
+        figures = f"<circle cx='{fx}' cy='{fy-34}' r='9' fill='#334155'/><rect x='{fx-10}' y='{fy-26}' width='20' height='42' rx='8' fill='#465669'/><path d='M{fx-20} {fy-6} L{fx-38} {fy+20} M{fx+20} {fy-6} L{fx+4} {fy+22}' stroke='#58697b' stroke-width='4' stroke-linecap='round'/>"
+    elif dtype == "sun_cliff":
+        fx = int(W*0.18)
+        fy = field_top - 54
+        figures = f"<circle cx='{fx}' cy='{fy-18}' r='8' fill='#2b2b2b'/><rect x='{fx-8}' y='{fy-12}' width='16' height='34' rx='7' fill='#2f2f2f'/>"
+
+    type_scene = ""
+    if dtype == "winter_silence":
+        type_scene = f"""
+          <path d='M0 {field_top-16} C120 {field_top-42}, 280 {field_top}, 430 {field_top-24} C590 {field_top-50}, 714 {field_top-8}, {W} {field_top-34} L{W} {H} L0 {H} Z' fill='#ffffff' opacity='.82'/>
+          <path d='M82 {field_top+20} C190 {field_top}, 318 {field_top+44}, 488 {field_top+14} C606 {field_top-8}, 676 {field_top+8}, 780 {field_top-6}' stroke='#5f8fb6' stroke-width='18' fill='none' stroke-linecap='round' opacity='.84'/>
+          <path d='M82 {field_top+21} C190 {field_top+4}, 318 {field_top+40}, 488 {field_top+16} C606 {field_top-2}, 676 {field_top+10}, 780 {field_top-4}' stroke='#eef7ff' stroke-width='5' fill='none' stroke-linecap='round' opacity='.92'/>
+          <g opacity='.55'><circle cx='130' cy='210' r='4' fill='white'/><circle cx='296' cy='132' r='4' fill='white'/><circle cx='620' cy='182' r='4' fill='white'/></g>
+        """
+    elif dtype == "valley_stream":
+        type_scene = f"""
+          <path d='M170 {field_top+18} C286 {field_top+46}, 372 {field_top-2}, 484 {field_top+26} C598 {field_top+52}, 664 {field_top+10}, 700 {field_top+30}' stroke='#5b94cf' stroke-width='18' fill='none' stroke-linecap='round' opacity='.90'/>
+          <path d='M170 {field_top+18} C286 {field_top+46}, 372 {field_top-2}, 484 {field_top+26} C598 {field_top+52}, 664 {field_top+10}, 700 {field_top+30}' stroke='#dcefff' stroke-width='5' fill='none' stroke-linecap='round' opacity='.95'/>
+          <polygon points='74,{field_top+8} 130,{horizon+26} 194,{field_top+8}' fill='#98ad9f' opacity='.64'/><polygon points='W-250,{field_top+12} W-188,{horizon+8} W-124,{field_top+18}' fill='#7b8f86' opacity='.66'/>
+          <circle cx='240' cy='{field_top-10}' r='7' fill='#5b94cf'/><circle cx='406' cy='{field_top-22}' r='8' fill='#5b94cf'/><circle cx='574' cy='{field_top-6}' r='7' fill='#5b94cf'/>
+        """.replace('W', str(W))
+    elif dtype == "great_water":
+        type_scene = f"""
+          <rect x='0' y='{field_top-4}' width='{W}' height='{H-field_top+8}' fill='#3f78b1' opacity='.82'/>
+          <rect x='0' y='{field_top+24}' width='{W}' height='{H-field_top-24}' fill='#5990c7' opacity='.72'/>
+          <path d='M66 {field_top+34} C122 {field_top+12}, 168 {field_top+54}, 228 {field_top+34} S340 {field_top+52}, 404 {field_top+34} S520 {field_top+56}, 590 {field_top+36} S700 {field_top+56}, 770 {field_top+36}' stroke='#dceeff' stroke-width='6' fill='none' stroke-linecap='round' opacity='.86'/>
+          <path d='M0 {field_top+80} C110 {field_top+52}, 204 {field_top+108}, 318 {field_top+78} C442 {field_top+46}, 554 {field_top+102}, {W} {field_top+70} L{W} {H} L0 {H} Z' fill='#2b5f96' opacity='.70'/>
+        """
+    elif dtype == "sun_cliff":
+        type_scene = f"""
+          <polygon points='0,{H} 0,{field_top+18} 140,{field_top-60} 250,{H}' fill='#915c2b' opacity='.95'/>
+          <polygon points='112,{field_top+6} 196,{field_top-94} 286,{field_top+2}' fill='#73471e' opacity='.82'/>
+          <rect x='{int(W*0.44)}' y='{field_top+2}' width='{int(W*0.56)}' height='{H-field_top}' fill='#2d5f8f' opacity='.88'/>
+          <path d='M{int(W*0.46)} {field_top+42} C{int(W*0.58)} {field_top+8}, {int(W*0.70)} {field_top+76}, {W} {field_top+32}' stroke='#f3f8ff' stroke-width='8' fill='none' opacity='.78'/>
+        """
+    elif dtype == "inner_lamp":
+        type_scene = f"""
+          <rect x='0' y='{field_top-6}' width='{W}' height='{H-field_top+6}' fill='#d8d4c8' opacity='.34'/>
+          <path d='M88 {field_top+26} C228 {field_top-8}, 390 {field_top+30}, 720 {field_top+6}' stroke='#9097a2' stroke-width='11' fill='none' opacity='.36'/>
+          <path d='M88 {field_top+52} C228 {field_top+20}, 390 {field_top+58}, 720 {field_top+30}' stroke='#b2b9c0' stroke-width='8' fill='none' opacity='.26'/>
+        """
+    elif dtype == "rock_structure":
+        type_scene = f"""
+          <polygon points='110,{H-78} 174,{field_top-10} 246,{H-78}' fill='#6f7f8d' opacity='.76'/>
+          <polygon points='300,{H-66} 398,{field_top-62} 500,{H-66}' fill='#5d6e7d' opacity='.86'/>
+          <polygon points='{W-236},{H-78} {W-178},{field_top-20} {W-116},{H-78}' fill='#93a2ae' opacity='.76'/>
+          <polygon points='{cx},{field_top-84} {cx+42},{field_top-10} {cx},{field_top+42} {cx-42},{field_top-10}' fill='#e7edf3' stroke='#7c8998' stroke-width='4'/>
+          <path d='M126 {field_top-44} L{W-120} {field_top-44} M166 {field_top+12} L{W-160} {field_top+12}' stroke='#d9aa58' stroke-width='4' opacity='.34'/>
+        """
+    else:
+        tree1x = int(W*0.16)
+        tree2x = int(W*0.21)
+        type_scene = f"""
+          <path d='M170 {field_top+26} C286 {field_top+52}, 362 {field_top+10}, 486 {field_top+34} C600 {field_top+56}, 674 {field_top+14}, 704 {field_top+28}' stroke='#5b94cf' stroke-width='16' fill='none' stroke-linecap='round' opacity='.84'/>
+          <path d='M170 {field_top+26} C286 {field_top+52}, 362 {field_top+10}, 486 {field_top+34} C600 {field_top+56}, 674 {field_top+14}, 704 {field_top+28}' stroke='#dceeff' stroke-width='4' fill='none' stroke-linecap='round' opacity='.92'/>
+          <circle cx='{tree1x}' cy='{field_top-44}' r='22' fill='#7dab6d'/><rect x='{tree1x-4}' y='{field_top-24}' width='8' height='24' rx='2' fill='#7d6145'/>
+          <circle cx='{tree2x}' cy='{field_top-38}' r='16' fill='#83b273'/><rect x='{tree2x-3}' y='{field_top-20}' width='6' height='20' rx='2' fill='#7d6145'/>
+          <circle cx='86' cy='{H-52}' r='6' fill='#9aa7be'/><circle cx='104' cy='{H-48}' r='5' fill='#9aa7be'/><polygon points='130,{H-46} 136,{H-60} 144,{H-46}' fill='#4b9a56'/><polygon points='{W-138},{H-48} {W-132},{H-62} {W-124},{H-48}' fill='#4b9a56'/><polygon points='{W-122},{H-48} {W-116},{H-62} {W-108},{H-48}' fill='#4b9a56'/>
+        """
+
+    center_object = ""
+    if day_visual == "tree_yang":
+        center_object = f"<rect x='{cx-8}' y='{field_top-38}' width='16' height='74' rx='6' fill='#8b5a2b'/><circle cx='{cx-40}' cy='{field_top-48}' r='42' fill='#43b05c' opacity='.92'/><circle cx='{cx+18}' cy='{field_top-66}' r='48' fill='#39a35a' opacity='.92'/><circle cx='{cx+52}' cy='{field_top-44}' r='34' fill='#69ce85' opacity='.84'/>"
+    elif day_visual == "tree_yin":
+        center_object = f"<path d='M{cx-6} {field_top+12} C{cx+8} {field_top-12}, {cx+10} {field_top-48}, {cx+18} {field_top-92}' stroke='#8b5a2b' stroke-width='10' fill='none' stroke-linecap='round'/><circle cx='{cx-18}' cy='{field_top-60}' r='28' fill='#65b86f' opacity='.88'/><circle cx='{cx+28}' cy='{field_top-74}' r='22' fill='#7ed08a' opacity='.82'/><circle cx='{cx+4}' cy='{field_top-96}' r='18' fill='#84d48f' opacity='.76'/>"
+    elif day_visual == "sun_yang":
+        center_object = f"<circle cx='{cx}' cy='{field_top-48}' r='44' fill='#ffb34d' opacity='.88'/><circle cx='{cx}' cy='{field_top-48}' r='24' fill='#ffe17a'/><path d='M{cx-58} {field_top-48} H{cx-86} M{cx+58} {field_top-48} H{cx+86} M{cx} {field_top-106} V{field_top-136} M{cx} {field_top+10} V{field_top+38}' stroke='#ffb34d' stroke-width='6' opacity='.68' stroke-linecap='round'/>"
+    elif day_visual == "fire_yin":
+        center_object = f"<path d='M{cx} {field_top-92} C{cx-26} {field_top-42}, {cx-10} {field_top-6}, {cx} {field_top+6} C{cx+10} {field_top-6}, {cx+24} {field_top-42}, {cx} {field_top-92}' fill='#fb923c'/><ellipse cx='{cx}' cy='{field_top-44}' rx='18' ry='34' fill='#fde68a' opacity='.88'/><rect x='{cx-18}' y='{field_top+6}' width='36' height='28' rx='10' fill='#8b5a2b'/>"
+    elif day_visual == "mountain_yang":
+        center_object = f"<polygon points='{cx-84},{field_top+24} {cx},{field_top-94} {cx+88},{field_top+24}' fill='#bb8a44' opacity='.92'/><polygon points='{cx-26},{field_top-20} {cx},{field_top-94} {cx+24},{field_top-22}' fill='#e3c183' opacity='.58'/>"
+    elif day_visual == "soil_yin":
+        center_object = f"<ellipse cx='{cx}' cy='{field_top+14}' rx='116' ry='22' fill='#a99262' opacity='.44'/><rect x='{cx-120}' y='{field_top-16}' width='240' height='32' rx='16' fill='#c7ad79' opacity='.72'/>"
+    elif day_visual == "metal_yang":
+        center_object = f"<polygon points='{cx-56},{field_top+12} {cx-10},{field_top-76} {cx+54},{field_top+12}' fill='#95a3b3'/><line x1='{cx-26}' y1='{field_top-12}' x2='{cx+22}' y2='{field_top-12}' stroke='#e2e8f0' stroke-width='4' opacity='.74'/>"
+    elif day_visual == "metal_yin":
+        center_object = f"<polygon points='{cx},{field_top-76} {cx+34},{field_top-12} {cx},{field_top+28} {cx-34},{field_top-12}' fill='#d8e0e8' stroke='#94a3b8' stroke-width='4'/><polygon points='{cx},{field_top-42} {cx+14},{field_top-10} {cx},{field_top+8} {cx-14},{field_top-10}' fill='#ffffff' opacity='.72'/>"
+    elif day_visual == "water_yang":
+        center_object = f"<path d='M140 {field_top+10} C260 {field_top-28}, 376 {field_top+54}, 516 {field_top+18} C620 {field_top-10}, 708 {field_top+30}, 790 {field_top+10}' stroke='#4e89c7' stroke-width='24' fill='none' stroke-linecap='round' opacity='.92'/><path d='M140 {field_top+12} C260 {field_top-18}, 376 {field_top+48}, 516 {field_top+22} C620 {field_top+2}, 708 {field_top+28}, 790 {field_top+12}' stroke='#e0f2fe' stroke-width='6' fill='none' stroke-linecap='round'/>"
+    elif day_visual == "water_yin":
+        center_object = f"<path d='M170 {field_top+30} C286 {field_top+56}, 372 {field_top+10}, 484 {field_top+32} C598 {field_top+56}, 664 {field_top+12}, 700 {field_top+34}' stroke='#5b94cf' stroke-width='14' fill='none' stroke-linecap='round' opacity='.92'/><path d='M170 {field_top+30} C286 {field_top+56}, 372 {field_top+10}, 484 {field_top+32} C598 {field_top+56}, 664 {field_top+12}, 700 {field_top+34}' stroke='#dceeff' stroke-width='4' fill='none' stroke-linecap='round' opacity='.95'/>"
+
+    support_overlay = ""
+    if metal_supports_water:
+        support_overlay = f"<circle cx='{W-190}' cy='{field_top-8}' r='12' fill='#e9f4ff' stroke='#94a3b8' stroke-width='3'/><path d='M{W-190} {field_top+4} C{W-230} {field_top+18}, {W-272} {field_top+28}, {W-330} {field_top+40}' stroke='#60a5fa' stroke-width='5' fill='none' opacity='.78'/><rect x='{W-254}' y='{field_top-44}' width='82' height='26' rx='13' fill='white' opacity='.78' stroke='#dbeafe'/>{_svg_label(W-240, field_top-27, '금생수', 12, '#0f5f8a', 950)}"
+
+    root = ""
+    if root_strength > 0 and day_visual not in {"water_yang", "water_yin", "sun_yang", "fire_yin"}:
+        root = (
+            f"<path d='M{cx-8} {field_top+30} C{cx-52} {field_top+60}, {cx-82} {field_top+84}, {cx-110} {field_top+98}' stroke='#8b5a2b' stroke-width='5' fill='none' opacity='.34'/>"
+            f"<path d='M{cx+8} {field_top+30} C{cx+52} {field_top+60}, {cx+82} {field_top+84}, {cx+110} {field_top+98}' stroke='#8b5a2b' stroke-width='5' fill='none' opacity='.34'/>"
+        )
+
+    if primary:
+        chips = "".join(_svg_pill(W - 238 + i * 82, H - 122, str(el), LANDSCAPE_ELEMENT_META.get(str(el), {}).get("color", "#ffffff"), "#ffffff") for i, el in enumerate(primary[:2]))
+    else:
+        chips = _svg_pill(W - 238, H - 122, "보완 약함")
+
+    return f"""
+    <svg viewBox='0 0 {W} {H}' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='사주 풍경도 도식'>
+      <defs>
+        <linearGradient id='ld_bg' x1='0' x2='0' y1='0' y2='1'><stop offset='0%' stop-color='{pal['bg1']}'/><stop offset='100%' stop-color='{pal['bg2']}'/></linearGradient>
+      </defs>
+      <rect x='0' y='0' width='{W}' height='{H}' rx='30' fill='url(#ld_bg)'/>
+      {bands}
+      {title_block}
+      {cloud}
+      {sun}
+      {mountain_layers}
+      {ground_base}
+      <g>{''.join(wind)}</g>
+      <g>{''.join(speckles)}</g>
+      <g>{type_scene}</g>
+      <g>{center_object}</g>
+      <g>{figures}</g>
+      <g>{support_overlay}</g>
+      <g>{root}</g>
+      <g>{element_dots}</g>
+      <g>{chips}</g>
+      <rect x='38' y='136' width='280' height='42' rx='18' fill='white' opacity='.76' stroke='#e5e7eb'/>
+      {_svg_label(58, 162, subtitle, 14, '#334155', 900)}
+      {legend}
+    </svg>
+    """
+
+
+def _landscape_chipset_html(items: List[str], empty_text: str = "-") -> str:
+    clean = [str(x) for x in items if str(x).strip()]
+    if not clean:
+        clean = [empty_text]
+    return "<div class='saju-landscape-chipset'>" + "".join(
+        f"<span class='saju-landscape-badge'>{html.escape(v)}</span>" for v in clean[:4]
+    ) + "</div>"
+
+
+def _landscape_explain_cards_html(model: Dict[str, object]) -> str:
+    cards = model.get("explain_cards", []) or []
+    html_cards = []
+    for label, body in cards[:4]:
+        html_cards.append(
+            "<div class='saju-landscape-mini-card'>"
+            f"<div class='saju-landscape-mini-label'>{html.escape(str(label))}</div>"
+            f"<div class='saju-landscape-mini-body'>{html.escape(str(body))}</div>"
+            "</div>"
+        )
+    return "<div class='saju-landscape-card-grid'>" + "".join(html_cards) + "</div>"
+
+
+def _landscape_element_bars_html(pct: Dict[str, float]) -> str:
+    rows = []
+    for el in ["목", "화", "토", "금", "수"]:
+        meta = LANDSCAPE_ELEMENT_META.get(el, {"color": "#94a3b8"})
+        val = float(pct.get(el, 0) or 0)
+        width = max(6, min(100, int(val * 2.2)))
+        rows.append(
+            "<div class='saju-landscape-bar'>"
+            f"<div class='saju-landscape-bar-label'>{html.escape(el)}</div>"
+            f"<div class='saju-landscape-track'><div class='saju-landscape-fill' style='width:{width}%;background:{meta['color']};'></div></div>"
+            f"<div class='saju-landscape-bar-pct'>{val:.1f}%</div>"
+            "</div>"
+        )
+    return "<div class='saju-landscape-bars'>" + "".join(rows) + "</div>"
+
+
+def _landscape_rule_cards_html() -> str:
+    rules = [
+        ("일간", "풍경의 주인공"),
+        ("월지", "계절·온습 배경"),
+        ("천간", "겉으로 보이는 전경"),
+        ("지지", "땅·받침·지형"),
+        ("지장간", "습기·잠재열·질감"),
+        ("상생", "흐름·샘·빛의 이동"),
+    ]
+    return "<div class='saju-landscape-rule-grid'>" + "".join(
+        "<div class='saju-landscape-rule-card'>"
+        f"<div class='saju-landscape-rule-key'>{html.escape(k)}</div>"
+        f"<div class='saju-landscape-rule-val'>{html.escape(v)}</div>"
+        "</div>"
+        for k, v in rules
+    ) + "</div>"
+
+
+def _saju_image_style_presets() -> Dict[str, Dict[str, str]]:
+    return {
+        "auto": {
+            "label": "자동 추천",
+            "caption": "원국 구조에 따라 겨울 고요형 / 태양 절벽형 / 계곡 수기형 중 자동 추천",
+        },
+        "winter_walk": {
+            "label": "차고 고요한 겨울형",
+            "caption": "차고 고요한 겨울 풍경 속에서 홀로 묵묵히 걸어가는 인물 중심",
+        },
+        "sun_cliff": {
+            "label": "뜨거운 태양·절벽형",
+            "caption": "강한 태양, 절벽, 깊은 바다를 한 장면으로 압축한 타입",
+        },
+        "stream_valley": {
+            "label": "계곡 수기형",
+            "caption": "계수·임수, 금생수, 계곡물·시냇물 흐름을 중심으로 보여주는 타입",
+        },
+    }
+
+
+def _recommended_saju_image_preset(model: Dict[str, object]) -> str:
+    day_el = str(model.get("day_el", ""))
+    season_base = str(model.get("season_base", ""))
+    water_mode = str(model.get("water_mode", "none"))
+    light_mode = str(model.get("light_mode", "none"))
+    metal_supports_water = bool(model.get("metal_supports_water", False))
+    pct = model.get("pct", {}) or {}
+    fire_pct = float(pct.get("화", 0) or 0)
+    water_pct = float(pct.get("수", 0) or 0)
+
+    if light_mode == "sun" and fire_pct >= 18:
+        return "sun_cliff"
+    if day_el == "수" or water_mode in {"stream", "brook", "surface", "moisture", "riversea"}:
+        if season_base == "겨울":
+            return "winter_walk"
+        return "stream_valley"
+    if metal_supports_water and water_pct >= 10:
+        return "stream_valley"
+    if season_base == "겨울":
+        return "winter_walk"
+    return "sun_cliff" if fire_pct >= water_pct else "winter_walk"
+
+
+def _compose_saju_landscape_image_prompt(model: Dict[str, object], preset_key: str, extra: str = "") -> str:
+    presets = _saju_image_style_presets()
+    if preset_key == "auto":
+        preset_key = _recommended_saju_image_preset(model)
+    preset = presets.get(preset_key, presets["winter_walk"])
+
+    visible = ", ".join(model.get("visible_labels", []) or []) or "투출 약함"
+    branches = ", ".join(model.get("branch_labels", []) or []) or "기본 받침"
+    dominant = ", ".join(model.get("dominant", []) or []) or "중심 기운"
+    primary = ", ".join(model.get("primary", []) or []) or "보완 포인트 약함"
+    burden = ", ".join(model.get("burden", []) or []) or "과중 요소 두드러지지 않음"
+
+    common = [
+        "사주 풍경도용 이미지를 생성합니다.",
+        "스타일은 두꺼운 임파스토 유화, 팔레트나이프 질감, 추상적이지만 장면은 읽히는 표현, 감정과 흐름이 살아 있는 회화여야 합니다.",
+        "인물은 작게 두고 풍경과 기운의 흐름이 주인공이 되게 합니다.",
+        "텍스트, 표, 아이콘, 로고, 워터마크는 넣지 않습니다.",
+        f"주인공 기운은 {model.get('day_stem','')} {model.get('day_name','')}이며 {model.get('yin_yang','')}의 성질을 가집니다.",
+        f"배경은 {model.get('season_desc','')}이고, 풍경의 핵심 배경 서명은 {model.get('scene_signature','')}입니다.",
+        f"겉으로 드러난 기운은 {visible}, 지지의 받침은 {branches}입니다.",
+        f"강한 기운은 {dominant}, 보완 포인트는 {primary}, 부담 요소는 {burden}입니다.",
+        f"물의 표현은 {model.get('water_reason','')}",
+        f"빛의 표현은 {model.get('sun_reason','')}",
+        f"흐름 표현은 {model.get('flow_reason','')}",
+        f"흙과 바닥 표현은 {model.get('soil_reason','')}",
+    ]
+
+    if preset_key == "winter_walk":
+        scene = [
+            "구도는 차고 고요한 겨울 풍경입니다.",
+            "넓은 설원이나 얼어붙은 벌판 한가운데를 작은 인물이 홀로 묵묵히 걸어가는 장면으로 그립니다.",
+            "찬 공기, 눌린 침묵, 절제된 감정, 묵직한 내면 집중이 느껴져야 합니다.",
+            "수 기운이 있으면 얼음 틈이나 설원 사이로 가늘고 선명한 시냇물 또는 얇은 물길이 반드시 보이게 합니다.",
+            "금생수 구조가 있으면 바위나 금속성 지형 틈에서 샘물처럼 물이 시작되는 모습이 보이게 합니다.",
+            "색감은 회청색, 백색, 회색, 옅은 갈색 중심으로 차갑고 고요하게 유지합니다.",
+        ]
+    elif preset_key == "sun_cliff":
+        scene = [
+            "구도는 뜨거운 태양 아래 절벽 위에서 깊은 바다를 내려다보는 장면입니다.",
+            "작은 인물이 절벽 끝에 서서 넓은 수평선과 바다를 바라보게 합니다.",
+            "강한 화 기운은 거대한 태양, 타오르는 하늘, 강한 빛 번짐으로 표현합니다.",
+            "수 기운은 깊은 바다, 파도, 반사광으로 표현하되, 물의 결은 거칠고 크게 움직이게 합니다.",
+            "바위와 절벽은 거친 팔레트나이프 붓질로 단단하고 강인하게 보이게 합니다.",
+            "색감은 오렌지, 황금색, 청록, 남청색의 강한 대비를 사용합니다.",
+        ]
+    else:
+        scene = [
+            "구도는 계곡·시냇물 중심의 사주 풍경도입니다.",
+            "산과 바위, 계곡, 얇고 선명한 시냇물 또는 계곡물이 화면의 흐름을 이끕니다.",
+            "계수라면 가늘고 맑은 물길, 임수라면 더 넓고 크게 움직이는 물길로 표현합니다.",
+            "금생수 구조가 있으면 바위 틈, 광물성 지형, 절벽 아래 샘에서 물길이 시작되게 합니다.",
+            "인물은 장면 속에 작게 배치하되 물길의 흐름과 기운의 방향을 읽어주는 역할로 둡니다.",
+            "색감은 차분한 청록·남청·회청과 흙색을 중심으로 하되, 필요한 경우 햇빛이나 불빛을 포인트로 넣습니다.",
+        ]
+
+    if extra.strip():
+        scene.append(f"추가 요청: {extra.strip()}")
+
+    return "\n".join(common + scene + [f"선택된 유형: {preset['label']} ({preset['caption']})"])
+
+
+def _generate_openai_image_bytes(prompt: str, api_key: str, size: str = "1024x1024") -> Tuple[bytes | None, str]:
+    if not api_key.strip():
+        return None, "OPENAI_API_KEY가 설정되지 않았습니다."
+    body = {
+        "model": "gpt-image-1",
+        "prompt": prompt,
+        "size": size,
+    }
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/images/generations",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key.strip()}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            err_txt = e.read().decode("utf-8", errors="ignore")
+        except Exception:
+            err_txt = str(e)
+        return None, f"이미지 생성 호출 실패: {err_txt}"
+    except Exception as e:
+        return None, f"이미지 생성 호출 실패: {e}"
+
+    items = data.get("data", []) or []
+    if not items:
+        return None, "이미지 응답 데이터가 비어 있습니다."
+    item = items[0] or {}
+    b64 = item.get("b64_json")
+    if b64:
+        try:
+            return base64.b64decode(b64), ""
+        except Exception as e:
+            return None, f"이미지 디코딩 실패: {e}"
+    url = item.get("url", "")
+    if url:
+        try:
+            with urllib.request.urlopen(url, timeout=180) as resp:
+                return resp.read(), ""
+        except Exception as e:
+            return None, f"생성 이미지 다운로드 실패: {e}"
+    return None, "이미지 응답 형식을 해석하지 못했습니다."
+
+
+def render_saju_ai_image_panel(model: Dict[str, object]) -> None:
+    st.markdown("### 🖼️ AI 사주 그림 생성")
+    presets = _saju_image_style_presets()
+    recommended = _recommended_saju_image_preset(model)
+    key_base = f"saju_ai::{model.get('day_stem','')}-{model.get('scene_signature','')}-{recommended}"
+
+    st.caption("예시처럼 두꺼운 유화 질감의 추상 풍경으로 사주 그림을 생성할 수 있습니다. 기본은 자동 추천이며, 유형을 직접 바꿔볼 수도 있습니다.")
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        preset_key = st.selectbox(
+            "이미지 유형",
+            list(presets.keys()),
+            index=list(presets.keys()).index("auto"),
+            format_func=lambda k: f"{presets[k]['label']} · {presets[k]['caption']}",
+            key=f"{key_base}::preset",
+        )
+    with c2:
+        size = st.selectbox(
+            "이미지 크기",
+            ["1024x1024", "1536x1024", "1024x1536"],
+            index=0,
+            key=f"{key_base}::size",
+        )
+    st.caption(f"현재 원국 기준 추천 유형: {presets[recommended]['label']}")
+    extra = st.text_input("추가 연출 요청(선택)", value="", placeholder="예: 인물을 더 작게, 물길을 더 선명하게, 태양을 더 크게", key=f"{key_base}::extra")
+    prompt = _compose_saju_landscape_image_prompt(model, preset_key, extra)
+    st.text_area("생성 프롬프트", value=prompt, height=280, key=f"{key_base}::prompt")
+
+    api_key = _secret_value("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        st.info("OPENAI_API_KEY를 .streamlit/secrets.toml 또는 환경변수에 설정하면 이 화면에서 바로 AI 그림을 생성할 수 있습니다. 키가 없어도 위 프롬프트는 그대로 복사해 외부 이미지 생성기에 사용할 수 있습니다.")
+    else:
+        if st.button("AI 사주 그림 생성", key=f"{key_base}::run", use_container_width=True):
+            with st.spinner("AI 사주 그림을 생성하는 중입니다..."):
+                img_bytes, err = _generate_openai_image_bytes(prompt, api_key, size=size)
+            if err:
+                st.error(err)
+            elif img_bytes:
+                st.session_state[f"{key_base}::img"] = img_bytes
+                st.session_state[f"{key_base}::file"] = f"saju_landscape_{preset_key if preset_key != 'auto' else recommended}.png"
+                st.success("AI 사주 그림 생성이 완료되었습니다.")
+
+    img_bytes = st.session_state.get(f"{key_base}::img")
+    if img_bytes:
+        st.image(img_bytes, caption="생성된 AI 사주 그림", use_container_width=True)
+        st.download_button(
+            "생성 이미지 다운로드",
+            data=img_bytes,
+            file_name=st.session_state.get(f"{key_base}::file", "saju_landscape.png"),
+            mime="image/png",
+            use_container_width=True,
+            key=f"{key_base}::download",
+        )
+
+
+def render_saju_landscape_section(payload: Dict[str, object], compact: bool = False) -> Dict[str, object]:
+    model = build_saju_landscape_model(payload)
+    svg = saju_landscape_svg(model, compact=compact)
+    explain_html = _landscape_explain_cards_html(model)
+    pct_html = _landscape_element_bars_html(model.get("pct", {}) or {})
+    rule_html = _landscape_rule_cards_html()
+    notes = model.get("notes", []) or []
+    root_text = notes[3] if len(notes) >= 4 else "뿌리 정보 없음"
+    flow_text = notes[4] if len(notes) >= 5 else "흐름 정보 없음"
+    st.markdown(f"""
+    <div class="saju-landscape-shell">
+        <div class="saju-landscape-head">
+            <div>
+                <div class="saju-landscape-title">🎨 사주 풍경도</div>
+                <div class="saju-landscape-sub">무거운 회화 대신 가벼운 도식형 풍경으로, 유형·흐름·오행 비중이 바로 읽히도록 정리했습니다.</div>
+            </div>
+            <div class="saju-landscape-chip">{html.escape(str(model.get('season_desc','원국 배경')))}</div>
+        </div>
+        <div class="saju-landscape-grid">
+            <div class="saju-landscape-art">{svg}</div>
+            <div class="saju-landscape-panel">
+                <div class="saju-landscape-panel-title">풍경도의 역할</div>
+                <div class="saju-landscape-role">이 그림은 사주 전체를 사실적으로 재현하는 정답 그림이 아니라, 원국의 유형·배경·흐름을 빠르게 읽는 경량 도식 화면입니다.</div>
+                <div class="saju-landscape-panel-title">표현 기준</div>
+                {rule_html}
+                <div class="saju-landscape-panel-title">풍경 해설</div>
+                {explain_html}
+                <div class="saju-landscape-panel-title">도식 요약</div>
+                <div class="saju-landscape-schema">
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">주인공</div><div class="saju-landscape-schema-val">{html.escape(str(model.get('day_stem','')))} · {html.escape(str(model.get('day_name','')))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">유형</div><div class="saju-landscape-schema-val">{html.escape(str(model.get('diagram_type_label','')))} · {html.escape(str(model.get('diagram_type_short','')))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">음양</div><div class="saju-landscape-schema-val">{html.escape(str(model.get('yin_yang','')))} · {html.escape(str(model.get('day_short','')))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">천간</div><div class="saju-landscape-schema-val">{_landscape_chipset_html(model.get('visible_labels', []), '투출 약함')}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">지지</div><div class="saju-landscape-schema-val">{_landscape_chipset_html(model.get('branch_labels', []), '기본 받침')}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">배경</div><div class="saju-landscape-schema-val">{html.escape(str(model.get('scene_signature','')))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">화풍</div><div class="saju-landscape-schema-val">{html.escape(str(model.get('art_style','상징 풍경')))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">수상</div><div class="saju-landscape-schema-val">{html.escape(str(model.get('water_mode_label','')))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">생조</div><div class="saju-landscape-schema-val">{html.escape('금생수 형상' if bool(model.get('metal_supports_water', False)) else '뚜렷한 생조 표현 없음')}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">뿌리</div><div class="saju-landscape-schema-val">{html.escape(str(root_text).replace('뿌리: ',''))}</div></div>
+                    <div class="saju-landscape-schema-row"><div class="saju-landscape-schema-key">흐름</div><div class="saju-landscape-schema-val">{html.escape(str(flow_text).replace('흐름: ',''))}</div></div>
+                </div>
+                <div class="saju-landscape-panel-title">오행 비중</div>
+                {pct_html}
+                <div class="saju-landscape-one">{html.escape(str(model.get('one_liner','')))}</div>
+                <div class="saju-landscape-limit">※ 풍경도는 경량 도식형 보조 시각화입니다. 용신·격국·대운 판단은 아래 상세 해석과 함께 확인하는 방식이 안전합니다.</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    return model
+
+
+
+def _draw_saju_landscape_pillow(draw, model: Dict[str, object], box: Tuple[int, int, int, int], font_small, font_mid, font_big) -> None:
+    x1, y1, x2, y2 = box
+    W, H = x2 - x1, y2 - y1
+    dtype = str(model.get("diagram_type", "rock_structure"))
+    day_visual = str(model.get("day_visual", ""))
+    season_base = str(model.get("season_base", ""))
+    water_mode = str(model.get("water_mode", "none"))
+    light_mode = str(model.get("light_mode", "none"))
+    metal_supports_water = bool(model.get("metal_supports_water", False))
+    pct = model.get("pct", {}) or {}
+    primary = model.get("primary", []) or []
+    root_strength = int(model.get("root_strength", 0) or 0)
+    has_cloud = bool(model.get("has_cloud", False))
+
+    palette_map = {
+        "winter_silence": {"bg1": "#c9d9e8", "bg2": "#eef3f8", "band": "#dbe5ef", "sun1": "#f7fbff", "sun2": "#dfe7ef", "mount1": "#d7e0ea", "mount2": "#bdc9d7", "mount3": "#93a4b8", "ground": "#f4f6f8", "field": "#dfe5ea"},
+        "valley_stream": {"bg1": "#e6f2ea", "bg2": "#f7fbf5", "band": "#dbeadb", "sun1": "#f6e27a", "sun2": "#ffb84d", "mount1": "#d4e6d4", "mount2": "#b9d7ba", "mount3": "#94bc98", "ground": "#c7dbab", "field": "#bed39d"},
+        "great_water": {"bg1": "#d9ecf8", "bg2": "#f3f9fd", "band": "#d0e2ef", "sun1": "#eff7ff", "sun2": "#aac5e8", "mount1": "#d5e1ec", "mount2": "#aec3d7", "mount3": "#7a96b6", "ground": "#d0d5dc", "field": "#bfc5ce"},
+        "sun_cliff": {"bg1": "#f6c27c", "bg2": "#fff0c4", "band": "#f8d59e", "sun1": "#ffe15d", "sun2": "#ffad34", "mount1": "#efd0a4", "mount2": "#dcb37b", "mount3": "#b78548", "ground": "#d5ae71", "field": "#c79b5f"},
+        "inner_lamp": {"bg1": "#e2eadf", "bg2": "#f7f7ef", "band": "#e8ecdf", "sun1": "#ffe28a", "sun2": "#ffae47", "mount1": "#d7dfd0", "mount2": "#bccab8", "mount3": "#93a28e", "ground": "#c8c5b3", "field": "#bbb59d"},
+        "rock_structure": {"bg1": "#e7ecef", "bg2": "#f8f7f2", "band": "#e4e8eb", "sun1": "#f7efd7", "sun2": "#d7c39e", "mount1": "#dbe1e4", "mount2": "#bfc7ce", "mount3": "#8a97a4", "ground": "#d3ccbe", "field": "#c8c1b0"},
+        "field_growth": {"bg1": "#dff1dc", "bg2": "#f6fbef", "band": "#e2efdb", "sun1": "#f7e17a", "sun2": "#ffb84d", "mount1": "#d7ead0", "mount2": "#b8d5b0", "mount3": "#8fbe92", "ground": "#cfe1a6", "field": "#bfd58e"},
+    }
+    pal = palette_map.get(dtype, palette_map["rock_structure"])
+    horizon = y1 + int(H * .53)
+    field_top = horizon + 32
+    cx = x1 + W // 2
+
+    draw.rounded_rectangle((x1, y1, x2, y2), radius=26, fill=pal["bg2"], outline="#d7e2ee", width=2)
+    draw.rectangle((x1, y1, x2, horizon), fill=pal["bg1"])
+    for i in range(5):
+        yy = y1 + 54 + i * 18
+        draw.rectangle((x1, yy, x2, yy + 14), fill=pal["band"])
+
+    if has_cloud or dtype in {"winter_silence", "great_water"}:
+        draw.ellipse((x1+54, y1+54, x1+98, y1+76), fill="#ffffff")
+        draw.ellipse((x1+78, y1+46, x1+130, y1+78), fill="#ffffff")
+        draw.ellipse((x2-160, y1+80, x2-112, y1+100), fill="#ffffff")
+        draw.ellipse((x2-126, y1+80, x2-86, y1+98), fill="#ffffff")
+
+    if light_mode == "sun" or dtype in {"sun_cliff", "field_growth", "valley_stream"}:
+        sx, sy = x2 - 92, y1 + 66
+        draw.ellipse((sx-42, sy-42, sx+42, sy+42), fill=pal["sun1"])
+        draw.ellipse((sx-16, sy-16, sx+36, sy+36), fill=pal["sun2"])
+        for dx, dy in [(0,-52),(36,-28),(48,0),(36,28),(0,48),(-38,28),(-48,0),(-34,-30)]:
+            draw.line((sx+10, sy+10, sx+10+dx, sy+10+dy), fill=pal["sun2"], width=3)
+    elif light_mode == "lamp" or dtype == "inner_lamp":
+        sx, sy = x2 - 98, y1 + 74
+        draw.ellipse((sx-18, sy-18, sx+18, sy+18), fill="#fde68a")
+        draw.polygon([(sx, sy-26), (sx-12, sy-4), (sx, sy+8), (sx+12, sy-4)], fill="#fb923c")
+        draw.rounded_rectangle((sx-8, sy+8, sx+8, sy+24), radius=4, fill="#8b5a2b")
+
+    draw.polygon([(x1, horizon+12), (x1+110, horizon-24), (x1+230, horizon+16), (x1+340, horizon-40), (x1+460, horizon+22), (x2, horizon-12), (x2, y2), (x1, y2)], fill=pal["mount1"])
+    draw.polygon([(x1, horizon+30), (x1+84, horizon-2), (x1+200, horizon+36), (x1+320, horizon-8), (x1+438, horizon+44), (x2, horizon+12), (x2, y2), (x1, y2)], fill=pal["mount2"])
+    draw.polygon([(x1, horizon+58), (x1+72, horizon+22), (x1+176, horizon+56), (x1+296, horizon+18), (x1+404, horizon+64), (x2, horizon+28), (x2, y2), (x1, y2)], fill=pal["mount3"])
+    draw.rectangle((x1, field_top, x2, y2), fill=pal["ground"])
+    draw.rectangle((x1, field_top+6, x2, y2), fill=pal["field"])
+    draw.ellipse((cx-82, y2-42, cx+82, y2-18), fill="#8b6f4d")
+
+    seed_colors = ["#d9c58f", "#e8bc7a", "#b4c98e", "#d89b7f", "#cdb09e", "#a9ba87"]
+    for i in range(20):
+        xx = x1 + 16 + (i * 31) % max(40, W - 32)
+        yy = field_top + 14 + ((i * 17) % max(30, H - (field_top - y1) - 18))
+        rx = 5 + (i % 4) * 2
+        ry = 2 + (i % 3)
+        draw.ellipse((xx-rx, yy-ry, xx+rx, yy+ry), fill=seed_colors[i % len(seed_colors)])
+
+    if dtype == "winter_silence":
+        draw.polygon([(x1, field_top-10), (x1+110, field_top-28), (x1+240, field_top-2), (x1+360, field_top-22), (x1+500, field_top+8), (x2, field_top-14), (x2, y2), (x1, y2)], fill="#ffffff")
+        draw.line([(x1+48, field_top+24), (x1+138, field_top+6), (x1+244, field_top+32), (x1+378, field_top+10), (x2-40, field_top+22)], fill="#5f8fb6", width=12)
+        draw.line([(x1+48, field_top+24), (x1+138, field_top+8), (x1+244, field_top+30), (x1+378, field_top+12), (x2-40, field_top+22)], fill="#eef7ff", width=4)
+        fx, fy = x1+152, field_top-6
+        draw.ellipse((fx-8, fy-32, fx+8, fy-16), fill="#334155")
+        draw.rounded_rectangle((fx-8, fy-16, fx+8, fy+14), radius=5, fill="#465669")
+        draw.line((fx-12, fy+2, fx-24, fy+18), fill="#58697b", width=3)
+        draw.line((fx+12, fy+2, fx+2, fy+18), fill="#58697b", width=3)
+    elif dtype == "valley_stream":
+        draw.line([(x1+100, field_top+22), (x1+188, field_top+40), (x1+276, field_top+8), (x1+374, field_top+30), (x1+474, field_top+42), (x2-92, field_top+18)], fill="#5b94cf", width=12)
+        draw.line([(x1+100, field_top+22), (x1+188, field_top+40), (x1+276, field_top+8), (x1+374, field_top+30), (x1+474, field_top+42), (x2-92, field_top+18)], fill="#dceeff", width=4)
+        draw.polygon([(x1+32, field_top+10), (x1+68, horizon+12), (x1+106, field_top+10)], fill="#98ad9f")
+        draw.polygon([(x2-136, field_top+12), (x2-96, horizon+6), (x2-56, field_top+12)], fill="#7b8f86")
+        for dx, dy in [(160, -2), (286, -10), (404, -4)]:
+            draw.ellipse((x1+dx-5, field_top+dy-5, x1+dx+5, field_top+dy+5), fill="#5b94cf")
+    elif dtype == "great_water":
+        draw.rectangle((x1, field_top-6, x2, y2), fill="#3f78b1")
+        draw.rectangle((x1, field_top+18, x2, y2), fill="#5990c7")
+        wave_pts = [(x1+36, field_top+26), (x1+96, field_top+8), (x1+144, field_top+32), (x1+208, field_top+12), (x1+272, field_top+36), (x1+338, field_top+14), (x1+408, field_top+34), (x1+486, field_top+16), (x2-40, field_top+28)]
+        draw.line(wave_pts, fill="#dceeff", width=5)
+    elif dtype == "sun_cliff":
+        draw.polygon([(x1, y2), (x1, field_top+8), (x1+88, field_top-44), (x1+160, y2)], fill="#915c2b")
+        draw.polygon([(x1+74, field_top+4), (x1+124, field_top-62), (x1+176, field_top+4)], fill="#73471e")
+        draw.rectangle((x1+180, field_top+4, x2, y2), fill="#2d5f8f")
+        draw.line([(x1+208, field_top+28), (x1+280, field_top+12), (x1+356, field_top+42), (x2-28, field_top+22)], fill="#f3f8ff", width=6)
+        fx, fy = x1+118, field_top-22
+        draw.ellipse((fx-7, fy-23, fx+7, fy-9), fill="#2b2b2b")
+        draw.rounded_rectangle((fx-7, fy-9, fx+7, fy+16), radius=4, fill="#2f2f2f")
+    elif dtype == "inner_lamp":
+        draw.rectangle((x1, field_top-4, x2, y2), fill="#d8d4c8")
+        draw.arc((x1+64, field_top+10, x2-54, field_top+70), 190, 350, fill="#9097a2", width=8)
+        draw.arc((x1+90, field_top+30, x2-30, field_top+90), 190, 350, fill="#b2b9c0", width=6)
+    elif dtype == "rock_structure":
+        draw.polygon([(x1+68, y2-26), (x1+114, field_top+4), (x1+166, y2-26)], fill="#6f7f8d")
+        draw.polygon([(cx-52, y2-18), (cx, field_top-40), (cx+58, y2-18)], fill="#5d6e7d")
+        draw.polygon([(x2-164, y2-26), (x2-124, field_top+8), (x2-86, y2-26)], fill="#93a2ae")
+        draw.polygon([(cx, field_top-54), (cx+26, field_top-8), (cx, field_top+26), (cx-26, field_top-8)], fill="#e7edf3", outline="#7c8998")
+    else:
+        draw.line([(x1+96, field_top+28), (x1+176, field_top+42), (x1+258, field_top+18), (x1+350, field_top+34), (x1+450, field_top+44), (x2-80, field_top+22)], fill="#5b94cf", width=10)
+        draw.line([(x1+96, field_top+28), (x1+176, field_top+42), (x1+258, field_top+18), (x1+350, field_top+34), (x1+450, field_top+44), (x2-80, field_top+22)], fill="#dceeff", width=3)
+        for tx, rad in [(x1+84, 16), (x1+112, 12)]:
+            draw.ellipse((tx-rad, field_top-26-rad, tx+rad, field_top-26+rad), fill="#7dab6d")
+            draw.rectangle((tx-3, field_top-8, tx+3, field_top+12), fill="#7d6145")
+
+    # central object by day master
+    if day_visual == "tree_yang":
+        draw.rectangle((cx-6, field_top-26, cx+6, field_top+30), fill="#8b5a2b")
+        draw.ellipse((cx-56, field_top-86, cx+2, field_top-28), fill="#43b05c")
+        draw.ellipse((cx-12, field_top-108, cx+56, field_top-40), fill="#39a35a")
+        draw.ellipse((cx+20, field_top-86, cx+64, field_top-42), fill="#69ce85")
+    elif day_visual == "tree_yin":
+        draw.line((cx, field_top+18, cx+12, field_top-76), fill="#8b5a2b", width=8)
+        draw.ellipse((cx-32, field_top-74, cx+12, field_top-30), fill="#65b86f")
+        draw.ellipse((cx+2, field_top-92, cx+36, field_top-58), fill="#7ed08a")
+    elif day_visual == "sun_yang":
+        draw.ellipse((cx-30, field_top-76, cx+30, field_top-16), fill="#ffb34d")
+        draw.ellipse((cx-16, field_top-62, cx+16, field_top-30), fill="#ffe17a")
+    elif day_visual == "fire_yin":
+        draw.polygon([(cx, field_top-62), (cx-16, field_top-20), (cx, field_top), (cx+16, field_top-20)], fill="#fb923c")
+        draw.ellipse((cx-10, field_top-34, cx+10, field_top-4), fill="#fde68a")
+        draw.rounded_rectangle((cx-14, field_top, cx+14, field_top+20), radius=6, fill="#8b5a2b")
+    elif day_visual == "mountain_yang":
+        draw.polygon([(cx-54, field_top+16), (cx, field_top-54), (cx+54, field_top+16)], fill="#bb8a44")
+    elif day_visual == "soil_yin":
+        draw.rounded_rectangle((cx-86, field_top-4, cx+86, field_top+18), radius=10, fill="#c7ad79")
+    elif day_visual == "metal_yang":
+        draw.polygon([(cx-38, field_top+8), (cx-8, field_top-50), (cx+34, field_top+8)], fill="#95a3b3")
+    elif day_visual == "metal_yin":
+        draw.polygon([(cx, field_top-48), (cx+24, field_top-4), (cx, field_top+22), (cx-24, field_top-4)], fill="#d8e0e8", outline="#94a3b8")
+    elif day_visual == "water_yang":
+        draw.line([(x1+86, field_top+22), (x1+200, field_top-2), (x1+320, field_top+28), (x1+446, field_top+4), (x2-56, field_top+18)], fill="#4e89c7", width=16)
+        draw.line([(x1+86, field_top+22), (x1+200, field_top-2), (x1+320, field_top+28), (x1+446, field_top+4), (x2-56, field_top+18)], fill="#e0f2fe", width=4)
+    elif day_visual == "water_yin":
+        draw.line([(x1+110, field_top+28), (x1+188, field_top+42), (x1+270, field_top+16), (x1+362, field_top+32), (x1+462, field_top+42), (x2-92, field_top+22)], fill="#5b94cf", width=10)
+        draw.line([(x1+110, field_top+28), (x1+188, field_top+42), (x1+270, field_top+16), (x1+362, field_top+32), (x1+462, field_top+42), (x2-92, field_top+22)], fill="#dceeff", width=3)
+
+    if metal_supports_water:
+        sx, sy = x2-112, field_top+4
+        draw.ellipse((sx-8, sy-8, sx+8, sy+8), fill="#e9f4ff", outline="#94a3b8")
+        draw.line((sx, sy+8, sx-36, sy+18, sx-78, sy+28), fill="#60a5fa", width=4)
+
+    if root_strength > 0 and day_visual not in {"water_yang", "water_yin", "sun_yang", "fire_yin"}:
+        draw.line((cx-6, field_top+20, cx-44, field_top+64), fill="#8b5a2b", width=3)
+        draw.line((cx+6, field_top+20, cx+44, field_top+64), fill="#8b5a2b", width=3)
+
+    bx = x2 - 124
+    for el in primary[:2]:
+        color = LANDSCAPE_ELEMENT_META.get(el, {}).get("color", "#d64273")
+        draw.ellipse((bx, y2-46, bx+26, y2-20), fill=color)
+        draw.text((bx+8, y2-41), el, fill="white", font=font_small)
+        bx += 34
+
+
+def _share_font(size: int, bold: bool = False):
+    """공유카드 PNG용 한글 폰트 로더.
+
+    v5.83: Streamlit Cloud/Linux/Windows에서 한글이 □□□로 깨지는 문제를 줄이기 위해
+    1) fc-match로 실제 설치 폰트 탐색
+    2) Noto/Nanum/Malgun 경로 glob 탐색
+    3) TTC 컬렉션 index 순회
+    순서로 폰트를 찾는다.
+    """
+    try:
+        from PIL import ImageFont
+        import glob
+        import subprocess
+
+        def _try_load(path: str):
+            if not path or not os.path.exists(path):
+                return None
+            # .ttc 컬렉션은 index가 맞지 않을 수 있어 여러 index를 시도
+            indexes = range(0, 8) if path.lower().endswith('.ttc') else [0]
+            for idx in indexes:
+                try:
+                    font = ImageFont.truetype(path, size=size, index=idx)
+                    # 최소 한글 글리프 확인. 실패하면 다음 후보로 이동.
+                    try:
+                        bbox = font.getbbox('한글사주')
+                        if bbox and (bbox[2] - bbox[0]) > 0:
+                            return font
+                    except Exception:
+                        return font
+                except Exception:
+                    continue
+            return None
+
+        candidates: List[str] = []
+
+        # 1) fontconfig가 있으면 실제 매칭 결과를 최우선 사용
+        fc_names = [
+            'Noto Sans CJK KR:style=Bold' if bold else 'Noto Sans CJK KR:style=Regular',
+            'Noto Sans CJK:style=Bold' if bold else 'Noto Sans CJK:style=Regular',
+            'NanumGothic:style=Bold' if bold else 'NanumGothic:style=Regular',
+            'NanumBarunGothic:style=Bold' if bold else 'NanumBarunGothic:style=Regular',
+            'Malgun Gothic:style=Bold' if bold else 'Malgun Gothic:style=Regular',
+            'UnDotum:style=Bold' if bold else 'UnDotum:style=Regular',
+        ]
+        for name in fc_names:
+            try:
+                out = subprocess.check_output(['fc-match', '-f', '%{file}', name], stderr=subprocess.DEVNULL, timeout=2)
+                fp = out.decode('utf-8', errors='ignore').strip()
+                if fp:
+                    candidates.append(fp)
+            except Exception:
+                pass
+
+        # 2) 명시 경로 후보
+        candidates += [
+            # Windows
+            'C:/Windows/Fonts/malgunbd.ttf' if bold else 'C:/Windows/Fonts/malgun.ttf',
+            'C:/Windows/Fonts/NanumGothicBold.ttf' if bold else 'C:/Windows/Fonts/NanumGothic.ttf',
+            # Streamlit Cloud / Debian / Ubuntu
+            '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc' if bold else '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+            '/usr/share/fonts/opentype/noto/NotoSansCJKkr-Bold.otf' if bold else '/usr/share/fonts/opentype/noto/NotoSansCJKkr-Regular.otf',
+            '/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc' if bold else '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+            '/usr/share/fonts/truetype/noto/NotoSansKR-Bold.ttf' if bold else '/usr/share/fonts/truetype/noto/NotoSansKR-Regular.ttf',
+            '/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf' if bold else '/usr/share/fonts/truetype/nanum/NanumGothic.ttf',
+            '/usr/share/fonts/truetype/nanum/NanumBarunGothicBold.ttf' if bold else '/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf',
+            '/usr/share/fonts/truetype/unfonts-core/UnDotumBold.ttf' if bold else '/usr/share/fonts/truetype/unfonts-core/UnDotum.ttf',
+            # macOS
+            '/System/Library/Fonts/AppleSDGothicNeo.ttc',
+            '/Library/Fonts/AppleGothic.ttf',
+        ]
+
+        # 3) glob으로 설치 위치 전체 검색
+        patterns = [
+            '/usr/share/fonts/**/NotoSansCJK*Bold*' if bold else '/usr/share/fonts/**/NotoSansCJK*Regular*',
+            '/usr/share/fonts/**/*Noto*CJK*Bold*' if bold else '/usr/share/fonts/**/*Noto*CJK*Regular*',
+            '/usr/share/fonts/**/*Nanum*Bold*' if bold else '/usr/share/fonts/**/*Nanum*',
+            '/usr/local/share/fonts/**/*Noto*CJK*',
+            '/app/.apt/usr/share/fonts/**/*Noto*CJK*',
+            '/mount/src/**/fonts/**/*Noto*',
+        ]
+        for pat in patterns:
+            try:
+                candidates.extend(glob.glob(pat, recursive=True))
+            except Exception:
+                pass
+
+        seen = set()
+        for fp in candidates:
+            fp = str(fp).strip()
+            if not fp or fp in seen:
+                continue
+            seen.add(fp)
+            font = _try_load(fp)
+            if font is not None:
+                return font
+
+        # 마지막 수단. 이 경우 한글은 깨질 수 있으므로 packages.txt 설치가 필요하다.
+        return ImageFont.load_default()
+    except Exception:
+        return None
+
+
+def _wrap_for_image(draw, text: str, font, max_width: int) -> List[str]:
+    words = list(str(text or ""))
+    lines: List[str] = []
+    cur = ""
+    for ch in words:
+        test = cur + ch
+        try:
+            width = draw.textlength(test, font=font)
+        except Exception:
+            width = len(test) * 14
+        if width <= max_width or not cur:
+            cur = test
+        else:
+            lines.append(cur)
+            cur = ch
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def _share_card_aux_badges(chart: Chart, result: Dict[str, object]) -> List[str]:
+    badges: List[str] = []
+    shinsal = result.get("shinsal", {}) or {}
+    hits = shinsal.get("hits", []) or []
+    names: List[str] = []
+    for hit in hits:
+        name = str(hit.get("신살", hit.get("name", "")) or "")
+        if name and name not in names:
+            names.append(name)
+    if "공망" in names:
+        badges.append("공망")
+        names = [n for n in names if n != "공망"]
+    for name in names[:2]:
+        badges.append(name)
+    return badges[:3]
+
+
+def _share_card_badges_html(badges: List[str]) -> str:
+    if not badges:
+        return ""
+    pills = "".join(f"<span class='share-card-badge'>{html.escape(str(b), quote=True)}</span>" for b in badges[:3])
+    return f"<div class='share-card-badges'>{pills}</div>"
+
+
+def _share_safe_icon(name_or_icon: str) -> str:
+    """PNG 공유카드에서 깨지지 않도록 이모지를 안전한 기호/문자 아이콘으로 치환한다."""
+    raw = str(name_or_icon or "").strip()
+    mapping = {
+        "공망": "○",
+        "천을귀인": "◎",
+        "문창귀인": "文",
+        "역마": "↔",
+        "도화": "花",
+        "화개": "◆",
+        "": "◇",
+        "🪞": "◎",
+        "": "!",
+        "🌊": "≈",
+        "🎛️": "≡",
+        "🏡": "□",
+    }
+    return mapping.get(raw, raw if len(raw) <= 2 else "•")
+
+
+def _shinsal_badge_items(chart: Chart, result: Dict[str, object], limit: int = 3) -> List[Dict[str, str]]:
+    """첫 화면/공유카드에서 쓸 작은 신살·공망 배지 데이터."""
+    items: List[Dict[str, str]] = []
+    for name in _share_card_aux_badges(chart, result)[:max(0, int(limit or 3))]:
+        profile = _shinsal_card_profile(str(name), {}, chart)
+        items.append({
+            "name": str(name),
+            "icon": str(profile.get("icon", "🎴")),
+            "share_icon": _share_safe_icon(str(name)),
+        })
+    return items
+
+
+def _shinsal_badges_html(chart: Chart, result: Dict[str, object], limit: int = 3) -> str:
+    items = _shinsal_badge_items(chart, result, limit=limit)
+    if not items:
+        return ""
+    pills = []
+    for item in items:
+        icon = html.escape(str(item.get("icon", "🎴")), quote=True)
+        name = html.escape(str(item.get("name", "보조 신호")), quote=True)
+        pills.append(
+            f"<span style='display:inline-flex;align-items:center;gap:.28rem;padding:.28rem .56rem;border-radius:999px;background:#fff8fb;border:1px solid rgba(230,164,184,.45);color:#6a4552;font-size:.78rem;font-weight:900;box-shadow:0 4px 10px rgba(214,66,115,.06);'><span>{icon}</span><span>{name}</span></span>"
+        )
+    return "<div style='display:flex;flex-wrap:wrap;justify-content:center;gap:.38rem;margin-top:.62rem;'>" + "".join(pills) + "</div>"
+
+
+
+def _make_qr_png_bytes(data: str, box_size: int = 7, border: int = 2) -> bytes | None:
+    """재방문용 QR 코드를 PNG 바이트로 만든다."""
+    if not data:
+        return None
+    try:
+        import qrcode
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=max(2, int(box_size or 7)),
+            border=max(1, int(border or 2)),
+        )
+        qr.add_data(str(data))
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        out = io.BytesIO()
+        img.save(out, format="PNG")
+        return out.getvalue()
+    except Exception:
+        return None
+
+
+def render_revisit_guide_card(public_url: str = APP_PUBLIC_URL) -> None:
+    """카톡 링크 유입 사용자를 위한 재방문 안내 카드.
+
+    v5.112: 앱 내부 QR은 실효성이 낮아 제거하고, 외부 브라우저에서 홈 화면 바로가기를 만드는 방법만 간단히 안내한다.
+    """
+    st.markdown(
+        """
+<div class="revisit-guide-card revisit-guide-compact">
+  <div class="revisit-guide-title">바로가기 만들기</div>
+  <div class="revisit-guide-body">
+    <b>카톡에서 열었다면</b> 먼저 <b>브라우저에서 열기</b>를 누르세요.<br>
+    그다음 브라우저 메뉴에서 <b>홈 화면에 추가</b>를 선택하면 바로가기가 만들어집니다.
+    <div class="revisit-mini-steps">
+      <span>1. 브라우저 열기</span>
+      <span>2. 메뉴 누르기</span>
+      <span>3. 이름 확인 후 추가</span>
+    </div>
+    <div class="revisit-device-note">
+      이름이 보이면 <b>사주MRI</b>로 두고 추가하세요.<br>갤럭시: Chrome·삼성 인터넷 메뉴(⋮/≡) → 홈 화면에 추가 · 아이폰: Safari 공유(□↑) → 홈 화면에 추가
+    </div>
+  </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    try:
+        st.link_button("🔗 사주MRI 바로 열기", public_url, use_container_width=True)
+    except Exception:
+        st.markdown(f"[사주MRI 바로 열기]({html.escape(public_url, quote=True)})")
+    st.text_input("주소 복사용", value=public_url, key="revisit_public_url_v5112", disabled=True)
+
+def make_share_card_png_bytes(title: str, operation: str, keywords: str, overload: str, interpretation: str, one_liner: str, badges: List[str] | None = None, landscape_model: Dict[str, object] | None = None) -> bytes | None:
+    """공유용 결과 카드를 PNG로 생성한다. Pillow가 없으면 None."""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+
+    W, H = 1080, 980
+    img = Image.new("RGB", (W, H), "#fff8fb")
+    draw = ImageDraw.Draw(img)
+
+    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#f5c9d8", width=3)
+    draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#ffffff", outline="#f8dce6", width=2)
+
+    f_logo = _share_font(32, True)
+    f_title = _share_font(56, True)
+    f_label = _share_font(26, True)
+    f_body = _share_font(31, True)
+    f_small = _share_font(23, False)
+    f_tiny = _share_font(20, False)
+
+    x = 86
+    y = 84
+    draw.text((x, y), "사주MRI", fill="#d64273", font=f_logo)
+    draw.text((W-310, y+4), "시각화 사주 분석", fill="#3f2a33", font=f_label)
+
+    y += 66
+    for line in _wrap_for_image(draw, title, f_title, W-170)[:2]:
+        draw.text((x, y), line, fill="#3f2a33", font=f_title)
+        y += 66
+
+    def box(x1, y1, x2, y2, label, body):
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill="#fff8fb", outline="#f1cbd7", width=2)
+        draw.text((x1+24, y1+20), label, fill="#d64273", font=f_label)
+        yy = y1 + 62
+        for ln in _wrap_for_image(draw, body, f_body, x2-x1-48)[:2]:
+            draw.text((x1+24, yy), ln, fill="#3f2a33", font=f_body)
+            yy += 39
+
+    y += 20
+    box(86, y, 520, y+145, "힘 쓰는 스타일", operation)
+    box(560, y, 994, y+145, "핵심 강점", keywords)
+    y += 170
+    box(86, y, 520, y+165, "작동 해석", interpretation)
+    box(560, y, 994, y+165, "과부하 신호", overload)
+    y += 190
+    draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#fff0f5", outline="#f2c2d2", width=2)
+    draw.text((112, y+20), "핵심 한 줄", fill="#d64273", font=f_label)
+    line_y = y + 58
+    for ln in _wrap_for_image(draw, one_liner, f_body, 850)[:2]:
+        draw.text((112, line_y), ln, fill="#3f2a33", font=f_body)
+        line_y += 38
+
+    badge_items = list(badges or [])[:3]
+    if badge_items:
+        bx = W - 100
+        by = 742
+        for badge in reversed(badge_items):
+            tw = int(draw.textlength(str(badge), font=f_small)) + 34
+            x1 = bx - tw
+            draw.rounded_rectangle((x1, by, bx, by + 34), radius=17, fill="#fff6ea", outline="#efced8", width=2)
+            draw.text((x1 + 16, by + 7), str(badge), fill="#6a4552", font=f_small)
+            bx = x1 - 10
+
+    foot_y1, foot_y2 = H - 188, H - 84
+    draw.rounded_rectangle((86, foot_y1, 994, foot_y2), radius=26, fill="#fff9f1", outline="#f0d8c0", width=2)
+    qr_bytes = _make_qr_png_bytes(APP_PUBLIC_URL, box_size=6, border=1)
+    qr_ready = False
+    if qr_bytes:
+        try:
+            qr_img = Image.open(io.BytesIO(qr_bytes)).convert("RGB")
+            qr_img = qr_img.resize((112, 112))
+            img.paste(qr_img, (108, foot_y1 + 10))
+            qr_ready = True
+        except Exception:
+            qr_ready = False
+    text_x = 236 if qr_ready else 112
+    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#d64273", font=f_label)
+    draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#3f2a33", font=f_small)
+    url_lines = _wrap_for_image(draw, APP_PUBLIC_URL, f_tiny, 690)[:2]
+    url_y = foot_y1 + 82
+    for ln in url_lines:
+        draw.text((text_x, url_y), ln, fill="#6a4552", font=f_tiny)
+        url_y += 24
+
+    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#7a5665", font=f_tiny)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+def _normalize_png_bytes(png_bytes: bytes | None) -> bytes | None:
+    """다운로드 후 이미지가 열리지 않는 문제를 줄이기 위해 PNG 바이트를 검증·재저장한다."""
+    if not png_bytes:
+        return None
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(png_bytes))
+        img.load()
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGB")
+        out = io.BytesIO()
+        img.save(out, format="PNG")
+        data = out.getvalue()
+        return data if data.startswith(b"\x89PNG") else None
+    except Exception:
+        return png_bytes if isinstance(png_bytes, (bytes, bytearray)) and bytes(png_bytes).startswith(b"\x89PNG") else None
+
+
+def render_share_image_tools(
+    png_bytes: bytes | None,
+    file_name: str,
+    download_label: str = "📥 공유 이미지 저장",
+    copy_label: str = "📋 터치해서 이미지 복사",
+    element_key: str | None = None,
+) -> None:
+    """공유 이미지 저장 도구.
+
+    v5.80: 다운로드 후 이미지가 열리지 않는 문제를 줄이기 위해
+    PNG 바이트를 한 번 검증/재저장하고, 저장 전 미리보기를 함께 보여준다.
+    직접 클립보드 복사 기능은 안정성을 위해 계속 비활성화한다.
+    """
+    png_bytes = _normalize_png_bytes(png_bytes)
+    if not png_bytes:
+        st.warning("공유 이미지 생성에 실패했습니다. Pillow 설치 상태 또는 카드 내용을 확인해 주세요.")
+        return
+
+    safe_key = re.sub(r"[^a-zA-Z0-9_]+", "_", str(element_key or file_name or "share_image"))[:48]
+    try:
+        st.image(png_bytes, caption="저장될 공유 이미지 미리보기", use_container_width=True)
+    except TypeError:
+        st.image(png_bytes, caption="저장될 공유 이미지 미리보기", use_column_width=True)
+    st.download_button(
+        download_label,
+        data=png_bytes,
+        file_name=file_name,
+        mime="image/png",
+        use_container_width=True,
+        key=f"download_{safe_key}_{file_name}",
+    )
+    st.caption("저장 전 미리보기가 정상적으로 보이면 다운로드 파일도 같은 PNG로 저장됩니다. 직접 복사 기능은 안정성을 위해 비활성화했습니다.")
+
+
+def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str, str]) -> bytes | None:
+    """첫 화면 요약을 바로 공유할 수 있는 PNG 카드."""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+
+    snap = _single_front_snapshot(payload)
+    result = payload.get("result", {}) or {}
+    title_plain = str(char.get("title", "사주MRI 캐릭터"))
+    tone_plain = str(char.get("tone", ""))
+    operation_plain = str(char.get("operation", "-"))
+    one_liner = share_card_one_liner(char, result)
+
+    W, H = 1080, 1380
+    img = Image.new("RGB", (W, H), "#fff8fb")
+    draw = ImageDraw.Draw(img)
+
+    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#f5c9d8", width=3)
+    draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#ffffff", outline="#f8dce6", width=2)
+
+    f_logo = _share_font(30, True)
+    f_title = _share_font(54, True)
+    f_label = _share_font(26, True)
+    f_body = _share_font(30, True)
+    f_small = _share_font(23, False)
+    f_tiny = _share_font(20, False)
+
+    x = 86
+    y = 84
+    draw.text((x, y), "사주MRI", fill="#d64273", font=f_logo)
+    draw.text((W-320, y+4), "혼자보기 요약 카드", fill="#3f2a33", font=f_label)
+
+    y += 58
+    for line in _wrap_for_image(draw, title_plain, f_title, W-170)[:2]:
+        draw.text((x, y), line, fill="#3f2a33", font=f_title)
+        y += 64
+
+    for line in _wrap_for_image(draw, tone_plain, f_small, W-170)[:2]:
+        draw.text((x, y), line, fill="#6a4552", font=f_small)
+        y += 30
+
+    chip_text = f"힘 쓰는 스타일 · {operation_plain}"
+    chip_w = int(draw.textlength(chip_text, font=f_small)) + 42
+    draw.rounded_rectangle((86, y+6, 86 + chip_w, y + 44), radius=20, fill="#eef8f3", outline="#d8efe3", width=2)
+    draw.text((106, y+13), chip_text, fill="#047857", font=f_small)
+    y += 68
+
+    badge_items = _shinsal_badge_items(payload.get("chart"), result, limit=3)
+    if badge_items:
+        bx = 86
+        by = y
+        row_h = 38
+        for item in badge_items:
+            label = f"{item.get('share_icon', '•')} {item.get('name', '보조 신호')}"
+            tw = int(draw.textlength(label, font=f_small)) + 30
+            if bx + tw > 994:
+                bx = 86
+                by += row_h + 10
+            draw.rounded_rectangle((bx, by, bx + tw, by + row_h), radius=19, fill="#fff8fb", outline="#efced8", width=2)
+            draw.text((bx + 14, by + 8), label, fill="#6a4552", font=f_small)
+            bx += tw + 10
+        y = by + row_h + 18
+
+    def box(x1, y1, x2, y2, label, body_lines, fill="#fff8fb"):
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=22, fill=fill, outline="#f1cbd7", width=2)
+        draw.text((x1+22, y1+18), label, fill="#d64273", font=f_label)
+        yy = y1 + 58
+        for ln in body_lines:
+            draw.text((x1+22, yy), ln, fill="#3f2a33", font=f_small)
+            yy += 30
+
+    scores = snap.get("scores", {}) or {}
+    size = scores.get("기초체력", {}) or {}
+    flow = scores.get("흐름과 연결", {}) or {}
+    action = scores.get("현실작동력", {}) or {}
+    total_score = float(snap.get("display_total", 0) or 0)
+    total_max = float(snap.get("display_max", 100) or 100)
+    dominant_el, dominant_pct = snap.get("dominant", ("-", 0.0))
+    weak_el, weak_pct = snap.get("weak", ("-", 0.0))
+    temp = float(snap.get("temp", 50) or 50)
+    climate_label = str(snap.get("climate_label", "균형권"))
+
+    box(86, y, 350, y+160, "내 사주 인상", [title_plain, tone_plain[:22]], fill="#fff7fb")
+    box(408, y, 672, y+160, "오행", [f"강한 {dominant_el} {float(dominant_pct):.1f}%", f"약한 {weak_el} {float(weak_pct):.1f}%"], fill="#fffdf8")
+    box(730, y, 994, y+160, "조후", [f"{climate_label} · {temp:.0f}/100", "차갑고 뜨거운 균형 감각"], fill="#f8fbff")
+    y += 186
+
+    el_colors = {
+        "목": ("#e8f7df", "#4c8b3c"),
+        "화": ("#ffe7e2", "#d95c4e"),
+        "토": ("#f8ead8", "#9a6b2f"),
+        "금": ("#eef1f6", "#6b7280"),
+        "수": ("#e4f1ff", "#3277d8"),
+    }
+    draw.text((86, y), "오행 비율", fill="#d64273", font=f_label)
+    pill_x = 86
+    pill_y = y + 38
+    for el in ELEMENTS:
+        val = float((snap.get("elements") or {}).get(el, 0) or 0)
+        bg, fg = el_colors.get(el, ("#f4f4f5", "#52525b"))
+        label = f"{el} {val:.1f}%"
+        tw = int(draw.textlength(label, font=f_small)) + 34
+        draw.rounded_rectangle((pill_x, pill_y, pill_x+tw, pill_y+38), radius=19, fill=bg, outline="#efced8", width=2)
+        draw.text((pill_x+16, pill_y+8), label, fill=fg, font=f_small)
+        pill_x += tw + 12
+    y += 102
+
+    draw.text((86, y), "기운 3대 축", fill="#d64273", font=f_label)
+    y += 38
+    score_boxes = [
+        ("기초체력", size, "기본 재료와 버티는 힘"),
+        ("흐름과 연결", flow, "생각·관계·일이 이어지는 힘"),
+        ("현실작동력", action, "실제 행동과 결과로 드러나는 힘"),
+    ]
+    sx = 86
+    for label, info, desc in score_boxes:
+        sw = 286
+        draw.rounded_rectangle((sx, y, sx+sw, y+182), radius=22, fill="#ffffff", outline="#f1cbd7", width=2)
+        draw.text((sx+20, y+16), label, fill="#3f2a33", font=f_label)
+        score = float(info.get("score", 0) or 0)
+        max_score = float(info.get("max", 0) or 0)
+        pct_score = float(info.get("pct", 0) or 0)
+        draw.text((sx+20, y+58), f"{score:.1f}/{int(max_score) if max_score > 0 else 0}", fill="#d64273", font=f_body)
+        draw.rounded_rectangle((sx+20, y+106, sx+sw-20, y+120), radius=8, fill="#f5e8ef")
+        draw.rounded_rectangle((sx+20, y+106, sx+20 + int((sw-40) * pct_score / 100.0), y+120), radius=8, fill="#d64273")
+        for ln in _wrap_for_image(draw, desc, f_tiny, sw-40)[:2]:
+            draw.text((sx+20, y+136 if ln == _wrap_for_image(draw, desc, f_tiny, sw-40)[:1][0] else y+158), ln, fill="#6a4552", font=f_tiny)
+        sx += sw + 18
+    y += 208
+
+    draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#fff0f5", outline="#f2c2d2", width=2)
+    draw.text((112, y+20), "핵심 한 줄", fill="#d64273", font=f_label)
+    line_y = y + 58
+    for ln in _wrap_for_image(draw, one_liner, f_small, 850)[:2]:
+        draw.text((112, line_y), ln, fill="#3f2a33", font=f_small)
+        line_y += 30
+
+    foot_y1, foot_y2 = H - 188, H - 84
+    draw.rounded_rectangle((86, foot_y1, 994, foot_y2), radius=26, fill="#fff9f1", outline="#f0d8c0", width=2)
+    qr_bytes = _make_qr_png_bytes(APP_PUBLIC_URL, box_size=6, border=1)
+    qr_ready = False
+    if qr_bytes:
+        try:
+            qr_img = Image.open(io.BytesIO(qr_bytes)).convert("RGB")
+            qr_img = qr_img.resize((112, 112))
+            img.paste(qr_img, (108, foot_y1 + 10))
+            qr_ready = True
+        except Exception:
+            qr_ready = False
+    text_x = 236 if qr_ready else 112
+    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#d64273", font=f_label)
+    draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#3f2a33", font=f_small)
+    url_lines = _wrap_for_image(draw, APP_PUBLIC_URL, f_tiny, 690)[:2]
+    url_y = foot_y1 + 82
+    for ln in url_lines:
+        draw.text((text_x, url_y), ln, fill="#6a4552", font=f_tiny)
+        url_y += 24
+
+    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#7a5665", font=f_tiny)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def render_share_result_card(payload: Dict[str, object], char: Dict[str, str]) -> None:
+    """공유용 첫 화면 요약 카드 렌더링."""
+    st.markdown("### 📸 첫 화면 공유 카드")
+    st.caption("캐릭터 박스와 기운 요약을 한 장의 공유 이미지로 저장합니다.")
+    png_bytes = make_simple_first_share_png_bytes(payload, char)
+    render_share_image_tools(png_bytes, "saju_mri_simple_first_share.png", element_key="single_share_card_v591")
+
+
+def _luck_station_icon(ganzhi: str, chart: Chart) -> str:
+    if not ganzhi or len(str(ganzhi)) < 2:
+        return ""
+    branch = str(ganzhi)[1]
+    for b in chart.branches:
+        for a, c, _name in CLASHES:
+            if (branch == a and b == c) or (branch == c and b == a):
+                return ""
+    for b in chart.branches:
+        for a, c, _el, _name in SIX_HARMONIES:
+            if (branch == a and b == c) or (branch == c and b == a):
+                return ""
+    return ""
+
+
+def _luck_station_plain_detail(ganzhi: str, chart: Chart, useful: Dict[str, object], base_total: float, origin_result: Dict[str, object] | None = None) -> Dict[str, object]:
+    """대운 글자가 원국과 만드는 합/충을 사용자용 설명으로 변환한다."""
+    gz = str(ganzhi or "")
+    branch = gz[1] if len(gz) >= 2 else ""
+    stem = gz[0] if len(gz) >= 1 else ""
+    bindings, clashes = [], []
+    for b in chart.branches:
+        for a, c, el, name in SIX_HARMONIES:
+            if (branch == a and b == c) or (branch == c and b == a):
+                bindings.append(f"{name}: 원국의 {b}와 대운의 {branch}가 묶여 {el} 쪽 연결감이 생깁니다.")
+        for a, c, name in CLASHES:
+            if (branch == a and b == c) or (branch == c and b == a):
+                clashes.append(f"{name}: 원국의 {b}와 대운의 {branch}가 부딪혀 변화·이동·자극이 커집니다.")
+    mod, note = analyze_luck_interaction(gz, chart, useful, 15.0, origin_result)
+    score = round(max(0, min(100, float(base_total or 0) + float(mod or 0))), 1)
+    if clashes and bindings:
+        mood = "변화와 결속이 같이 오는 10년 흐름"
+    elif clashes:
+        mood = "변화·자극이 커지는 10년 흐름"
+    elif bindings:
+        mood = "연결감이 커지는 10년 흐름"
+    else:
+        mood = "큰 충돌 없이 지나가는 10년 흐름"
+    return {"score": score, "mod": mod, "note": note, "bindings": bindings, "clashes": clashes, "mood": mood, "stem": stem, "branch": branch}
+
+
+def render_daewun_train(payload: Dict[str, object]) -> None:
+    chart = payload["chart"]
+    result = payload.get("result", {})
+    luck_flow = payload.get("luck_flow") or {}
+    daewuns = payload.get("daewuns") or luck_flow.get("daewuns") or []
+    current = luck_flow.get("current_daewun") if isinstance(luck_flow, dict) else None
+    st.markdown("#### 〽️ 대운의 흐름")
+    if not daewuns:
+        st.info("생년월일시 자동 산출 정보가 있을 때 10년 단위 대운 흐름이 표시됩니다.")
+        return
+
+    current_idx = 0
+    if current:
+        for i, item in enumerate(daewuns):
+            if item.get("start_age") == current.get("start_age") and item.get("ganzhi") == current.get("ganzhi"):
+                current_idx = i
+                break
+    start = max(0, current_idx - 2)
+    end = min(len(daewuns), current_idx + 5)
+    visible = daewuns[start:end]
+
+    base_total = float(result.get("total", 0) or 0)
+    useful = result.get("useful", {}) or {}
+    key_base = "daewun_station_" + str(abs(hash(str(ganji_text(chart)) + str(payload.get('name','')))))
+    default_label = None
+    labels = []
+    cards = []
+    for item in visible:
+        gz = str(item.get("ganzhi", "-"))
+        age = item.get("start_age", "-")
+        detail = _luck_station_plain_detail(gz, chart, useful, base_total, result)
+        icon = "" if detail["clashes"] else ("" if detail["bindings"] else "•")
+        is_current = current and item.get("start_age") == current.get("start_age") and item.get("ganzhi") == current.get("ganzhi")
+        label = f"{age}세부터 10년 · {gz}"
+        labels.append(label)
+        if is_current or default_label is None:
+            default_label = label
+        cards.append((label, item, detail, icon, is_current))
+
+    html_parts = ["<div class='daewun-flow-track'>"]
+    for label, item, detail, icon, is_current in cards:
+        gz = html.escape(str(item.get("ganzhi", "-")))
+        age = html.escape(str(item.get("start_age", "-")))
+        cls = "daewun-flow-card current" if is_current else "daewun-flow-card"
+        badge = "현재 흐름" if is_current else "10년 흐름"
+        html_parts.append(
+            f"<div class='{cls}'><div class='daewun-flow-badge'>{badge}</div><div class='daewun-flow-age'>{age}세부터 10년</div>"
+            f"<div class='daewun-flow-gz'>{gz}</div><div class='daewun-flow-score'>체감 {detail['score']}%</div><div class='daewun-flow-icon'>{icon}</div></div>"
+        )
+    html_parts.append("</div>")
+    st.markdown("".join(html_parts), unsafe_allow_html=True)
+
+    # Streamlit은 같은 key에 대해 기본 index와 session_state 값을 동시에 주면 경고를 낼 수 있다.
+    # 따라서 session_state를 직접 세팅하지 않고, 이미 존재하는 값이 있을 때만 index 계산에 참고한다.
+    current_value = st.session_state.get(key_base, default_label)
+    selected_index = labels.index(current_value) if current_value in labels else 0
+    selected = st.radio("설명 볼 10년 흐름 선택", labels, index=selected_index, horizontal=True, key=key_base)
+    match = next((x for x in cards if x[0] == selected), None)
+    if match:
+        label, item, detail, icon, is_current = match
+        st.markdown(
+            f"<div class='signal-card'><div class='signal-title'>{html.escape(label)} · {html.escape(detail['mood'])}</div>"
+            f"<div class='signal-body'>이 10년 흐름의 체감 강도는 {detail['score']}%, 원국 대비 변화량은 {float(detail['mod']):+.1f}점입니다. {html.escape(_clean_display_text(detail['note']))}</div></div>",
+            unsafe_allow_html=True,
+        )
+        if detail["bindings"]:
+            st.markdown("**합으로 묶이는 글자**")
+            _markdown_signal_cards(detail["bindings"])
+        if detail["clashes"]:
+            st.markdown("**충으로 움직이는 글자**")
+            _markdown_signal_cards(detail["clashes"])
+        if not detail["bindings"] and not detail["clashes"]:
+            st.caption("이 대운은 원국과 강하게 합치거나 부딪히는 글자가 적어, 상대적으로 완만하게 체감될 수 있습니다.")
+
+
+def chemistry_type_from_compatibility(compatibility: Dict[str, object]) -> Dict[str, str]:
+    axes = compatibility.get("axes") or {}
+    complement = float(axes.get("상호 보완성", 0) or 0)
+    alliance = float(axes.get("동맹성", 0) or 0)
+    sync = float(axes.get("흐름 동조성", 0) or 0)
+    tension = float(axes.get("긴장도", 0) or 0)
+    if complement >= max(alliance, sync, 45) and complement >= 68:
+        return {"title": "퍼즐형 케미", "stamp": "", "desc": "서로 부족한 오행과 온도감을 채워주는 보완형 관계입니다."}
+    if alliance >= max(complement, tension, 45) and alliance >= 68:
+        return {"title": "거울형 케미", "stamp": "🪞", "desc": "닮은 결이나 합의 신호가 커서 말이 잘 통하는 동맹형 관계입니다."}
+    if tension >= 60:
+        return {"title": "스파크형 케미", "stamp": "", "desc": "충과 긴장 신호가 있어 자극, 변화, 성장 압력이 큰 관계입니다."}
+    if sync >= 65:
+        return {"title": "리듬형 케미", "stamp": "🌊", "desc": "기운이 흘러가는 방향이 비슷해 호흡을 맞추기 쉬운 관계입니다."}
+    return {"title": "조율형 케미", "stamp": "🎛️", "desc": "한쪽으로 단정하기보다 거리, 역할, 기대치를 맞추며 안정되는 관계입니다."}
+
+
+def relationship_orientation_from_compatibility(compatibility: Dict[str, object]) -> Dict[str, str]:
+    """궁합축을 바탕으로 케미가 가장 빛나는 관계 지향점을 추천한다."""
+    axes = compatibility.get("axes") or {}
+    complement = float(axes.get("상호 보완성", 0) or 0)
+    alliance = float(axes.get("동맹성", 0) or 0)
+    sync = float(axes.get("흐름 동조성", 0) or 0)
+    tension = float(axes.get("긴장도", 0) or 0)
+    buffer_val = float(axes.get("긴장 완충력", max(0, 100 - tension)) or max(0, 100 - tension))
+    clash = int(compatibility.get("clash_count", 0) or 0)
+    harmony = int(compatibility.get("harmony_count", 0) or 0)
+
+    # 우선순위는 "관계에서 체감되는 자리" 기준. 점수형 우열이 아니라 포지션 추천이다.
+    if complement >= 72 and buffer_val >= 58:
+        return {
+            "title": "생활 동맹형",
+            "best": "부부 · 장기 파트너 · 오래 가는 팀메이트",
+            "stamp": "🏡",
+            "slogan": "같이 살거나 오래 굴릴 때 진가가 나는 케미",
+            "roles": "부부, 장기 연인, 공동 생활자, 가족 같은 동료",
+            "desc": "서로 다른 부분이 빈칸을 채우는 쪽으로 작동합니다. 감정의 폭발보다 생활 리듬, 역할 분담, 장기 목표를 같이 둘 때 케미가 가장 잘 살아납니다.",
+            "caution": "한쪽의 보완이 일방적 돌봄으로 굳어지지 않게 역할을 주기적으로 바꾸는 편이 좋습니다.",
+        }
+    if complement >= 68 and tension >= 55:
+        return {
+            "title": "성장 자극형",
+            "best": "연인 · 멘토-도전자 · 서로를 키우는 라이벌",
+            "stamp": "🔥",
+            "slogan": "편하지만은 않은데, 같이 있으면 커지는 케미",
+            "roles": "연인, 멘토와 도전자, 코치와 선수, 선의의 라이벌",
+            "desc": "서로에게 필요한 것을 주지만 동시에 자극도 큽니다. 편안함만 추구하면 피곤하고, 성장 과제를 함께 정하면 매력이 살아납니다.",
+            "caution": "감정싸움이 목표를 삼키지 않도록 규칙과 휴식 구간이 필요합니다.",
+        }
+    if alliance >= 72 and tension <= 48:
+        return {
+            "title": "티키타카 동맹형",
+            "best": "친구 · 형제자매 같은 사이 · 말 잘 통하는 동료",
+            "stamp": "🪞",
+            "slogan": "설명 반만 해도 알아듣는 케미",
+            "roles": "친구, 형제자매 같은 사이, 취향 메이트, 말 잘 통하는 동료",
+            "desc": "닮은 결이 강해 설명을 많이 하지 않아도 통하는 편입니다. 농담, 취향, 루틴을 공유할수록 관계 온도가 올라갑니다.",
+            "caution": "너무 닮아서 서로의 단점도 같이 커질 수 있으니 새로운 관점을 일부러 섞는 편이 좋습니다.",
+        }
+    if alliance >= 66 and tension > 50:
+        return {
+            "title": "닮아서 부딪히는 동지형",
+            "best": "프로젝트 파트너 · 공동 창업자 · 선의의 경쟁자",
+            "stamp": "🧲",
+            "slogan": "같은 칼을 들고 같은 방향을 보지만 손잡이는 따로 잡아야 하는 케미",
+            "roles": "공동 창업자, 프로젝트 파트너, 직장 동료, 선의의 경쟁자",
+            "desc": "비슷해서 빠르게 뭉치지만 같은 지점에서 예민해질 수 있습니다. 권한과 역할을 명확히 나누면 강한 팀워크로 바뀝니다.",
+            "caution": "누가 최종 결정을 하는지, 어디까지가 각자의 영역인지 미리 정하는 것이 좋습니다.",
+        }
+    if sync >= 70 and buffer_val >= 55:
+        return {
+            "title": "리듬 메이트형",
+            "best": "직장 동료 · 협업 파트너 · 운동/취미 메이트",
+            "stamp": "🌊",
+            "slogan": "같은 박자로 움직일 때 편해지는 케미",
+            "roles": "직장 동료, 협업 파트너, 운동 메이트, 취미 메이트",
+            "desc": "속도와 타이밍이 잘 맞는 관계입니다. 대단한 약속보다 같이 반복하는 일, 루틴, 프로젝트에서 케미가 커집니다.",
+            "caution": "리듬이 틀어지는 시기에는 감정보다 일정과 생활 패턴 조정이 먼저입니다.",
+        }
+    if tension >= 68:
+        return {
+            "title": "스파크 훈련형",
+            "best": "멘토 · 조언자 · 까다로운 상사 · 성장형 연인",
+            "stamp": "",
+            "slogan": "편안한 소파보다는 성장 체육관 같은 케미",
+            "roles": "멘토, 조언자, 까다로운 상사, 성장형 연인, 훈련 파트너",
+            "desc": "편안하기만 한 관계는 아닙니다. 대신 서로의 약점을 건드려 성장시키는 힘이 있습니다. 존중의 규칙이 없으면 소모되고, 룰이 있으면 강력한 훈련장이 됩니다.",
+            "caution": "농담과 지적의 경계를 명확히 하지 않으면 자극이 상처로 바뀔 수 있습니다.",
+        }
+    if complement >= 60 and harmony >= clash:
+        return {
+            "title": "조력자 보완형",
+            "best": "조언자 · 조력자 · 부모자식처럼 챙겨주는 관계",
+            "stamp": "",
+            "slogan": "한쪽이 놓친 것을 다른 쪽이 조용히 챙겨주는 케미",
+            "roles": "조력자, 조언자, 부모자식처럼 챙겨주는 사이, 믿을 만한 선후배",
+            "desc": "한쪽이 부족한 부분을 다른 쪽이 자연스럽게 받쳐주는 그림입니다. 돌봄이 일방적 희생이 되지 않도록 고마움과 경계가 필요합니다.",
+            "caution": "챙김이 통제가 되지 않도록 상대의 자율성을 남겨두는 것이 좋습니다.",
+        }
+    return {
+        "title": "거리 조율형",
+        "best": "가벼운 친구 · 느슨한 동료 · 가끔 만날 때 좋은 사이",
+        "stamp": "🎛️",
+        "slogan": "붙으면 피곤하고, 간격을 두면 살아나는 케미",
+        "roles": "가벼운 친구, 느슨한 동료, 가끔 만날 때 좋은 사이, 취향 공유자",
+        "desc": "억지로 한 역할에 고정하기보다 적당한 거리와 기대치 조절이 중요합니다. 너무 자주 붙어 있기보다 각자의 리듬을 존중할 때 케미가 안정됩니다.",
+        "caution": "관계 이름을 빨리 정하기보다 편한 간격을 찾는 것이 먼저입니다.",
+    }
+
+
+def render_relationship_orientation_card(compatibility: Dict[str, object]) -> None:
+    orient = relationship_orientation_from_compatibility(compatibility)
+    st.markdown(
+        "<div class='signal-card' style='border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,#ecfdf5,#fff7fb);margin:.7rem 0 1rem;'>"
+        f"<div class='signal-title' style='font-size:1.05rem;'>{html.escape(orient['stamp'])} 케미 극대화 지향점 · {html.escape(orient['title'])}</div>"
+        f"<div class='signal-body'><b>{html.escape(orient['slogan'])}</b><br>"
+        f"<b>가장 빛나는 자리:</b> {html.escape(orient['best'])}<br>"
+        f"<b>추천 관계 포지션:</b> {html.escape(orient['roles'])}<br>"
+        f"{html.escape(orient['desc'])}</div>"
+        f"<div class='small-muted'>조율 팁: {html.escape(orient['caution'])}</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _year_label(value) -> str:
+    text = _clean_display_text(value)
+    if not text:
+        return "연도 미상"
+    return text if text.endswith("년") else f"{text}년"
+
+
+def _luck_intensity(value) -> int:
+    try:
+        return int(max(0, min(100, round(float(value or 0)))))
+    except Exception:
+        return 0
+
+
+def _luck_effects_for_chart(ganzhi: str, chart: Chart) -> Dict[str, object]:
+    """세운/대운 글자가 해당 원국과 만드는 합·충 효과를 간단히 계산한다."""
+    gz = str(ganzhi or "")
+    if len(gz) < 2:
+        return {"harmony": 0, "clash": 0, "notes": []}
+    branch = gz[1]
+    harmony = 0
+    clash = 0
+    notes = []
+    for pos_label, b in zip(["년지", "월지", "일지", "시지"], chart.branches):
+        for a, c, el, name in SIX_HARMONIES:
+            if (branch == a and b == c) or (branch == c and b == a):
+                harmony += 1
+                notes.append(f"{pos_label} {_branch_ko(b)}와 세운 {_branch_ko(branch)}가 {name}으로 묶여 {el} 기운 연결")
+        for a, c, name in CLASHES:
+            if (branch == a and b == c) or (branch == c and b == a):
+                clash += 1
+                notes.append(f"{pos_label} {_branch_ko(b)}와 세운 {_branch_ko(branch)}가 {name}으로 부딪혀 변화·자극")
+    return {"harmony": harmony, "clash": clash, "notes": notes}
+
+
+def _dynamic_chemistry_axes_for_year(
+    my_v: float,
+    fr_v: float,
+    my_gz: str,
+    fr_gz: str,
+    mine: Dict[str, object],
+    friend: Dict[str, object],
+    compatibility: Dict[str, object],
+) -> Dict[str, object]:
+    """기본 궁합축에 그 해의 세운 반응을 얹어 관계 변화축을 만든다."""
+    axes = compatibility.get("axes") or {}
+    complement = float(axes.get("상호 보완성", 50) or 50)
+    alliance = float(axes.get("동맹성", 50) or 50)
+    tension = float(axes.get("긴장도", 35) or 35)
+    sync = float(axes.get("흐름 동조성", 55) or 55)
+
+    try:
+        my_v = float(my_v or 0)
+        fr_v = float(fr_v or 0)
+    except Exception:
+        my_v = fr_v = 0.0
+
+    my_eff = _luck_effects_for_chart(my_gz, mine["chart"])
+    fr_eff = _luck_effects_for_chart(fr_gz, friend["chart"])
+
+    gap = abs(my_v - fr_v)
+    avg = (my_v + fr_v) / 2
+
+    # 운 반응의 동조성: 두 사람 모두 부드럽거나, 둘 다 변화가 있으면 같이 움직인다.
+    if gap <= 6:
+        sync += 8
+    elif gap >= 18:
+        sync -= 10
+        tension += 4
+
+    if my_eff["harmony"] and fr_eff["harmony"]:
+        alliance += 8
+        sync += 5
+    elif my_eff["harmony"] or fr_eff["harmony"]:
+        complement += 4
+
+    if my_eff["clash"] and fr_eff["clash"]:
+        tension += 9
+        sync += 2  # 둘 다 흔들리면 고생은 해도 사건의 박자는 같이 탄다.
+    elif my_eff["clash"] or fr_eff["clash"]:
+        tension += 7
+        complement += 2
+
+    if avg >= 70 and gap <= 10:
+        alliance += 4
+        sync += 4
+    elif avg <= 45 and gap <= 10:
+        sync += 3
+    elif gap > 15:
+        tension += 5
+
+    complement = max(0, min(100, complement))
+    alliance = max(0, min(100, alliance))
+    tension = max(0, min(100, tension))
+    sync = max(0, min(100, sync))
+    buffer_val = max(0, min(100, 100 - tension))
+
+    dynamic_axes = {
+        "보완성": complement,
+        "동맹성": alliance,
+        "리듬": sync,
+        "완충력": buffer_val,
+        "긴장도": tension,
+    }
+
+    strongest = max(
+        [("보완성", complement), ("동맹성", alliance), ("리듬", sync), ("완충력", buffer_val)],
+        key=lambda x: x[1],
+    )[0]
+
+    if tension >= 65 and buffer_val <= 45:
+        title = "스파크 관리가 필요한 해"
+        desc = "합보다 충·변화 신호가 더 크게 작동할 수 있습니다. 이 해에는 관계 결론보다 말투, 일정, 돈, 역할 기대치를 구체적으로 맞추는 편이 좋습니다."
+    elif strongest == "보완성":
+        title = "퍼즐형 보완이 살아나는 해"
+        desc = "두 사람의 기본 궁합에서 보완성이 중심이 됩니다. 서로 다른 점이 불편함보다 쓸모로 느껴질 수 있습니다."
+    elif strongest == "동맹성":
+        title = "동맹감이 강해지는 해"
+        desc = "같은 방향을 보거나 비슷한 선택을 하기 쉽습니다. 함께 정한 규칙과 목표가 있으면 관계가 안정됩니다."
+    elif strongest == "리듬":
+        title = "리듬이 맞는 해"
+        desc = "운의 체감 박자가 크게 벌어지지 않아 약속, 일상, 협업 타이밍을 맞추기 좋습니다."
+    else:
+        title = "조율형으로 안정시키는 해"
+        desc = "특정 축이 압도적으로 좋다기보다 적당한 거리, 역할 분담, 기대치 조율이 관계를 편하게 만듭니다."
+
+    notes = []
+    notes.extend(my_eff.get("notes", [])[:2])
+    notes.extend(fr_eff.get("notes", [])[:2])
+    if not notes:
+        notes.append("이 해의 세운 글자는 두 원국과 강한 합·충을 많이 만들지는 않습니다. 기본 궁합축이 더 중요합니다.")
+
+    return {"title": title, "desc": desc, "axes": dynamic_axes, "notes": notes, "gap": gap, "avg": avg}
+
+
+def _mini_axis_polygon(axis_values: Dict[str, float]) -> str:
+    import math as _math
+    labels = ["보완성", "동맹성", "리듬", "완충력"]
+    vals = [float(axis_values.get(k, 0) or 0) for k in labels]
+    cx, cy, max_r = 80, 80, 54
+    angles = [(-90 + i * 90) * _math.pi / 180 for i in range(4)]
+    grid = []
+    for ratio in [0.5, 1.0]:
+        pts = [f"{cx + _math.cos(a) * max_r * ratio:.1f},{cy + _math.sin(a) * max_r * ratio:.1f}" for a in angles]
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(214,66,115,.18)' stroke-width='1'/>")
+    pts = []
+    for a, v in zip(angles, vals):
+        r = max_r * max(0, min(100, v)) / 100
+        pts.append(f"{cx + _math.cos(a) * r:.1f},{cy + _math.sin(a) * r:.1f}")
+    label_nodes = []
+    for a, lab in zip(angles, labels):
+        lx = cx + _math.cos(a) * (max_r + 18)
+        ly = cy + _math.sin(a) * (max_r + 14)
+        anchor = "middle"
+        if lx < cx - 5:
+            anchor = "end"
+        elif lx > cx + 5:
+            anchor = "start"
+        label_nodes.append(f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='9' font-weight='800' fill='#6f4f5c'>{html.escape(lab)}</text>")
+    return "<svg viewBox='0 0 160 160' width='160' height='160'>" + "".join(grid) + f"<polygon points='{' '.join(pts)}' fill='rgba(214,66,115,.22)' stroke='#d64273' stroke-width='2'/>" + "".join(label_nodes) + "</svg>"
+
+
+def render_luck_chemistry_panel(mine: Dict[str, object], friend: Dict[str, object], compatibility: Dict[str, object]) -> None:
+    """대운·세운이 두 사람의 케미축을 어떻게 바꾸는지 표시한다."""
+    st.markdown("#### 〽️ 대운·세운에 따른 케미 변화")
+    my_luck = mine.get("luck_flow") or {}
+    fr_luck = friend.get("luck_flow") or {}
+    if not my_luck or not fr_luck:
+        st.info("두 사람 모두 생년월일시 자동 산출 정보가 있을 때 대운·세운에 따른 케미 변화가 더 자세히 표시됩니다.")
+        return
+
+    my_name = _clean_display_text(mine.get("name", "나")) or "나"
+    fr_name = _clean_display_text(friend.get("name", "상대")) or "상대"
+    my_d = my_luck.get("current_daewun") or {}
+    fr_d = fr_luck.get("current_daewun") or {}
+    base_chem = chemistry_type_from_compatibility(compatibility)
+
+    # 현재 10년 대운도 합·충 반응을 본다.
+    my_d_eff = _luck_effects_for_chart(str(my_d.get("ganzhi", "")), mine["chart"])
+    fr_d_eff = _luck_effects_for_chart(str(fr_d.get("ganzhi", "")), friend["chart"])
+    d_notes = []
+    d_notes.extend(my_d_eff.get("notes", [])[:2])
+    d_notes.extend(fr_d_eff.get("notes", [])[:2])
+    if not d_notes:
+        d_notes.append("현재 대운은 두 원국에 강한 합·충을 많이 만들지 않아 기본 궁합축이 더 크게 작동합니다.")
+
+    st.markdown(
+        f"<div class='signal-card'><div class='signal-title'>현재 10년 케미 요약 · {html.escape(base_chem.get('title', '조율형 케미'))}</div>"
+        f"<div class='signal-body'>{html.escape(my_name)}: {html.escape(str(my_d.get('start_age', '-')))}세부터 10년 · {html.escape(str(my_d.get('ganzhi', '-')))}"
+        f"<br>{html.escape(fr_name)}: {html.escape(str(fr_d.get('start_age', '-')))}세부터 10년 · {html.escape(str(fr_d.get('ganzhi', '-')))}"
+        f"<br>{html.escape(' / '.join(d_notes[:3]))}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    rows = sewun_comparison_rows(my_luck, fr_luck)
+    if not rows:
+        st.info("향후 세운 케미를 만들 수 있는 세운 정보가 부족합니다.")
+        return
+
+    st.caption("해마다 들어오는 세운 글자가 두 원국에 합·충을 얼마나 만들고, 기본 궁합축을 어떻게 흔드는지 함께 봅니다.")
+
+    cards = []
+    for r in rows[:5]:
+        try:
+            my_v = float(r.get("내 점수", 0) or 0)
+            fr_v = float(r.get("상대 점수", 0) or 0)
+        except Exception:
+            my_v = fr_v = 0.0
+        dynamic = _dynamic_chemistry_axes_for_year(
+            my_v,
+            fr_v,
+            str(r.get("내 세운", "")),
+            str(r.get("상대 세운", "")),
+            mine,
+            friend,
+            compatibility,
+        )
+        mini_svg = _mini_axis_polygon(dynamic["axes"])
+        axis_summary = " · ".join(
+            f"{k} {float(v):.0f}" for k, v in dynamic["axes"].items() if k in {"보완성", "동맹성", "리듬", "완충력"}
+        )
+        notes_html = "".join(f"<li>{html.escape(str(n))}</li>" for n in dynamic.get("notes", [])[:4])
+        cards.append(
+            f"<div class='signal-card'><div class='signal-title'>{html.escape(_year_label(r.get('연도', '-')))} · {html.escape(dynamic['title'])}</div>"
+            f"<div class='signal-body'><div style='display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;'>{mini_svg}"
+            f"<div style='min-width:220px;flex:1;'><b>{html.escape(str(r.get('내 세운', '-')))} / {html.escape(str(r.get('상대 세운', '-')))}</b><br>"
+            f"{html.escape(dynamic['desc'])}<br><span class='small-muted'>{html.escape(axis_summary)}</span>"
+            f"<ul style='margin:.45rem 0 0 1.1rem;padding:0;'>{notes_html}</ul></div></div></div></div>"
+        )
+
+    st.markdown("".join(cards), unsafe_allow_html=True)
+
+
+def chemistry_share_keywords(compatibility: Dict[str, object]) -> List[str]:
+    axes = compatibility.get("axes") or {}
+    complement = float(axes.get("상호 보완성", 0) or 0)
+    alliance = float(axes.get("동맹성", 0) or 0)
+    sync = float(axes.get("흐름 동조성", 0) or 0)
+    tension = float(axes.get("긴장도", 0) or 0)
+
+    candidates = [
+        ("보완력", complement),
+        ("동맹감", alliance),
+        ("리듬감", sync),
+        ("자극감", tension),
+    ]
+    top = [name for name, _score in sorted(candidates, key=lambda x: x[1], reverse=True)[:2]]
+
+    if tension >= 60 and "자극감" not in top:
+        top.append("자극감")
+    if complement >= 60 and "보완력" not in top:
+        top.append("보완력")
+    if alliance >= 60 and "동맹감" not in top:
+        top.append("동맹감")
+    if sync >= 60 and "리듬감" not in top:
+        top.append("리듬감")
+
+    # 중복 제거 후 3개로 압축
+    dedup = []
+    for item in top:
+        if item not in dedup:
+            dedup.append(item)
+    return dedup[:3] if dedup else ["조율감", "관계감", "균형감"]
+
+
+def chemistry_share_overload(compatibility: Dict[str, object]) -> str:
+    axes = compatibility.get("axes") or {}
+    complement = float(axes.get("상호 보완성", 0) or 0)
+    alliance = float(axes.get("동맹성", 0) or 0)
+    sync = float(axes.get("흐름 동조성", 0) or 0)
+    tension = float(axes.get("긴장도", 0) or 0)
+    clash = int(compatibility.get("clash_count", 0) or 0)
+
+    if tension >= 68 or clash >= 2:
+        return "자극이 커질수록 말의 세기와 속도 조절이 필요함"
+    if complement >= 70:
+        return "보완이 한쪽의 돌봄이나 기대 과잉으로 굳지 않게 조심"
+    if alliance >= 70:
+        return "너무 닮은 지점에서 같은 단점이 같이 커질 수 있음"
+    if sync >= 70:
+        return "리듬이 틀어지는 시기에는 감정보다 일정 조율이 먼저"
+    return "관계 이름을 빨리 정하기보다 편한 간격을 찾는 것이 좋음"
+
+
+def chemistry_share_one_liner(compatibility: Dict[str, object]) -> str:
+    orient = relationship_orientation_from_compatibility(compatibility)
+    title = str(orient.get("title", "") or "")
+    slogan = str(orient.get("slogan", "") or "")
+    if slogan:
+        return slogan
+    if "생활" in title:
+        return "오래 굴릴수록 진가가 나는 케미"
+    if "성장" in title or "스파크" in title:
+        return "편하지만은 않지만 같이 있으면 커지는 케미"
+    if "티키타카" in title:
+        return "설명 반만 해도 알아듣는 케미"
+    if "리듬" in title:
+        return "같은 박자로 움직일 때 편해지는 케미"
+    return "간격을 맞출수록 안정되는 케미"
+
+
+
+
+def make_chemistry_share_card_png_bytes(
+    pair_label: str,
+    chem_title: str,
+    stamp: str,
+    score: int,
+    best: str,
+    keywords: str,
+    overload: str,
+    one_liner: str,
+) -> bytes | None:
+    """1:1 케미 공유용 PNG를 생성한다."""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+
+    W, H = 1080, 900
+    img = Image.new("RGB", (W, H), "#fff8fb")
+    draw = ImageDraw.Draw(img)
+
+    # background card
+    draw.rounded_rectangle((30, 30, W-30, H-30), radius=44, fill="#fffdfb", outline="#f2d7e0", width=3)
+    draw.rounded_rectangle((62, 62, W-62, H-62), radius=34, fill="#ffffff", outline="#f8e5ec", width=2)
+
+    f_logo = _share_font(28, True)
+    f_title = _share_font(54, True)
+    f_score_label = _share_font(24, True)
+    f_score = _share_font(58, True)
+    f_label = _share_font(24, True)
+    f_body = _share_font(28, True)
+    f_body_small = _share_font(24, True)
+    f_note = _share_font(20, False)
+
+    def measure(text_value: str, font_obj):
+        try:
+            bbox = draw.textbbox((0, 0), str(text_value), font=font_obj)
+            return bbox[2] - bbox[0], bbox[3] - bbox[1]
+        except Exception:
+            return int(draw.textlength(str(text_value), font=font_obj)), 24
+
+    x = 92
+    y = 92
+
+    # top header
+    logo_text = "사주MRI 1:1 케미"
+    pair_text = str(pair_label or "나 × 상대")[:26]
+    draw.text((x, y), logo_text, fill="#d64273", font=f_logo)
+    pair_w, _ = measure(pair_text, f_label)
+    draw.text((W - 92 - pair_w, y + 2), pair_text, fill="#3f2a33", font=f_label)
+
+    # title row
+    y += 70
+    safe_stamp = _share_safe_icon(stamp or chem_title)
+    title_text = f"{safe_stamp} {chem_title}".strip()
+    for line in _wrap_for_image(draw, title_text, f_title, W - 184)[:2]:
+        draw.text((x, y), line, fill="#35252c", font=f_title)
+        y += 64
+
+    # score hero box
+    y += 6
+    draw.rounded_rectangle((92, y, W-92, y+120), radius=28, fill="#fff0f6", outline="#f2c7d6", width=2)
+    draw.text((122, y+18), "한눈 궁합점수", fill="#d64273", font=f_score_label)
+    draw.text((122, y+48), f"{int(score)}/100", fill="#d64273", font=f_score)
+    y += 146
+
+    def panel(x1, y1, x2, y2, label, body, fill="#fff9fc", body_font=None, max_lines=3):
+        bf = body_font or f_body_small
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill=fill, outline="#efd6df", width=2)
+        draw.text((x1+22, y1+18), label, fill="#d64273", font=f_label)
+        yy = y1 + 56
+        lines = _wrap_for_image(draw, body, bf, x2 - x1 - 44)[:max_lines]
+        gap = 34 if bf == f_body_small else 38
+        for ln in lines:
+            draw.text((x1+22, yy), ln, fill="#3f2a33", font=bf)
+            yy += gap
+
+    # 2-up panels
+    panel(92, y, 518, y+170, "가장 잘 맞는 자리", best, fill="#fffafc", body_font=f_body, max_lines=3)
+    panel(562, y, 988, y+170, "케미 키워드", keywords, fill="#fff8fb", body_font=f_body_small, max_lines=3)
+    y += 196
+
+    # overload full width
+    panel(92, y, 988, y+128, "과부하 신호", overload, fill="#fffafc", body_font=f_body_small, max_lines=2)
+    y += 154
+
+    # one-liner highlight
+    draw.rounded_rectangle((92, y, 988, y+136), radius=26, fill="#fff3f7", outline="#f2c7d6", width=2)
+    draw.text((118, y+18), "핵심 한 줄", fill="#d64273", font=f_label)
+    yy = y + 54
+    for ln in _wrap_for_image(draw, one_liner, f_body, 840)[:3]:
+        draw.text((118, yy), ln, fill="#35252c", font=f_body)
+        yy += 36
+    y += 164
+
+    draw.text((92, H-54), "※ 케미 카드는 두 사람의 맞물림 방식을 보는 요약입니다.", fill="#8a6875", font=f_note)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+def render_chemistry_share_card(
+    mine: Dict[str, object],
+    friend: Dict[str, object],
+    compatibility: Dict[str, object],
+    chem: Dict[str, str],
+) -> None:
+    """1:1 케미 공유 카드 렌더링.
+
+    v5.103: 공유 탭에서는 HTML 요약카드를 절대 렌더링하지 않고,
+    저장될 PNG 이미지 미리보기와 저장 버튼만 보여준다.
+    """
+    orient = relationship_orientation_from_compatibility(compatibility)
+    score = round(float(compatibility.get("score", 0) or 0))
+    keywords = " · ".join(chemistry_share_keywords(compatibility))
+    overload = chemistry_share_overload(compatibility)
+    one_liner = chemistry_share_one_liner(compatibility)
+
+    pair_label_plain = f"{mine.get('name', '참가자 1')} × {friend.get('name', '참가자 2')}"
+    png_bytes = make_chemistry_share_card_png_bytes(
+        pair_label_plain,
+        str(chem.get("title", "케미")),
+        str(chem.get("stamp", "")),
+        score,
+        str(orient.get("best", "-")),
+        keywords,
+        overload,
+        one_liner,
+    )
+
+    render_share_image_tools(
+        png_bytes,
+        "saju_mri_chemistry_share_card.png",
+        download_label="📥 케미 카드 이미지 저장",
+        copy_label="📋 터치해서 케미 카드 복사",
+        element_key="chemistry_share_card_v5103",
+    )
+
+
+
+
+def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object], battle_summary: Dict[str, object], compatibility: Dict[str, object]) -> None:
+    """1:1 케미 결과를 쉬운 첫 화면과 전문가 상세보기로 분리한다."""
+    my_result = mine["result"]
+    fr_result = friend["result"]
+    my_char = get_mbti_character(mine["chart"], my_result)
+    fr_char = get_mbti_character(friend["chart"], fr_result)
+    chem = chemistry_type_from_compatibility(compatibility)
+
+    safe_chem_title = html.escape(chem["title"], quote=True)
+    safe_chem_desc = html.escape(chem["desc"], quote=True)
+    safe_my_name = html.escape(str(mine.get("name", "참가자 1")), quote=True)
+    safe_fr_name = html.escape(str(friend.get("name", "참가자 2")), quote=True)
+    safe_my_title = html.escape(my_char["title"], quote=True)
+    safe_fr_title = html.escape(fr_char["title"], quote=True)
+    safe_summary = html.escape(str(compatibility.get("summary", "")), quote=True)
+    safe_chem_score = html.escape(str(round(float(compatibility.get("score", 0) or 0))), quote=True)
+
+    st.markdown(f"""
+    <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#fff7fb,#fffdf8);border:1px solid rgba(255,145,180,.30);border-radius:26px;box-shadow:0 14px 30px rgba(255,125,165,.12);margin:.5rem 0 1rem 0;">
+        <div style="font-size:2.4rem;line-height:1;">{chem['stamp']}</div>
+        <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#d64273;letter-spacing:-.05em;">{safe_chem_title}</div>
+        <div style="margin-top:.35rem;color:#4b2d3a;font-weight:950;font-size:1.15rem;">궁합점수 {safe_chem_score}/100</div>
+        <div style="margin-top:.55rem;color:#5b3f4b;font-weight:760;">{safe_chem_desc}</div>
+        <div style="margin-top:.45rem;color:#7a5665;font-size:.92rem;">{safe_summary}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    view = render_chemistry_page_buttons(default=" 케미 한눈에")
+
+    if view == " 케미 한눈에":
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"""
+            <div class="main-character-card">
+                <div class="main-character-label">{safe_my_name}</div>
+                <div class="main-character-name">{safe_my_title}</div>
+                
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"""
+            <div class="main-character-card">
+                <div class="main-character-label">{safe_fr_name}</div>
+                <div class="main-character-name">{safe_fr_title}</div>
+                
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("#### 관계 분위기")
+        render_relationship_orientation_card(compatibility)
+
+    elif view == "공유 카드":
+        render_chemistry_share_card(mine, friend, compatibility, chem)
+
+    else:
+        st.markdown("### 🔎 상세보기")
+        expert_view = st.radio(
+            "케미 상세 항목",
+            ["상세 케미", "합·충 관계", "대운·세운", "계산 참고 지표"],
+            index=0,
+            horizontal=True,
+            key="chem_expert_detail_view_radio_v590",
+        )
+
+        if expert_view == "상세 케미":
+            st.markdown("#### 🧬 두 사람의 오행 겹침")
+            render_two_person_element_radar(mine, friend)
+            st.markdown("####  케미 축")
+            render_compatibility_radar(compatibility)
+
+        elif expert_view == "합·충 관계":
+            harmony_count = int(compatibility.get("harmony_count", 0) or 0)
+            clash_count = int(compatibility.get("clash_count", 0) or 0)
+            day_relation = html.escape(str(compatibility.get("day_relation", "큰 일지 합충 없음")))
+            st.markdown(f"""
+            <div class="signal-card">
+                <div class="signal-title">두 명식 사이의 합·충 반영 요약</div>
+                <div class="signal-body">일지 관계: {day_relation}<br>합·결속 신호: {harmony_count}개 / 충·변화 신호: {clash_count}개<br>아래에서 어떤 기둥의 어떤 글자가 합·충을 만드는지 구체적으로 확인할 수 있습니다.</div>
+            </div>
+            """, unsafe_allow_html=True)
+            render_cross_chart_interaction_cards(compatibility)
+
+        elif expert_view == "대운·세운":
+            render_luck_chemistry_panel(mine, friend, compatibility)
+
+        elif expert_view == "계산 참고 지표":
+            st.caption("개별 원국 점수의 우열은 표시하지 않습니다. 아래는 궁합점수와 케미 유형을 만들기 위한 관계 축입니다.")
+            axes = compatibility.get("axes") or {}
+            rows = [
+                ("궁합점수", f"{round(float(compatibility.get('score', 0) or 0))}/100", "두 명식의 보완성, 동맹성, 흐름, 긴장 완충력을 종합한 관계 점수"),
+                ("상호 보완성", f"{float(axes.get('상호 보완성', 0) or 0):.0f}/100", "서로 부족한 오행과 조후를 채워주는 정도"),
+                ("동맹성", f"{float(axes.get('동맹성', 0) or 0):.0f}/100", "닮은 결, 합, 같은 방향성이 만드는 결속감"),
+                ("흐름 동조성", f"{float(axes.get('흐름 동조성', 0) or 0):.0f}/100", "생활 리듬과 기운 흐름이 함께 움직이는 정도"),
+                ("긴장도", f"{float(axes.get('긴장도', 0) or 0):.0f}/100", "충·극·자극 신호가 만드는 변화 압력. 높다고 나쁨은 아니며 관리 포인트입니다."),
+            ]
+            safe_dataframe(rows)
+            if safe_toggle("케미 분석 로직 보기", value=False, key="battle_logic_panel_refactor_v590"):
+                render_analysis_logic_panel("battle", "battle_logic_panel_inner_v590", show_toggle=False)
+
+
+def render_analysis_logic_panel(mode: str, key: str, show_toggle: bool = True) -> None:
+    """메인 화면 하단에 작게 여는 결과분석 로직 설명.
+
+    show_toggle=False이면 외부 토글에서 이미 열림 상태를 결정한 경우로 보고,
+    내부 토글을 다시 만들지 않는다. 단일 결과 화면의 중복 토글 방지용이다.
+    """
+    labels = {
+        "single": "점수·결과분석 로직 보기",
+        "battle": "케미 분석 로직 보기",
+        "multi": "다자간 분석 로직 보기",
+        "meal": "밥값 뽑기 로직 보기",
+        "workload": "일감 뽑기 로직 보기",
+        "leader": "총대 뽑기 로직 보기",
+    }
+    if show_toggle and not safe_toggle(labels.get(mode, "점수·결과분석 로직 보기"), value=False, key=key):
+        return
+
+    if mode == "single":
+        title = "단일 분석 로직"
+        rows = [
+            ("원국 참고점", "대표 점수는 기초체력(기운의 크기) + 흐름과 연결(기운의 순환) + 현실작동력(기운의 발현)에 신살·공망 체감 보정을 더한 값입니다. 전체 인상 보정은 해설용 참고 신호로만 봅니다."),
+            ("기운의 크기", "오행 세력, 월령, 통근, 일간 강약, 격국 골격을 반영합니다."),
+            ("기운의 순환", "조후, 십성 순환, 식상생재, 재생관, 관인상생 등 기운이 흘러가는 구조를 봅니다."),
+            ("기운의 발현", "합충형파해, 구조 안정성, 재성·관성 구조, 해석 정합성, 신살·공망 체감 신호를 봅니다."),
+            ("원국 캐릭터", "온도감, 일간 상징, 주요 무기 세 축을 조합해 첫 화면의 캐릭터명으로 보여줍니다."),
+        ]
+    elif mode == "battle":
+        title = "1:1 케미 분석 로직"
+        rows = [
+            ("1:1 케미", "두 참가자의 오행 겹침, 보완성, 동맹성, 흐름, 긴장을 계산해 케미 유형으로 표시합니다."),
+            ("개별 점수 비표시", "1:1 케미 화면에서는 개인별 원국 점수의 우열을 표시하지 않고, 궁합점수와 관계 축만 표시합니다."),
+            ("케미", "일간·일지 관계, 육합·충, 보완 오행, 행동 축, 전체 인상 보정을 조합해 케미 점수를 계산합니다."),
+            ("운의 파도", "생년월일시 자동 산출 참가자는 대운·세운 흐름을 함께 보여주고, 원국 직접 입력자는 대운 미반영 상태로 표시합니다."),
+            ("주의", "사람의 우열이나 실제 관계 결론이 아니라 원국 구조를 놀이형으로 비교한 참고 지표입니다."),
+        ]
+    elif mode == "multi":
+        title = "고급 다자간 분석 로직"
+        rows = [
+            ("순위", "참가자별 원국 참고점와 등급을 기준으로 1차 순위를 계산합니다."),
+            ("3대 능력치", "각 참가자의 기운의 크기·순환·발현을 나란히 비교합니다."),
+            ("다자간 국면", "모든 참가자 쌍의 케미 점수를 계산한 뒤, 동맹·협력·조율·긴장 선으로 원형 도식화합니다."),
+            ("역할 추천", "케미 평균, 긴장축 수, 가장 가까운 축, 가장 조심할 축, 강한 능력치를 바탕으로 중심축·연결 허브·긴장 돌파형 등 역할을 붙입니다."),
+            ("주의", "다자간 국면은 편 가르기가 아니라, 조합 안에서 각자의 자연스러운 포지션을 설명하는 오락용 구조입니다."),
+        ]
+    elif mode in ["meal", "workload", "leader"]:
+        cfg = role_config(mode)
+        title = f"{cfg.get('title', '오늘의 뽑기')} 분석 로직"
+        if mode == "meal":
+            rows = [
+                ("밥값 회피력", "기본 50점에서 시작해 원국 재성 구조, 보완·부담 방향, 대운, 월운, 일운, 원국 참고점 보조값을 더하거나 뺍니다."),
+                ("재성 구조", "일간이 극하는 오행을 재성으로 보고, 재성이 너무 부족하거나 과다하면 지갑 방어력이 낮아지도록 반영합니다."),
+                ("운 반영", "대운은 배경값, 월운은 중간값, 일운은 오늘의 흐름으로 보아 일운 가중치를 가장 크게 둡니다."),
+                ("뽑기 칸", "회피력이 낮을수록 16칸 뽑기에서 더 많은 칸을 배정받습니다. 각 참가자는 최소 1칸을 보장받습니다."),
+                ("최종 후보", "최저자가 자동 확정되는 방식이 아니라, 배정된 칸 중 하나를 실제 랜덤으로 선택합니다. 그래서 반전이 가능합니다."),
+            ]
+        elif mode == "workload":
+            rows = [
+                ("일감흡수력", "식상력과 편관력을 중심으로 보고, 정관·인성·재성은 보조로 반영합니다."),
+                ("식상", "처리·산출·문서화·결과물을 만드는 손의 힘으로 봅니다."),
+                ("편관", "갑자기 들어오는 책임, 압박, 떠맡는 일을 보는 핵심 신호입니다."),
+                ("운 반영", "월운과 일운에서 관성·식상·인성·재성 신호가 켜지면 오늘 일감 신호를 보정합니다."),
+                ("뽑기 칸", "흡수력이 높을수록 16칸 뽑기에서 더 많은 칸을 배정받습니다."),
+            ]
+        else:
+            rows = [
+                ("총대부름력", "상관력과 비겁력을 중심으로 보고, 정관·편관·재성은 보조로 반영합니다."),
+                ("상관", "말하기·공지·질문·도전처럼 앞에서 표현하는 힘으로 봅니다."),
+                ("비겁", "사람들 사이에서 나서거나 대표로 움직이는 힘으로 봅니다."),
+                ("운 반영", "월운과 일운에서 관성·식상·비겁·재성 신호가 켜지면 오늘 총대 신호를 보정합니다."),
+                ("뽑기 칸", "부름력이 높을수록 16칸 뽑기에서 더 많은 칸을 배정받습니다."),
+            ]
+    else:
+        title = "결과분석 로직"
+        rows = [("기본", "각 화면의 점수와 판정 요소를 설명합니다.")]
+
+    st.markdown(f"##### 🧪 {title}")
+    st.caption("기본 화면 뒤에 숨긴 계산 구조 설명입니다. 필요한 경우에만 확인하세요.")
+    safe_dataframe([{"요소": k, "반영 방식": v} for k, v in rows], use_container_width=True, hide_index=True)
+    st.caption("이 로직은 오락·참고용 점수 모델입니다. 법률, 의료, 투자, 채용, 혼인 등 중대한 판단의 근거로 사용하지 마세요.")
+
+
+
+def _detail_radio_open(label: str, key: str, help: str | None = None) -> bool:
+    """native expander 대신 상세 내용을 눌렀을 때만 렌더링하기 위한 안전 토글."""
+    try:
+        choice = _ORIGINAL_ST_RADIO(
+            label,
+            ["감추기", "보기"],
+            index=0,
+            horizontal=True,
+            key=key,
+            help=help,
+        )
+        return choice == "보기"
+    except Exception:
+        return False
+
+
+def render_compact_first_glance(payload: Dict[str, object], char: Dict[str, str]) -> None:
+    """v5.84: 첫 화면 정보량을 줄이기 위한 3줄 핵심 요약."""
+    result = payload.get("result", {}) or {}
+    useful = result.get("useful", {}) or {}
+    op = energy_operation_profile(result)
+    dominant, weak = _dominant_and_weak_elements(result)
+    display_dirs = polished_useful_directions(useful, result)
+    primary = format_element_list(display_dirs.get("primary", []), "조후·순환 우선")
+    burden = format_element_list(display_dirs.get("burden", []), "뚜렷하지 않음")
+    strength_label = str(result.get("strength_label", "중화"))
+    operation_name = energy_operation_display_name(str(op.get("name", char.get("operation", "-"))))
+    operation_hint = str(op.get("hint", char.get("operation_hint", "")) or "")
+    shinsal = result.get("shinsal", {}) or {}
+    shinsal_adj = float(shinsal.get("adjustment", 0) or 0)
+    if abs(shinsal_adj) >= 1.5:
+        shinsal_line = f"신살·공망 체감 {shinsal_adj:+.1f}점"
+    else:
+        shinsal_line = "신살·공망은 보조 신호로만 참고"
+
+    cards = [
+        ("핵심 인상", f"{dominant[0]} 중심 · {strength_label}", f"강한 기운은 {dominant[0]} {dominant[1]:.1f}%, 약한 기운은 {weak[0]} {weak[1]:.1f}%입니다."),
+        ("힘 쓰는 방식", operation_name, operation_hint or "힘이 잘 살아나는 환경과 조율 포인트를 함께 봅니다."),
+        ("오늘 볼 포인트", f"보완 {primary}", f"부담 {burden} · {shinsal_line}"),
+    ]
+    html_cards = "<div class='compact-glance-grid'>"
+    for label, title, body in cards:
+        html_cards += (
+            "<div class='compact-glance-card'>"
+            f"<div class='compact-glance-label'>{html.escape(str(label))}</div>"
+            f"<div class='compact-glance-title'>{html.escape(str(title))}</div>"
+            f"<div class='compact-glance-body'>{html.escape(str(body))}</div>"
+            "</div>"
+        )
+    html_cards += "</div>"
+    st.markdown(html_cards, unsafe_allow_html=True)
+
+
+
+
+def _axis_state_label(pct: float) -> str:
+    pct = float(pct or 0.0)
+    if pct >= 80:
+        return "강함"
+    if pct >= 68:
+        return "보통+"
+    if pct >= 52:
+        return "보통"
+    if pct >= 38:
+        return "약함+"
+    return "약함"
+
+
+def render_simple_energy_three_scores(result: Dict[str, object], compact: bool = False) -> None:
+    """첫 화면용 기운 3대 축 상태형 막대 그래프."""
+    rows = category_totals(result.get("categorized_scores", {}))
+    if not rows:
+        return
+
+    order = ["기초체력", "흐름과 연결", "현실작동력"]
+    simple_desc = {
+        "기초체력": "기본 재료와 버티는 힘",
+        "흐름과 연결": "생각·관계·일이 이어지는 힘",
+        "현실작동력": "실제 행동과 결과로 드러나는 힘",
+    }
+    score_map: Dict[str, Dict[str, object]] = {}
+    for row in rows:
+        info = axis_info_from_category(row.get("카테고리", ""))
+        primary = info.get("primary", "-")
+        score = float(row.get("점수", row.get("반영치", 0)) or 0)
+        max_score = float(row.get("배점", row.get("기준", 0)) or 0)
+        pct = 0.0 if max_score <= 0 else max(0.0, min(100.0, score / max_score * 100.0))
+        score_map[primary] = {"pct": pct, "icon": info.get("icon", "•")}
+
+    if not compact:
+        st.markdown("#### 기운 3대 축")
+
+    for name in order:
+        info = score_map.get(name, {"pct": 0.0, "icon": "•"})
+        pct = float(info.get("pct", 0.0) or 0.0)
+        icon = str(info.get("icon", "•") or "•")
+        state = _axis_state_label(pct)
+        css_cls = "axis-bar-compact axis-bar-inline" if compact else "axis-bar-compact"
+        desc = html.escape(simple_desc.get(name, "핵심 축"))
+        st.markdown(
+            f"""
+<div class="{css_cls}">
+  <div class="axis-bar-top">
+    <div class="axis-bar-name">{html.escape(icon)} {html.escape(name)}</div>
+    <div class="axis-bar-state">{html.escape(state)}</div>
+  </div>
+  <div class="axis-bar-track"><div class="axis-bar-fill" style="width:{pct:.1f}%"></div></div>
+  <div class="axis-bar-desc">{desc}</div>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+def render_axis_inline_summary(payload: Dict[str, object], result: Dict[str, object]) -> None:
+    """삼각 그래프와 상태형 막대를 한 줄로 압축해 보여준다."""
+    snap = _single_front_snapshot(payload)
+    score_map = snap.get("scores", {}) or {}
+    bias = _axis_bias_summary(score_map)
+    st.markdown("#### 기운 3대 축")
+
+    left, right = st.columns([1.0, 1.7], gap="medium")
+
+    with left:
+        try:
+            box = st.container(border=True)
+        except TypeError:
+            box = st.container()
+        with box:
+            st.markdown(f"**{bias['headline']}**")
+            st.caption(bias["subline"])
+            render_triangle_axis_chart(score_map)
+
+    with right:
+        try:
+            box = st.container(border=True)
+        except TypeError:
+            box = st.container()
+        with box:
+            render_simple_energy_three_scores(result, compact=True)
+
+def _weekday_ko(d: date) -> str:
+    return "월화수목금토일"[d.weekday()]
+
+
+def _daily_calendar_signal_text(ten_god: str, overview: str) -> str:
+    """일운캘린더에서 겁재·합충형파해 신호를 아이콘 없이 짧은 말로 요약한다."""
+    ten_god = str(ten_god or "")
+    overview = str(overview or "")
+
+    parts: List[str] = []
+    if "겁재" in ten_god:
+        parts.append("겁재")
+
+    no_signal_words = ["특이 신호 약함", "산출 제한", "없음"]
+    has_interaction = bool(overview.strip()) and not any(w in overview for w in no_signal_words)
+    if has_interaction:
+        # 정확한 관계명은 overview에 이미 들어 있으므로 그대로 짧게 싣는다.
+        compact = overview.replace(" · ", " / ").strip()
+        if compact and compact not in parts:
+            parts.append(compact)
+
+    if not parts:
+        return "특이 신호 약함"
+    return " · ".join(parts)
+
+
+def _daily_luck_calendar_rows(chart: Chart, result: Dict[str, object], start_date: date, days: int) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    for offset in range(days):
+        d = start_date + timedelta(days=offset)
+        try:
+            pillars = get_month_day_pillars_for_date(d)
+            month_gz = str(pillars.get("month", "") or "-")[:2]
+            day_gz = str(pillars.get("day", "") or "-")[:2]
+        except Exception:
+            month_gz, day_gz = "-", "-"
+
+        if len(day_gz) >= 2 and day_gz[0] in STEMS and day_gz[1] in BRANCHES:
+            identity = _today_luck_identity(chart, day_gz)
+            usage = _daily_ten_god_usage(chart, day_gz)
+            interactions = daily_branch_interactions(chart, day_gz[1])
+            overview = daily_interaction_overview(interactions)
+            ten_god = str(identity.get("day_tengod_summary", "")).replace("내 일간 기준 ", "")
+            use_point = usage.get("short") or usage.get("action") or "리듬 확인"
+        else:
+            ten_god = "산출 제한"
+            overview = "산출 제한"
+            use_point = "산출 제한"
+
+        signal_label = _daily_calendar_signal_text(ten_god, overview)
+        actual_today = korea_today()
+        if d == actual_today - timedelta(days=1):
+            label = "어제"
+        elif d == actual_today:
+            label = "오늘"
+        elif d == actual_today + timedelta(days=1):
+            label = "내일"
+        elif d == actual_today + timedelta(days=2):
+            label = "모레"
+        else:
+            label = ""
+        rows.append({
+            "구분": label,
+            "날짜": f"{d.strftime('%m-%d')}({_weekday_ko(d)})",
+            "월운": month_gz,
+            "일운": day_gz,
+            "십성": ten_god,
+            "신호": signal_label,
+            "개요": overview,
+            "사용포인트": str(use_point),
+        })
+    return rows
+
+
+
+def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], target_date: date) -> None:
+    """달력에서 선택한 날짜의 일운을 간단 카드로 보여준다."""
+    compass = today_compass_payload(chart, result, target_date=target_date)
+    interaction_overview = str(compass.get("interaction_overview") or "합·충·형·파·해 특이 신호 약함")
+    ten_god_line = str(compass.get("day_tengod_summary") or "십성 정보 제한")
+    prescription = str(compass.get("ten_god_action") or compass.get("prescription") or "-")
+    signal_text = _daily_calendar_signal_text(ten_god_line, interaction_overview)
+
+    try:
+        card = st.container(border=True)
+    except TypeError:
+        card = st.container()
+    with card:
+        st.markdown("#### 선택한 날짜의 일운")
+        st.markdown(f"**{target_date.strftime('%Y-%m-%d')} · {compass.get('day_luck_title', compass.get('day_gz', '-'))}**")
+        st.caption(f"{ten_god_line}")
+        st.write(f"신호: {signal_text}")
+        st.write(f"큰 배경: {compass.get('month_background', '-')}")
+        st.write(f"개요: {interaction_overview}")
+        st.write(f"한 줄 처방: {prescription}")
+
+
+def render_daily_luck_calendar(payload: Dict[str, object]) -> None:
+    """일운 캘린더: 어제·오늘·내일, 30일 보기, 날짜 선택."""
+    chart = payload.get("chart")
+    result = payload.get("result", {}) or {}
+    if chart is None:
+        return
+
+    st.markdown("### 📅 일운 캘린더")
+    st.caption("일운·월운, 십성, 원국과의 합·충·형·파·해 신호를 날짜별로 봅니다.")
+
+    today = korea_today()
+
+    st.markdown("#### 어제 · 오늘 · 내일")
+    focus_rows = _daily_luck_calendar_rows(chart, result, today - timedelta(days=1), 3)
+    focus_cols = st.columns(3)
+    for col, row in zip(focus_cols, focus_rows):
+        with col:
+            try:
+                card = st.container(border=True)
+            except TypeError:
+                card = st.container()
+            with card:
+                label = row.get("구분") or row.get("날짜", "")
+                st.markdown(f"**{label} · {row['날짜']}**")
+                st.markdown(f"월운 {row['월운']} · 일운 {row['일운']}")
+                st.caption(f"십성: {row['십성']}")
+                st.caption(f"신호: {row['신호']}")
+
+    st.markdown("#### 날짜 선택")
+    picked = st.date_input(
+        "달력에서 날짜를 선택하세요",
+        value=today,
+        key="daily_luck_calendar_date_picker_v5136",
+        help="다음 달이나 내년 날짜도 선택해서 해당 날짜의 일운을 볼 수 있습니다.",
+    )
+    if hasattr(picked, "date"):
+        picked_date = picked.date()
+    else:
+        picked_date = picked
+    render_selected_daily_luck_card(chart, result, picked_date)
+
+    st.markdown("#### 30일 보기")
+    rows = _daily_luck_calendar_rows(chart, result, today, 30)
+    df = pd.DataFrame(rows)
+    preferred_cols = ["날짜", "월운", "일운", "십성", "신호", "개요", "사용포인트"]
+    df = df[[c for c in preferred_cols if c in df.columns]]
+    safe_dataframe(df, use_container_width=True, hide_index=True)
+    st.caption("일운 캘린더는 하루의 분위기를 미리 보는 참고표입니다. 실제 판단은 일정, 사람, 건강, 업무 상황을 우선하세요.")
+
+
+def render_single_page_buttons(default: str = "🏠 한눈에 보기") -> str:
+    """결과 화면을 일반인용 첫 화면과 전문가 상세보기로 분리한다."""
+    pages = [
+        ("🏠 한눈에", "🏠 한눈에 보기"),
+        ("🌤 오늘", "🌤 오늘의 기운"),
+        ("📸 공유", "공유 카드"),
+        ("📅 일운 캘린더", "일운캘린더"),
+        ("🔎 상세", "전문가 상세보기"),
+    ]
+    valid_values = {full for _short, full in pages}
+    state_key = "single_mri_page_view"
+    if state_key not in st.session_state or st.session_state.get(state_key) not in valid_values:
+        st.session_state[state_key] = default
+
+    for row_start in range(0, len(pages), 5):
+        cols = st.columns(len(pages[row_start:row_start + 5]))
+        for col, (short, full) in zip(cols, pages[row_start:row_start + 5]):
+            active = st.session_state.get(state_key, default) == full
+            label = ("● " if active else "○ ") + short
+            if col.button(label, key=f"single_page_btn_{row_start}_{short}", use_container_width=True):
+                st.session_state[state_key] = full
+    return str(st.session_state.get(state_key, default))
+
+
+
+
+
+def render_chemistry_page_buttons(default: str = " 케미 한눈에") -> str:
+    """1:1 케미 결과 메뉴: 한눈에 / 공유 / 상세만 표시한다."""
+    pages = [
+        (" 한눈에", " 케미 한눈에"),
+        ("📸 공유", "공유 카드"),
+        ("🔎 상세", "전문가 상세보기"),
+    ]
+    valid_values = {full for _short, full in pages}
+    state_key = "chemistry_page_view_v5104"
+    if state_key not in st.session_state or st.session_state.get(state_key) not in valid_values:
+        st.session_state[state_key] = default
+
+    for row_start in range(0, len(pages), 3):
+        cols = st.columns(len(pages[row_start:row_start + 3]))
+        for col, (short, full) in zip(cols, pages[row_start:row_start + 3]):
+            active = st.session_state.get(state_key, default) == full
+            label = ("● " if active else "○ ") + short
+            if col.button(label, key=f"chem_page_btn_v5104_{row_start}_{short}", use_container_width=True):
+                st.session_state[state_key] = full
+    return str(st.session_state.get(state_key, default))
+
+
+
+def render_single_summary(payload: Dict[str, object]) -> None:
+    """내 사주MRI 결과를 일반인용 한눈에 보기와 전문가 상세보기로 분리한다."""
+    chart = payload["chart"]
+    result = payload["result"]
+    luck_flow = payload.get("luck_flow")
+    useful = result.get("useful", {})
+    shinsal = result.get("shinsal", {}) or {}
+    holistic = result.get("holistic", {}) or {}
+
+    st.markdown(
+        f"<span class='summary-chip'>원국: {html.escape(str(ganji_text(chart)), quote=True)}</span>"
+        f"<span class='summary-chip'>표시 버전: {APP_VERSION}</span>",
+        unsafe_allow_html=True,
+    )
+
+    if payload.get("unknown_time") or result.get("unknown_time"):
+        info = result.get("unknown_time", {})
+        st.warning(
+            f"삼주 간이 분석입니다. 총점 후보 범위는 {info.get('score_min', '-')}~{info.get('score_max', '-')}점입니다. "
+            "시주가 없으면 합충·운 흐름 해석은 제한됩니다."
+        )
+
+    char = get_mbti_character(chart, result)
+    view = render_single_page_buttons(default="🏠 한눈에 보기")
+
+    if view == "🏠 한눈에 보기":
+        render_mbti_character_hero(payload)
+        render_axis_inline_summary(payload, result)
+        render_compact_first_glance(payload, char)
+        if st.button("📸 이 첫 화면을 바로 공유 이미지로 저장", key="single_inline_share_btn_v591", use_container_width=True):
+            st.session_state["single_inline_share_open_v591"] = not st.session_state.get("single_inline_share_open_v591", False)
+        if st.session_state.get("single_inline_share_open_v591", False):
+            png_bytes = make_simple_first_share_png_bytes(payload, char)
+            render_share_image_tools(png_bytes, "saju_mri_simple_first_share.png", element_key="single_inline_first_share_v591")
+        if payload.get("birth_date") and payload.get("calendar_type"):
+            try:
+                saved_birth_date = datetime.strptime(str(payload.get("birth_date")), "%Y-%m-%d").date()
+                saved_birth_time = None
+                if payload.get("birth_time"):
+                    saved_birth_time = datetime.strptime(str(payload.get("birth_time")), "%H:%M").time()
+                render_my_saju_save_link_tool(
+                    str(payload.get("name", "나")),
+                    saved_birth_date,
+                    saved_birth_time,
+                    str(payload.get("chart").gender if payload.get("chart") is not None else "남자"),
+                    str(payload.get("calendar_type", "양력")),
+                    bool(payload.get("unknown_time", False)),
+                    bool(payload.get("use_yajashee", False)),
+                    key_prefix="single_result_my_saju_save_v5138",
+                )
+            except Exception:
+                pass
+        render_revisit_guide_card(APP_PUBLIC_URL)
+
+    elif view == "🌤 오늘의 기운":
+        render_today_quick_entry(payload)
+
+    elif view == "일운캘린더":
+        render_daily_luck_calendar(payload)
+
+    elif view == "공유 카드":
+        render_share_result_card(payload, char)
+
+    else:
+        st.markdown("### 🔎 상세보기")
+        expert_view = st.radio(
+            "상세 항목",
+            ["기운 정밀 분석", "대운·만세력", "상세 명리 분석", "계산 참고 지표"],
+            index=0,
+            horizontal=True,
+            key="single_expert_detail_view_radio_v590",
+        )
+
+        if expert_view == "기운 정밀 분석":
+            render_strength_operation_spotlight(payload)
+            render_character_axis_cards(payload, char)
+
+            left, right = st.columns([1.08, 0.92])
+            with left:
+                st.markdown("#### 🧱 오행 밸런스")
+                render_radar_chart(result)
+            with right:
+                render_climate_thermometer(result)
+
+            render_visual_analysis_core(payload)
+            if _detail_radio_open("🃏 신살·공망 보조 신호 보기", key="single_shinsal_compact_open_v590", help="신살·공망 카드를 확인합니다."):
+                render_shinsal_badge_cards(payload, prefix="single")
+
+        elif expert_view == "대운·만세력":
+            render_daewun_train(payload)
+            if luck_flow and luck_flow.get("sewun_rows"):
+                render_manse_sewun_cards(luck_flow)
+            else:
+                st.info("세운 참고표는 생년월일시 자동 산출 모드에서 표시됩니다.")
+            render_origin_identity_table(chart)
+            render_manse_daewun_cards(payload)
+
+        elif expert_view == "상세 명리 분석":
+            st.markdown("#### 1. 기초체력 / 흐름과 연결 / 현실작동력")
+            render_ability_triangle(result)
+            render_ability_axis_detail(result, "크기")
+            render_ability_axis_detail(result, "순환")
+            render_ability_axis_detail(result, "발현")
+
+            st.markdown("#### 2. 원국 구조")
+            render_element_pentagon(result)
+            render_interaction_signal(result)
+            for note in interaction_compound_role_notes(result):
+                st.caption(note)
+
+            st.markdown("#### 3. 일간 강약과 보완 방향")
+            refined_label, refined_note = refined_strength_interpretation(result)
+            safe_write(f"- 강약: **{refined_label}** / 강약 지수 **{result.get('strength_index', '-')}**")
+            safe_write(f"- {refined_note}")
+            display_dirs = polished_useful_directions(useful, result)
+            safe_write(f"- 보완 방향: **{format_element_list(display_dirs.get('primary', []), '조후·순환 우선')}**")
+            safe_write(f"- 부담 방향: {format_element_list(display_dirs.get('burden', []), '뚜렷하지 않음')}")
+            safe_write(f"- {useful.get('logic', '강약과 조후를 함께 고려한 보완 방향입니다.')}")
+
+            st.markdown("#### 4. 신살·전체 인상 보조")
+            safe_write(f"- 신살·공망: {shinsal.get('adjustment', 0):+.1f}점 / 한도 {shinsal.get('limit', '±5점')}")
+            for note in shinsal.get("notes", []):
+                safe_write(f"- {note}")
+            safe_write(f"- 전체 인상 보정: {holistic.get('adjustment', 0):+.1f}점")
+            safe_write(f"- {holistic.get('summary', '세부항목 합산과 전체 인상이 대체로 일치합니다.')}")
+
+        elif expert_view == "계산 참고 지표":
+            safe_metric("원국 참고점", f"{result.get('total', '-')}점")
+            score_view = st.radio(
+                "계산 지표 보기",
+                ["닫기", "점수 계산식", "점수·결과분석 로직"],
+                index=0,
+                horizontal=True,
+                key="single_internal_view_radio_v590",
+            )
+            if score_view == "점수 계산식":
+                render_score_formula_diagram(result, prefix="single_formula")
+            elif score_view == "점수·결과분석 로직":
+                render_analysis_logic_panel("single", "single_logic_panel_inner_refactor_v590", show_toggle=False)
+
+
+FRIENDLY_ORIGIN_TAGS = {
+    "균형 안정형": "올라운더형 — 어디에 둬도 기본 이상은 해내는 균형형 플레이어",
+    "편중 강세형": "한 분야 집중형 — 특정 강점이 또렷하게 앞으로 나오는 타입",
+    "발현 특화형": "무대 체질형 — 가진 기운이 안에만 머물지 않고 밖으로 드러나는 타입",
+    "성과 생산형": "결과물 제조기형 — 생각을 말이나 결과물, 일의 성과로 뽑아내는 타입",
+    "분석구조형": "판 읽는 책사형 — 흐름과 구조를 읽고 전략을 짜는 타입",
+    "현실관리형": "지갑·일정 관리자형 — 돈, 자원, 일정, 현실 감각을 챙기는 타입",
+    "규범운용형": "룰 세터형 — 기준, 책임, 질서, 역할을 세우고 운용하는 타입",
+    "순환 보완형": "성장 루트 개방형 — 막힌 흐름을 풀어주면 확 살아나는 보완 성장형",
+    "변동 자극형": "이벤트 트리거형 — 변화와 자극이 들어올 때 캐릭터성이 강해지는 타입",
+    "표준 혼합형": "밸런스 기본형 — 강한 한 방보다는 전체 균형으로 움직이는 타입",
+}
+
+FRIENDLY_STRENGTH_LABELS = {
+    "극신약": "도움과 환경 세팅이 특히 중요한 타입 (극신약)",
+    "신약": "혼자 밀기보다 좋은 팀·환경을 만나면 힘이 살아나는 타입 (신약)",
+    "중화": "밀고 당기는 균형이 비교적 잡힌 타입 (중화)",
+    "신강": "스스로 밀어붙이는 추진력과 버티는 힘이 강한 타입 (신강)",
+    "극신강": "자기 힘이 매우 강해 방향 조절이 중요해지는 타입 (극신강)",
+}
+
+ELEMENT_FRIENDLY_NAMES = {
+    "木": "나무의 기운",
+    "火": "불의 기운",
+    "土": "흙의 기운",
+    "金": "쇠의 기운",
+    "水": "물의 기운",
+}
+
+
+def friendly_origin_summary(origin_profile: Dict[str, object]) -> str:
+    tags = list(origin_profile.get("tags") or [])
+    if not tags:
+        return FRIENDLY_ORIGIN_TAGS.get("표준 혼합형", "밸런스형")
+    return " · ".join(FRIENDLY_ORIGIN_TAGS.get(tag, tag) for tag in tags[:3])
+
+
+def friendly_strength_summary(result: Dict[str, object]) -> str:
+    return FRIENDLY_STRENGTH_LABELS.get(result.get("strength_label", "중화"), result.get("strength_label", "중화"))
+
+
+def friendly_useful_summary(useful: Dict[str, object]) -> str:
+    primary = useful.get("primary") or []
+    if not primary:
+        return "조후·순환 우선"
+    return ", ".join(ELEMENT_FRIENDLY_NAMES.get(token, token) for token in primary)
+
+
+def refined_strength_interpretation(result: Dict[str, object]) -> Tuple[str, str]:
+    """
+    점수 산식은 바꾸지 않고, 사용자에게 보이는 일간 강약 라벨만 더 섬세하게 표현한다.
+
+    예: 중화 → 압박형 중화 / 설기형 중화, 신강 → 생조형 신강.
+    """
+    raw_label = str(result.get("strength_label", "중화") or "중화")
+    detail = result.get("strength_detail", {}) or {}
+    if not isinstance(detail, dict):
+        return raw_label, "일간 강약은 계절, 통근, 생조와 소모를 함께 본 참고 라벨입니다."
+
+    peer = float(detail.get("비겁", 0) or 0)
+    resource = float(detail.get("인성", 0) or 0)
+    output = float(detail.get("식상", 0) or 0)
+    wealth = float(detail.get("재성", 0) or 0)
+    officer = float(detail.get("관성", 0) or 0)
+
+    if raw_label in ["극신강", "신강"]:
+        if resource >= max(peer * 1.15, 24):
+            return f"생조형 {raw_label}", "같은 오행 자체보다 인성의 지원을 강하게 받아 일간이 힘을 얻는 구조입니다."
+        if peer >= max(resource * 1.10, 24):
+            return f"자력형 {raw_label}", "같은 오행·통근의 힘이 뚜렷해 자기 체급으로 버티는 구조입니다."
+        return raw_label, "일간의 기본 체급이 강한 편입니다. 다만 방향 조절과 균형이 중요합니다."
+
+    if raw_label == "중화":
+        if wealth >= 30 or officer >= 30:
+            return "압박형 중화", "중화권이지만 재성·관성의 현실 압박이 커서 보완 방향을 함께 봐야 합니다."
+        if output >= 30:
+            return "설기형 중화", "중화권이지만 식상으로 기운이 많이 빠져나가 표현·산출 쪽으로 작동하는 구조입니다."
+        if resource >= 30:
+            return "생조형 중화", "중화권이지만 인성의 지원이 강해 생각·자료·보호막이 두터운 구조입니다."
+        return "균형형 중화", "혼자 미는 힘과 외부 도움의 균형이 비교적 맞는 편입니다."
+
+    if raw_label in ["신약", "극신약"]:
+        if wealth + officer >= 45:
+            return f"환경 압박형 {raw_label}", "일간보다 재성·관성의 요구가 커서 환경과 역할의 압박을 크게 느끼기 쉬운 구조입니다."
+        return raw_label, "혼자 버티는 힘보다 환경, 팀, 보완 오행의 도움을 받을 때 힘이 살아나는 편입니다."
+
+    return raw_label, "일간 강약은 계절, 통근, 생조와 소모를 함께 본 참고 라벨입니다."
+
+
+def polished_useful_directions(useful: Dict[str, object], result: Dict[str, object] | None = None) -> Dict[str, List[str]]:
+    """
+    보완 방향 표시용 정리.
+    실제 useful 계산값은 바꾸지 않고, 이미 과다한 오행이 조건부 보완에 섞여 보이는 혼선을 줄인다.
+    """
+    primary = list(useful.get("primary") or [])
+    conditional = list(useful.get("conditional") or [])
+    burden = list(useful.get("burden") or [])
+    pct = {}
+    if result:
+        pct = result.get("adjusted_pct") or result.get("seasonal_pct") or result.get("base_pct") or {}
+
+    already_strong: List[str] = []
+    conditional_display: List[str] = []
+    for el in conditional:
+        val = float(pct.get(el, 0) or 0) if pct else 0.0
+        if val >= 30:
+            if el not in already_strong:
+                already_strong.append(el)
+        else:
+            conditional_display.append(el)
+
+    for el in primary:
+        val = float(pct.get(el, 0) or 0) if pct else 0.0
+        if val >= 35 and el not in already_strong:
+            already_strong.append(el)
+
+    burden_display = list(burden)
+    for el in already_strong:
+        if el not in burden_display:
+            burden_display.append(el)
+
+    return {
+        "primary": primary,
+        "conditional": conditional_display,
+        "burden": burden_display,
+        "already_strong": already_strong,
+    }
+
+
+def format_element_list(tokens: List[str], fallback: str = "없음") -> str:
+    if not tokens:
+        return fallback
+    return ", ".join(tokens)
+
+
+def _branch_list_ko(branches: List[str] | Tuple[str, ...]) -> str:
+    vals = []
+    for b in branches:
+        if not b:
+            continue
+        vals.append(f"{b}({_branch_ko(b)})")
+    return ", ".join(vals) if vals else "-"
+
+
+def _shinsal_hit_positions(chart: Chart, target_branches: List[str] | Tuple[str, ...]) -> str:
+    hits = _branch_position_hits(chart, list(target_branches))
+    return ", ".join(hits) if hits else "-"
+
+
+def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Dict[str, str]:
+    """신살/공망을 큰 카드형 정보로 번역한다."""
+    name = str(name or "")
+    day_stem = chart.day_master
+    day_branch = chart.day.branch
+    group = _day_branch_group(day_branch)
+
+    profiles = {
+        "천을귀인": {
+            "icon": "👼",
+            "badge": "귀인 배지",
+            "tag": "보호·지원형",
+            "title": "천을귀인",
+            "summary": "위기 완충, 도움 인연, 예상 밖 지원이 들어오는 보호막형 보조 신호입니다.",
+            "meaning": "사람운, 중재자, 도움 인연처럼 ‘숨통을 틔워주는 손’으로 읽습니다. 만능 길성이라기보다는 어려운 장면에서 완충재가 생기는 느낌에 가깝습니다.",
+            "how": f"일간 {day_stem} 기준 천을귀인 후보는 {_branch_list_ko(CHEONEUL_BRANCHES.get(day_stem, []))}입니다. 내 원국 지지에 그 후보가 들어와 있으면 성립합니다.",
+            "reading": "도움이 들어올 가능성은 있지만, 본인의 선택과 행동을 대신해주는 표식은 아닙니다. 원국의 큰 구조와 함께 참고합니다.",
+            "targets": CHEONEUL_BRANCHES.get(day_stem, []),
+        },
+        "문창귀인": {
+            "icon": "📚",
+            "badge": "문창 배지",
+            "tag": "문서·표현형",
+            "title": "문창귀인",
+            "summary": "문서, 공부, 말과 글, 정리 능력이 살아나는 지적 보조 신호입니다.",
+            "meaning": "학습, 기록, 설명, 문서화, 기획처럼 생각을 정리해 밖으로 꺼내는 힘을 보조합니다.",
+            "how": f"일간 {day_stem} 기준 문창귀인 후보는 {_branch_list_ko([MUNCHANG_BRANCH.get(day_stem, '')])}입니다. 내 원국 지지에 이 글자가 있으면 성립합니다.",
+            "reading": "공부를 무조건 잘한다는 단정이 아니라, 정리하고 표현할 때 장점이 살아날 수 있다는 신호입니다.",
+            "targets": [MUNCHANG_BRANCH.get(day_stem, "")],
+        },
+        "역마": {
+            "icon": "🪽",
+            "badge": "이동 배지",
+            "tag": "이동·변화형",
+            "title": "역마",
+            "summary": "이동, 변화, 활동 반경 확장, 새로운 판으로 움직이는 힘을 뜻합니다.",
+            "meaning": "한 자리에 고정되기보다 움직이면서 기회가 생기는 카드입니다. 출장, 이동, 확장, 새 환경 적응과 연결해 볼 수 있습니다.",
+            "how": f"일지 {day_branch}는 {_day_branch_group(day_branch)} 그룹입니다. 이 그룹의 역마 글자는 {_branch_list_ko([YEOKMA_BRANCH[group]])}이고, 원국에 이 글자가 있으면 성립합니다.",
+            "reading": "움직임이 좋다는 뜻일 수 있지만, 중복되면 변동성이 커져 안정감이 약해질 수도 있습니다.",
+            "targets": [YEOKMA_BRANCH[group]],
+        },
+        "도화": {
+            "icon": "🌸",
+            "badge": "매력 배지",
+            "tag": "매력·노출형",
+            "title": "도화",
+            "summary": "시선, 매력, 대인 노출, 분위기 형성에 관한 보조 신호입니다.",
+            "meaning": "사람들의 시선이 닿는 자리, 호감, 표현 매력, 분위기 장악력으로 읽습니다. SNS·대인관계·미적 감각과도 연결해 볼 수 있습니다.",
+            "how": f"일지 {day_branch}는 {_day_branch_group(day_branch)} 그룹입니다. 이 그룹의 도화 글자는 {_branch_list_ko([DOHWA_BRANCH[group]])}이고, 원국에 이 글자가 있으면 성립합니다.",
+            "reading": "매력 신호이지만 중복되면 과노출, 관계 피로, 시선 부담으로도 작동할 수 있습니다.",
+            "targets": [DOHWA_BRANCH[group]],
+        },
+        "화개": {
+            "icon": "🪷",
+            "badge": "몰입 배지",
+            "tag": "몰입·취향형",
+            "title": "화개",
+            "summary": "취향, 몰입, 축적, 사색, 자기만의 세계를 깊게 만드는 보조 신호입니다.",
+            "meaning": "혼자 깊이 파고드는 힘, 취향의 깊이, 예술성, 종교성, 연구성처럼 안쪽으로 쌓이는 기운을 뜻합니다.",
+            "how": f"일지 {day_branch}는 {_day_branch_group(day_branch)} 그룹입니다. 이 그룹의 화개 글자는 {_branch_list_ko([HWAGAE_BRANCH[group]])}이고, 원국에 이 글자가 있으면 성립합니다.",
+            "reading": "몰입과 축적에는 좋지만, 중복되면 고립감이나 자기 세계 과잉으로 느껴질 수 있습니다.",
+            "targets": [HWAGAE_BRANCH[group]],
+        },
+        "공망": {
+            "icon": "◌",
+            "badge": "빈자리 배지",
+            "tag": "공백·우회형",
+            "title": "공망",
+            "summary": "없다는 뜻보다 바로 손에 잡히지 않고 우회적으로 작동하는 자리입니다.",
+            "meaning": "기대만큼 바로 체감되지 않거나, 직접적인 방식보다 돌아가는 방식으로 드러나는 자리입니다. 비어 보이는 만큼 상상력이나 재해석이 들어갈 여지도 있습니다.",
+            "how": f"일주 {chart.day.stem}{chart.day.branch} 기준 공망은 {_branch_list_ko(_gongmang_branches_for_day(chart.day.stem, chart.day.branch))}입니다. 내 원국 지지에 이 글자가 있으면 공망 배지로 표시합니다.",
+            "reading": "없다/나쁘다로 단정하지 않습니다. 해당 자리의 일이 바로 잡히지 않거나, 다른 경로를 거쳐 뒤늦게 의미가 생기는 식으로 읽습니다.",
+            "targets": list(_gongmang_branches_for_day(chart.day.stem, chart.day.branch)),
+        },
+    }
+
+    base = profiles.get(name, {
+        "icon": "🎴",
+        "badge": "특수 배지",
+        "tag": "보조 신호",
+        "title": name or "보조 신호",
+        "summary": "원국의 큰 구조 위에 덧붙여 참고하는 보조 신호입니다.",
+        "meaning": "단독 판단이 아니라 전체 원국의 흐름 위에서 보조적으로 읽습니다.",
+        "how": "전통 신살 기준에 따라 원국 지지와 대조해 성립 여부를 확인합니다.",
+        "reading": "재미와 참고용으로만 봅니다.",
+        "targets": [],
+    }).copy()
+
+    targets = list(base.get("targets") or [])
+    base["position"] = str(hit.get("위치", _shinsal_hit_positions(chart, targets)) or "-")
+    base["nature"] = str(hit.get("성격", "보조 신호") or "보조 신호")
+    base["score"] = str(hit.get("반영", "0") or "0")
+    if name == "공망" and hit.get("공망지"):
+        base["position"] = str(hit.get("위치", base["position"]))
+    return base
+
+
+def render_shinsal_badge_cards(payload: Dict[str, object] | Dict[str, object], prefix: str = "single") -> None:
+    """공망·신살을 큰 카드로 보여준다. payload 또는 result dict를 모두 허용한다."""
+    if isinstance(payload, dict) and "result" in payload and "chart" in payload:
+        result = payload.get("result") or {}
+        chart = payload.get("chart")
+    else:
+        result = payload if isinstance(payload, dict) else {}
+        chart = None
+
+    shinsal = result.get("shinsal") or {}
+    hits = shinsal.get("hits") or []
+    if not hits or chart is None:
+        return
+
+    seen = set()
+    cards = []
+    for hit in hits:
+        name = str(hit.get("신살", hit.get("name", "")) or "")
+        pos = str(hit.get("위치", "-") or "-")
+        key = (name, pos)
+        if key in seen:
+            continue
+        seen.add(key)
+        profile = _shinsal_card_profile(name, hit, chart)
+        cards.append(
+            "<div class='shinsal-card'>"
+            "<div class='shinsal-head'>"
+            f"<div class='shinsal-icon'>{html.escape(str(profile['icon']))}</div>"
+            "<div>"
+            f"<div class='shinsal-name'>{html.escape(str(profile['title']))}</div>"
+            f"<div class='shinsal-type'>{html.escape(str(profile['tag']))}</div>"
+            "</div>"
+            "</div>"
+            f"<span class='shinsal-badge'>{html.escape(str(profile['badge']))}</span>"
+            f"<div class='shinsal-summary'>{html.escape(str(profile['summary']))}</div>"
+            "<div class='shinsal-detail'>"
+            "<div class='shinsal-detail-title'>성립 근거</div>"
+            f"<div class='shinsal-detail-body'>{html.escape(str(profile['how']))}<br><b>실제 확인 위치:</b> {html.escape(str(profile['position']))}</div>"
+            "</div>"
+            "<div class='shinsal-detail'>"
+            "<div class='shinsal-detail-title'>의미</div>"
+            f"<div class='shinsal-detail-body'>{html.escape(str(profile['meaning']))}</div>"
+            "</div>"
+            "<div class='shinsal-detail'>"
+            "<div class='shinsal-detail-title'>읽는 법</div>"
+            f"<div class='shinsal-detail-body'>{html.escape(str(profile['reading']))}</div>"
+            "</div>"
+            f"<div class='shinsal-pos'>성격: {html.escape(str(profile['nature']))} · 점수 반영: {html.escape(str(profile['score']))}</div>"
+            "</div>"
+        )
+
+    st.markdown("#### 🎴 특수 배지 카드")
+    st.caption("공망·신살은 원국의 중심 판단을 대체하지 않지만, 사건감과 체감 포인트를 보강하는 특수 신호입니다. 어떤 자리에 잡혔는지 함께 확인해 보세요.")
+    st.markdown("<div class='shinsal-grid'>" + "".join(cards[:8]) + "</div>", unsafe_allow_html=True)
+    st.markdown("<div class='shinsal-footnote'>※ 공망·신살은 단독으로 길흉을 확정하지 않습니다. 다만 v5.81부터는 위치와 중복 여부에 따라 체감 보정으로 일부 반영합니다.</div>", unsafe_allow_html=True)
+
+
+def interaction_compound_role_notes(result: Dict[str, object]) -> List[str]:
+    """합국에 참여한 글자가 신살 등 다른 보조 의미도 가질 때 짧게 알려준다."""
+    interactions = result.get("interactions") or []
+    shinsal = result.get("shinsal") or {}
+    hits = shinsal.get("hits") or []
+    notes: List[str] = []
+    branches = set(BRANCHES.keys())
+
+    for it in interactions:
+        if it.get("type") not in ["삼합", "방합", "반합", "육합"]:
+            continue
+        name = str(it.get("name", ""))
+        involved = [b for b in branches if b in name]
+        if not involved:
+            continue
+        for hit in hits:
+            hit_name = str(hit.get("신살", hit.get("name", "보조 신호")))
+            raw_pos = str(hit.get("위치", ""))
+            for b in involved:
+                if b and b in raw_pos:
+                    msg = f"{b}는 {hit_name} 신호이면서 {name}에도 참여합니다. 합국은 결속을 보태지만, 해당 글자의 원래 의미도 함께 봅니다."
+                    if msg not in notes:
+                        notes.append(msg)
+    return notes[:3]
+
+
+def split_character_label(text: str) -> Tuple[str, str]:
+    if "—" in text:
+        left, right = text.split("—", 1)
+        return left.strip(), right.strip()
+    if "-" in text:
+        left, right = text.split("-", 1)
+        return left.strip(), right.strip()
+    return text.strip(), ""
+
+
+def render_ability_bar_summary(result: Dict[str, object], prefix: str = "single") -> None:
+    rows = category_totals(result["categorized_scores"])
+    st.markdown("#### 3대 능력치")
+    for row in rows:
+        info = axis_info_from_category(row["카테고리"])
+        score = float(row.get("반영치", row.get("점수", 0)))
+        max_score = float(row.get("기준", row.get("배점", 0)) or 0)
+        pct = 0 if max_score <= 0 else max(0, min(100, score / max_score * 100))
+        st.markdown(f"""
+        <div class="ability-bar-row">
+            <div class="ability-bar-head">
+                <span class="ability-bar-title">{info['icon']} {info['primary']} <span style="font-size:.78rem;color:#8b6775;">({info['legacy']})</span></span>
+                <span class="ability-bar-score">{score:.1f} / {max_score:.0f}</span>
+            </div>
+            <div style="font-size:.82rem;color:#7a5665;font-weight:760;margin-bottom:.32rem;">{info['short']} · {info['meaning']}</div>
+            <div class="ability-bar-track">
+                <div class="ability-bar-fill" style="width:{pct:.1f}%;"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    render_strong_axis_note(result)
+
+
+def render_score_formula_diagram(result: Dict[str, object], prefix: str = "single") -> None:
+    totals = category_totals(result["categorized_scores"])
+    values = {axis_info_from_category(row["카테고리"])["primary"]: float(row.get("반영치", row.get("점수", 0))) for row in totals}
+    size_score = values.get("기초체력", 0.0)
+    flow_score = values.get("흐름과 연결", 0.0)
+    expr_score = values.get("현실작동력", 0.0)
+    base_total = size_score + flow_score + expr_score
+    total = float(result.get("total", 0.0))
+    holistic = float(result.get("holistic", {}).get("adjustment", 0.0))
+    shinsal = float(result.get("shinsal", {}).get("adjustment", 0.0))
+    st.markdown(f"""
+    <div style="background:#fffafc;border:1px solid rgba(230,164,184,0.45);border-radius:18px;padding:1rem 1rem 1.1rem 1rem;margin:0.35rem 0 1rem 0;">
+        <div style="font-weight:900;color:#5b3f4b;font-size:1.04rem;margin-bottom:0.7rem;">원국 참고점 계산 한눈에 보기</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.55rem;">
+            <div style="flex:1 1 170px;background:#fff;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#5b3f4b;font-weight:950;">기초체력</div><div style="font-size:.76rem;color:#8b6775;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.78rem;color:#7a5665;">오행·월령·통근·일간</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
+            <div style="flex:1 1 170px;background:#fff;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#5b3f4b;font-weight:950;">흐름과 연결</div><div style="font-size:.76rem;color:#8b6775;font-weight:800;">(기운의 순환)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{flow_score:.1f}</div><div style="font-size:.78rem;color:#7a5665;">조후·십성 흐름</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
+            <div style="flex:1 1 170px;background:#fff;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#5b3f4b;font-weight:950;">현실작동력</div><div style="font-size:.76rem;color:#8b6775;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.78rem;color:#7a5665;">합충·현실 작동</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
+            <div style="flex:1 1 150px;background:#fff;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#5b3f4b;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d95b84;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.76rem;color:#7a5665;">체감 보정</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">=</div>
+            <div style="flex:1 1 180px;background:linear-gradient(135deg,#fff0f5,#fffafc);border:2px solid #ebb2c4;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#7a5665;font-weight:800;">대표 원국 참고점</div><div style="font-size:1.6rem;color:#d64273;font-weight:950;">{total:.1f}점</div></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    if abs(total - base_total) >= 0.1:
+        st.caption(f"참고: 신살·공망 체감 보정 {shinsal:+.1f}점을 대표 점수에 반영했습니다. 전체 인상 보정 {holistic:+.1f}점은 해설용 참고 신호입니다.")
+    else:
+        st.caption("대표 점수는 기초체력 + 흐름과 연결 + 현실작동력에 신살·공망 체감 보정을 더한 값입니다.")
+
+
+
+
+def _luck_card_class_from_mod(mod: float) -> str:
+    try:
+        mod = float(mod)
+    except Exception:
+        mod = 0.0
+    if mod >= 2.0:
+        return "good"
+    if mod <= -2.0:
+        return "hard"
+    if mod < 0:
+        return "caution"
+    return ""
+
+
+def _luck_element_badges(gz: str) -> str:
+    if not gz or len(gz) < 2:
+        return ""
+    stem, branch = gz[0], gz[1]
+    badges = []
+    if stem in STEMS:
+        el = STEMS[stem]["element"]
+        badges.append(f"<span class='manse-luck-el el-{html.escape(el)}'>천간 {html.escape(el)}</span>")
+    if branch in BRANCHES:
+        el = BRANCHES[branch]["element"]
+        badges.append(f"<span class='manse-luck-el el-{html.escape(el)}'>지지 {html.escape(el)}</span>")
+    return "<div class='manse-luck-elrow'>" + "".join(badges) + "</div>"
+
+
+def render_manse_daewun_cards(payload: Dict[str, object]) -> None:
+    """만세력 원국 화면 안의 대운 배열을 카드형 UI로 표시한다."""
+    chart = payload.get("chart")
+    result = payload.get("result", {}) or {}
+    luck_flow = payload.get("luck_flow") or {}
+    daewuns = payload.get("daewuns") or []
+    if not chart or not daewuns:
+        st.info("대운 배열은 생년월일시 자동 산출 모드에서 표시됩니다.")
+        return
+
+    current = luck_flow.get("current_daewun") if isinstance(luck_flow, dict) else None
+    base_total = float(result.get("total", 0) or 0)
+    useful = result.get("useful", {}) or {}
+    html_parts = [
+        "<div class='manse-luck-wrap'>",
+        "<div class='manse-luck-head'>",
+        "<div><div class='manse-luck-title'>〽️ 대운 배열</div><div class='manse-luck-sub'>10년 단위로 들어오는 큰 배경값입니다. 현재 대운은 진한 테두리로 표시합니다.</div></div>",
+        f"<div class='manse-luck-chip'>{len(daewuns)}개 흐름</div>",
+        "</div><div class='manse-luck-grid'>",
+    ]
+    for idx, item in enumerate(daewuns):
+        gz = str(item.get("ganzhi", "-"))
+        age = str(item.get("start_age", "-"))
+        is_current = bool(current and item.get("start_age") == current.get("start_age") and item.get("ganzhi") == current.get("ganzhi"))
+        try:
+            detail = _luck_station_plain_detail(gz, chart, useful, base_total, result)
+            mod = float(detail.get("mod", 0.0) or 0.0)
+            score = detail.get("score", "-")
+            mood = str(detail.get("mood", "10년 흐름"))
+            note = _clean_display_text(str(detail.get("note", "무난함")))
+        except Exception:
+            mod, score, mood, note = 0.0, "-", "10년 흐름", "대운 원국 반응을 간단히 참고합니다."
+        card_cls = "manse-luck-card " + _luck_card_class_from_mod(mod) + (" current" if is_current else "")
+        badge = "현재 대운" if is_current else f"{idx+1}번째 대운"
+        mini = "" if mod <= -2.0 else ("＋" if mod >= 2.0 else "〽")
+        html_parts.append(
+            f"<div class='{card_cls}'>"
+            f"<div class='manse-luck-badge'>{html.escape(badge)}</div>"
+            f"<div class='manse-luck-age'>{html.escape(age)}세부터 10년</div>"
+            f"<div class='manse-luck-gz'>{html.escape(gz)}</div>"
+            f"{_luck_element_badges(gz)}"
+            f"<div class='manse-luck-score'>체감 {html.escape(str(score))}% · {mod:+.1f}</div>"
+            f"<div class='manse-luck-note'>{html.escape(mood)}<br>{html.escape(note)}</div>"
+            f"<div class='manse-luck-mini'>{html.escape(mini)}</div>"
+            "</div>"
+        )
+    html_parts.append("</div></div>")
+    st.markdown("".join(html_parts), unsafe_allow_html=True)
+
+
+def render_manse_sewun_cards(luck_flow: Dict[str, object]) -> None:
+    """만세력 원국 화면 안의 5년 세운 참고를 카드형 UI로 표시한다."""
+    rows = (luck_flow or {}).get("sewun_rows") or []
+    if not rows:
+        return
+    html_parts = [
+        "<div class='manse-luck-wrap'>",
+        "<div class='manse-luck-head'>",
+        "<div><div class='manse-luck-title'>📆 5년 세운 참고</div><div class='manse-luck-sub'>현재 대운 위에 해마다 얹히는 짧은 흐름입니다. 점수보다 변동 방향과 비고를 참고합니다.</div></div>",
+        f"<div class='manse-luck-chip'>{len(rows)}년 보기</div>",
+        "</div><div class='manse-sewun-grid'>",
+    ]
+    for r in rows:
+        year = str(r.get("연도", "-"))
+        gz = str(r.get("세운", "-"))
+        score = str(r.get("점수", "-"))
+        delta = str(r.get("변동", ""))
+        note = _clean_display_text(str(r.get("비고", "")))
+        html_parts.append(
+            "<div class='manse-sewun-card'>"
+            "<div class='manse-sewun-top'>"
+            f"<div class='manse-sewun-year'>{html.escape(year)}</div>"
+            f"<div class='manse-sewun-delta'>{html.escape(delta)}</div>"
+            "</div>"
+            f"<div class='manse-sewun-gz'>{html.escape(gz)}</div>"
+            f"{_luck_element_badges(gz)}"
+            f"<div class='manse-sewun-score'>참고점 {html.escape(score)}</div>"
+            f"<div class='manse-sewun-note'>{html.escape(note)}</div>"
+            "</div>"
+        )
+    html_parts.append("</div></div>")
+    st.markdown("".join(html_parts), unsafe_allow_html=True)
+
+
+def render_origin_identity_table(chart: Chart) -> None:
+    """만세력 원국을 모바일 친화적인 4기둥 카드 매트릭스로 표시한다."""
+    def _stem_role(name: str, p: Pillar) -> str:
+        return "일간" if name == "일주" else relation_to_day(chart.day_master, p.stem)
+
+    def _branch_role(p: Pillar) -> str:
+        # 지지는 대표 지장간 기준으로 십성을 표시한다. 巳/亥 등 지지 직접 전달 시 KeyError 방지.
+        return relation_to_day(chart.day_master, p.branch)
+
+    def _hidden_lines(p: Pillar) -> str:
+        lines = []
+        for hs, ratio in BRANCHES[p.branch]["hidden"]:
+            role = relation_to_day(chart.day_master, hs)
+            ko = STEMS[hs]["ko"]
+            pct = int(round(float(ratio) * 100))
+            lines.append(f"{hs} {role}<br><span style='font-size:.66em;color:#7a5665;'>{ko} · {pct}%</span>")
+        return "<br>".join(lines) if lines else "-"
+
+    def _big_cell(char: str, el: str, kind: str) -> str:
+        return f"<div class='manse-big {kind} manse-el-{html.escape(el)}'>{html.escape(char)}</div>"
+
+    def _pillar_col(label: str, p: Pillar | None, highlight: bool = False) -> str:
+        if p is None:
+            return (
+                "<div class='manse-col'>"
+                f"<div class='manse-head'>{html.escape(label)}<br><span style='font-size:.8em;'>(미상)</span></div>"
+                "<div class='manse-role'>-</div>"
+                "<div class='manse-big stem' style='background:#f8fafc;color:#7a5665!important;'>?</div>"
+                "<div class='manse-ko'>시주 미상</div>"
+                "<div class='manse-role'>-</div>"
+                "<div class='manse-big branch' style='background:#f8fafc;color:#7a5665!important;'>?</div>"
+                "<div class='manse-hidden'><div class='manse-hidden-title'>지장간</div><div class='manse-hidden-line'>출생시간 미상</div></div>"
+                "</div>"
+            )
+
+        stem_el = STEMS[p.stem]["element"]
+        branch_el = BRANCHES[p.branch]["element"]
+        col_class = "manse-col manse-day" if highlight else "manse-col"
+        stem_role = _stem_role(label, p)
+        branch_role = _branch_role(p)
+        stem_ko = STEMS[p.stem]["ko"]
+        branch_ko = BRANCHES[p.branch]["ko"]
+        return (
+            f"<div class='{col_class}'>"
+            f"<div class='manse-head'>{html.escape(label)}</div>"
+            f"<div class='manse-role'>{html.escape(stem_role)}</div>"
+            f"{_big_cell(p.stem, stem_el, 'stem')}"
+            f"<div class='manse-ko'>{html.escape(stem_ko)} · {html.escape(stem_el)}</div>"
+            f"<div class='manse-role'>{html.escape(branch_role)}</div>"
+            f"{_big_cell(p.branch, branch_el, 'branch')}"
+            f"<div class='manse-ko'>{html.escape(branch_ko)} · {html.escape(branch_el)}</div>"
+            "<div class='manse-hidden'>"
+            "<div class='manse-hidden-title'>지장간</div>"
+            f"<div class='manse-hidden-line'>{_hidden_lines(p)}</div>"
+            "</div>"
+            "</div>"
+        )
+
+    pillars = [
+        ("시주", chart.hour, False),
+        ("일주", chart.day, True),
+        ("월주", chart.month, False),
+        ("년주", chart.year, False),
+    ]
+
+    gongmang = _gongmang_branches_for_day(chart.day.stem, chart.day.branch)
+    gongmang_text = " · ".join([f"{b}({_branch_ko(b)})" for b in gongmang]) if gongmang else "-"
+    day_master_text = f"{chart.day_master}({STEMS[chart.day_master]['ko']}) · {STEMS[chart.day_master]['element']}"
+    ganji = ganji_text(chart)
+
+    # 화면 위 표: 참고 이미지의 배열만 차용하고, 색감은 사주MRI 톤으로 유지한다.
+    html_block = (
+        "<div class='manse-wrap'>"
+        "<div class='manse-title'>"
+        "<div><b>만세력 원국</b><br><span>시주 · 일주 · 월주 · 년주 순서로 봅니다. 일주는 기준축이라 테두리를 강조했습니다.</span></div>"
+        f"<span>{html.escape(ganji)}</span>"
+        "</div>"
+        "<div class='manse-grid'>"
+        + "".join(_pillar_col(label, p, highlight) for label, p, highlight in pillars)
+        + "</div>"
+        "<div class='manse-summary'>"
+        "<div class='manse-summary-card'>"
+        "<div class='manse-summary-title'>일간 기준</div>"
+        f"<div class='manse-summary-body'>{html.escape(day_master_text)}</div>"
+        "</div>"
+        "<div class='manse-summary-card'>"
+        "<div class='manse-summary-title'>공망</div>"
+        f"<div class='manse-summary-body'>{html.escape(gongmang_text)}</div>"
+        "</div>"
+        "<div class='manse-summary-card'>"
+        "<div class='manse-summary-title'>읽는 순서</div>"
+        "<div class='manse-summary-body'>천간은 드러난 기운, 지지는 바탕, 지장간은 안쪽에 숨어 있는 재료로 봅니다.</div>"
+        "</div>"
+        "</div>"
+        "</div>"
+    )
+
+    st.markdown(html_block, unsafe_allow_html=True)
+
+
+
+
+def _mini_bar_html(label: str, value: float, max_value: float = 100.0, caption: str = "") -> str:
+    try:
+        value = float(value)
+        max_value = float(max_value) if max_value else 100.0
+    except Exception:
+        value, max_value = 0.0, 100.0
+    pct = max(0.0, min(100.0, value / max_value * 100.0))
+    caption_html = f"<div style='font-size:.78rem;color:#7a5665;margin-top:.18rem;'>{html.escape(str(caption))}</div>" if caption else ""
+    value_label = f"{value:.1f}" if max_value == 100 else f"{value:.1f} / {int(max_value)}"
+    return (
+        f"<div style='margin:.42rem 0 .62rem 0;'>"
+        f"<div style='display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;'>"
+        f"<div style='font-weight:900;color:#5b3f4b;'>{html.escape(str(label))}</div>"
+        f"<div style='font-weight:900;color:#d64273;'>{value_label}</div>"
+        f"</div>"
+        f"<div style='height:10px;background:#f8e8ef;border-radius:99px;overflow:hidden;border:1px solid rgba(230,164,184,.35);'>"
+        f"<div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);border-radius:99px;'></div>"
+        f"</div>"
+        f"{caption_html}"
+        f"</div>"
+    )
+
+
+def render_ability_triangle(result: Dict[str, object]) -> None:
+    """3대 능력치를 SVG 없이 안정적인 카드/막대형으로 표시한다.
+
+    일부 Streamlit/브라우저 조합에서 inline SVG 내부 <g>, <rect> 등이
+    그대로 노출되는 문제가 있어, 사용자 화면에서는 순수 Streamlit 요소로
+    안전하게 렌더링한다. 점수 산식에는 영향을 주지 않는다.
+    """
+    rows = category_totals(result.get("categorized_scores", {}))
+    if not rows:
+        return
+
+    axis_order = ["기초체력", "흐름과 연결", "현실작동력"]
+    scores: Dict[str, Dict[str, object]] = {}
+    for row in rows:
+        info = axis_info_from_category(row.get("카테고리", ""))
+        score = float(row.get("점수", row.get("반영치", 0)) or 0)
+        max_score = float(row.get("배점", row.get("기준", 0)) or 1)
+        pct = (score / max_score * 100) if max_score > 0 else 0
+        scores[info["primary"]] = {
+            "score": score,
+            "max_score": max_score,
+            "pct": max(0.0, min(100.0, pct)),
+            "icon": info.get("icon", ""),
+            "legacy": info.get("legacy", ""),
+        }
+
+    st.markdown("#### 3대 능력치 균형")
+    st.caption("세 축의 크기와 균형을 카드로 표시합니다. 한 축이 유난히 높으면 그 방향이 강한 특화형입니다.")
+    cols = st.columns(3)
+    for col, name in zip(cols, axis_order):
+        info = scores.get(name, {})
+        icon = str(info.get("icon", ""))
+        score = float(info.get("score", 0.0) or 0.0)
+        max_score = float(info.get("max_score", 1.0) or 1.0)
+        pct = float(info.get("pct", 0.0) or 0.0)
+        legacy = str(info.get("legacy", ""))
+        with col:
+            st.markdown(f"**{icon} {name}**")
+            safe_metric("점수", f"{score:.1f}/{int(max_score)}")
+            st.progress(int(round(max(0.0, min(100.0, pct)))))
+            if legacy:
+                st.caption(f"보조 설명: {legacy}")
+
+
+def render_element_pentagon(result: Dict[str, object]) -> None:
+    """오행 분포를 SVG 없이 안정적인 카드/막대형으로 표시한다."""
+    pct = result.get("adjusted_pct") or result.get("seasonal_pct") or result.get("base_pct") or {}
+    if not pct:
+        return
+
+    elements_order = ["목", "화", "토", "금", "수"]
+    element_labels = {"목": "木 목", "화": "火 화", "토": "土 토", "금": "金 금", "수": "水 수"}
+
+    st.markdown("#### 오행 분포")
+    st.caption("각 오행의 비율을 안정적인 막대형으로 표시합니다. 30% 이상이면 편중 신호로 봅니다.")
+    cols = st.columns(5)
+    for col, el in zip(cols, elements_order):
+        val = float(pct.get(el, 0) or 0)
+        state = "균형권"
+        if val >= 35:
+            state = "강한 편중"
+        elif val >= 30:
+            state = "편중"
+        elif val <= 8:
+            state = "부족"
+        with col:
+            st.markdown(f"**{element_labels[el]}**")
+            safe_metric("비율", f"{val:.1f}%")
+            st.progress(int(round(max(0.0, min(100.0, val * 2.5)))))
+            st.caption(state)
+
+
+def _compatibility_polygon_svg(axis_data: List[Tuple[str, float, str]]) -> str:
+    """케미 축을 순수 SVG 다각형으로 표시한다. 모바일에서 좌우 라벨이 잘리지 않게 여백을 넉넉히 둔다."""
+    import math as _math
+
+    n = len(axis_data)
+    svg_w, svg_h = 380, 340
+    cx, cy, max_r = 190, 166, 100
+    angles = [(-90 + i * 360 / n) * _math.pi / 180 for i in range(n)]
+
+    grid = []
+    for ratio in [0.25, 0.5, 0.75, 1.0]:
+        pts = [f"{cx + _math.cos(a) * max_r * ratio:.1f},{cy + _math.sin(a) * max_r * ratio:.1f}" for a in angles]
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(214,66,115,.18)' stroke-width='1'/>")
+
+    axes = []
+    labels = []
+    points = []
+    for idx, ((label, val, _caption), a) in enumerate(zip(axis_data, angles)):
+        safe_val = max(0.0, min(100.0, float(val or 0)))
+        axes.append(
+            f"<line x1='{cx}' y1='{cy}' x2='{cx + _math.cos(a) * max_r:.1f}' y2='{cy + _math.sin(a) * max_r:.1f}' stroke='rgba(110,82,98,.18)'/>"
+        )
+        r = max_r * safe_val / 100.0
+        points.append(f"{cx + _math.cos(a) * r:.1f},{cy + _math.sin(a) * r:.1f}")
+
+        lx = cx + _math.cos(a) * (max_r + 48)
+        ly = cy + _math.sin(a) * (max_r + 38)
+        anchor = "middle"
+        if lx < cx - 18:
+            anchor = "end"
+            lx -= 4
+        elif lx > cx + 18:
+            anchor = "start"
+            lx += 4
+        if idx == 0:
+            ly -= 3
+        elif idx == 2:
+            ly += 5
+        labels.append(
+            f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='13' font-weight='900' fill='#5b3f4b'>"
+            f"{html.escape(label)}</text>"
+        )
+
+    poly = f"<polygon points='{' '.join(points)}' fill='rgba(214,66,115,.22)' stroke='#d64273' stroke-width='3'/>"
+    dots = ""
+    for pnt in points:
+        x, y = pnt.split(",")
+        dots += f"<circle cx='{x}' cy='{y}' r='4.5' fill='#d64273'/>"
+
+    return (
+        f"<svg viewBox='0 0 {svg_w} {svg_h}' width='100%' height='340' role='img' style='display:block;margin:auto;overflow:visible;'>"
+        + "".join(grid + axes)
+        + poly
+        + dots
+        + "".join(labels)
+        + "</svg>"
+    )
+
+def render_compatibility_radar(compatibility: Dict[str, object]) -> None:
+    """케미 4축을 SVG 다각형 + 카드형 수치로 표시한다."""
+    axes = compatibility.get("axes") or {}
+    if not axes:
+        return
+
+    complement = float(axes.get("상호 보완성", 0) or 0)
+    alliance = float(axes.get("동맹성", 0) or 0)
+    sync = float(axes.get("흐름 동조성", 0) or 0)
+    tension = float(axes.get("긴장도", 0) or 0)
+    buffer_val = max(0.0, min(100.0, 100 - tension))
+
+    axis_data = [
+        ("보완성", complement, "서로 부족한 오행과 조후를 채워주는 힘"),
+        ("동맹성", alliance, "합, 닮은 결, 같은 방향성이 만드는 결속감"),
+        ("리듬", sync, "운과 생활 박자가 함께 움직이는 정도"),
+        ("완충력", buffer_val, "긴장 신호를 관계 안에서 흡수하는 힘"),
+    ]
+
+    st.markdown("#### 케미 축")
+    svg = _compatibility_polygon_svg(axis_data)
+    cards = []
+    for label, val, caption in axis_data:
+        width = max(2, min(100, float(val or 0)))
+        cards.append(
+            f"<div class='signal-card'><div class='signal-title'>{html.escape(label)} {val:.0f}/100</div>"
+            f"<div class='mini-meter'><span style='width:{width:.0f}%;'></span></div>"
+            f"<div class='signal-body'>{html.escape(caption)}</div></div>"
+        )
+    st.markdown("<div class='svg-radar-card'>" + svg + "</div>" + "".join(cards), unsafe_allow_html=True)
+
+
+def render_element_distribution_gauge(result: Dict[str, object]) -> None:
+    pct = result.get("adjusted_pct") or result.get("seasonal_pct") or result.get("base_pct") or {}
+    labels = {"목":"木 목", "화":"火 화", "토":"土 토", "금":"金 금", "수":"水 수"}
+    st.markdown("#### 🧱 오행 분포")
+    html_rows = []
+    for el in ELEMENTS:
+        val = float(pct.get(el, 0.0) or 0.0)
+        state = element_state(val)
+        html_rows.append(_mini_bar_html(labels.get(el, el), val, 100, state))
+    st.markdown("<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>" + "".join(html_rows) + "</div>", unsafe_allow_html=True)
+    st.caption("오행 분포는 원국의 기본 재료입니다. 많고 적음만으로 단정하지 않고 월령·조후·일간 강약과 함께 봅니다.")
+
+
+def render_strength_scale(result: Dict[str, object]) -> None:
+    idx = float(result.get("strength_index", 50) or 50)
+    pos = max(0, min(100, idx))
+    label, label_note = refined_strength_interpretation(result)
+    st.markdown("####  일간 강약 저울")
+    st.markdown(f"""
+    <div style="background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:1rem;margin:.35rem 0;">
+        <div style="display:flex;justify-content:space-between;font-weight:900;color:#5b3f4b;"><span>신약</span><span>중화</span><span>신강</span></div>
+        <div style="position:relative;height:18px;background:linear-gradient(90deg,#c7ddff,#fff4c7,#ffc6d9);border-radius:99px;margin:.7rem 0 .45rem 0;border:1px solid rgba(145,115,129,.20);">
+            <div style="position:absolute;left:{pos:.1f}%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#d64273;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);"></div>
+        </div>
+        <div style="font-weight:900;color:#d64273;">{label} · 강약 지수 {idx:.1f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption(label_note)
+
+
+def render_climate_gauge(result: Dict[str, object]) -> None:
+    season = str(result.get("season", ""))
+    pct = result.get("adjusted_pct") or {}
+    if "겨울" in season:
+        temp = 28
+    elif "여름" in season:
+        temp = 72
+    elif "봄" in season:
+        temp = 56
+    elif "가을" in season:
+        temp = 44
+    else:
+        temp = 50
+    water = float(pct.get("수", 0) or 0)
+    fire = float(pct.get("화", 0) or 0)
+    humid = max(10, min(90, 48 + water * 0.8 - fire * 0.45))
+    st.markdown("#### 🌡️ 조후 감각")
+    climate_html = (
+        "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
+        + _mini_bar_html("온도감", temp, 100, "왼쪽은 차가움, 오른쪽은 뜨거움")
+        + _mini_bar_html("습도감", humid, 100, "왼쪽은 건조함, 오른쪽은 습함")
+        + "</div>"
+    )
+    st.markdown(climate_html, unsafe_allow_html=True)
+    st.caption(f"월령 기준 계절은 {season or '-'}입니다. 조후는 점수보다 '어떤 방향으로 균형을 잡을지'를 보는 참고 축입니다.")
+
+
+def render_useful_signal(useful: Dict[str, object], result: Dict[str, object] | None = None) -> None:
+    display_dirs = polished_useful_directions(useful, result)
+    primary = display_dirs.get("primary", [])
+    conditional = display_dirs.get("conditional", [])
+    burden = display_dirs.get("burden", [])
+    already_strong = display_dirs.get("already_strong", [])
+    st.markdown("#### 🚦 도움·부담 방향")
+    rows = [
+        ("🟢 도움 방향", ", ".join(primary) or "조후·순환 우선"),
+        ("🟡 조건부 참고", ", ".join(conditional) or "뚜렷하지 않음"),
+        ("🟠 이미 강함 / 추가 주의", ", ".join(already_strong) or "뚜렷하지 않음"),
+        ("🔴 과하면 부담", ", ".join(burden) or "뚜렷하지 않음"),
+    ]
+    st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(
+        f"<div style='flex:1 1 180px;background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#5b3f4b;'>{html.escape(k)}</div><div style='color:#6f4f5c;font-weight:800;margin-top:.35rem;'>{html.escape(v)}</div></div>" for k, v in rows
+    ) + "</div>", unsafe_allow_html=True)
+    if useful.get("logic"):
+        st.caption(str(useful.get("logic")))
+
+
+def render_interaction_signal(result: Dict[str, object]) -> None:
+    interactions = result.get("interactions") or []
+    counts = {"합": 0, "충": 0, "형": 0, "기타": 0}
+    alliance_strength = 0.0
+    alliance_names: List[str] = []
+
+    for it in interactions:
+        t = str(it.get("type", ""))
+        name = str(it.get("name", ""))
+        strength = str(it.get("strength", ""))
+        if "합" in t:
+            counts["합"] += 1
+            alliance_names.append(name)
+            if t in ["삼합", "방합"]:
+                alliance_strength += 5.5 if strength == "매우 강함" else 5.0
+            elif t == "반합":
+                alliance_strength += 3.0
+            elif t == "육합":
+                alliance_strength += 2.0
+            else:
+                alliance_strength += 1.5
+        elif "충" in t:
+            counts["충"] += 1
+        elif "형" in t:
+            counts["형"] += 1
+        else:
+            counts["기타"] += 1
+    # 화면에서는 '합의 개수'가 아니라 '결속 형성도'로 보여준다.
+    alliance_score = min(6.0, alliance_strength)
+
+    st.markdown("####  원국 내부 작용")
+    html_block = "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
+    html_block += _mini_bar_html("결속 형성도 合", alliance_score, 6, "삼합·방합은 1개만 있어도 강하게 반영")
+    html_block += _mini_bar_html("변동 신호 沖", counts["충"], 6, "움직임과 충돌을 만드는 신호")
+    html_block += _mini_bar_html("압박 신호 刑", counts["형"], 6, "긴장과 압박으로 작용할 수 있는 신호")
+    html_block += "</div>"
+    st.markdown(html_block, unsafe_allow_html=True)
+
+    if alliance_names:
+        st.caption("감지된 결속 신호: " + ", ".join(alliance_names[:4]))
+    compound_notes = interaction_compound_role_notes(result)
+    for note in compound_notes:
+        st.caption(note)
+    if interactions and not compound_notes:
+        st.caption("합국·육합은 기운을 묶는 신호입니다. 참여 글자의 원래 십성·신살 의미도 함께 참고합니다.")
+
+def render_luck_timeline(luck_flow: Dict[str, object] | None) -> None:
+    if not luck_flow or not luck_flow.get("sewun_rows"):
+        st.info("대운·세운 타임라인은 생년월일시 자동 산출 정보가 있을 때 표시됩니다.")
+        return
+    st.markdown("#### 🗓️ 향후 5년 흐름")
+    rows = luck_flow.get("sewun_rows", [])[:5]
+    cards = []
+    for r in rows:
+        score = float(r.get("점수", 0) or 0)
+        if score >= 70:
+            tag = "확장"
+        elif score >= 55:
+            tag = "안정"
+        elif score >= 40:
+            tag = "조정"
+        else:
+            tag = "변동"
+        pct = max(0, min(100, score))
+        safe_year = html.escape(str(r.get('연도', '-')), quote=True)
+        safe_tag = html.escape(str(tag), quote=True)
+        safe_sewun = html.escape(str(r.get('세운', '-')), quote=True)
+        cards.append(f"<div style='flex:1 1 120px;background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#5b3f4b;'>{safe_year}</div><div style='font-weight:900;color:#d64273;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#f8e8ef;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);'></div></div><div style='font-size:.78rem;color:#7a5665;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
+    st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
+
+
+def render_compatibility_axis_gauge(compatibility: Dict[str, object]) -> None:
+    axes = compatibility.get("axes") or {}
+    if not axes:
+        return
+    st.markdown("##### 케미 4축 게이지")
+    labels = [("상호 보완성", "서로 부족한 축을 메워주는 힘"), ("동맹성", "결속·협력 신호"), ("긴장도", "높을수록 자극과 변동이 큼"), ("흐름 동조성", "리듬과 방향이 맞는 정도")]
+    html_block = "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
+    for label, caption in labels:
+        html_block += _mini_bar_html(label, float(axes.get(label, axes.get(label.replace('성',''), 0)) or 0), 100, caption)
+    html_block += "</div>"
+    st.markdown(html_block, unsafe_allow_html=True)
+
+
+def render_meal_spoke_distribution(meal_result: Dict[str, object]) -> None:
+    rows = meal_result.get("roulette_rows") or []
+    if not rows:
+        return
+    st.markdown("##### 뽑기 칸 배정")
+    html_block = "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
+    for r in sorted(rows, key=lambda x: (-int(x.get("assigned_spokes",0)), str(x.get("participant","")))):
+        name = str(r.get("participant", "-"))
+        spokes = int(r.get("assigned_spokes", 0) or 0)
+        prob = r.get("probability", "-")
+        html_block += _mini_bar_html(f"{name}", spokes, 16, f"{spokes}/16칸 · {prob}%")
+    html_block += "</div>"
+    st.markdown(html_block, unsafe_allow_html=True)
+
+
+def render_calculation_steps() -> None:
+    st.markdown("##### 계산 순서")
+    steps = ["원국 산출", "오행 분포 계산", "월령·계절 보정", "합충형파해 보정", "일간 강약 판정", "조후 방향 판정", "3대 능력치 점수화", "대운·세운 연결", "검증 상태 확인"]
+    html_block = "<div style='display:flex;flex-wrap:wrap;gap:.5rem;margin:.45rem 0;'>"
+    for i, step in enumerate(steps, start=1):
+        html_block += f"<div style='flex:1 1 160px;background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:14px;padding:.72rem;'><div style='font-weight:950;color:#d64273;'>STEP {i}</div><div style='font-weight:850;color:#5b3f4b;'>{html.escape(step)}</div></div>"
+    html_block += "</div>"
+    st.markdown(html_block, unsafe_allow_html=True)
+
+def render_luck_wave_section(luck_flow: Dict[str, object] | None) -> None:
+    quest_title("🌊 운의 파도", "원국 위에 얹히는 대운·세운의 보완과 부담을 따로 봅니다.", ["대운", "세운", "흐름"])
+    if luck_flow and luck_flow.get("current_daewun"):
+        d = luck_flow["current_daewun"]
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            safe_metric("현재 나이 기준", f"{luck_flow.get('age', '-')}세")
+        with col_b:
+            safe_metric("현재 대운", d.get("ganzhi", "-"))
+        with col_c:
+            safe_metric("대운 참고점", f"{luck_flow.get('daewun_score', '-')}점", f"{float(luck_flow.get('daewun_mod', 0.0)):+.1f}점")
+        safe_write(f"- 시작 나이: **{d.get('start_age', '-')}세**")
+        safe_write(f"- 해석: {luck_flow.get('daewun_note', '-')}")
+        if luck_flow.get("sewun_rows"):
+            render_luck_timeline(luck_flow)
+            if safe_toggle("세운 상세표 보기", value=False, key="luck_wave_sewun_table"):
+                safe_dataframe(pd.DataFrame(luck_flow["sewun_rows"]), use_container_width=True, hide_index=True)
+    else:
+        st.info("세운 비교는 생년월일시 자동 산출 정보가 있을 때 표시됩니다.")
+
+
+def render_detail_tabs(payload: Dict[str, object], prefix: str | None = None) -> None:
+    """운의 파도와 참고 메뉴를 필요한 경우에만 보여준다."""
+    prefix = prefix or str(abs(id(payload)))
+    chart = payload["chart"]
+    result = payload["result"]
+    valid_origin = payload["valid_origin"]
+    validation_passed = payload["validation_passed"]
+    validation_warnings = payload["validation_warnings"]
+    luck_flow = payload.get("luck_flow")
+    auto_check = payload.get("auto_check")
+
+    st.subheader("🧾 운의 파도")
+    detail_options = ["핵심 요약", "운의 파도"]
+    selected_detail = st.radio("확인할 항목", detail_options, key=f"{prefix}_detail_selector", horizontal=True)
+
+    if selected_detail == "핵심 요약":
+        quest_title("🧭 핵심 요약", "참고점이 어떻게 만들어졌는지부터 원국의 캐릭터와 흐름까지 순서대로 봅니다.", ["원국 참고점", "원국", "캐릭터", "운의 파도"])
+        render_score_formula_diagram(result, prefix=prefix)
+        if safe_toggle("계산 순서도 보기", value=False, key=f"{prefix}_calc_steps_toggle"):
+            render_calculation_steps()
+
+        ability_view = st.radio(
+            "3대 능력치 안에서 볼 항목",
+            ["핵심 요약", "기초체력", "흐름과 연결", "현실작동력"],
+            key=f"{prefix}_ability_inner_view",
+            horizontal=True,
+        )
+
+        if ability_view == "핵심 요약":
+            st.markdown("#### 3대 능력치 점수")
+            ability_rows = []
+            for row in category_totals(result["categorized_scores"]):
+                ability_rows.append({
+                    "항목": category_plain_title(row["카테고리"]),
+                    "점수": row["점수"],
+                    "배점": row["배점"],
+                    "비율": row["비율"],
+                })
+            safe_dataframe(pd.DataFrame(ability_rows), use_container_width=True, hide_index=True)
+            render_score_breakdown_card(result)
+            render_element_pentagon(result)
+            render_strength_scale(result)
+            render_climate_gauge(result)
+            render_useful_signal(result.get("useful", {}), result)
+            render_luck_timeline(luck_flow)
+        elif ability_view == "기초체력":
+            quest_title("💪 기초체력 (기운의 크기)", "오행 세력, 월령, 통근, 일간 강약, 격국 골격을 봅니다.", ["오행", "월령", "통근", "일간"])
+            render_ability_axis_detail(result, "크기")
+        elif ability_view == "흐름과 연결":
+            quest_title("🔄 흐름과 연결 (기운의 순환)", "조후, 십성 순환, 식상생재, 재생관, 관인상생을 봅니다.", ["조후", "십성", "식상생재", "재생관"])
+            render_ability_axis_detail(result, "순환")
+            if safe_toggle("십성 순환 구조표 보기", value=False, key=f"{prefix}_flow_table"):
+                safe_dataframe(pd.DataFrame(result["flows"]), use_container_width=True, hide_index=True)
+        elif ability_view == "현실작동력":
+            quest_title("✨ 현실작동력 (기운의 발현)", "합충형파해, 구조 안정성, 재성·관성 구조, 해석 정합성, 신살·공망 체감 신호를 봅니다.", ["합충형파해", "재성", "관성", "신살"])
+            render_ability_axis_detail(result, "발현")
+            if safe_toggle("합충형파해 자세히 보기", value=False, key=f"{prefix}_interaction_detail"):
+                if result["interactions"]:
+                    interaction_df = pd.DataFrame([
+                        {"유형": it["type"], "구조": it["name"], "성립도": it["strength"], "보정 대상": it.get("element") or "-", "해석": it["description"]}
+                        for it in result["interactions"]
+                    ])
+                    safe_dataframe(interaction_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("큰 합충형파해 신호가 적습니다.")
+            if safe_toggle("신살·공망 보기", value=False, key=f"{prefix}_shinsal_detail"):
+                shinsal = result.get("shinsal", {})
+                safe_write(f"**{shinsal.get('summary', '신살·공망 체감 반영 없음')} / 한도 {shinsal.get('limit', '±5점')}**")
+                if shinsal.get("hits"):
+                    safe_dataframe(pd.DataFrame(shinsal["hits"]), use_container_width=True, hide_index=True)
+                for note in shinsal.get("notes", []):
+                    safe_write(f"- {note}")
+            if safe_toggle("재성·관성 구조 보기", value=False, key=f"{prefix}_gs_detail"):
+                gs = result["gender_structure"]
+                safe_write(f"**{gs['대상']}**")
+                safe_write(f"- 점수: **{gs['점수']} / 4**")
+                safe_write(f"- 상태: **{gs['상태']}**")
+                safe_write(f"- 요약: {gs['요약']}")
+                for note in gs["비고"]:
+                    safe_write(f"- {note}")
+
+        st.markdown("#### 🪪 만세력 원국")
+        st.caption("시주·일주·월주·년주 순서로 원국을 확인합니다.")
+        render_origin_identity_table(chart)
+
+        origin_profile = result.get("origin_profile", {})
+        useful = result.get("useful", {})
+        holistic = result.get("holistic", {})
+        shinsal = result.get("shinsal", {})
+        fun_origin = friendly_origin_summary(origin_profile)
+        fun_strength = friendly_strength_summary(result)
+        useful_text = friendly_useful_summary(useful)
+        shinsal_names = ", ".join([h.get("신살", h.get("name", "-")) for h in shinsal.get("hits", [])[:5]]) if shinsal.get("hits") else "특기할 신살·공망 없음"
+
+        st.markdown("#### 🎭 원국 캐릭터와 해설")
+        info_rows = [
+            {"항목": "원국 캐릭터", "요약": fun_origin},
+            {"항목": "일간 강약", "요약": fun_strength},
+            {"항목": "보완 방향", "요약": useful_text},
+            {"항목": "전체 인상 보정", "요약": f"{holistic.get('adjustment', 0):+.1f}점"},
+            {"항목": "신살·공망", "요약": f"{shinsal.get('adjustment', 0):+.1f}점"},
+        ]
+        info_html = "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.65rem;margin:.45rem 0 1rem 0;'>"
+        for row in info_rows:
+            info_html += (
+                f"<div style='background:#fff;border:1px solid rgba(230,164,184,.32);border-radius:16px;padding:.82rem .9rem;'>"
+                f"<div style='font-weight:950;color:#7a5665;font-size:.88rem;'>{html.escape(str(row['항목']))}</div>"
+                f"<div style='font-weight:850;color:#4b2d3a;line-height:1.55;margin-top:.28rem;white-space:normal;overflow:visible;text-overflow:clip;'>{html.escape(str(row['요약']))}</div>"
+                f"</div>"
+            )
+        info_html += "</div>"
+        st.markdown(info_html, unsafe_allow_html=True)
+
+        explain_view = st.radio(
+            "자세히 볼 해설",
+            ["선택 안 함", "원국 캐릭터", "일간 강약", "보완 방향", "전체 인상 보정", "신살·공망"],
+            key=f"{prefix}_explain_view",
+            horizontal=True,
+        )
+        if explain_view == "원국 캐릭터":
+            safe_write(f"**캐릭터 한 줄 요약:** {fun_origin}")
+            safe_write(f"- 원래 판정 태그: {origin_profile.get('summary', '표준 혼합형')}")
+            for note in origin_profile.get("notes", []):
+                safe_write(f"- {note}")
+        elif explain_view == "일간 강약":
+            safe_write(f"**쉬운 표현:** {fun_strength}")
+            safe_write(f"- 강약 판정: {result.get('strength_label', '중화')} / 지수 {result.get('strength_index', '-')}")
+            for note in result.get("strength_detail", []):
+                safe_write(f"- {note}")
+        elif explain_view == "보완 방향":
+            safe_write(f"**보완 방향:** {useful_text}")
+            safe_write(f"- 보완 방향: {', '.join(useful.get('primary', [])) or '조후·순환 우선'}")
+            for note in useful.get("notes", []):
+                safe_write(f"- {note}")
+        elif explain_view == "전체 인상 보정":
+            safe_write(f"**보정값:** {holistic.get('adjustment', 0):+.1f}점")
+            safe_write(f"- 요약: {holistic.get('summary', '보정 없음')}")
+            for note in holistic.get("positives", []):
+                safe_write(f"- 장점 반영: {note}")
+            for note in holistic.get("cautions", []):
+                safe_write(f"- 유의점 반영: {note}")
+        elif explain_view == "신살·공망":
+            safe_write(f"**보정값:** {shinsal.get('adjustment', 0):+.1f}점")
+            safe_write(f"- 요약: {shinsal.get('summary', '신살·공망 체감 반영 없음')}")
+            safe_write(f"- 감지된 신살: {shinsal_names}")
+            for note in shinsal.get("notes", []):
+                safe_write(f"- {note}")
+
+        st.markdown("#### 🌊 운의 파도")
+        render_luck_wave_section(luck_flow)
+    else:
+        render_luck_wave_section(luck_flow)
+
+    st.markdown("""
+    <div class="support-menu-wrap">
+        <div class="support-menu-title">참고·고지 메뉴</div>
+        <div class="support-menu-caption">만세력 검문소, 용어 해설, 안전 고지, 검증 요약, 리포트 다운로드는 필요한 경우에만 아래에서 작게 열어봅니다.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    support_view = st.radio(
+        "하단 참고 메뉴",
+        ["선택 안 함", "만세력 검문소", "용어 해설서", "안전·법적 고지", "검증 요약", "팔자 리포트"],
+        key=f"{prefix}_support_selector",
+    )
+
+    if support_view == "만세력 검문소":
+        quest_title("🧭 만세력 검문소", "자동 산출 원국의 보정·야자시·안정도만 간단히 확인합니다.", ["야자시", "태양시 보정", "원국"])
+        if auto_check:
+            if auto_check["stability"] == "높음":
+                st.success(auto_check["summary"])
+            elif auto_check["stability"] == "주의":
+                st.warning(auto_check["summary"])
+            else:
+                st.error(auto_check["summary"])
+            safe_write(f"**현재 적용 원국:** {auto_check['selected_origin']}")
+            safe_write(f"**현재 적용 기준:** {auto_check['selected_basis']}")
+            if auto_check.get("variants") and safe_toggle("보정 전후·야자시 비교표 보기", value=False, key=f"{prefix}_variant_toggle"):
+                safe_dataframe(pd.DataFrame(auto_check["variants"]), use_container_width=True, hide_index=True)
+            if auto_check.get("warnings") and safe_toggle("산출 불안정 요소 보기", value=False, key=f"{prefix}_warning_toggle"):
+                for item in auto_check["warnings"]:
+                    safe_write(f"- {item}")
+            if auto_check.get("reasons") and safe_toggle("판정 참고 사유 보기", value=False, key=f"{prefix}_reason_toggle"):
+                for item in auto_check["reasons"]:
+                    safe_write(f"- {item}")
+        else:
+            st.info("자동 산출 검문소는 생년월일시 자동 산출 분석에서 표시됩니다.")
+    elif support_view == "용어 해설서":
+        render_glossary_tab()
+    elif support_view == "안전·법적 고지":
+        render_privacy_legal_notice()
+    elif support_view == "검증 요약":
+        quest_title("🧪 검증 요약", "사용자가 결과를 해석할 때 필요한 최소한의 검증 정보만 보여줍니다.", ["원국", "케미"])
+        summary_rows = [
+            {"항목": "앱 버전", "내용": APP_VERSION},
+            {"항목": "원국 구성 검증", "내용": "통과" if valid_origin else "경고 있음"},
+            {"항목": "자동 산출 안정도", "내용": auto_check.get("stability", "해당 없음") if auto_check else "해당 없음"},
+            {"항목": "시주 정보", "내용": "시주 포함" if chart.hour is not None else "시주 미상·삼주 간이 분석"},
+            {"항목": "점수 모델", "내용": "오락·참고용 구조 점수. 중대한 판단 근거로 사용하지 않음"},
+            {"항목": "개인정보 저장", "내용": "앱 자체 별도 DB 저장 없음. 배포 플랫폼 일반 로그는 통제 불가"},
+        ]
+        safe_dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+        if validation_warnings and safe_toggle("원국 구성 경고 보기", value=False, key=f"{prefix}_validation_toggle"):
+            for item in validation_warnings:
+                safe_write(f"- {item}")
+    elif support_view == "팔자 리포트":
+        report = build_single_report_text(payload)
+        _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        st.download_button(
+            label="팔자 리포트 다운로드 (.txt)",
+            data=report,
+            file_name=f"palja_report_{_ts}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key=f"{prefix}_download_single_report",
+        )
+
+
+def parse_quick_single_line(raw: str) -> Dict[str, object]:
+    text = str(raw or "").strip()
+    if not text:
+        raise ValueError("빠른 입력값이 비어 있습니다.")
+    gender = "여자" if "여" in text else "남자"
+    calendar_type = "음력 윤달" if "윤" in text else ("음력 평달" if "음" in text else "양력")
+    digits = re.findall(r"\d+", text)
+    if not digits:
+        raise ValueError("생년월일을 찾지 못했습니다.")
+    date_digits = next((d for d in digits if len(d) == 8), "")
+    if not date_digits:
+        raise ValueError("생년월일은 YYYYMMDD 형식으로 입력해 주세요.")
+    b_date = date(int(date_digits[:4]), int(date_digits[4:6]), int(date_digits[6:8]))
+    time_digits = next((d for d in digits if d != date_digits and len(d) in (3, 4)), "")
+    b_time = None
+    if time_digits:
+        if len(time_digits) == 3:
+            hh, mm = int(time_digits[:1]), int(time_digits[1:])
+        else:
+            hh, mm = int(time_digits[:2]), int(time_digits[2:])
+        b_time = time(hh, mm)
+    return {"birth_date": b_date, "birth_time": b_time, "gender": gender, "calendar_type": calendar_type}
+
+
+def parse_origin_paste(raw: str) -> List[str]:
+    text = re.sub(r"[\s/|,·]+", "", str(raw or "").strip())
+    chars = [c for c in text if c in STEMS or c in BRANCHES]
+    if len(chars) != 8:
+        raise ValueError("원국은 천간·지지 8글자를 붙여넣어야 합니다.")
+    pairs = ["".join(chars[i:i+2]) for i in range(0, 8, 2)]
+    values: List[str] = []
+    for pair in pairs:
+        if len(pair) != 2 or pair[0] not in STEMS or pair[1] not in BRANCHES:
+            raise ValueError("각 기둥은 천간 1글자 + 지지 1글자 순서여야 합니다.")
+        values.extend([pair[0], pair[1]])
+    return values
+
+def possible_hour_pillars_for_day(day_stem: str) -> List[Pillar]:
+    """출생시간 미상 시 가능한 12개 시주를 생성한다."""
+    pillars = []
+    for branch in BRANCHES.keys():
+        ganji = expected_hour_pillar_for_validation(day_stem, branch)
+        pillars.append(Pillar(ganji[0], ganji[1]))
+    return pillars
+
+
+def average_category_scores(results: List[Dict[str, object]]) -> Dict[str, Dict[str, Tuple[float, float, List[str]]]]:
+    """12개 시주 후보의 카테고리 점수를 평균화한다."""
+    if not results:
+        return {}
+    template = results[0]["categorized_scores"]
+    averaged: Dict[str, Dict[str, Tuple[float, float, List[str]]]] = {}
+    for category, sub_items in template.items():
+        averaged[category] = {}
+        for name, (_score, max_score, _notes) in sub_items.items():
+            vals = [float(r["categorized_scores"][category][name][0]) for r in results]
+            notes = []
+            for r in results:
+                n = r["categorized_scores"][category][name][2]
+                for item in n[:2]:
+                    if item not in notes:
+                        notes.append(item)
+                    if len(notes) >= 4:
+                        break
+                if len(notes) >= 4:
+                    break
+            notes.append(f"시주 미상: 12개 가능한 시주 후보의 평균값으로 표시했습니다. 범위 {min(vals):.1f}~{max(vals):.1f}점")
+            averaged[category][name] = (round(sum(vals) / len(vals), 1), max_score, notes)
+    return averaged
+
+
+def average_analysis_results(results: List[Dict[str, object]], display_chart: Chart) -> Dict[str, object]:
+    """가능한 12개 시주를 모두 분석한 뒤 평균 결과를 삼주 간이 결과로 구성한다."""
+    totals = [float(r["total"]) for r in results]
+    base_totals = [float(r.get("base_total", r["total"])) for r in results]
+    strengths = [float(r.get("strength_index", 50)) for r in results]
+    representative = results[len(results) // 2].copy()
+    total_avg = round(sum(totals) / len(totals), 1)
+    base_avg = round(sum(base_totals) / len(base_totals), 1)
+    strength_avg = round(sum(strengths) / len(strengths), 1)
+    representative["total"] = total_avg
+    representative["base_total"] = base_avg
+    representative["strength_index"] = strength_avg
+    if strength_avg <= 25:
+        representative["strength_label"] = "극신약"
+    elif strength_avg <= 40:
+        representative["strength_label"] = "신약"
+    elif strength_avg <= 60:
+        representative["strength_label"] = "중화"
+    elif strength_avg <= 75:
+        representative["strength_label"] = "신강"
+    else:
+        representative["strength_label"] = "극신강"
+    representative["categorized_scores"] = average_category_scores(results)
+    representative["category_rows"] = category_totals(representative["categorized_scores"])
+    representative["scores"]["시주 미상 보정"] = (
+        0,
+        0,
+        [
+            "출생시간 미상으로 시주를 특정하지 않았습니다.",
+            "12개 가능한 시주 후보를 모두 산출한 뒤 평균 점수로 표시했습니다.",
+            f"총점 후보 범위: {min(totals):.1f}~{max(totals):.1f}점",
+        ],
+    )
+    representative["holistic"] = {
+        "adjustment": 0,
+        "summary": f"삼주 간이 분석: 가능한 시주 후보 12개의 평균값입니다. 총점 범위 {min(totals):.1f}~{max(totals):.1f}점.",
+        "notes": [
+            "시주 미상으로 결과 신뢰도는 참고용입니다.",
+            "시주가 관여하는 합충형파해·십성·말년성 해석은 제한됩니다.",
+        ],
+    }
+    representative["grade_info"] = grade_info(total_avg)
+    representative["unknown_time"] = {
+        "enabled": True,
+        "score_min": round(min(totals), 1),
+        "score_max": round(max(totals), 1),
+        "score_avg": total_avg,
+        "candidate_count": len(results),
+    }
+    return representative
+
+
+def build_three_pillar_auto_payload(
+    name: str,
+    birth_date: date,
+    gender: str,
+    correction_minutes: int,
+    use_yajashee: bool,
+    age_basis: str,
+    calendar_type: str = "양력",
+) -> Dict[str, object]:
+    """
+    출생시간 미상용 삼주 간이 분석.
+    내부적으로 정오를 기준으로 년주·월주·일주만 산출한 뒤, 시주는 버리고 가능한 12개 시주를 평균화한다.
+    화면과 결과에는 정오 시주를 표시하거나 사용하지 않는다.
+    """
+    input_birth_date = birth_date
+    solar_birth_date = resolve_birth_date_to_solar(birth_date, calendar_type)
+
+    base_chart, _daewuns, auto_meta = get_saju_automated(
+        birth_date=solar_birth_date,
+        birth_time=time(12, 0),
+        gender=gender,
+        correction_minutes=correction_minutes,
+        use_yajashee=False,
+    )
+    display_chart = Chart(base_chart.year, base_chart.month, base_chart.day, None, gender, "삼주 간이 분석")
+
+    candidates = []
+    for hp in possible_hour_pillars_for_day(base_chart.day.stem):
+        candidate_chart = Chart(base_chart.year, base_chart.month, base_chart.day, hp, gender, "시주 후보")
+        candidates.append(analyze(candidate_chart, ""))
+
+    result = average_analysis_results(candidates, display_chart)
+    valid_origin, validation_passed, validation_warnings = validate_origin_only_chart(display_chart)
+
+    auto_meta["calendar_type"] = calendar_type
+    auto_meta["input_birth_date"] = input_birth_date.strftime("%Y-%m-%d")
+    auto_meta["solar_birth_date"] = solar_birth_date.strftime("%Y-%m-%d")
+    auto_meta["original_dt"] = f"{solar_birth_date.strftime('%Y-%m-%d')} 시간 미상"
+    auto_meta["corrected_dt"] = "시주 미상"
+    auto_meta["yajashee_applied"] = False
+    auto_meta["unknown_time"] = True
+
+    return {
+        "name": sanitize_display_name(name, "참가자"),
+        "mode": "생년월일 삼주 간이 분석",
+        "chart": display_chart,
+        "result": result,
+        "valid_origin": valid_origin,
+        "validation_passed": validation_passed,
+        "validation_warnings": validation_warnings,
+        "daewuns": [],
+        "luck_flow": {
+            "age": "시주 미상",
+            "current_daewun": None,
+            "daewun_score": result["total"],
+            "daewun_mod": 0.0,
+            "daewun_note": "출생시간 미상으로 대운 시작 시점과 세운 흐름은 제한 분석입니다.",
+            "sewun_rows": [],
+        },
+        "auto_meta": auto_meta,
+        "auto_check": {
+            "stability": "참고용",
+            "summary": "출생시간 미상으로 시주를 특정하지 않고 삼주 간이 분석을 수행했습니다.",
+            "selected_origin": ganji_text(display_chart),
+            "selected_basis": "삼주 간이 분석",
+            "warnings": [
+                "시주 미상으로 시주 합충·시간 십성·대운 시작 시점 해석이 제한됩니다.",
+                "정밀 분석은 검증된 원국 8글자 직접 입력을 권장합니다.",
+            ],
+            "reasons": ["년주·월주·일주만 확정하고 가능한 시주 후보 12개를 평균화했습니다."],
+            "variants": [],
+        },
+        "age_basis": age_basis,
+        "calendar_type": calendar_type,
+        "input_birth_date": input_birth_date.strftime("%Y-%m-%d"),
+        "solar_birth_date": solar_birth_date.strftime("%Y-%m-%d"),
+        "birth_date": input_birth_date.strftime("%Y-%m-%d"),
+        "birth_time": None,
+        "correction_minutes": correction_minutes,
+        "use_yajashee": use_yajashee,
+        "unknown_time": True,
+    }
+
+
+def build_direct_payload(name: str, direct_values: List[str]) -> Dict[str, object]:
+    ys, yb, ms, mb, ds, db, hs, hb, gender = direct_values
+    required_values = [ys, yb, ms, mb, ds, db, hs, hb]
+    if any(v == BLANK for v in required_values):
+        raise ValueError(f"{name}의 원국 8글자를 모두 선택해야 합니다.")
+    chart = Chart(Pillar(ys, yb), Pillar(ms, mb), Pillar(ds, db), Pillar(hs, hb), gender, "직접 입력")
+    valid_origin, validation_passed, validation_warnings = validate_origin_only_chart(chart)
+    result = analyze(chart, "")
+    return {
+        "name": sanitize_display_name(name, "참가자"),
+        "mode": "원국 직접 입력",
+        "chart": chart,
+        "result": result,
+        "valid_origin": valid_origin,
+        "validation_passed": validation_passed,
+        "validation_warnings": validation_warnings,
+        "daewuns": [],
+        "luck_flow": None,
+        "auto_meta": None,
+        "auto_check": None,
+        "age_basis": None,
+    }
+
+
+def build_auto_payload(name: str, birth_date: date, birth_time: time | None, gender: str, correction_minutes: int, use_yajashee: bool, age_basis: str, calendar_type: str = "양력") -> Dict[str, object]:
+    if birth_time is None:
+        raise ValueError("출생시간 미상: 자동 산출은 진행하지 않습니다.")
+    input_birth_date = birth_date
+    solar_birth_date = resolve_birth_date_to_solar(birth_date, calendar_type)
+    chart, daewuns, auto_meta = get_saju_automated(
+        birth_date=solar_birth_date,
+        birth_time=birth_time,
+        gender=gender,
+        correction_minutes=correction_minutes,
+        use_yajashee=use_yajashee,
+    )
+    auto_meta["calendar_type"] = calendar_type
+    auto_meta["input_birth_date"] = input_birth_date.strftime("%Y-%m-%d")
+    auto_meta["solar_birth_date"] = solar_birth_date.strftime("%Y-%m-%d")
+    auto_check = build_auto_verification(
+        birth_date=solar_birth_date,
+        birth_time=birth_time,
+        gender=gender,
+        correction_minutes=correction_minutes,
+        use_yajashee=use_yajashee,
+        selected_chart=chart,
+    )
+    valid_origin, validation_passed, validation_warnings = validate_origin_only_chart(chart)
+    result = analyze(chart, "")
+    luck_flow = build_luck_flow_rows(chart, result, daewuns, solar_birth_date, age_basis)
+    return {
+        "name": sanitize_display_name(name, "참가자"),
+        "mode": "생년월일시 자동 산출",
+        "chart": chart,
+        "result": result,
+        "valid_origin": valid_origin,
+        "validation_passed": validation_passed,
+        "validation_warnings": validation_warnings,
+        "daewuns": daewuns,
+        "luck_flow": luck_flow,
+        "auto_meta": auto_meta,
+        "auto_check": auto_check,
+        "age_basis": age_basis,
+        "calendar_type": calendar_type,
+        "input_birth_date": input_birth_date.strftime("%Y-%m-%d"),
+        "solar_birth_date": solar_birth_date.strftime("%Y-%m-%d"),
+        "birth_date": input_birth_date.strftime("%Y-%m-%d"),
+        "birth_time": birth_time.strftime("%H:%M"),
+        "correction_minutes": correction_minutes,
+        "use_yajashee": use_yajashee,
+    }
+
+
+def can_store_birth_datetime(payload: Dict[str, object]) -> bool:
+    """생년월일시까지 보관하여 대운·세운 재활용이 가능한지 판단한다."""
+    if payload.get("unknown_time"):
+        return False
+    if payload.get("mode") != "생년월일시 자동 산출" and "생년월일시 자동 산출" not in str(payload.get("mode", "")):
+        return False
+    if not payload.get("birth_date") or not payload.get("birth_time"):
+        return False
+    lf = payload.get("luck_flow") or {}
+    if not lf.get("current_daewun"):
+        return False
+    return True
+
+
+def daewun_available(payload: Dict[str, object]) -> bool:
+    lf = payload.get("luck_flow") or {}
+    return bool(lf.get("current_daewun") and lf.get("daewun_score") is not None)
+
+
+def daewun_status_label(payload: Dict[str, object]) -> str:
+    if daewun_available(payload):
+        return "대운 계산 가능"
+    if payload.get("unknown_time"):
+        return "시간 미상·대운 제한"
+    return "원국만 보관"
+
+
+def storage_mode_label(payload: Dict[str, object]) -> str:
+    return str(payload.get("storage_mode") or ("생년월일시까지 보관" if daewun_available(payload) and payload.get("birth_time") else "원국 보관"))
+
+
+def roster_payload_copy(payload: Dict[str, object], name: str, keep_birth_data: bool = False) -> Dict[str, object]:
+    """
+    현재 세션에서만 쓰는 참가자 보관함용 복사.
+    - 원국 보관: 원국·분석결과만 보관하고 대운·세운 재활용은 제한한다.
+    - 생년월일시까지 보관: 자동 산출 참가자에 한해 생년월일시 계산 정보와 daewuns/luck_flow를 함께 보관한다.
+    """
+    keep = bool(keep_birth_data and can_store_birth_datetime(payload))
+    copied = {
+        "name": sanitize_display_name(name, "참가자"),
+        "mode": f"{payload.get('mode', '보관함')} / 보관함",
+        "chart": payload["chart"],
+        "result": payload["result"],
+        "valid_origin": payload.get("valid_origin", True),
+        "validation_passed": payload.get("validation_passed", []),
+        "validation_warnings": payload.get("validation_warnings", []),
+        "daewuns": payload.get("daewuns", []) if keep else [],
+        "luck_flow": payload.get("luck_flow") if keep else None,
+        "auto_meta": payload.get("auto_meta") if keep else None,
+        "auto_check": payload.get("auto_check") if keep else None,
+        "age_basis": payload.get("age_basis"),
+        "unknown_time": payload.get("unknown_time", False),
+        "storage_mode": "생년월일시까지 보관" if keep else "원국 보관",
+        "birth_date": payload.get("birth_date") if keep else None,
+        "birth_time": payload.get("birth_time") if keep else None,
+        "calendar_type": payload.get("calendar_type") if keep else None,
+        "input_birth_date": payload.get("input_birth_date") if keep else None,
+        "solar_birth_date": payload.get("solar_birth_date") if keep else None,
+        "correction_minutes": payload.get("correction_minutes") if keep else None,
+        "use_yajashee": payload.get("use_yajashee") if keep else False,
+    }
+    copied["daewun_status"] = daewun_status_label(copied)
+    return copied
+
+
+def render_roster_panel() -> None:
+    """내 것 분석 후 친구를 추가하는 순차형 보관함 패널."""
+    roster = st.session_state.get("saved_participants", [])
+    if safe_toggle(f"👥 참가자 보관함 — 내 것 분석 후 친구 추가 방식 ({len(roster)}명)", value=False, key="roster_panel_toggle"):
+        st.caption("단일 분석 결과를 보관함에 추가한 뒤, 나중에 1:1 케미에 재사용할 수 있습니다. 브라우저 세션 안에서만 유지되며 새로고침·재실행 시 사라질 수 있습니다. 보관함에는 생년월일시 원문을 복사하지 않고 원국·분석결과 중심으로만 보관합니다.")
+        if roster:
+            safe_dataframe(pd.DataFrame([
+                {
+                    "번호": i + 1,
+                    "별명": p.get("name", f"참가자 {i+1}"),
+                    "원국": ganji_text(p["chart"]),
+                    "점수": p["result"]["total"],
+                    "유형": p["result"].get("origin_profile", {}).get("summary", "-"),
+                    "보관 방식": storage_mode_label(p),
+                    "대운 반영": daewun_status_label(p),
+                }
+                for i, p in enumerate(roster)
+            ]), use_container_width=True, hide_index=True)
+        else:
+            st.info("아직 보관된 참가자가 없습니다. 단일 분석 결과 화면에서 '보관함에 보관하기'를 누르면 여기에 쌓입니다.")
+
+        col_a, col_b, col_c, col_d = st.columns(4)
+        with col_a:
+            if st.button("보관함 비우기", use_container_width=True, key="clear_roster"):
+                st.session_state.saved_participants = []
+                st.success("참가자 보관함을 비웠습니다.")
+        if len(roster) >= 2:
+            with col_b:
+                rel_mode = st.radio("최신 2명 케미 모드", list(RELATIONSHIP_WEIGHTS.keys()), index=0, key="roster_relationship", horizontal=True)
+                if st.button("최신 2명 배틀", use_container_width=True, key="roster_battle"):
+                    pair = normalize_participant_names(roster[-2:])
+                    st.session_state.payload = {
+                        "battle": True,
+                        "mine": pair[0],
+                        "friend": pair[1],
+                        "relationship_mode": rel_mode,
+                        "correction_label": "보관함",
+                        "use_yajashee": False,
+                        "age_basis": "-",
+                    }
+                    st.session_state.show_details = False
+            with col_c:
+                if st.button("보관함 1:1 케미", use_container_width=True, key="roster_multi"):
+                    participants = normalize_participant_names(list(roster))
+                    st.session_state.payload = {
+                        "multi": True,
+                        "participants": participants,
+                        "correction_label": "보관함",
+                        "use_yajashee": False,
+                        "age_basis": "-",
+                    }
+                    st.session_state.pending_payload = None
+                    st.session_state.result_revealed = True
+                    st.session_state.show_details = False
+                    st.rerun()
+            with col_d:
+                roster_meal_date = manual_date_input("보관함 뽑기일", date.today(), key="roster_meal_date_text")
+                if st.button("보관함 오늘의 뽑기", use_container_width=True, key="roster_meal"):
+                    if roster_meal_date is None:
+                        st.error("보관함 뽑기일을 YYYY-MM-DD 형식으로 입력해 주세요.")
+                    elif Solar is None:
+                        st.error("밥값 배틀은 월운·일운 산출을 위해 lunar_python이 필요합니다.")
+                    else:
+                        participants = normalize_participant_names(list(roster))
+                        meal_result = meal_payer_analysis(participants, roster_meal_date)
+                        st.session_state.payload = {
+                            "meal": True,
+                            "participants": participants,
+                            "meal_result": meal_result,
+                            "meal_date": roster_meal_date.strftime("%Y-%m-%d"),
+                            "correction_label": "보관함",
+                            "use_yajashee": False,
+                            "age_basis": "-",
+                        }
+                        st.session_state.pending_payload = None
+                        st.session_state.result_revealed = True
+                        st.session_state.meal_roulette_reveal = False
+                        st.session_state.show_details = False
+                        st.rerun()
+
+
+def render_roster_reuse_menu(target: str) -> None:
+    """보관함 참가자를 현재 흐름에서 바로 불러오는 메뉴."""
+    roster = st.session_state.get("saved_participants", [])
+    if not roster:
+        st.info("보관함에 저장된 사주 분석결과가 없습니다. 먼저 혼자 보기나 1:1 케미 결과에서 보관함에 저장하세요.")
+        return
+
+    if target == "battle":
+        if safe_toggle(f"👥 보관함 참가자만으로 1:1 케미 시작 ({len(roster)}명)", value=False, key="roster_battle_start_toggle"):
+            st.caption("보관함에 저장된 참가자를 선택해 새로 입력하지 않고 1:1 케미에 사용할 수 있습니다.")
+            safe_dataframe(pd.DataFrame([
+                {"번호": i + 1, "별명": p.get("name", f"참가자 {i+1}"), "원국": ganji_text(p["chart"]), "점수": p["result"]["total"], "보관 방식": storage_mode_label(p), "대운 반영": daewun_status_label(p)}
+                for i, p in enumerate(roster)
+            ]), use_container_width=True, hide_index=True)
+            selected = []
+            for i, p in enumerate(roster):
+                if st.checkbox(f"{i+1}. {p.get('name', f'참가자 {i+1}')} 선택", key=f"battle_roster_pick_{i}"):
+                    selected.append(p)
+            rel_mode = st.radio("케미 모드", list(RELATIONSHIP_WEIGHTS.keys()), index=0, key="battle_roster_rel_mode", horizontal=True)
+            if st.button("선택한 보관함 참가자로 배틀", type="primary", use_container_width=True, key="battle_from_roster"):
+                if len(selected) < 2:
+                    st.warning("2명 이상 선택해야 합니다.")
+                elif len(selected) > 4:
+                    st.warning("1:1 케미는 최대 4명까지 선택하세요.")
+                else:
+                    participants = normalize_participant_names(list(selected))
+                    if len(participants) == 2:
+                        st.session_state.pending_payload = {
+                            "battle": True,
+                            "mine": participants[0],
+                            "friend": participants[1],
+                            "relationship_mode": rel_mode,
+                            "correction_label": "보관함",
+                            "use_yajashee": False,
+                            "age_basis": "-",
+                        }
+                    else:
+                        st.session_state.pending_payload = {
+                            "multi": True,
+                            "participants": participants,
+                            "correction_label": "보관함",
+                            "use_yajashee": False,
+                            "age_basis": "-",
+                        }
+                    st.session_state.payload = None
+                    st.session_state.result_revealed = False
+                    st.session_state.show_details = False
+                    st.rerun()
+
+    elif target == "meal":
+        if safe_toggle(f"👥 보관함 참가자만으로 밥값 케미 보기 ({len(roster)}명)", value=False, key="roster_meal_start_toggle"):
+            st.caption("보관함에 저장된 참가자를 선택해 밥값 케미 참가자로 바로 사용할 수 있습니다.")
+            safe_dataframe(pd.DataFrame([
+                {"번호": i + 1, "별명": p.get("name", f"참가자 {i+1}"), "원국": ganji_text(p["chart"]), "보관 방식": storage_mode_label(p), "대운 반영": daewun_status_label(p)}
+                for i, p in enumerate(roster)
+            ]), use_container_width=True, hide_index=True)
+            roster_meal_date = manual_date_input("보관함 밥값 기준일", date.today(), key="meal_roster_date_text")
+            selected = []
+            for i, p in enumerate(roster):
+                if st.checkbox(f"{i+1}. {p.get('name', f'참가자 {i+1}')} 선택", key=f"meal_roster_pick_{i}"):
+                    selected.append(p)
+            if st.button("선택한 보관함 참가자로 밥값 배틀", type="primary", use_container_width=True, key="meal_from_roster"):
+                if roster_meal_date is None:
+                    st.error("밥값 기준일을 8자리 숫자 또는 YYYY-MM-DD 형식으로 입력해 주세요.")
+                elif len(selected) < 2:
+                    st.warning("2명 이상 선택해야 합니다.")
+                elif len(selected) > 6:
+                    st.warning("밥값 배틀은 최대 6명까지 선택하세요.")
+                elif Solar is None:
+                    st.error("밥값 배틀은 월운·일운 산출을 위해 lunar_python이 필요합니다.")
+                else:
+                    participants = normalize_participant_names(list(selected))
+                    meal_result = meal_payer_analysis(participants, roster_meal_date)
+                    st.session_state.pending_payload = {
+                        "meal": True,
+                        "participants": participants,
+                        "meal_result": meal_result,
+                        "meal_date": roster_meal_date.strftime("%Y-%m-%d"),
+                        "correction_label": "보관함",
+                        "use_yajashee": False,
+                        "age_basis": "-",
+                    }
+                    st.session_state.payload = None
+                    st.session_state.meal_roulette_reveal = False
+                    st.session_state.result_revealed = False
+                    st.session_state.show_details = False
+                    st.rerun()
+
+
+st.markdown("""
+<div class="hero-wrap">
+    <div class="hero-title"><span>사주MRI</span></div>
+    <div class="hero-subtitle">
+        내 원국의 구조 · 오늘의 기운 · 1:1 케미<br>
+        사주를 기능별로 흩뿌리지 않고, 시각화 리포트처럼 정리해서 보여줍니다.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+if st.session_state.payload is None and st.session_state.selected_main_mode is None:
+    # 첫 화면은 순수 Streamlit 레이아웃으로만 구성한다.
+    st.markdown("### 시작할 메뉴를 선택하세요")
+
+    landing_cols = st.columns(2)
+    with landing_cols[0]:
+        if st.button("🌸 내 사주MRI", type="primary", use_container_width=True, key="landing_single"):
+            st.session_state.selected_main_mode = "혼자 보기"
+            st.session_state.show_details = False
+            st.rerun()
+        st.caption("내 원국의 캐릭터, 핵심 시각 분석, 오늘의 기운, 대운 흐름을 한 번에 봅니다.")
+    with landing_cols[1]:
+        if st.button(" 1:1 케미", use_container_width=True, key="landing_friend"):
+            st.session_state.selected_main_mode = "1:1 케미"
+            st.session_state.show_details = False
+            st.rerun()
+        st.caption("두 사람의 오행·조후·흐름·긴장도를 겹쳐 관계의 맞물림을 봅니다.")
+    render_algorithm_disclosure_notice(compact=True)
+    if st.session_state.get("_my_saju_prefill_notice_v5138"):
+        st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
+    if st.button("개인정보 처리방침 열기", use_container_width=True, key="landing_privacy_policy_open_v5116"):
+        st.session_state["landing_privacy_policy_open_v5116"] = True
+    if st.session_state.get("landing_privacy_policy_open_v5116", False):
+        render_privacy_policy()
+    st.stop()
+
+input_mode = st.session_state.selected_main_mode or "혼자 보기"
+
+active_result_mode = st.session_state.get("payload") is not None or st.session_state.get("pending_payload") is not None
+if active_result_mode:
+    render_mode_jump_buttons("result_nav")
+    input_mode = "__결과 보기__"
+else:
+    mode_bar_cols = st.columns([1.2, 4])
+    with mode_bar_cols[0]:
+        if st.button("← 처음으로", use_container_width=True, key="back_to_landing"):
+            reset_navigation_to(None)
+            st.rerun()
+    with mode_bar_cols[1]:
+        display_input_mode = "내 사주MRI" if input_mode == "혼자 보기" else ("1:1 케미" if input_mode == "1:1 케미" else input_mode)
+        st.caption(f"현재 선택: **{display_input_mode}**")
+
+single_view_mode = None
+if input_mode == "혼자 보기":
+    single_view_mode = st.radio(
+        "입력 방식",
+        ["생년월일시 자동 산출", "원국 직접 입력"],
+        index=0,
+        horizontal=True,
+        key="single_view_mode_selector_v5116",
+        help="생년월일시로 자동 산출하거나, 외부 만세력에서 확인한 원국을 직접 선택해 입력합니다.",
+    )
+    st.session_state.single_view_mode = single_view_mode
+    if single_view_mode != "생년월일시 자동 산출":
+        st.caption("원국 직접 입력 방식은 생년월일시 원문이 없으므로 대운·세운·오늘의 기운 일부가 제한될 수 있습니다.")
+
+if input_mode != "__결과 보기__":
+    if st.session_state.last_input_mode is None:
+        st.session_state.last_input_mode = input_mode
+    elif st.session_state.last_input_mode != input_mode:
+        st.session_state.payload = None
+        st.session_state.show_details = False
+        st.session_state.last_input_mode = input_mode
+
+analyze_clicked = False
+single_payload = None
+battle_payload = None
+multi_payload = None
+meal_payload = None
+
+if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력":
+    quest_title(" 내 사주MRI — 빠른 한 줄 입력", "생년월일과 시간을 한 줄로 입력합니다. 시간이 없으면 삼주 간이 분석으로 진행합니다.", ["빠른 입력", "자동 산출"])
+    quick_name = st.text_input("별명", value="나", key="single_quick_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
+    quick_line = st.text_input("한 줄 입력", value="", placeholder="YYYYMMDD HHMM 남자 양력", key="single_quick_line")
+    quick_yaja = st.checkbox("야자시 모드 시도", value=False, key="single_quick_yaja")
+    quick_age_basis = DEFAULT_AGE_BASIS
+    st.caption(f"자동 산출 기준: {KOREA_DEFAULT_CORRECTION_LABEL} 태양시 보정 · {DEFAULT_AGE_BASIS}.")
+    quick_consent = st.checkbox("본인 정보 또는 입력 권한이 있는 정보입니다.", value=False, key="single_quick_consent")
+    analyze_clicked = st.button("빠른 입력으로 분석 시작", type="primary", use_container_width=True, key="single_quick_start")
+    st.caption("형식 예시는 날짜·시간 형식만 안내합니다. 시간 입력을 생략하면 시주 미상 삼주 간이 분석으로 진행됩니다.")
+    if analyze_clicked:
+        if not quick_consent:
+            st.warning("분석을 진행하려면 정보 입력 권한 확인이 필요합니다.")
+            st.stop()
+        try:
+            parsed = parse_quick_single_line(quick_line)
+            correction_minutes = LOCATION_CORRECTION_MINUTES[KOREA_DEFAULT_CORRECTION_LABEL]
+            if parsed["birth_time"] is None:
+                single_payload = build_three_pillar_auto_payload(quick_name or "나", parsed["birth_date"], parsed["gender"], correction_minutes, quick_yaja, quick_age_basis, parsed["calendar_type"])
+                single_payload["mode"] = "혼자 보기 / 빠른 입력 삼주 간이 분석"
+            else:
+                single_payload = build_auto_payload(quick_name or "나", parsed["birth_date"], parsed["birth_time"], parsed["gender"], correction_minutes, quick_yaja, quick_age_basis, parsed["calendar_type"])
+                single_payload["mode"] = "혼자 보기 / 빠른 한 줄 입력"
+        except Exception:
+            show_safe_error("빠른 입력 분석 중 오류가 발생했습니다. YYYYMMDD HHMM 성별 날짜기준 형식으로 입력해 주세요.", "QUICK")
+            st.stop()
+
+if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
+    quest_title("🌸 내 사주MRI — 원국 직접 입력", "검증된 원국을 직접 선택해 분석을 시작합니다.", ["원국", "천간", "지지"])
+    single_direct_name = st.text_input("별명", value="나", key="single_direct_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
+    row1 = st.columns(4)
+    with row1[0]:
+        ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key="ys")
+        yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key="yb")
+    with row1[1]:
+        ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key="ms")
+        mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key="mb")
+    with row1[2]:
+        ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key="ds")
+        db = st.radio("일지", branch_options, index=0, format_func=display_branch, key="db")
+    with row1[3]:
+        hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key="hs")
+        hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key="hb")
+
+    gender_col, button_col = st.columns([1, 2])
+    with gender_col:
+        gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key="gender_direct")
+    with button_col:
+        safe_write("")
+        safe_write("")
+        analyze_clicked = st.button("분석 시작", type="primary", use_container_width=True, key="direct_start")
+    st.caption("직접 입력은 생년월일시를 저장하지 않고, 입력한 원국 8글자만으로 분석합니다.")
+
+    if analyze_clicked:
+        required_values = [ys, yb, ms, mb, ds, db, hs, hb]
+        if any(v == BLANK for v in required_values):
+            st.warning("년주·월주·일주·시주의 천간과 지지를 모두 선택해야 분석을 시작할 수 있습니다.")
+            st.stop()
+        chart = Chart(Pillar(ys, yb), Pillar(ms, mb), Pillar(ds, db), Pillar(hs, hb), gender, "직접 입력")
+        valid_origin, validation_passed, validation_warnings = validate_origin_only_chart(chart)
+        result = analyze(chart, "")
+        single_payload = {
+            "name": sanitize_display_name(single_direct_name or "나", "나"),
+            "mode": "혼자 보기 / 원국 직접 입력",
+            "chart": chart,
+            "result": result,
+            "valid_origin": valid_origin,
+            "validation_passed": validation_passed,
+            "validation_warnings": validation_warnings,
+            "daewuns": [],
+            "luck_flow": None,
+            "auto_meta": None,
+            "auto_check": None,
+            "age_basis": None,
+        }
+
+elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
+    quest_title("🌸 내 사주MRI", "생년월일시만 넣고 바로 봅니다.", ["원국", "오늘", "대운"])
+
+    top_row = st.columns([1.1, 1])
+    with top_row[0]:
+        single_auto_name = st.text_input("별명", value="나", key="single_auto_name", max_chars=10, help="실명 대신 짧은 별명을 권장합니다.")
+    with top_row[1]:
+        gender = st.radio("성별", ["남자", "여자"], horizontal=True, key="gender_auto")
+
+    date_row = st.columns([1.15, 1])
+    with date_row[0]:
+        b_date = manual_date_input("생년월일", date(1990, 5, 20), key="single_date_text")
+    with date_row[1]:
+        calendar_type = compact_calendar_selector("single")
+
+    time_row = st.columns([1.15, 1])
+    with time_row[0]:
+        time_unknown = st.checkbox("시간 모름", value=False, key="single_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
+        if time_unknown:
+            st.text_input("태어난 시간", value="미상", disabled=True, key="single_time_disabled")
+            b_time = None
+        else:
+            b_time = manual_time_input("태어난 시간", time(12, 0), key="single_time_text")
+    with time_row[1]:
+        use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
+        consent_auto = st.checkbox("입력 권한 확인", value=False, key="auto_consent")
+
+    age_basis = DEFAULT_AGE_BASIS
+    correction_label = KOREA_DEFAULT_CORRECTION_LABEL
+    if time_unknown:
+        st.info("출생시간 미상: 년주·월주·일주 기반으로 간이 분석합니다.")
+
+    if st.session_state.get("_my_saju_prefill_notice_v5138"):
+        st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
+        st.session_state["_my_saju_prefill_notice_v5138"] = False
+
+    render_my_saju_save_link_tool(
+        single_auto_name or "나",
+        b_date,
+        b_time,
+        gender,
+        calendar_type,
+        time_unknown,
+        use_yajashee,
+        key_prefix="single_auto_my_saju_save_v5138",
+    )
+
+    auto_run_clicked = bool(st.session_state.pop("_my_saju_auto_run_pending_v5140", False))
+    analyze_clicked = st.button("분석 시작", type="primary", use_container_width=True, key="auto_start")
+
+    if analyze_clicked or auto_run_clicked:
+        if b_date is None:
+            st.error("생년월일을 8자리 숫자 또는 YYYY-MM-DD 형식으로 입력해 주세요. 예: YYYYMMDD")
+            st.stop()
+        if not time_unknown and b_time is None:
+            st.error("태어난 시간을 3~4자리 숫자 또는 HH:MM 형식으로 입력해 주세요. 예: HHMM")
+            st.stop()
+        if not consent_auto:
+            st.warning("자동 산출을 진행하려면 정보 입력 권한 확인이 필요합니다.")
+            st.stop()
+        if b_time is None:
+            if Solar is None:
+                st.error("lunar_python이 설치되어 있지 않습니다. requirements.txt에 lunar_python==1.4.8을 추가해야 합니다.")
+                st.stop()
+            correction_minutes = LOCATION_CORRECTION_MINUTES[correction_label]
+            try:
+                single_payload = build_three_pillar_auto_payload(single_auto_name or "나", b_date, gender, correction_minutes, use_yajashee, age_basis, calendar_type)
+                single_payload["mode"] = "혼자 보기 / 생년월일 삼주 간이 분석"
+            except Exception:
+                show_safe_error("삼주 간이 분석 중 오류가 발생했습니다. 날짜 기준과 입력값을 확인하세요.", "THREE")
+                st.stop()
+            # 아래 자동 산출 분기 중복 실행 방지
+            b_time_handled_as_three_pillar = True
+        else:
+            b_time_handled_as_three_pillar = False
+        if b_time_handled_as_three_pillar:
+            pass
+        elif Solar is None:
+            st.error("lunar_python이 설치되어 있지 않습니다. requirements.txt에 lunar_python==1.4.8을 추가해야 합니다.")
+            st.stop()
+        if not b_time_handled_as_three_pillar:
+            correction_minutes = LOCATION_CORRECTION_MINUTES[correction_label]
+            try:
+                single_payload = build_auto_payload(single_auto_name or "나", b_date, b_time, gender, correction_minutes, use_yajashee, age_basis, calendar_type)
+                single_payload["mode"] = input_mode
+            except Exception:
+                show_safe_error("자동 만세력 산출 중 오류가 발생했습니다. 날짜 기준, 출생시간, 야자시 설정을 확인하세요.", "AUTO")
+                st.stop()
+
+elif input_mode in ["1:1 케미", "친구와 배틀"]:
+    quest_title(" 1:1 케미", "나와 상대 한 사람의 오행·조후·흐름·긴장도를 겹쳐 보고, 케미 유형을 먼저 보여줍니다.", ["1:1", "오행", "조후", "케미"])
+    participant_count = 2
+    correction_label = KOREA_DEFAULT_CORRECTION_LABEL
+    age_basis = DEFAULT_AGE_BASIS
+    use_yajashee = st.checkbox("공통 야자시 모드", value=False, key="friend_battle_yaja")
+    relationship_mode = "친구"
+
+    selected_roster_for_battle = []
+    # v5.51: 보관함 재사용은 기본 UX에서 제외. 1:1 케미는 매번 두 사람만 직접 입력한다.
+
+    manual_slots = max(0, int(participant_count) - len(selected_roster_for_battle))
+    default_names = ["나", "상대"]
+    specs = []
+    for idx in range(manual_slots):
+        if safe_toggle(f"케미 참가자 {idx + 1}", value=(idx < 2), key=f"friend_battle_participant_toggle_{idx}"):
+            name = st.text_input("별명", value=default_names[idx], key=f"friend_battle_name_{idx}", max_chars=10, help="실명 대신 10글자 이내 별명 사용을 권장합니다.")
+            mode = st.radio("입력 방식", ["생년월일시 자동 산출", "원국 직접 입력"], horizontal=True, key=f"friend_battle_mode_{idx}", help="원국 직접 입력은 년주·월주·일주·시주 8글자를 직접 선택하는 방식입니다.")
+
+            if mode == "생년월일시 자동 산출":
+                b_date, b_time, gender, calendar_type, time_unknown = auto_input_panel(f"friend_battle_{idx}", "생년월일시 자동 산출", date(1990, 5, 20), time(12, 0))
+                specs.append({
+                    "name": name or default_names[idx],
+                    "mode": mode,
+                    "birth_date": b_date,
+                    "birth_time": b_time,
+                    "gender": gender,
+                    "calendar_type": calendar_type,
+                    "time_unknown": time_unknown,
+                    "direct_values": None,
+                })
+            else:
+                st.markdown("#### 원국 직접 입력")
+                cols = st.columns(4)
+                with cols[0]:
+                    ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ys_{idx}")
+                    yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_yb_{idx}")
+                with cols[1]:
+                    ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ms_{idx}")
+                    mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_mb_{idx}")
+                with cols[2]:
+                    ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ds_{idx}")
+                    db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_db_{idx}")
+                with cols[3]:
+                    hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_hs_{idx}")
+                    hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_hb_{idx}")
+                gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"friend_battle_gender_{idx}")
+                specs.append({
+                    "name": name or default_names[idx],
+                    "mode": mode,
+                    "birth_date": None,
+                    "birth_time": None,
+                    "gender": gender,
+                    "time_unknown": False,
+                    "direct_values": [ys, yb, ms, mb, ds, db, hs, hb, gender],
+                })
+
+    consent_battle = st.checkbox("모든 케미 참가자의 정보를 입력할 권한 또는 동의를 받았습니다.", value=False, key="friend_battle_consent")
+    analyze_clicked = st.button("1:1 케미 보기", type="primary", use_container_width=True, key="friend_battle_start")
+
+    if analyze_clicked:
+        if not consent_battle:
+            st.warning("1:1 케미를 보려면 두 사람의 정보 입력 동의 확인이 필요합니다.")
+            st.stop()
+        if len(selected_roster_for_battle) > int(participant_count):
+            st.error("입력된 사람이 2명을 초과했습니다.")
+            st.stop()
+        ok_specs, spec_messages = validate_participant_specs_for_display(specs, "케미 참가자")
+        if not ok_specs:
+            for msg in spec_messages:
+                st.error(msg)
+            st.stop()
+
+        correction_minutes = LOCATION_CORRECTION_MINUTES[correction_label]
+        try:
+            manual_participants = build_participants_from_specs(specs, correction_minutes, use_yajashee, age_basis)
+            participants = normalize_participant_names(list(selected_roster_for_battle) + manual_participants)
+            if len(participants) != 2:
+                st.error("1:1 케미는 정확히 두 사람만 입력해야 합니다.")
+                st.stop()
+            battle_payload = {
+                "mode": "1:1 케미",
+                "mine": participants[0],
+                "friend": participants[1],
+                "correction_label": correction_label,
+                "use_yajashee": use_yajashee,
+                "age_basis": age_basis,
+                "my_input_mode": participants[0].get("mode", "-"),
+                "friend_input_mode": participants[1].get("mode", "-"),
+                "relationship_mode": relationship_mode,
+            }
+        except RuntimeError as e:
+            if "lunar_python" in str(e):
+                st.error("lunar_python이 설치되어 있지 않습니다. 아래 실행 CMD로 requirements.txt를 다시 설치해 주세요.")
+                st.text_area("설치 명령", value="python -m pip install -r requirements.txt", height=70, disabled=True)
+            else:
+                show_safe_error("1:1 케미 산출 중 오류가 발생했습니다. 두 사람의 입력값과 원국 선택값을 확인하세요.", "FRIEND_BATTLE")
+            st.stop()
+        except ValueError as e:
+            st.error(str(e))
+            st.stop()
+        except Exception:
+            show_safe_error("1:1 케미 산출 중 오류가 발생했습니다. 두 사람의 입력값과 원국 선택값을 확인하세요.", "FRIEND_BATTLE")
+            st.stop()
+
+
+elif input_mode == "__legacy_group_disabled__":
+    quest_title(" 1:1 케미 (2~6명 원국 비교)", "여러 명의 총점·3대 능력치·운의 파도·케미 판정 조합을 한 번에 비교합니다.", ["원국", "대운", "세운", "케미"])
+    st.caption("1:1 케미는 오락·참고용입니다. 참가자명은 실명 대신 짧은 별명을 권장합니다.")
+
+    opt_cols = st.columns(2)
+    with opt_cols[0]:
+        participant_count = st.radio("참가자 수", [2, 3, 4, 5, 6], index=1, key="multi_count", horizontal=True)
+    with opt_cols[1]:
+        use_yajashee = st.checkbox("공통 야자시 모드 시도", value=False, key="multi_yaja")
+    correction_label = KOREA_DEFAULT_CORRECTION_LABEL
+    age_basis = DEFAULT_AGE_BASIS
+    st.caption(f"자동 산출 공통 기준: {KOREA_DEFAULT_CORRECTION_LABEL} 태양시 보정 · {DEFAULT_AGE_BASIS}.")
+
+    specs = []
+    for idx in range(int(participant_count)):
+        if safe_toggle(f"참가자 {idx + 1}", value=(idx < 3), key=f"multi_participant_toggle_{idx}"):
+            name = st.text_input("별명", value=f"참가자 {idx + 1}", key=f"multi_name_{idx}", max_chars=10, help="실명 대신 10글자 이내 별명 사용을 권장합니다.")
+            mode = st.radio("입력 방식", ["생년월일시 자동 산출", "원국 직접 입력"], horizontal=True, key=f"multi_mode_{idx}")
+
+            if mode == "생년월일시 자동 산출":
+                b_date, b_time, gender, calendar_type, time_unknown = auto_input_panel(f"multi_{idx}", "생년월일시 자동 산출", date(1990, 5, 20), time(12, 0))
+                specs.append({
+                    "name": name or f"참가자 {idx + 1}",
+                    "mode": mode,
+                    "birth_date": b_date,
+                    "birth_time": b_time,
+                    "gender": gender,
+                    "calendar_type": calendar_type,
+                    "time_unknown": time_unknown,
+                    "direct_values": None,
+                })
+            else:
+                st.markdown("#### 원국 직접 입력")
+                cols = st.columns(4)
+                with cols[0]:
+                    ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"multi_ys_{idx}")
+                    yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"multi_yb_{idx}")
+                with cols[1]:
+                    ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"multi_ms_{idx}")
+                    mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"multi_mb_{idx}")
+                with cols[2]:
+                    ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"multi_ds_{idx}")
+                    db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"multi_db_{idx}")
+                with cols[3]:
+                    hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"multi_hs_{idx}")
+                    hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"multi_hb_{idx}")
+                gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"multi_gender_{idx}")
+                specs.append({
+                    "name": name or f"참가자 {idx + 1}",
+                    "mode": mode,
+                    "birth_date": None,
+                    "birth_time": None,
+                    "gender": gender,
+                    "time_unknown": False,
+                    "direct_values": [ys, yb, ms, mb, ds, db, hs, hb, gender],
+                })
+
+    consent_multi = st.checkbox("모든 참가자의 정보를 입력할 권한 또는 동의를 받았습니다.", value=False, key="multi_consent")
+    analyze_clicked = st.button("1:1 케미 시작", type="primary", use_container_width=True, key="multi_start")
+
+    if analyze_clicked:
+        if not consent_multi:
+            st.warning("1:1 케미를 보려면 두 사람의 정보 입력 동의 확인이 필요합니다.")
+            st.stop()
+        correction_minutes = LOCATION_CORRECTION_MINUTES[correction_label]
+        try:
+            participants = []
+            for spec in specs:
+                if spec["mode"] == "생년월일시 자동 산출":
+                    if Solar is None:
+                        st.error("lunar_python이 설치되어 있지 않습니다. requirements.txt에 lunar_python==1.4.8을 추가해야 합니다.")
+                        st.stop()
+                    if spec.get("birth_time") is None:
+                        p = build_three_pillar_auto_payload(
+                            spec["name"],
+                            spec["birth_date"],
+                            spec["gender"],
+                            correction_minutes,
+                            use_yajashee,
+                            age_basis,
+                            spec.get("calendar_type", "양력"),
+                        )
+                    else:
+                        p = build_auto_payload(
+                            spec["name"],
+                            spec["birth_date"],
+                            spec["birth_time"],
+                            spec["gender"],
+                            correction_minutes,
+                            use_yajashee,
+                            age_basis,
+                            spec.get("calendar_type", "양력"),
+                        )
+                else:
+                    p = build_direct_payload(spec["name"], spec["direct_values"])
+                participants.append(p)
+
+            participants = normalize_participant_names(participants)
+            multi_payload = {
+                "mode": role_cfg["mode_label"],
+                "participants": participants,
+                "correction_label": correction_label,
+                "use_yajashee": use_yajashee,
+                "age_basis": age_basis,
+            }
+        except Exception:
+            show_safe_error("1:1 케미 산출 중 오류가 발생했습니다. 참가자 입력 방식과 원국 선택값을 확인하세요.", "MULTI")
+            st.stop()
+
+
+elif input_mode == "오늘의 뽑기":
+    quest_title("🎲 미니 뽑기", "기준일의 월운·일운을 가볍게 반영한 선택형 놀이입니다.", ["월운", "일운", "재성", "식상"])
+    st.caption("오늘의 뽑기는 오락용 코너입니다. 실제 결제 의무, 업무 배정, 책임 판단, 인간관계 판단의 근거가 아닙니다. 실명 대신 10글자 이내 별명을 사용하세요.")
+    st.warning("타인의 생년월일시를 입력할 때는 당사자의 동의를 받은 정보만 입력하세요.")
+    role_choice = st.radio(
+        "뽑기 종류",
+        ["🍚 밥값 뽑기", "💼 일감 뽑기", "📢 총대 뽑기"],
+        index=0,
+        horizontal=True,
+        key="today_roulette_role",
+    )
+    role_type = {"🍚 밥값 뽑기": "meal", "💼 일감 뽑기": "workload", "📢 총대 뽑기": "leader"}.get(role_choice, "meal")
+    role_cfg = role_config(role_type)
+    st.markdown(f"**{role_cfg['emoji']} {role_cfg['title']}**")
+    st.caption(str(role_cfg.get("menu_desc", "오늘의 당첨자를 뽑습니다.")))
+
+    opt_cols = st.columns(3)
+    with opt_cols[0]:
+        meal_date = manual_date_input("뽑기 기준일", date.today(), key="meal_date_text")
+    with opt_cols[1]:
+        participant_count = st.radio("참가자 수", [2, 3, 4, 5, 6], index=1, key="meal_count", horizontal=True)
+    with opt_cols[2]:
+        use_yajashee = st.checkbox("공통 야자시 모드 시도", value=False, key="meal_yaja")
+    correction_label = KOREA_DEFAULT_CORRECTION_LABEL
+    age_basis = DEFAULT_AGE_BASIS
+    st.caption(f"자동 산출 공통 기준: {KOREA_DEFAULT_CORRECTION_LABEL} 태양시 보정 · {DEFAULT_AGE_BASIS}.")
+
+    st.info(f"{role_cfg['emoji']} {role_cfg['title']}은 기준일의 월운·일운과, 가능한 경우 대운을 함께 보고 각 원국의 역할 신호를 참고해 '{role_cfg['score_name']}'과 뽑기 칸을 계산합니다. 오늘의 당첨자는 결과 카드 뒤집기로 공개됩니다.")
+
+    roster_for_meal = st.session_state.get("saved_participants", [])
+    selected_roster_for_meal = []
+    prefill = st.session_state.get("prefill_roulette_participants")
+    if prefill:
+        selected_roster_for_meal.extend(normalize_participant_names(list(prefill)))
+        st.info(f"이전 케미 참가자 {len(selected_roster_for_meal)}명을 오늘의 뽑기 참가자로 불러왔습니다. 추가 인원이 필요하면 아래에서 입력하세요.")
+        st.session_state.prefill_roulette_participants = None
+    if roster_for_meal:
+        st.markdown("""
+        <div class="roster-reuse-panel">
+            <div class="roster-reuse-title">👥 보관함에서 일부 참가자 불러오기</div>
+            <div class="roster-reuse-caption">보관함에 저장된 사람을 일부 선택하면, 부족한 인원만 아래에서 추가 입력합니다. 예: 보관함 1명 선택 + 참가자 수 3명 = 2명만 추가 입력</div>
+        </div>
+        """, unsafe_allow_html=True)
+        for ridx, rp in enumerate(roster_for_meal):
+            if st.checkbox(f"{ridx + 1}. {rp.get('name', f'참가자 {ridx + 1}')} 불러오기", key=f"meal_roster_include_{ridx}"):
+                selected_roster_for_meal.append(rp)
+        if len(selected_roster_for_meal) > int(participant_count):
+            st.warning("선택한 보관함 참가자가 참가자 수보다 많습니다. 참가자 수를 늘리거나 선택을 줄이세요.")
+
+    manual_slots = max(0, int(participant_count) - len(selected_roster_for_meal))
+    specs = []
+    for idx in range(manual_slots):
+        if safe_toggle(f"🍚 참가자 {idx + 1}", value=(idx < 2), key=f"meal_participant_toggle_{idx}"):
+            st.markdown(f"<div class='meal-participant-caption'>{html.escape(str(role_cfg['title']))} 참가자 {idx + 1}</div>", unsafe_allow_html=True)
+            name = st.text_input("별명", value=f"참가자 {idx + 1}", key=f"meal_name_{idx}", max_chars=10, help="실명 대신 10글자 이내 별명 사용을 권장합니다.")
+            mode = st.radio("입력 방식", ["생년월일시 자동 산출", "원국 직접 입력"], horizontal=True, key=f"meal_mode_{idx}")
+
+            if mode == "생년월일시 자동 산출":
+                b_date, b_time, gender, calendar_type, time_unknown = auto_input_panel(f"meal_{idx}", "생년월일시 자동 산출", date(1990, 5, 20), time(12, 0))
+                specs.append({
+                    "name": name or f"참가자 {idx + 1}",
+                    "mode": mode,
+                    "birth_date": b_date,
+                    "birth_time": b_time,
+                    "gender": gender,
+                    "calendar_type": calendar_type,
+                    "time_unknown": time_unknown,
+                    "direct_values": None,
+                })
+            else:
+                st.markdown("#### 원국 직접 입력")
+                cols = st.columns(4)
+                with cols[0]:
+                    ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"meal_ys_{idx}")
+                    yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"meal_yb_{idx}")
+                with cols[1]:
+                    ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"meal_ms_{idx}")
+                    mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"meal_mb_{idx}")
+                with cols[2]:
+                    ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"meal_ds_{idx}")
+                    db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"meal_db_{idx}")
+                with cols[3]:
+                    hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"meal_hs_{idx}")
+                    hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"meal_hb_{idx}")
+                gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"meal_gender_{idx}")
+                specs.append({
+                    "name": name or f"참가자 {idx + 1}",
+                    "mode": mode,
+                    "birth_date": None,
+                    "birth_time": None,
+                    "gender": gender,
+                    "time_unknown": False,
+                    "direct_values": [ys, yb, ms, mb, ds, db, hs, hb, gender],
+                })
+
+    consent_meal = st.checkbox("모든 참가자의 정보를 입력할 권한 또는 동의를 받았습니다.", value=False, key="meal_consent")
+    analyze_clicked = st.button(f"{role_cfg['emoji']} {role_cfg['title']} 돌리기", type="primary", use_container_width=True, key="meal_start")
+
+    if analyze_clicked:
+        if meal_date is None:
+            st.error("뽑기 기준일을 YYYY-MM-DD 형식으로 입력해 주세요.")
+            st.stop()
+        if not consent_meal:
+            st.warning("오늘의 뽑기를 진행하려면 모든 참가자의 정보 입력 동의 확인이 필요합니다.")
+            st.stop()
+        if Solar is None:
+            st.error("오늘의 뽑기는 기준일의 월운·일운 산출이 필요하므로 lunar_python이 설치되어 있어야 합니다. requirements.txt를 확인하세요.")
+            st.stop()
+        if len(selected_roster_for_meal) > int(participant_count):
+            st.error("선택한 보관함 참가자가 참가자 수보다 많습니다.")
+            st.stop()
+        correction_minutes = LOCATION_CORRECTION_MINUTES[correction_label]
+        try:
+            manual_participants = build_participants_from_specs(specs, correction_minutes, use_yajashee, age_basis)
+            participants = normalize_participant_names(list(selected_roster_for_meal) + manual_participants)
+            meal_result = meal_payer_analysis(participants, meal_date, role_type)
+            meal_payload = {
+                "mode": role_cfg["mode_label"],
+                "participants": participants,
+                "meal_result": meal_result,
+                "role_type": role_type,
+                "meal_date": meal_date.strftime("%Y-%m-%d"),
+                "correction_label": correction_label,
+                "use_yajashee": use_yajashee,
+                "age_basis": age_basis,
+            }
+        except Exception:
+            show_safe_error("오늘의 뽑기 산출 중 오류가 발생했습니다. 참가자 입력값과 lunar_python 설치 여부를 확인하세요.", "ROLE_ROULETTE")
+            st.stop()
+
+
+if analyze_clicked:
+    st.session_state.show_details = False
+    loading_notes = []
+    try:
+        if single_payload and single_payload.get("auto_check"):
+            ac = single_payload["auto_check"]
+            loading_notes.append(f"자동 산출 안정도: {ac.get('stability', '미확인')} — {ac.get('summary', '')}")
+        if battle_payload:
+            for _p in [battle_payload.get("mine"), battle_payload.get("friend")]:
+                if _p and _p.get("auto_check"):
+                    ac = _p["auto_check"]
+                    loading_notes.append(f"{_p.get('name', '참가자')} 자동 산출 안정도: {ac.get('stability', '미확인')}")
+        if multi_payload:
+            for _p in multi_payload.get("participants", []):
+                if _p and _p.get("auto_check"):
+                    ac = _p["auto_check"]
+                    loading_notes.append(f"{_p.get('name', '참가자')} 자동 산출 안정도: {ac.get('stability', '미확인')}")
+        if meal_payload:
+            for _p in meal_payload.get("participants", []):
+                if _p and _p.get("auto_check"):
+                    ac = _p["auto_check"]
+                    loading_notes.append(f"{_p.get('name', '참가자')} 자동 산출 안정도: {ac.get('stability', '미확인')}")
+    except Exception:
+        loading_notes = []
+    loading_note_html = "<br>".join(loading_notes[:4]) if loading_notes else "기운의 크기, 순환 구조, 발현 요소, 운의 흐름을 차례대로 확인하고 있습니다."
+    suspense = st.empty()
+    suspense.markdown(f"""
+    <div class="step-panel">
+        <h3>팔자 카드를 섞는 중...</h3>
+        <p>{loading_note_html}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    progress = st.progress(0)
+    loading_steps = [12, 28, 45, 62, 78, 92, 100]
+    for value in loading_steps:
+        progress.progress(value)
+        _time_module.sleep(0.18)
+    _time_module.sleep(0.35)
+    suspense.empty()
+    progress.empty()
+
+    if meal_payload:
+        log_event("draw_run", "mini_draw", {
+            "role_type": str(meal_payload.get("role_type", "-")),
+            "participant_count": len(meal_payload.get("participants", []) or []),
+        })
+        st.session_state.pending_payload = {"meal": True, **meal_payload}
+        st.session_state.meal_roulette_reveal = False
+        st.session_state.payload = None
+        st.session_state.result_revealed = False
+    elif multi_payload:
+        log_event("multi_run", "chemistry", {
+            "participant_count": len(multi_payload.get("participants", []) or []),
+        })
+        st.session_state.pending_payload = {"multi": True, **multi_payload}
+        st.session_state.payload = None
+        st.session_state.result_revealed = False
+    elif battle_payload:
+        log_event("chemistry_run", "chemistry", {
+            "my_input_mode": str(battle_payload.get("my_input_mode", "-")),
+            "friend_input_mode": str(battle_payload.get("friend_input_mode", "-")),
+        })
+        st.session_state.payload = {"battle": True, **battle_payload}
+        st.session_state.pending_payload = None
+        st.session_state.result_revealed = True
+        st.rerun()
+    elif single_payload:
+        log_event("solo_run", "solo", {
+            "mode": str(single_payload.get("mode", "-")),
+            "unknown_time": bool(single_payload.get("unknown_time")),
+        })
+        # 혼자 보기는 추가 확인 클릭 없이 분석 완료 후 바로 결과를 보여준다.
+        st.session_state.payload = {"battle": False, "multi": False, **single_payload}
+        st.session_state.pending_payload = None
+        st.session_state.result_revealed = True
+        st.rerun()
+
+
+def empty_state_message_for_mode(mode: str | None) -> str:
+    """결과가 없는 상태에서 현재 메뉴에 맞는 안내문을 보여준다."""
+    if mode == "혼자 보기":
+        return "입력 방식을 선택한 뒤 **분석 시작** 또는 **자동 산출 후 분석 시작**을 누르세요."
+    if mode == "1:1 케미":
+        return "두 사람의 정보를 입력한 뒤 **1:1 케미 보기**를 누르세요."
+    if mode == "오늘의 뽑기":
+        return "현재 기본 메뉴에서는 뽑기 기능을 표시하지 않습니다. **내 사주MRI** 또는 **1:1 케미**를 선택해 주세요."
+    return "시작할 메뉴를 선택한 뒤 정보를 입력해 주세요."
+
+
+if st.session_state.get("pending_payload") is not None and not st.session_state.get("result_revealed", True):
+    _pending = st.session_state.get("pending_payload") or {}
+    if isinstance(_pending, dict) and _pending.get("meal"):
+        _pending_title = "오늘의 뽑기가 준비되었습니다 ✨"
+        _pending_desc = "아래 버튼을 누르면 뽑기 준비 화면으로 이동합니다. 최종 결과는 카드 뒤집기에서 공개됩니다."
+    else:
+        _pending_title = "분석 결과가 준비되었습니다 ✨"
+        _pending_desc = "아래 버튼을 누르면 결과를 확인할 수 있습니다."
+    st.markdown(f"""
+    <div class="step-panel">
+        <h3>{html.escape(_pending_title)}</h3>
+        <p>{html.escape(_pending_desc)}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("결과 보기", type="primary", use_container_width=True, key="reveal_pending_result"):
+        _pending_kind = "draw_result" if isinstance(st.session_state.pending_payload, dict) and st.session_state.pending_payload.get("meal") else "analysis_result"
+        log_event("result_view", _pending_kind, {"kind": _pending_kind})
+        st.session_state.payload = st.session_state.pending_payload
+        st.session_state.pending_payload = None
+        st.session_state.result_revealed = True
+        st.session_state.scroll_result_top_pending = True
+        st.rerun()
+    st.stop()
+
+if st.session_state.payload is None:
+    _empty_mode = st.session_state.get("selected_main_mode")
+    # 결과/뽑기 화면에서 입력 화면용 문구가 섞여 나오지 않도록 메뉴별 안내를 분리한다.
+    st.info(empty_state_message_for_mode(_empty_mode))
+    st.stop()
+
+
+payload = st.session_state.payload
+scroll_to_top()
+
+
+def set_meal_roulette_reveal(value: bool) -> None:
+    st.session_state.meal_roulette_reveal = value
+    payload_obj = st.session_state.get("payload")
+    if isinstance(payload_obj, dict) and payload_obj.get("meal"):
+        meal_result_obj = payload_obj.get("meal_result")
+        if isinstance(meal_result_obj, dict):
+            if value:
+                apply_meal_roulette_selection(meal_result_obj)
+            else:
+                reset_meal_roulette_selection(meal_result_obj)
+
+if payload.get("meal"):
+    participants = payload["participants"]
+    meal_result = payload["meal_result"]
+    payer = meal_result.get("payer")
+    reveal_roulette = bool(st.session_state.get("meal_roulette_reveal", False))
+
+    st.markdown(f"""
+    <span class="summary-chip">모드: {html.escape(str(role_config(meal_result.get('role_type', 'meal'))['title']))}</span>
+    <span class="summary-chip">참가자 수: {len(participants)}명</span>
+    <span class="summary-chip">기준일: {meal_result['meal_date']}</span>
+    <span class="summary-chip">대운 반영: {meal_result.get('daewun_used_count', 0)}/{meal_result.get('participant_count', len(participants))}명</span>
+    <span class="summary-chip">월운: {meal_result['month_gz']}</span>
+    <span class="summary-chip">일운: {meal_result['day_gz']}</span>
+    """, unsafe_allow_html=True)
+
+    if not reveal_roulette:
+        render_meal_ready_stage(meal_result)
+        render_analysis_logic_panel(str(meal_result.get("role_type", "meal")), "meal_logic_panel")
+        if meal_result.get("daewun_warning"):
+            st.warning(meal_result["daewun_warning"])
+        _cfg = role_config(meal_result.get("role_type", "meal"))
+        st.button(
+            f"{_cfg['emoji']} 결과 카드 뒤집기",
+            type="primary",
+            use_container_width=True,
+            key="reveal_meal_roulette",
+            on_click=set_meal_roulette_reveal,
+            args=(True,),
+        )
+    else:
+        if not payer:
+            apply_meal_roulette_selection(meal_result)
+            payer = meal_result.get("payer")
+        render_role_winner_hero(meal_result)
+        render_meal_roulette_wheel(meal_result)
+        render_analysis_logic_panel(str(meal_result.get("role_type", "meal")), "meal_logic_panel_after")
+        st.info("오늘의 당첨자를 먼저 표시했습니다. 표와 계산 근거는 아래 `상세 결과 보기`에서 확인하세요.")
+        reroll_cols = st.columns([1, 3])
+        with reroll_cols[0]:
+            st.button(
+                "다시 준비",
+                use_container_width=True,
+                key="hide_meal_roulette",
+                on_click=set_meal_roulette_reveal,
+                args=(False,),
+            )
+
+    st.caption(meal_result["disclaimer"])
+
+    if reveal_roulette:
+        button_left, button_right = st.columns([1.2, 4])
+        with button_left:
+            if st.button("상세 결과 보기", use_container_width=True, key="meal_detail_open_button"):
+                st.session_state.show_details = True
+        with button_right:
+            if st.session_state.show_details:
+                if st.button("상세 결과 닫기", use_container_width=True, key="meal_detail_close_button"):
+                    st.session_state.show_details = False
+    else:
+        st.caption("상세 결과는 뽑기를 돌린 뒤 열립니다.")
+
+    if reveal_roulette and st.session_state.show_details:
+        if meal_result.get("payer"):
+            _payer = meal_result["payer"]
+            _cfg = role_config(meal_result.get("role_type", "meal"))
+            st.success(f"최종 {_cfg.get('main_result_line', _cfg['winner_label'])}: {_payer['participant']} · {_cfg['score_name']} {_payer['score']}점 · {meal_result['confidence']}")
+            st.caption(str(_cfg.get("score_direction_caption", "")))
+            st.caption(meal_result["summary"])
+        st.subheader(f"{role_config(meal_result.get('role_type', 'meal'))['emoji']} {role_config(meal_result.get('role_type', 'meal'))['title']} 상세 기록")
+        meal_detail_view = st.radio(
+            "상세 항목",
+            ["🎴 뽑기 판정표", "🧾 참가자별 상세", "📚 용어 해설서", "🛡️ 안전·법적 고지", "📜 리포트"],
+            key="meal_detail_view_selector",
+            horizontal=True,
+        )
+        if meal_detail_view == "🎴 뽑기 판정표":
+            _cfg = role_config(meal_result.get("role_type", "meal"))
+            quest_title(f"{_cfg['emoji']} {_cfg['title']} 판정표", "대운이 산출 가능한 경우 함께 반영하고, 오늘의 당첨자는 결과 카드를 뒤집는 순간 배정칸 비율대로 무작위 공개됩니다.", ["대운", "월운", "일운", "역할"] )
+            render_meal_spoke_distribution(meal_result)
+            if safe_toggle("뽑기 배정 상세표 보기", value=False, key="meal_spoke_table_toggle"):
+                safe_dataframe(pd.DataFrame(meal_result["rows"]), use_container_width=True, hide_index=True)
+            if meal_result.get("daewun_warning"):
+                st.warning(meal_result["daewun_warning"])
+            st.info(meal_result["summary"])
+            st.caption(str(_cfg["detail_caption"]))
+            st.caption(str(_cfg.get("score_direction_caption", "")))
+
+        elif meal_detail_view == "🧾 참가자별 상세":
+            quest_title("🧾 참가자별 상세 기록", "참가자 한 명을 선택해 기존 상세 리포트를 확인합니다.", ["원국", "대운", "세운"])
+            names = [p["name"] for p in participants]
+            selected_name = st.radio("상세를 볼 참가자", names, key="meal_detail_select", horizontal=True)
+            selected = next(p for p in participants if p["name"] == selected_name)
+            render_compact_participant_battle_summary(selected, prefix=f"meal_{selected_name}")
+
+        elif meal_detail_view == "📚 용어 해설서":
+            render_glossary_tab()
+
+        elif meal_detail_view == "🛡️ 안전·법적 고지":
+            render_privacy_legal_notice()
+
+        else:
+            report = make_meal_report(participants, meal_result)
+            _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            st.download_button(
+                label=f"{role_config(meal_result.get('role_type', 'meal'))['title']} 리포트 다운로드",
+                data=report.encode("utf-8"),
+                file_name=f"{role_config(meal_result.get('role_type', 'meal'))['report_prefix']}_{_ts}.md",
+                mime="text/markdown",
+                key="download_meal_payer_report",
+            )
+
+elif payload.get("multi"):
+
+    participants = payload["participants"]
+    summary = multi_battle_summary(participants)
+    ranking_rows = summary["ranking_rows"]
+
+    st.markdown(f"""
+    <span class="summary-chip">모드: {payload.get("mode", "1:1 케미")}</span>
+    <span class="summary-chip">참가자 수: {len(participants)}명</span>
+    <span class="summary-chip">공통 태양시 보정: {payload['correction_label']}</span>
+    <span class="summary-chip">야자시: {'시도' if payload['use_yajashee'] else '미시도'}</span>
+    """, unsafe_allow_html=True)
+
+    top = ranking_rows[0]
+    st.markdown(f"""
+    <div class="mini-card">
+        <div class="mini-card-title">케미 브리핑</div>
+        <div class="mini-card-value">{top['참가자']} · {top['총점']}점</div>
+        <div style="color:rgba(75,45,58,0.78); margin-top:0.7rem; line-height:1.65;">
+            {summary['summary']}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    modes_used = sorted(set(p.get("mode", "-") for p in participants))
+    if len(modes_used) > 1:
+        st.warning("자동 산출과 원국 직접 입력이 혼합되어 있습니다. 직접 입력 원국은 사용자가 검증한 값이라는 전제에서 비교합니다.")
+
+    render_battle_pyramid_overview(participants)
+
+    if len(participants) >= 3:
+        st.markdown("#### 🌐 다자간 국면")
+        st.caption("3명 이상 1:1 케미에서는 각 참가자가 서로에게 주는 영향을 원형 도식표로 먼저 보여줍니다.")
+        power_map = diplomacy_narrative(participants)
+        st.info(power_map["summary"])
+        render_multi_situation_map(participants, power_map)
+
+    render_analysis_logic_panel("multi", "multi_logic_panel")
+    st.markdown("#### 무엇을 볼까요?")
+    select_options = ["주요 분석결과 비교", "케미 보기"] + [f"{p['name']} 상세 분석" for p in participants]
+    selected_view = st.radio("확인할 화면", select_options, key="multi_view_selector")
+
+    if selected_view == "주요 분석결과 비교":
+        quest_title("🏆 주요 분석결과 비교", "참가자별 총점, 등급, 3대 능력치를 한눈에 비교합니다.", ["원국", "오행"])
+        comparison_rows = []
+        cat_map = {}
+        for p in participants:
+            cat_map[p["name"]] = {
+                category_plain_title(row["카테고리"]): row["점수"]
+                for row in category_totals(p["result"]["categorized_scores"])
+            }
+        for row in ranking_rows:
+            name = row["참가자"]
+            comparison_rows.append({
+                "순위": row["순위"],
+                "참가자": name,
+                "총점": row["총점"],
+                "등급": row["등급"],
+                "기운의 크기": cat_map.get(name, {}).get("기운의 크기 점수", "-"),
+                "기운의 순환": cat_map.get(name, {}).get("기운의 순환 점수", "-"),
+                "기운의 발현": cat_map.get(name, {}).get("기운의 발현 점수", "-"),
+                "일간": row["일간"],
+                "대운 반영": row.get("대운 반영", "-"),
+                "현재 대운": row["현재 대운"],
+                "향후 5년 세운 평균": row["향후 5년 세운 평균"],
+            })
+        safe_dataframe(pd.DataFrame(comparison_rows), use_container_width=True, hide_index=True)
+
+        metrics = multi_field_metrics(participants)
+        mcols = st.columns(5)
+        for idx, key in enumerate(["평균 총점", "최고점", "최저점", "점수 격차", "세력 분포"]):
+            with mcols[idx]:
+                st.markdown(f"""
+                <div class="mini-card">
+                    <div class="mini-card-title">{key}</div>
+                    <div class="mini-card-value">{metrics[key]}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        st.caption("점수는 이 앱의 분석 모델에 따른 참고값입니다.")
+
+    elif selected_view == "케미 보기":
+        quest_title(" 케미 보기", "가장 잘 맞는 조합과 조율 포인트를 먼저 보여줍니다.", ["최고 케미", "평균", "조율 포인트"])
+        st.caption("케미는 관계의 결론이 아니라 맞물림 방식을 보는 참고 지표입니다.")
+        render_compact_chemistry_overview(participants)
+
+        if safe_toggle("케미 판정 신뢰도 보기", value=False, key="multi_chem_confidence_toggle"):
+            safe_dataframe(pd.DataFrame(pairwise_compatibility_confidence_rows(participants)), use_container_width=True, hide_index=True)
+            st.caption("원국 입력 확인 메모는 입력값을 다시 확인하면 좋은 항목이라는 뜻입니다. 케미가 틀렸다는 의미는 아닙니다.")
+
+    else:
+        selected_name = selected_view.replace(" 상세 분석", "")
+        selected = next(p for p in participants if p["name"] == selected_name)
+        quest_title(f"🧾 {selected_name} 핵심 요약", "상세 분석은 핵심 카드 중심으로 가볍게 보여줍니다.", ["원국", "대운", "세운"])
+        render_compact_participant_battle_summary(selected, prefix=f"multi_{selected_name}")
+
+    st.markdown("#### 다음에 할 일")
+    multi_storage_mode = st.radio("보관 방식", ["원국 보관", "생년월일시까지 보관"], index=0, key="multi_storage_mode", horizontal=True)
+    if multi_storage_mode == "생년월일시까지 보관":
+        st.caption("자동 산출 참가자 중 생년월일시와 대운 정보가 있는 사람만 생년월일시까지 보관됩니다. 직접 원국 입력자는 원국 보관으로 처리됩니다.")
+    save_cols = st.columns(3)
+    selected_to_save = []
+    for idx, p in enumerate(participants):
+        if st.checkbox(f"{p['name']} 보관", key=f"multi_save_pick_{idx}"):
+            selected_to_save.append(p)
+    with save_cols[0]:
+        if st.button("선택 참가자 보관", use_container_width=True, key="multi_save_selected"):
+            if not selected_to_save:
+                st.warning("보관할 참가자를 선택하세요.")
+            else:
+                for p in selected_to_save:
+                    st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
+                st.success(f"{len(selected_to_save)}명을 보관함에 추가했습니다.")
+    with save_cols[1]:
+        if st.button("전체 보관", use_container_width=True, key="multi_save_all"):
+            for p in participants:
+                st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
+            st.success("모든 참가자를 보관함에 추가했습니다.")
+    with save_cols[2]:
+        if st.button("이 멤버로 오늘의 뽑기", type="primary", use_container_width=True, key="multi_to_today_roulette"):
+            st.session_state.prefill_roulette_participants = normalize_participant_names(list(participants))
+            reset_navigation_to("오늘의 뽑기")
+            st.rerun()
+
+
+    if safe_toggle("리포트 다운로드", value=False, key="multi_report_toggle"):
+        report = make_multi_report(participants, summary)
+        _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        st.download_button(
+            label="1:1 케미 리포트 다운로드",
+            data=report.encode("utf-8"),
+            file_name=f"palja_multi_battle_report_{_ts}.md",
+            mime="text/markdown",
+            key="download_multi_battle_report",
+        )
+
+
+elif not payload.get("battle"):
+    render_single_summary(payload)
+
+else:
+    mine = payload["mine"]
+    friend = payload["friend"]
+    my_result = mine["result"]
+    fr_result = friend["result"]
+    my_score = float(my_result["total"])
+    fr_score = float(fr_result["total"])
+    score_diff = round(my_score - fr_score, 1)
+
+    battle_summary = make_battle_summary(mine, friend)
+    compatibility = compatibility_analysis(mine, friend, payload.get("relationship_mode", "친구"))
+    winner = battle_summary["total_winner"]
+    verdict = battle_summary["total_winner"]
+
+    st.markdown(f"""
+    <span class="summary-chip">모드: 1:1 케미</span>
+    <span class="summary-chip">태양시 보정: 한국 평균 -30분</span>
+    <span class="summary-chip">야자시: {'시도' if payload['use_yajashee'] else '미시도'}</span>
+    <span class="summary-chip">나이 기준: 만 나이</span>
+    """, unsafe_allow_html=True)
+
+    render_battle_result_board(mine, friend, battle_summary, compatibility)
+    st.caption("비교 결과와 케미 평가는 오락·참고용입니다. 사람의 우열이나 관계의 결론을 단정하지 않습니다.")
+
+
+
+st.markdown("---")
+
+utility_view = st.radio(
+    "관리 메뉴",
+    ["닫기", "결과 지우기", "주의사항", "개인정보", "앱 상태"],
+    index=0,
+    horizontal=True,
+    key="global_result_utility_view_compact",
+)
+
+if utility_view == "결과 지우기":
+    clear_cols = st.columns(2)
+    with clear_cols[0]:
+        if st.button("현재 분석 결과 지우기", use_container_width=True, key="clear_analysis_only_after"):
+            st.session_state.payload = None
+            st.session_state.pending_payload = None
+            st.session_state.result_revealed = True
+            st.session_state.show_details = False
+            st.success("현재 분석 결과를 지웠습니다.")
+    with clear_cols[1]:
+        if st.button("처음 화면으로 돌아가기", use_container_width=True, key="clear_all_after"):
+            st.session_state.payload = None
+            st.session_state.pending_payload = None
+            st.session_state.result_revealed = True
+            st.session_state.show_details = False
+            st.session_state.saved_participants = []
+            reset_navigation_to(None)
+            st.rerun()
+
+elif utility_view == "주의사항":
+    render_algorithm_disclosure_notice()
+    st.markdown("""
+- 이 앱은 사주 원국 구조와 케미를 **오락·참고용**으로 보여주는 도구입니다.
+- 결과는 법률, 의료, 투자, 채용, 혼인, 관계 단절 등 중대한 의사결정의 근거로 사용하지 마세요.
+- 실명 대신 10글자 이내 별명을 사용하세요. 별명을 쓰더라도 화면 캡처, 리포트 다운로드, 공유 맥락을 통해 특정인이 추정될 수 있습니다.
+- 입력값을 별도 데이터베이스에 저장하는 기능은 없지만, 서버에서 계산하는 구조상 입력값은 계산 순간 서버 메모리에 일시적으로 존재할 수 있습니다.
+- 내 사주 저장 링크는 서버 저장이 아니라 URL에 입력값을 담는 방식입니다. 링크를 타인에게 공유하지 마세요.
+- Streamlit Cloud 등 배포 플랫폼의 일반 접속 로그는 앱 코드만으로 완전히 통제할 수 없습니다.
+""")
+
+elif utility_view == "개인정보":
+    render_compact_privacy_notice()
+    render_privacy_policy()
+
+elif utility_view == "앱 상태":
+    import sys as _sys
+    try:
+        import streamlit as _st_mod
+        st_version = getattr(_st_mod, "__version__", "확인 불가")
+    except Exception:
+        st_version = "확인 불가"
+    pd_version = getattr(pd, "__version__", "확인 불가")
+    safe_dataframe(pd.DataFrame([
+        {"항목": "앱 버전", "상태": APP_VERSION},
+        {"항목": "Python", "상태": _sys.version.split()[0]},
+        {"항목": "Streamlit", "상태": st_version},
+        {"항목": "pandas", "상태": pd_version},
+        {"항목": "lunar_python Solar", "상태": "사용 가능" if Solar is not None else "사용 불가"},
+        {"항목": "lunar_python Lunar", "상태": "사용 가능" if Lunar is not None else "사용 불가"},
+    ]), use_container_width=True, hide_index=True)
+

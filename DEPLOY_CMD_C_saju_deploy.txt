@@ -1,0 +1,19 @@
+[사주MRI v5.140 배포 CMD - C:\saju_deploy 기준]
+
+cd /d "C:\saju_deploy\saju_mri_v5_140_my_saju_direct_link_with_cmd\saju_mri_v5_140_package"
+
+findstr /n "APP_VERSION" app.py
+
+git init
+git remote remove origin 2>nul
+git remote add origin https://github.com/hwakia/saju-web-app.git
+
+git branch -M main
+
+git add -A
+git commit -m "Deploy sajuMRI v5.140 my saju direct link"
+
+git push -u origin main --force
+
+git log --oneline -3
+git status
