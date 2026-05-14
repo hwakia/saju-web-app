@@ -2,7 +2,7 @@
 
 
 # app.py
-# 사주MRI Streamlit 앱 v5.140-my-saju-direct-link
+# 사주MRI Streamlit 앱 v5.142-chemistry-tension-signals
 # 실행: python -m streamlit run app.py
 
 
@@ -5392,6 +5392,40 @@ DAY_BRANCH_CLASH_NAME = {
     frozenset([a, b]): name for a, b, name in CLASHES
 }
 
+# v5.142: 1:1 케미용 세부 긴장 신호.
+# 합·충만으로는 설명되지 않는 가까운 관계의 은근한 피로감, 어긋남, 오해 신호를
+# 형·파·해·원진으로 분리해 표시하고 긴장도에 소폭 반영한다.
+CROSS_PENALTY_NAME = {
+    frozenset([a, b]): name.replace("刑", "형") for a, b, name in PENALTIES
+}
+
+CROSS_BREAK_NAME = {
+    frozenset(["子", "酉"]): "자유파",
+    frozenset(["丑", "辰"]): "축진파",
+    frozenset(["寅", "亥"]): "인해파",
+    frozenset(["卯", "午"]): "묘오파",
+    frozenset(["巳", "申"]): "사신파",
+    frozenset(["未", "戌"]): "미술파",
+}
+
+CROSS_HARM_NAME = {
+    frozenset(["子", "未"]): "자미해",
+    frozenset(["丑", "午"]): "축오해",
+    frozenset(["寅", "巳"]): "인사해",
+    frozenset(["卯", "辰"]): "묘진해",
+    frozenset(["申", "亥"]): "신해해",
+    frozenset(["酉", "戌"]): "유술해",
+}
+
+CROSS_WONJIN_NAME = {
+    frozenset(["子", "未"]): "자미원진",
+    frozenset(["丑", "午"]): "축오원진",
+    frozenset(["寅", "酉"]): "인유원진",
+    frozenset(["卯", "申"]): "묘신원진",
+    frozenset(["辰", "亥"]): "진해원진",
+    frozenset(["巳", "戌"]): "사술원진",
+}
+
 TRINE_GROUPS = {
     "신자진 수국": {"申", "子", "辰"},
     "해묘미 목국": {"亥", "卯", "未"},
@@ -5427,7 +5461,7 @@ def _branch_ko(branch: str) -> str:
 
 
 def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name: str = "나", fr_name: str = "상대") -> List[Dict[str, object]]:
-    """두 명식 사이에서 어떤 기둥의 어떤 지지가 합·충을 만드는지 구체화한다."""
+    """두 명식 사이에서 어떤 기둥의 어떤 지지가 합·충·형·파·해·원진을 만드는지 구체화한다."""
     my_items = _chart_branch_positions(my_chart, my_name)
     fr_items = _chart_branch_positions(fr_chart, fr_name)
     details: List[Dict[str, object]] = []
@@ -5454,6 +5488,42 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "left": left,
                     "right": right,
                     "impact": "두 글자가 정면으로 부딪히는 변화 신호입니다. 갈등 단정이 아니라 자극, 이동, 일정 변경, 감정 속도 차이처럼 움직임이 커지는 포인트로 봅니다.",
+                })
+            if pair in CROSS_PENALTY_NAME:
+                name = CROSS_PENALTY_NAME[pair]
+                details.append({
+                    "kind": "형",
+                    "name": name,
+                    "left": left,
+                    "right": right,
+                    "impact": "두 글자가 압박감·예민함·규칙 충돌을 만들 수 있는 신호입니다. 관계 단절보다는 가까울수록 조율 방식이 중요해지는 포인트로 봅니다.",
+                })
+            if pair in CROSS_BREAK_NAME:
+                name = CROSS_BREAK_NAME[pair]
+                details.append({
+                    "kind": "파",
+                    "name": name,
+                    "left": left,
+                    "right": right,
+                    "impact": "처음에는 맞는 듯해도 세부 조건이나 기대가 작게 어긋날 수 있는 신호입니다. 약속·역할·돈·시간 같은 실무 조건 확인이 중요합니다.",
+                })
+            if pair in CROSS_HARM_NAME:
+                name = CROSS_HARM_NAME[pair]
+                details.append({
+                    "kind": "해",
+                    "name": name,
+                    "left": left,
+                    "right": right,
+                    "impact": "겉으로 큰 충돌은 아니어도 은근한 오해·피로·서운함이 생길 수 있는 신호입니다. 돌려 말하기보다 확인하는 방식이 좋습니다.",
+                })
+            if pair in CROSS_WONJIN_NAME:
+                name = CROSS_WONJIN_NAME[pair]
+                details.append({
+                    "kind": "원진",
+                    "name": name,
+                    "left": left,
+                    "right": right,
+                    "impact": "끌림과 불편감이 함께 나타날 수 있는 예민한 신호입니다. 가까운 관계일수록 감정 해석을 단정하지 않고 확인하는 태도가 필요합니다.",
                 })
 
     combined = [("나", x) for x in my_items] + [("상대", x) for x in fr_items]
@@ -5491,12 +5561,12 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
 
 def render_cross_chart_interaction_cards(compatibility: Dict[str, object]) -> None:
     details = compatibility.get("cross_interactions") or []
-    st.markdown("#### 두 명식 사이의 합·충 세부 신호")
+    st.markdown("#### 두 명식 사이의 합·충·형·파·해·원진 세부 신호")
     if not details:
-        st.caption("두 명식 사이에 크게 드러나는 합·충 신호는 적습니다. 대신 오행 보완성, 흐름 동조성, 조후 차이를 중심으로 케미를 봅니다.")
+        st.caption("두 명식 사이에 크게 드러나는 합·충·형·파·해·원진 신호는 적습니다. 대신 오행 보완성, 흐름 동조성, 조후 차이를 중심으로 케미를 봅니다.")
         return
     cards = []
-    for d in details[:12]:
+    for d in details[:16]:
         kind = _clean_display_text(d.get("kind", "신호"))
         name = _clean_display_text(d.get("name", ""))
         left = _clean_display_text(d.get("left", ""))
@@ -5684,6 +5754,11 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
     cross_interaction_details = describe_cross_chart_interactions(my_chart, fr_chart, my_name_for_signal, fr_name_for_signal)
     cross_harmony_count = sum(1 for d in cross_interaction_details if d.get("kind") in {"합", "삼합", "방합"})
     cross_clash_count = sum(1 for d in cross_interaction_details if d.get("kind") == "충")
+    cross_penalty_count = sum(1 for d in cross_interaction_details if d.get("kind") == "형")
+    cross_break_count = sum(1 for d in cross_interaction_details if d.get("kind") == "파")
+    cross_harm_count = sum(1 for d in cross_interaction_details if d.get("kind") == "해")
+    cross_wonjin_count = sum(1 for d in cross_interaction_details if d.get("kind") == "원진")
+    cross_subtle_tension_count = cross_penalty_count + cross_break_count + cross_harm_count + cross_wonjin_count
 
     positives: List[str] = []
     cautions: List[str] = []
@@ -5862,6 +5937,80 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
         "판정": f"충 {clash_count}개" + (f" ({', '.join(sorted(set(clash_notes)))})" if clash_notes else ""),
     })
 
+    # 4-1. 형·파·해·원진: 충처럼 정면 충돌은 아니지만, 가까울수록 체감되는 은근한 긴장 신호로 반영한다.
+    penalty_count = break_count = harm_count = wonjin_count = 0
+    penalty_notes: List[str] = []
+    break_notes: List[str] = []
+    harm_notes: List[str] = []
+    wonjin_notes: List[str] = []
+    day_penalty = day_break = day_harm = day_wonjin = False
+    subtle_positions = _chart_branch_positions(my_chart, my_name_for_signal)
+    subtle_other_positions = _chart_branch_positions(fr_chart, fr_name_for_signal)
+
+    for a in subtle_positions:
+        for b in subtle_other_positions:
+            pair = frozenset([a["branch"], b["branch"]])
+            is_day_to_day = a.get("pos") == "day" and b.get("pos") == "day"
+            if pair in CROSS_PENALTY_NAME:
+                penalty_count += 1
+                penalty_notes.append(CROSS_PENALTY_NAME[pair])
+                tension += (6.0 * day_branch_weight + 2.0) if is_day_to_day else 2.4
+                if is_day_to_day:
+                    day_penalty = True
+            if pair in CROSS_BREAK_NAME:
+                break_count += 1
+                break_notes.append(CROSS_BREAK_NAME[pair])
+                tension += (4.0 * day_branch_weight + 1.5) if is_day_to_day else 1.6
+                if is_day_to_day:
+                    day_break = True
+            if pair in CROSS_HARM_NAME:
+                harm_count += 1
+                harm_notes.append(CROSS_HARM_NAME[pair])
+                tension += (4.5 * day_branch_weight + 1.5) if is_day_to_day else 1.8
+                if is_day_to_day:
+                    day_harm = True
+            if pair in CROSS_WONJIN_NAME:
+                wonjin_count += 1
+                wonjin_notes.append(CROSS_WONJIN_NAME[pair])
+                tension += (9.0 * day_branch_weight + 3.0) if is_day_to_day else 3.5
+                if is_day_to_day:
+                    day_wonjin = True
+
+    subtle_tension_count = penalty_count + break_count + harm_count + wonjin_count
+    day_subtle_tension = day_penalty or day_break or day_harm or day_wonjin
+
+    subtle_parts = []
+    if penalty_count:
+        subtle_parts.append(f"형 {penalty_count}개")
+    if break_count:
+        subtle_parts.append(f"파 {break_count}개")
+    if harm_count:
+        subtle_parts.append(f"해 {harm_count}개")
+    if wonjin_count:
+        subtle_parts.append(f"원진 {wonjin_count}개")
+
+    if subtle_tension_count:
+        cautions.append("형·파·해·원진 신호가 있어 정면 충돌보다 은근한 피로·오해·예민함을 조율할 필요가 있습니다.")
+        if day_wonjin:
+            cautions.append("일지 원진이 있어 가까운 관계에서는 끌림과 불편감이 함께 체감될 수 있습니다.")
+        if day_penalty:
+            cautions.append("일지 형 신호가 있어 가까울수록 규칙·역할·말투 조율이 중요합니다.")
+        if day_break or day_harm:
+            cautions.append("일지 파·해 신호가 있어 세부 조건과 기대치를 직접 확인하는 편이 좋습니다.")
+    elif clash_count == 0:
+        positives.append("충뿐 아니라 형·파·해·원진도 적어 은근한 긴장 신호가 크지 않습니다.")
+
+    if day_pair in SIX_HARMONY and day_subtle_tension:
+        cautions.append("일지 합이 있더라도 형·파·해·원진이 중첩되어 결속감과 예민함이 함께 나타날 수 있습니다.")
+
+    subtle_names = sorted(set(penalty_notes + break_notes + harm_notes + wonjin_notes))
+    rows.append({
+        "항목": "형·파·해·원진 신호",
+        "내 값": "-",
+        "상대 값": "-",
+        "판정": (", ".join(subtle_parts) if subtle_parts else "뚜렷한 세부 긴장 신호 적음") + (f" ({', '.join(subtle_names[:8])})" if subtle_names else ""),
+    })
+
     # 5. 팔자 총점 차이: 현재 모델에서는 케미 점수에 직접 반영하지 않고 참고 정보로만 표시한다.
     total_gap = abs(float(my_result["total"]) - float(fr_result["total"]))
     rows.append({"항목": "원국 원국 참고점 차이", "내 값": my_result["total"], "상대 값": fr_result["total"], "판정": f"{total_gap:.1f}점 차이 — 케미 점수에는 직접 반영하지 않음"})
@@ -5903,6 +6052,7 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
         and complement >= 75
         and alliance >= 75
         and tension <= 35
+        and not day_subtle_tension
         and (day_relation == "일지 동일" or day_pair in SIX_HARMONY or len(six_harmony_hits) >= 1 or len(trine_hits) >= 1)
     ):
         alliance += 2
@@ -5928,9 +6078,9 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
     adjusted_base_score = base_score
     if day_clash and clash_count >= 3 and complement < 50:
         adjusted_base_score = min(adjusted_base_score, 42.0)
-    if day_pair in SIX_HARMONY and complement >= 65 and tension <= 35:
+    if day_pair in SIX_HARMONY and not day_subtle_tension and complement >= 65 and tension <= 35:
         adjusted_base_score = max(adjusted_base_score, 76.0)
-    if day_pair in SIX_HARMONY and complement >= 75 and alliance >= 78 and tension <= 28:
+    if day_pair in SIX_HARMONY and not day_subtle_tension and complement >= 75 and alliance >= 78 and tension <= 28:
         adjusted_base_score = max(adjusted_base_score, 86.0)
 
     # 전체 인상 보정: 세부항목 조화와 전체 관계 인상을 ±5점 범위에서 제한적으로 반영한다.
@@ -5954,6 +6104,7 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
         {"항목": "상호 보완성", "내 값": "-", "상대 값": "-", "판정": f"{complement}/100"},
         {"항목": "동맹성·결속성", "내 값": "-", "상대 값": "-", "판정": f"{alliance}/100"},
         {"항목": "긴장도", "내 값": "-", "상대 값": "-", "판정": f"{tension}/100 낮을수록 안정"},
+        {"항목": "세부 긴장 신호", "내 값": "-", "상대 값": "-", "판정": f"형 {penalty_count}개 · 파 {break_count}개 · 해 {harm_count}개 · 원진 {wonjin_count}개"},
         {"항목": "흐름 동조성", "내 값": "-", "상대 값": "-", "판정": f"{sync}/100"},
         {"항목": "케미 기본 점수", "내 값": "-", "상대 값": "-", "판정": f"{adjusted_base_score}/100"},
         {"항목": "케미 전체 인상 보정", "내 값": "-", "상대 값": "-", "판정": f"{holistic['adjustment']:+.1f}점 — {holistic['summary']}"},
@@ -5983,6 +6134,12 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
         "day_relation": day_relation,
         "clash_count": max(clash_count, cross_clash_count),
         "harmony_count": max(len(six_harmony_hits), cross_harmony_count),
+        "subtle_tension_count": max(subtle_tension_count, cross_subtle_tension_count),
+        "penalty_count": max(penalty_count, cross_penalty_count),
+        "break_count": max(break_count, cross_break_count),
+        "harm_count": max(harm_count, cross_harm_count),
+        "wonjin_count": max(wonjin_count, cross_wonjin_count),
+        "day_subtle_tension": day_subtle_tension,
         "cross_interactions": cross_interaction_details,
     }
 
@@ -7257,7 +7414,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.140"
+APP_VERSION = "v5.142"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -9707,6 +9864,74 @@ def build_my_saju_save_url(
     return APP_PUBLIC_URL.rstrip("/") + "?" + urllib.parse.urlencode(params, doseq=False)
 
 
+
+def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saju_browser_store") -> None:
+    """같은 브라우저에서 내 사주 링크를 보관·불러오기 위한 로컬 저장 위젯.
+
+    Python/Streamlit session_state는 앱을 닫으면 사라지므로, 기기 재방문 편의성은
+    브라우저 localStorage에 '바로가기 URL'을 저장하는 방식으로 처리한다.
+    """
+    safe_save_url = json.dumps(str(save_url or ""), ensure_ascii=False)
+    component_html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; border:1px solid #f2cbd8; background:#fff7fa; border-radius:16px; padding:12px; color:#3f2a33;">
+      <div style="font-weight:800; margin-bottom:6px;">내 사주 기기 저장</div>
+      <div style="font-size:13px; line-height:1.45; color:#6f4f5c; margin-bottom:10px;">
+        같은 브라우저에서 다시 열 때 입력을 줄이기 위해, 이 기기에 개인용 바로가기 URL을 저장합니다.
+        생년월일시가 URL에 포함되므로 공용기기에서는 사용하지 마세요.
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="saveBtn" style="display:none; border:1px solid #d64273; background:#d64273; color:white; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">이 기기에 저장</button>
+        <a id="loadLink" target="_parent" style="display:none; text-decoration:none; border:1px solid #d64273; background:white; color:#d64273; border-radius:999px; padding:8px 12px; font-weight:800;">저장된 내 사주 불러오기</a>
+        <button id="clearBtn" style="display:none; border:1px solid #e7c6d0; background:white; color:#7a5665; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">저장 삭제</button>
+      </div>
+      <div id="msg" style="margin-top:8px; font-size:13px; color:#7a5665;"></div>
+    </div>
+    <script>
+      (function() {{
+        const KEY = "saju_mri_my_saju_url_v1";
+        const saveUrl = {safe_save_url};
+        const saveBtn = document.getElementById("saveBtn");
+        const loadLink = document.getElementById("loadLink");
+        const clearBtn = document.getElementById("clearBtn");
+        const msg = document.getElementById("msg");
+
+        function refresh() {{
+          const saved = window.localStorage.getItem(KEY);
+          if (saveUrl) {{
+            saveBtn.style.display = "inline-block";
+          }}
+          if (saved) {{
+            loadLink.href = saved;
+            loadLink.style.display = "inline-block";
+            clearBtn.style.display = "inline-block";
+            msg.textContent = "이 브라우저에 저장된 내 사주 바로가기가 있습니다.";
+          }} else {{
+            loadLink.style.display = "none";
+            clearBtn.style.display = "none";
+            msg.textContent = saveUrl ? "아직 이 기기에 저장하지 않았습니다." : "이 브라우저에 저장된 내 사주 바로가기가 아직 없습니다.";
+          }}
+        }}
+
+        saveBtn.addEventListener("click", function() {{
+          if (!saveUrl) return;
+          window.localStorage.setItem(KEY, saveUrl);
+          refresh();
+          msg.textContent = "저장했습니다. 다음에는 '저장된 내 사주 불러오기'로 바로 열 수 있습니다.";
+        }});
+
+        clearBtn.addEventListener("click", function() {{
+          window.localStorage.removeItem(KEY);
+          refresh();
+          msg.textContent = "저장된 내 사주 바로가기를 삭제했습니다.";
+        }});
+
+        refresh();
+      }})();
+    </script>
+    """
+    components.html(component_html, height=178)
+
+
 def _apply_my_saju_params_to_current_url(params: Dict[str, str]) -> bool:
     """현재 브라우저 주소창에 내 사주 저장용 query params를 적용한다."""
     if not params:
@@ -9757,7 +9982,7 @@ def render_my_saju_save_link_tool(
         with c1:
             if st.button("현재 주소를 내 사주 바로가기로 바꾸기", key=f"{key_prefix}_apply_url", use_container_width=True):
                 if _apply_my_saju_params_to_current_url(params):
-                    st.success("현재 주소창이 내 사주 바로가기 주소로 바뀌었습니다. 이제 이 페이지를 북마크하거나 홈 화면에 추가하세요.")
+                    st.success("현재 주소창이 내 사주 바로가기 주소로 바뀌었습니다. 이 주소를 북마크하거나 홈 화면에 추가하세요.")
                 else:
                     st.warning("주소창 자동 변경이 제한되었습니다. 아래 링크를 복사해 북마크하거나 다시 여세요.")
         with c2:
@@ -9765,6 +9990,8 @@ def render_my_saju_save_link_tool(
                 st.link_button("내 사주 바로 열기", link, use_container_width=True)
             else:
                 st.markdown(f"[내 사주 바로 열기]({link})")
+
+        render_my_saju_browser_storage_widget(link, key=f"{key_prefix}_browser_store")
         st.caption("저장 링크로 접속하면 입력값을 불러온 뒤 결과 화면까지 바로 이동합니다. 앱 설치가 아니라 개인용 URL 바로가기 방식입니다.")
 
 
@@ -16786,7 +17013,7 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
         st.markdown("### 🔎 상세보기")
         expert_view = st.radio(
             "케미 상세 항목",
-            ["상세 케미", "합·충 관계", "대운·세운", "계산 참고 지표"],
+            ["상세 케미", "합·충·형·원진", "대운·세운", "계산 참고 지표"],
             index=0,
             horizontal=True,
             key="chem_expert_detail_view_radio_v590",
@@ -16798,14 +17025,17 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
             st.markdown("####  케미 축")
             render_compatibility_radar(compatibility)
 
-        elif expert_view == "합·충 관계":
+        elif expert_view == "합·충·형·원진":
             harmony_count = int(compatibility.get("harmony_count", 0) or 0)
             clash_count = int(compatibility.get("clash_count", 0) or 0)
+            subtle_count = int(compatibility.get("subtle_tension_count", 0) or 0)
+            penalty_count = int(compatibility.get("penalty_count", 0) or 0)
+            wonjin_count = int(compatibility.get("wonjin_count", 0) or 0)
             day_relation = html.escape(str(compatibility.get("day_relation", "큰 일지 합충 없음")))
             st.markdown(f"""
             <div class="signal-card">
-                <div class="signal-title">두 명식 사이의 합·충 반영 요약</div>
-                <div class="signal-body">일지 관계: {day_relation}<br>합·결속 신호: {harmony_count}개 / 충·변화 신호: {clash_count}개<br>아래에서 어떤 기둥의 어떤 글자가 합·충을 만드는지 구체적으로 확인할 수 있습니다.</div>
+                <div class="signal-title">두 명식 사이의 합·충·형·원진 반영 요약</div>
+                <div class="signal-body">일지 관계: {day_relation}<br>합·결속 신호: {harmony_count}개 / 충·변화 신호: {clash_count}개 / 형·파·해·원진 신호: {subtle_count}개<br>형 신호: {penalty_count}개 / 원진 신호: {wonjin_count}개<br>아래에서 어떤 기둥의 어떤 글자가 합·충·형·파·해·원진을 만드는지 구체적으로 확인할 수 있습니다.</div>
             </div>
             """, unsafe_allow_html=True)
             render_cross_chart_interaction_cards(compatibility)
@@ -19281,6 +19511,8 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
 
 elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
     quest_title("🌸 내 사주MRI", "생년월일시만 넣고 바로 봅니다.", ["원국", "오늘", "대운"])
+
+    render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
 
     top_row = st.columns([1.1, 1])
     with top_row[0]:
