@@ -7436,7 +7436,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.143"
+APP_VERSION = "v5.144"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20467,7 +20467,7 @@ def render_patch_notes() -> None:
 
     PATCH_NOTES = [
         {
-            "version": "v5.143",
+            "version": "v5.144",
             "date": "2026년 5월",
             "tag": "🆕 현재 버전",
             "tag_color": "#d64273",
@@ -21302,8 +21302,7 @@ st.markdown("""
 <div class="hero-wrap">
     <div class="hero-title"><span>사주MRI</span></div>
     <div class="hero-subtitle">
-        내 원국의 구조 · 오늘의 기운 · 1:1 케미<br>
-        사주를 기능별로 흩뿌리지 않고, 시각화 리포트처럼 정리해서 보여줍니다.
+        내 원국의 구조 · 오늘의 기운 · 1:1 케미
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -21311,6 +21310,29 @@ st.markdown("""
 
 if st.session_state.payload is None and st.session_state.selected_main_mode is None:
     # 첫 화면은 순수 Streamlit 레이아웃으로만 구성한다.
+    # ── 최신 패치 공지 ──
+    st.markdown(
+        f"""
+        <div style='background:#fff0f8;border:1.5px solid #f5c9d8;border-radius:10px;
+        padding:12px 16px;margin-bottom:14px;'>
+        <div style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>
+          <span style='background:#d64273;color:#fff;border-radius:4px;padding:2px 8px;
+          font-size:11px;font-weight:700;'>🆕 {APP_VERSION} 업데이트</span>
+          <span style='font-size:11px;color:#9d174d;'>2026년 5월</span>
+        </div>
+        <div style='font-size:13px;color:#5b2038;line-height:1.9;'>
+          · 세운(올해 처방전) 표시 버그 수정 — 생년월일 입력 시 올해 기운이 이제 제대로 나와<br>
+          · 4기둥 8글자 결과 화면 상단에 크게 표시<br>
+          · 올해 처방전에 세운 합·충·용신 상세 분석 추가<br>
+          · 진단서에 신약·신강 근거 / 용신·기신·희신 / 식상생재·재생관·관인상생 구조 설명 추가<br>
+          · 할머니 의사 텍스트 전면 강화 (4~5문장으로 확장)<br>
+          · 점수 계산 버그 수정 (3대 축 점수 정상화)<br>
+          · 중복 메뉴 정리 · 모바일 스크롤 개선 · 공유 이미지 개편
+        </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown("### 시작할 메뉴를 선택하세요")
     st.caption(f"버전 {APP_VERSION}")
 
@@ -21320,13 +21342,13 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.selected_main_mode = "혼자 보기"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("내 원국의 캐릭터, 핵심 시각 분석, 오늘의 처방, 대운 흐름을 한 번에 봅니다.")
+        st.caption("내 원국 분석 · 오늘의 처방 · 대운 흐름")
     with landing_cols[1]:
         if st.button(" 케미 분석", use_container_width=True, key="landing_friend"):
             st.session_state.selected_main_mode = "케미 분석"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("두 사람의 오행·조후·흐름·긴장도를 겹쳐 관계의 맞물림을 봅니다.")
+        st.caption("두 사람의 오행·조후·케미 분석")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
