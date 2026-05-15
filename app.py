@@ -17477,6 +17477,150 @@ def render_chemistry_page_buttons(default: str = " 케미 한눈에") -> str:
 
 
 
+
+
+def render_hanuneyo_text_explanation(payload, char, result):
+    """한눈에 보기 섹션에 상세 텍스트 설명을 추가한다."""
+    snap = _single_front_snapshot(payload)
+    useful = result.get("useful", {}) or {}
+    op = energy_operation_profile(result)
+
+    dominant_el, dominant_pct = snap.get("dominant", ("-", 0.0))
+    weak_el, weak_pct = snap.get("weak", ("-", 0.0))
+    temp = float(snap.get("temp", 50) or 50)
+    climate_label = str(snap.get("climate_label", "균형권"))
+    climate_note = str(snap.get("climate_note", ""))
+    score_map = snap.get("scores", {}) or {}
+
+    strength_label = str(result.get("strength_label", "중화"))
+    refined_label, refined_note = refined_strength_interpretation(result)
+
+    display_dirs = polished_useful_directions(useful, result)
+    primary = format_element_list(display_dirs.get("primary", []), "조후·순환 우선")
+    burden = format_element_list(display_dirs.get("burden", []), "뚜렷하지 않음")
+    logic = str(useful.get("logic", "강약과 조후를 함께 고려한 보완 방향입니다.") or "")
+
+    operation_name = energy_operation_display_name(str(op.get("name", char.get("operation", "-"))))
+    operation_hint = str(op.get("hint", "") or "")
+    operation_desc = str(op.get("desc", "") or "")
+
+    char_title = str(char.get("title", "") or "")
+    char_tone = str(char.get("tone", "") or "")
+
+    element_desc = {
+        "木": "성장·확장·추진의 기운입니다. 새로운 것을 시작하고 앞으로 나아가는 힘이 강합니다.",
+        "火": "열정·표현·드러냄의 기운입니다. 빛을 발하고 다른 사람에게 영향을 미치는 힘이 강합니다.",
+        "土": "안정·중심·조율의 기운입니다. 기반을 다지고 균형을 잡는 힘이 강합니다.",
+        "金": "정밀·결단·마무리의 기운입니다. 기준을 세우고 확실하게 끝내는 힘이 강합니다.",
+        "水": "지혜·유연·탐색의 기운입니다. 흐르듯 상황에 적응하고 깊이 생각하는 힘이 강합니다.",
+    }
+    element_weak_advice = {
+        "木": "시작하는 힘과 추진력이 약할 수 있으니, 새로운 도전을 조금씩 늘리는 게 도움이 됩니다.",
+        "火": "표현력과 열정이 약할 수 있으니, 자신을 드러내고 소통하는 연습이 도움이 됩니다.",
+        "土": "중심 잡기와 안정감이 약할 수 있으니, 규칙적인 루틴과 공간 정리가 도움이 됩니다.",
+        "金": "결단력과 마무리 능력이 약할 수 있으니, 한 가지를 끝까지 완성하는 습관이 도움이 됩니다.",
+        "水": "유연성과 깊이 있는 사고가 약할 수 있으니, 충분한 휴식과 혼자 생각하는 시간이 도움이 됩니다.",
+    }
+
+    axis_desc = {
+        "기초체력": "사주의 재료가 얼마나 풍부하고 안정적인지를 나타냅니다.",
+        "흐름과 연결": "생각·관계·일이 얼마나 부드럽게 이어지는지를 나타냅니다.",
+        "현실작동력": "가진 기운이 실제 행동·결과·성과로 얼마나 잘 드러나는지를 나타냅니다.",
+    }
+    axis_high = {
+        "기초체력": "기반이 든든하고 체력적으로 안정된 편입니다.",
+        "흐름과 연결": "관계와 생각의 연결이 자연스럽게 이뤄지는 편입니다.",
+        "현실작동력": "실행력이 강해 행동으로 옮기는 힘이 살아 있는 편입니다.",
+    }
+    axis_low = {
+        "기초체력": "에너지를 소모하고 나서 회복에 시간이 더 필요할 수 있습니다. 무리하지 않는 페이스 조절이 중요합니다.",
+        "흐름과 연결": "관계나 일의 흐름에서 막힘이 생길 수 있습니다. 연결을 부드럽게 해주는 환경과 사람을 곁에 두는 것이 도움이 됩니다.",
+        "현실작동력": "아이디어가 있어도 성과로 이어지는 데 계기가 필요한 구조입니다. 작은 행동 하나를 먼저 시작하는 것이 효과적입니다.",
+    }
+    strength_plain = {
+        "극신약": "혼자 다 해내려 하지 않고, 좋은 팀·환경·루틴이 갖춰질 때 힘이 가장 잘 살아납니다. 도움받는 것이 오히려 더 큰 성과로 이어집니다.",
+        "신약": "환경과 사람의 도움을 받을 때 역량이 더 잘 발휘됩니다. 좋은 파트너십과 안정된 기반이 중요합니다.",
+        "중화": "혼자 미는 힘과 외부의 도움이 균형을 이루는 편입니다. 상황에 따라 유연하게 조율하는 것이 핵심입니다.",
+        "신강": "스스로 방향을 잡고 밀어붙이는 힘이 강합니다. 너무 혼자 끌고 가다 지치거나 균형이 흐트러질 수 있으니 중간 점검이 필요합니다.",
+        "극신강": "자기 에너지와 추진력이 매우 강한 편입니다. 방향을 잘 잡고 주변과 조화를 이루는 것이 중요합니다. 과잉 에너지를 건강한 방식으로 발산하는 출구를 찾으세요.",
+    }
+
+    with st.expander("📖 이 결과가 무슨 뜻인지 — 상세 설명 보기", expanded=False):
+
+        st.markdown("#### 🧬 내 사주 인상")
+        if char_title:
+            st.markdown(f"**'{char_title}'** — 이 사주의 전반적인 인상을 하나의 캐릭터로 압축한 표현입니다.")
+        if char_tone:
+            st.info(char_tone)
+
+        dom_desc = element_desc.get(dominant_el, "")
+        if dom_desc:
+            st.markdown(
+                f"**강한 기운 ({dominant_el}, {float(dominant_pct):.1f}%):** {dom_desc} "
+                f"이 사주에서는 이 기운이 가장 강하게 작동하므로, 생각하고 행동하는 방식에 이 색깔이 많이 드러납니다."
+            )
+        if weak_el and weak_el != "-" and weak_el != dominant_el:
+            weak_desc = element_desc.get(weak_el, "")
+            weak_advice = element_weak_advice.get(weak_el, "")
+            st.markdown(
+                f"**약한 기운 ({weak_el}, {float(weak_pct):.1f}%):** {weak_desc} {weak_advice}"
+            )
+        st.markdown(
+            f"**조후(사주의 온도감) — {climate_label} ({temp:.0f}/100):** {climate_note} "
+            f"조후는 사주 전체의 배경 온도를 나타내며, 기운의 방향성을 이해하는 데 참고합니다."
+        )
+
+        st.divider()
+        st.markdown("#### ⚡ 기운 3대 축 — 각 점수 해석")
+        st.caption("각 축은 100점 만점이 아니라 해당 영역의 충만도(%)를 나타냅니다.")
+
+        order = ["기초체력", "흐름과 연결", "현실작동력"]
+        for axis_name in order:
+            info = score_map.get(axis_name, {}) or {}
+            pct = float(info.get("pct", 0.0) or 0.0)
+            if pct >= 68:
+                state = "강함"
+                state_msg = axis_high.get(axis_name, "")
+            elif pct >= 45:
+                state = "보통"
+                state_msg = "보통 수준으로, 상황에 따라 잘 발휘되기도 하고 약해지기도 합니다."
+            else:
+                state = "약함"
+                state_msg = axis_low.get(axis_name, "")
+            base_desc = axis_desc.get(axis_name, "")
+            st.markdown(f"**{axis_name} ({state}, {pct:.0f}%):** {base_desc} → {state_msg}")
+
+        st.divider()
+        st.markdown("#### 🔑 핵심 요약 — 실생활에서 이렇게 보세요")
+
+        friendly_str = FRIENDLY_STRENGTH_LABELS.get(strength_label, strength_label)
+        plain_str = strength_plain.get(strength_label, "")
+        st.markdown(f"**일간 강약 — {refined_label}**")
+        st.markdown(friendly_str)
+        st.markdown(f"💡 {plain_str}")
+        if refined_note:
+            st.caption(refined_note)
+
+        st.markdown(f"**힘 쓰는 방식 — {operation_name}**")
+        op_text = operation_desc or operation_hint
+        if op_text:
+            st.markdown(op_text)
+
+        st.markdown(f"**보완 방향 — {primary}**")
+        st.markdown(
+            "보완 방향이란 이 사주에서 상대적으로 부족한 기운을 채워주는 오행입니다. "
+            "생활 속에서 이 기운과 관련된 색상·공간·활동·음식 등을 통해 자연스럽게 균형을 맞출 수 있습니다."
+        )
+        if logic:
+            st.caption(f"원리: {logic}")
+        if burden and burden != "뚜렷하지 않음":
+            st.markdown(
+                f"**부담 방향 — {burden}:** 이미 과잉 상태인 기운으로, 더 쌓이면 오히려 균형이 흐트러질 수 있습니다. "
+                "너무 집중하지 않는 것이 좋습니다."
+            )
+        st.caption("위 내용은 사주 명리학 원리를 바탕으로 한 참고 정보입니다. 실제 삶의 판단은 본인의 경험과 상황을 최우선으로 하세요.")
+
+
 def render_single_summary(payload: Dict[str, object]) -> None:
     """내 사주MRI 결과를 일반인용 한눈에 보기와 전문가 상세보기로 분리한다."""
     chart = payload["chart"]
@@ -17506,6 +17650,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
         render_mbti_character_hero(payload)
         render_axis_inline_summary(payload, result)
         render_compact_first_glance(payload, char)
+        render_hanuneyo_text_explanation(payload, char, result)
         if st.button("📸 이 첫 화면을 바로 공유 이미지로 저장", key="single_inline_share_btn_v591", use_container_width=True):
             st.session_state["single_inline_share_open_v591"] = not st.session_state.get("single_inline_share_open_v591", False)
         if st.session_state.get("single_inline_share_open_v591", False):
