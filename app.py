@@ -18394,6 +18394,145 @@ def render_sewun_text_overview(payload: dict) -> None:
             "직접 원국을 입력한 경우 세운 정보가 없습니다."
         )
 
+    # ── 올해 세운 상세 분석 (할머니 의사 텍스트) ─────────────
+    _sewun_chart  = payload.get("chart")
+    _sewun_result = payload.get("result", {}) or {}
+    if row_this and _sewun_chart and gz not in ("-", ""):
+        _sw_useful   = _sewun_result.get("useful", {}) or {}
+        _sw_str_lbl  = _sewun_result.get("strength_label", "중화")
+        _sw_str_idx  = float(_sewun_result.get("strength_index", 50) or 50)
+        _sw_flows    = _sewun_result.get("flows", []) or []
+        _sw_shinsal  = _sewun_result.get("shinsal", {}) or {}
+        _sw_shinsal_hits = _sw_shinsal.get("hits", []) or []
+        _sw_interactions = _sewun_result.get("interactions", []) or []
+
+        # 세운 글자 오행 분류
+        _SW_STEM_EL = {"甲":"木","乙":"木","丙":"火","丁":"火","戊":"土","己":"土","庚":"金","辛":"金","壬":"水","癸":"水"}
+        _SW_BRANCH_EL = {"子":"水","丑":"土","寅":"木","卯":"木","辰":"土","巳":"火","午":"火","未":"土","申":"金","酉":"金","戌":"土","亥":"水"}
+        _EL_KO = {"木":"나무","火":"불","土":"흙","金":"쇠","水":"물"}
+
+        _gz_stem   = gz[0] if len(gz) >= 1 else ""
+        _gz_branch = gz[1] if len(gz) >= 2 else ""
+        _stem_el   = _SW_STEM_EL.get(_gz_stem, "")
+        _branch_el = _SW_BRANCH_EL.get(_gz_branch, "")
+        _primary   = set(_sw_useful.get("primary", []) or [])
+        _burden    = set(_sw_useful.get("burden", []) or [])
+
+        # 용신/기신 판단
+        _stem_role   = "용신(도움)" if _stem_el in _primary else ("기신(부담)" if _stem_el in _burden else "중립")
+        _branch_role = "용신(도움)" if _branch_el in _primary else ("기신(부담)" if _branch_el in _burden else "중립")
+
+        _role_summary = []
+        if _stem_el:
+            _role_summary.append(f"천간 {_gz_stem}({_EL_KO.get(_stem_el, _stem_el)} 기운)은 {_stem_role}이야")
+        if _branch_el:
+            _role_summary.append(f"지지 {_gz_branch}({_EL_KO.get(_branch_el, _branch_el)} 기운)은 {_branch_role}이야")
+
+        # 합/충 효과
+        _effects = _luck_effects_for_chart(gz, _sewun_chart)
+        _harmony_notes = [n for n in _effects.get("notes", []) if "묶여" in n]
+        _clash_notes   = [n for n in _effects.get("notes", []) if "부딪혀" in n]
+
+        # 신약/신강과 올해 관계
+        _str_story = {
+            "극신강": f"원국이 힘이 넘치는 극신강이야. {gz} 세운에서 용신 기운이 들어오면 힘을 잘 쓸 수 있고, 기신 기운이 들어오면 더 막힐 수 있어.",
+            "신강":   f"원국이 힘이 있는 신강이야. {gz} 세운 기운이 원국을 도와주는 쪽이면 활발하게 움직이기 좋고, 누르는 쪽이면 조금 조절이 필요해.",
+            "중화":   f"원국이 균형잡힌 중화야. {gz} 세운 기운 방향에 따라 유연하게 반응할 수 있어 — 어떤 세운이 와도 비교적 잘 버텨.",
+            "신약":   f"원국이 힘이 적은 신약이야. {gz} 세운에서 인성·비겁처럼 힘을 보태주는 기운이 들어오면 훨씬 여유로워지고, 빼가는 기운이면 더 힘들 수 있어.",
+            "극신약": f"원국이 힘이 많이 부족한 극신약이야. {gz} 세운에서 힘을 보태주는 기운이 들어오는지가 올해 체감의 핵심이야. 버팀목이 생기는지 봐.",
+        }.get(_sw_str_lbl, f"{gz} 세운 기운이 원국과 어떻게 맞는지가 올해 흐름의 핵심이야.")
+
+        # 흐름 구조 (식상생재 등) 올해 영향
+        _active_flows = [f["구조"] for f in _sw_flows if "강함" in f.get("강도", "")]
+        _flow_story = ""
+        if _active_flows:
+            _FLOW_PLAIN = {
+                "식상생재": "재능과 표현이 돈과 결실로 이어지는 흐름",
+                "재생관": "물질 기반이 역할과 책임으로 연결되는 흐름",
+                "관인상생": "역할과 책임이 내면 성장으로 돌아오는 흐름",
+                "재관인상생": "재물·역할·성장이 한꺼번에 연결되는 강한 흐름",
+            }
+            _fs = [_FLOW_PLAIN.get(f, f) for f in _active_flows[:2]]
+            _flow_story = f"원국에 {', '.join(_fs)}이 작동하고 있어. 올해 세운 기운이 이 흐름을 타면 더 강하게 나타날 수 있어."
+
+        with st.expander("🩺 올해 세운 깊이 보기 (합·충·용신·체질 분석)", expanded=False):
+            # 1. 세운 글자와 용신/기신
+            st.markdown(
+                f"<div style='background:#fff0f8;border-left:4px solid #db2777;padding:12px 14px;"
+                f"border-radius:6px;margin-bottom:10px;'>"
+                f"<div style='font-size:12px;color:#9d174d;font-weight:700;margin-bottom:6px;'>올해 세운 글자 분석 · {gz}</div>"
+                f"<div style='font-size:13px;color:#374151;line-height:1.9;'>"
+                + "<br>".join(f"· {r}" for r in _role_summary) +
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+
+            if _role_summary:
+                _helpful = [r for r in _role_summary if "용신" in r]
+                _harmful = [r for r in _role_summary if "기신" in r]
+                if _helpful:
+                    _doc = f"올해 세운 기운 중 {', '.join(_helpful[:1])} — 내 원국을 도와주는 방향이야. 이 기운이 들어오면 막히던 게 뚫리고 체감이 가벼워지는 경우가 많아."
+                elif _harmful:
+                    _doc = f"올해 세운 기운이 {', '.join(_harmful[:1])} — 내 원국에 부담이 되는 방향이야. 무리하게 밀기보다 조심하면서 가는 게 현명해. 기신 기운이 세다고 무조건 나쁜 건 아니야 — 단, 에너지 소모가 더 커지거든."
+                else:
+                    _doc = f"올해 세운 기운이 중립이야. 내 원국에 크게 보태거나 빼가지 않아 — 그 자체로 흘러가는 해야. 큰 변동 없이 내 리듬대로 가면 돼."
+                st.markdown(f"💬 {_doc}")
+
+            # 2. 합/충 분석
+            if _harmony_notes or _clash_notes:
+                st.markdown("---")
+                st.markdown("**🔗 올해 세운과 내 원국의 합·충 신호**")
+                if _harmony_notes:
+                    st.markdown(
+                        f"<div style='background:#f0fdf4;border-left:3px solid #16a34a;"
+                        f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
+                        f"<div style='font-size:12px;font-weight:700;color:#16a34a;margin-bottom:4px;'>🔗 합 — 묶이는 기운</div>"
+                        f"<div style='font-size:13px;color:#374151;line-height:1.8;'>"
+                        + "<br>".join(f"· {n}" for n in _harmony_notes) +
+                        f"<br><span style='font-size:12px;color:#6b7280;'>→ 합이 생기면 해당 기운이 변화하거나 묶여서 다른 흐름을 만들어. 좋은 방향이면 기회가, 안 좋은 방향이면 옴짝달싹이 어려울 수 있어.</span>"
+                        f"</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                if _clash_notes:
+                    st.markdown(
+                        f"<div style='background:#fff7ed;border-left:3px solid #ea580c;"
+                        f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
+                        f"<div style='font-size:12px;font-weight:700;color:#ea580c;margin-bottom:4px;'>⚡ 충 — 부딪히는 기운</div>"
+                        f"<div style='font-size:13px;color:#374151;line-height:1.8;'>"
+                        + "<br>".join(f"· {n}" for n in _clash_notes) +
+                        f"<br><span style='font-size:12px;color:#6b7280;'>→ 충은 변화와 자극이야. 불편하게 느껴지지만, 기신 기운을 흔드는 충은 오히려 풀리는 계기가 되기도 해. 무조건 나쁜 신호는 아니야.</span>"
+                        f"</div></div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.caption("올해 세운 글자와 원국 사이에 뚜렷한 합·충 신호는 없어. 기본 원국 흐름대로 가는 해야.")
+
+            # 3. 신약/신강과 올해 관계
+            st.markdown("---")
+            st.markdown("**⚖️ 내 체질과 올해 기운의 관계**")
+            st.markdown(_str_story)
+            if _flow_story:
+                st.caption(_flow_story)
+
+            # 4. 신살과 올해 세운 연결
+            if _sw_shinsal_hits:
+                st.markdown("---")
+                st.markdown("**✨ 원국 신살과 올해 기운의 교차점**")
+                for _sh in _sw_shinsal_hits[:3]:
+                    _sn = str(_sh.get("신살", ""))
+                    _pos = str(_sh.get("위치", ""))
+                    _SHIN_YEAR = {
+                        "천을귀인": f"천을귀인이 원국에 있어. 올해도 힘들 때 예상치 못한 도움이 오는 구조야. 혼자 끌어안지 말고 손 내밀어봐.",
+                        "문창귀인": f"문창귀인이 원국에 있어. 올해 글·말·기획처럼 표현하는 일에서 기회가 생길 수 있어.",
+                        "역마":     f"역마가 원국에 있어. 올해도 가만있으면 답답해질 수 있어 — 이동하거나 변화를 만들어봐.",
+                        "도화":     f"도화가 원국에 있어. 올해 사람 관계나 노출이 관건이야. 잘 활용하면 기회가 돼.",
+                        "화개":     f"화개가 원국에 있어. 올해도 혼자 깊이 파는 시간이 필요해. 무리하게 밖으로 나가기보다 전문성을 쌓아봐.",
+                        "공망":     f"공망 자리가 있어. 올해 해당 자리에서 기대한 만큼 바로 안 올 수 있어 — 우회 전략이 더 잘 맞아.",
+                    }
+                    _sn_txt = _SHIN_YEAR.get(_sn, "")
+                    if _sn_txt:
+                        st.caption(f"· {_sn} ({_pos}): {_sn_txt}")
+
     st.caption("올해의 처방은 매년 바뀌는 연간 기운이야. 10년 큰 흐름 위에 올해 파도가 얼마나 높은지 보는 거거든.")
 
     # ── 상세보기 ────────────────────────────────────────────
@@ -19016,6 +19155,181 @@ def render_hanuneyo_text_explanation(payload, char, result):
             "</div>",
             unsafe_allow_html=True,
         )
+
+    st.divider()
+
+    # ── 9. 🔍 기운의 흐름 구조 상세 보기 ────────────────────
+    with st.expander("🔍 기운의 흐름과 순환 구조 상세 보기", expanded=False):
+        st.markdown("#### ⚖️ 신약·신강 판단 근거")
+        _fw_idx = float(result.get("strength_index", 50) or 50)
+        _fw_lbl = str(result.get("strength_label", "중화"))
+        _fw_detail = result.get("strength_detail", {}) or {}
+
+        _STRENGTH_WHY = {
+            "극신강": (
+                "일간 오행을 도와주는 비겁(나와 같은 기운)과 인성(나를 키우는 기운)이 원국의 절반을 훌쩍 넘어. "
+                "자기 힘이 넘쳐서 혼자 밀고 나가는 힘은 강하지만, 그만큼 받아들이고 내려놓는 게 어려울 수 있어. "
+                "재성(내가 쓰는 기운)이나 식상(내가 표현하는 기운)이 용신이 되는 경우가 많아 — 힘을 쓸 출구가 필요해."
+            ),
+            "신강": (
+                "비겁·인성 쪽이 일간을 든든히 받쳐주고 있어. 자기 중심이 잡혀 있고, 스스로 방향을 정하고 밀어붙이는 힘이 있어. "
+                "재성·관성·식상 방향이 보완 방향이야 — 힘을 다양하게 발산해야 균형이 맞아."
+            ),
+            "중화": (
+                "도와주는 기운과 소모하는 기운이 대략 균형을 이루고 있어. "
+                "어느 한쪽으로 치우치지 않아서 적응력이 높은 편이야. "
+                "조후(사주 온도)와 순환 구조가 더 중요한 사주야 — 어떤 방향으로 흐르느냐가 핵심이거든."
+            ),
+            "신약": (
+                "일간을 빼가는 기운(재성·관성·식상)이 받쳐주는 기운(비겁·인성)보다 많아. "
+                "혼자 뚝심으로 밀기보다 환경, 사람, 때를 잘 고르는 게 중요해. "
+                "인성(날 키우는 기운)이나 비겁(동료 기운)이 용신이 되는 경우가 많아 — 좋은 환경이 이 사주의 보약이야."
+            ),
+            "극신약": (
+                "일간을 빼가는 기운이 압도적으로 많아. 혼자 버티는 힘보다 도움을 받고 활용하는 힘이 이 사주의 운용 방식이야. "
+                "이걸 약점으로 볼 필요 없어 — 도움을 잘 받는 게 오히려 더 큰 능력이거든. "
+                "받쳐주는 인성·비겁 방향이 얼마나 있느냐가 체감을 결정해."
+            ),
+        }
+        st.markdown(
+            f"<div style='background:#f0f9ff;border-left:4px solid #2563eb;padding:12px 14px;"
+            f"border-radius:6px;margin-bottom:10px;'>"
+            f"<div style='font-size:12px;color:#1d4ed8;font-weight:700;margin-bottom:6px;'>일간 강약 지수 {_fw_idx:.0f}/100 — {_fw_lbl}</div>"
+            f"<div style='font-size:13px;color:#1e3a5f;line-height:1.9;'>"
+            f"{_STRENGTH_WHY.get(_fw_lbl, '강약 지수를 기반으로 보완 방향을 결정해.')}"
+            f"</div></div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("#### 🔑 용신·기신·희신")
+        _fw_useful  = result.get("useful", {}) or {}
+        _fw_primary = list(_fw_useful.get("primary", []) or [])
+        _fw_burden  = list(_fw_useful.get("burden", []) or [])
+        _fw_cond    = list(_fw_useful.get("conditional", []) or [])
+        _fw_logic   = str(_fw_useful.get("logic", "") or "")
+        _EL_DESC = {
+            "木": "나무·성장·시작하는 기운",
+            "火": "불·표현·드러내는 기운",
+            "土": "흙·안정·중심 잡는 기운",
+            "金": "쇠·결단·끊고 정리하는 기운",
+            "水": "물·지혜·흘러가는 기운",
+        }
+        if _fw_primary:
+            st.markdown(
+                f"<div style='background:#f0fdf4;border-left:4px solid #16a34a;padding:10px 14px;"
+                f"border-radius:6px;margin-bottom:8px;'>"
+                f"<div style='font-size:12px;color:#16a34a;font-weight:700;margin-bottom:4px;'>💚 용신 / 희신 (도움이 되는 기운)</div>"
+                f"<div style='font-size:13px;color:#374151;line-height:1.9;'>"
+                + "".join(f"<b>{e}</b> ({_EL_DESC.get(e, e)})<br>" for e in _fw_primary) +
+                f"<span style='font-size:12px;color:#16a34a;'>이 기운이 들어오는 환경, 계절, 사람 옆에 있으면 체감이 좋아지거든.</span>"
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+        if _fw_burden:
+            st.markdown(
+                f"<div style='background:#fef2f2;border-left:4px solid #dc2626;padding:10px 14px;"
+                f"border-radius:6px;margin-bottom:8px;'>"
+                f"<div style='font-size:12px;color:#dc2626;font-weight:700;margin-bottom:4px;'>❌ 기신 (부담이 되는 기운)</div>"
+                f"<div style='font-size:13px;color:#374151;line-height:1.9;'>"
+                + "".join(f"<b>{e}</b> ({_EL_DESC.get(e, e)})<br>" for e in _fw_burden) +
+                f"<span style='font-size:12px;color:#dc2626;'>이 기운이 넘치면 원국이 버거워져. 완전히 피할 순 없지만 줄이면 훨씬 편해져.</span>"
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+        if _fw_cond:
+            st.caption(f"조건부 참고 기운: {', '.join(_fw_cond)} — 상황에 따라 도움이 되기도 해.")
+        if _fw_logic:
+            st.caption(f"선정 원리: {_fw_logic}")
+
+        st.markdown("#### 🔗 원국 합·충 구조")
+        _fw_inter = result.get("interactions", []) or []
+        _fw_bindings = [it for it in _fw_inter if it["type"] in ("삼합","방합","반합","육합")]
+        _fw_clashes  = [it for it in _fw_inter if it["type"] in ("충","형")]
+        if _fw_bindings:
+            st.markdown(
+                "<div style='background:#f0fdf4;border-left:4px solid #16a34a;padding:10px 14px;"
+                "border-radius:6px;margin-bottom:8px;'>"
+                "<div style='font-size:12px;color:#16a34a;font-weight:700;margin-bottom:4px;'>🔗 합 — 묶이고 연결되는 구조</div>"
+                "<div style='font-size:13px;color:#374151;line-height:1.9;'>"
+                + "".join(
+                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')}<br>"
+                    for it in _fw_bindings[:4]
+                ) +
+                "<span style='font-size:12px;color:#16a34a;'>→ 합이 있으면 해당 기운이 변화·강화돼. 용신 방향 합은 사주에 힘이 되고, 기신 방향 합은 부담이 될 수 있어.</span>"
+                "</div></div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("원국에 뚜렷한 합 구조는 없어. 기운이 독립적으로 작용하는 편이야.")
+        if _fw_clashes:
+            st.markdown(
+                "<div style='background:#fff7ed;border-left:4px solid #ea580c;padding:10px 14px;"
+                "border-radius:6px;margin-bottom:8px;'>"
+                "<div style='font-size:12px;color:#ea580c;font-weight:700;margin-bottom:4px;'>⚡ 충·형 — 부딪히고 긴장하는 구조</div>"
+                "<div style='font-size:13px;color:#374151;line-height:1.9;'>"
+                + "".join(
+                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')}<br>"
+                    for it in _fw_clashes[:4]
+                ) +
+                "<span style='font-size:12px;color:#ea580c;'>→ 충·형이 있으면 해당 자리에서 변동·긴장이 생기기 쉬워. 기신 기운을 흔드는 충은 오히려 도움이 되기도 해 — 무조건 나쁜 건 아니야.</span>"
+                "</div></div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("원국에 뚜렷한 충·형 구조는 없어. 비교적 안정적인 원국 구조야.")
+
+        st.markdown("#### 🌊 식상생재·재생관·관인상생 구조")
+        _fw_flows = result.get("flows", []) or []
+        _FLOW_DOC = {
+            "식상생재": (
+                "내 재능과 표현(식상)이 물질적 결실(재성)로 이어지는 흐름이야. "
+                "쉽게 말하면 — 잘하는 걸 하면 돈이 된다는 구조거든. "
+                "이 흐름이 살아있으면 내가 즐기는 것, 잘하는 것을 실제 수입이나 결과물로 연결하는 힘이 있어."
+            ),
+            "재생관": (
+                "물질 기반(재성)이 역할과 책임(관성)으로 이어지는 흐름이야. "
+                "기반이 갖춰지면 사회적 역할·지위·인정으로 연결되는 구조야. "
+                "이 흐름이 돌면 실력을 쌓고 기반을 만들면 자연스럽게 자리가 따라오는 편이야."
+            ),
+            "관인상생": (
+                "역할과 책임(관성)이 내면 성장(인성)으로 돌아오는 흐름이야. "
+                "일하고 책임지는 과정에서 지혜와 실력이 쌓이는 구조야. "
+                "이 흐름이 있으면 힘든 시간이 결국 자기 자산이 되는 경우가 많아."
+            ),
+            "재관인상생": (
+                "재물·역할·성장이 한꺼번에 연결되는 강한 흐름이야. "
+                "물질 기반 → 사회적 역할 → 내면 성장의 선순환 구조거든. "
+                "이 흐름이 살아있으면 한 방향으로 집중하면 여러 가지가 함께 따라오는 편이야."
+            ),
+        }
+        _STRENGTH_COLOR = {
+            "중간~강함": ("#16a34a", "#f0fdf4"),
+            "중간":       ("#d97706", "#fffbeb"),
+            "형태만 있음": ("#6b7280", "#f9fafb"),
+            "해당 낮음":  ("#dc2626", "#fef2f2"),
+        }
+        for _fw in _fw_flows:
+            _fn = str(_fw.get("구조", ""))
+            _fs = str(_fw.get("강도", ""))
+            _doc = _FLOW_DOC.get(_fn, "")
+            if not _doc or _fn == "식신제살/상관패인":
+                continue
+            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#f9fafb"))
+            st.markdown(
+                f"<div style='background:{_fbg};border-left:3px solid {_fc};"
+                f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
+                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
+                f"<span style='font-weight:700;color:{_fc};font-size:13px;'>{_fn}</span>"
+                f"<span style='font-size:11px;background:{_fc};color:#fff;border-radius:4px;"
+                f"padding:1px 7px;'>{_fs}</span>"
+                f"</div>"
+                f"<div style='font-size:13px;color:#374151;line-height:1.8;'>{_doc}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+        if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
+            st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
     st.caption("이 진단서는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
 
