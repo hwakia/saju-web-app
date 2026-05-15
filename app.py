@@ -2967,7 +2967,7 @@ def category_totals_synced_to_total(result: Dict[str, object]) -> List[Dict[str,
     후한 체감 표시값의 상대 비율은 유지하되,
     3대 축 합계가 내부 최종점수와 정확히 일치하도록 비례 조정한다.
     """
-    rows = category_totals_synced_to_total(result)
+    rows = category_totals(result["categorized_scores"])
     if not rows:
         return rows
 
@@ -16331,7 +16331,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         score = float(info.get("score", 0) or 0)
         max_score = float(info.get("max", 0) or 0)
         pct_score = float(info.get("pct", 0) or 0)
-        draw.text((sx+20, y+58), f"{score:.1f}/{int(max_score) if max_score > 0 else 0}", fill="#d64273", font=f_body)
+        draw.text((sx+20, y+58), f"{score:.1f}점", fill="#d64273", font=f_body)
         draw.rounded_rectangle((sx+20, y+106, sx+sw-20, y+120), radius=8, fill="#f5e8ef")
         draw.rounded_rectangle((sx+20, y+106, sx+20 + int((sw-40) * pct_score / 100.0), y+120), radius=8, fill="#d64273")
         for ln in _wrap_for_image(draw, desc, f_tiny, sw-40)[:2]:
@@ -19846,7 +19846,7 @@ def render_ability_triangle(result: Dict[str, object]) -> None:
         legacy = str(info.get("legacy", ""))
         with col:
             st.markdown(f"**{icon} {name}**")
-            safe_metric("점수", f"{score:.1f}/{int(max_score)}")
+            safe_metric("점수", f"{score:.1f}점")
             st.progress(int(round(max(0.0, min(100.0, pct)))))
             if legacy:
                 st.caption(f"보조 설명: {legacy}")
@@ -20154,15 +20154,20 @@ def render_patch_notes() -> None:
     PATCH_NOTES = [
         {
             "version": "v5.143",
-            "date": "2025년 5월",
+            "date": "2026년 5월",
             "tag": "🆕 현재 버전",
             "tag_color": "#d64273",
             "items": [
+                ("🔧 세운 표시 버그 수정", "생년월일시를 입력해도 올해 처방전이 안 나오던 문제를 고쳤어. 이제 제대로 나와."),
+                ("📌 4기둥 8글자 상단 표시", "결과 화면 맨 위에 년주·월주·일주·시주 8글자가 크게 표시돼. 내 원국이 한눈에 보여."),
+                ("🩺 할머니 의사 텍스트 강화", "오늘·10년·올해 처방전 설명이 훨씬 풍부해졌어. 딱딱한 한두 줄에서 4~5문장으로 늘렸어."),
+                ("🗑️ 중복 메뉴 정리", "상세보기에 이미 있는 항목이 진단서에도 겹쳐 나오던 걸 없앴어. 화면이 깔끔해졌어."),
+                ("📸 공유 이미지 개편", "공유 카드 상단이 캐릭터 이름 중심에서 이름+4기둥 8글자+진단서 스타일로 바뀌었어."),
+                ("📱 모바일 스크롤 개선", "분석 결과가 뜰 때 화면이 맨 위부터 보이도록 개선했어. 아래에서 위로 스크롤해야 하던 불편함이 줄었어."),
                 ("✨ 말투 개선", "딱딱한 전문 용어 대신 동네 할머니 의사처럼 친근하게 바꿨어. 읽기 편하지?"),
-                ("📊 점수 표기 추가", "진단서·처방전 곳곳에 XX점 / XX/YY점 (ZZ%) 형태로 수치가 붙었어. 내 점수가 어떻게 나왔는지 한눈에 볼 수 있어."),
-                ("✨ 신살 카드 추가", "진단서에 천을귀인·문창귀인·역마·도화·화개·공망 신살이 카드 형태로 표시돼. 각 신살이 뭘 의미하는지 쉬운 말로 설명도 붙었어."),
+                ("📊 점수 표기 추가", "진단서·처방전 곳곳에 점수가 붙었어. 내 점수가 어떻게 나왔는지 한눈에 볼 수 있어."),
+                ("✨ 신살 카드 추가", "진단서에 천을귀인·문창귀인·역마·도화·화개·공망 신살이 카드 형태로 표시돼."),
                 ("⚠️ 겁재·형살 오늘 처방전 반영", "오늘 처방전에서 겁재 기운이나 형살 신호가 잡히면 주의 표시가 뜨고 설명이 추가됐어."),
-                ("🔤 전문 용어 순화", "'일간', '지장간' 같은 어려운 용어를 일반인도 이해할 수 있는 말로 바꿨어."),
             ],
         },
         {
