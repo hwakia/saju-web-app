@@ -16478,12 +16478,12 @@ def render_daewun_train(payload: Dict[str, object]) -> None:
             f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
             f"<span style='background:{badge_bg};color:#fff;border-radius:4px;padding:1px 7px;"
             f"font-size:11px;font-weight:700;'>{badge_text}</span>"
-            f"<span style='font-size:11px;color:#6b7280;'>{_html.escape(age)}세~</span></div>"
+            f"<span style='font-size:11px;color:#6b7280;'>{html.escape(age)}세~</span></div>"
             f"<div style='font-size:20px;font-weight:800;color:#1e3a8a;text-align:center;"
-            f"letter-spacing:2px;margin-bottom:4px;'>{_html.escape(gz)}{signal_icon}</div>"
+            f"letter-spacing:2px;margin-bottom:4px;'>{html.escape(gz)}{signal_icon}</div>"
             f"<div style='font-size:11px;color:#374151;margin-bottom:4px;text-align:center;'>"
             f"체감 {score}% · {mod:+.1f}</div>"
-            f"<div style='font-size:12px;color:#4b5563;line-height:1.5;'>{_html.escape(story)}</div>"
+            f"<div style='font-size:12px;color:#4b5563;line-height:1.5;'>{html.escape(story)}</div>"
             f"</div>"
         )
     parts.append("</div>")
