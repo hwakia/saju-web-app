@@ -6396,6 +6396,28 @@ def render_glossary_tab(filter_terms: List[str] | None = None) -> None:
     safe_dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+
+def josa(word: str, particles: str) -> str:
+    """단어 마지막 글자 받침 여부에 따라 올바른 조사를 선택한다.
+
+    Examples:
+        josa("나무", "은/는") → "나무는"
+        josa("산", "은/는")   → "산은"
+        josa("나무", "이/가") → "나무가"
+    """
+    if not word:
+        return particles.split("/")[0] if "/" in particles else particles
+    last = word[-1]
+    code = ord(last)
+    if 0xAC00 <= code <= 0xD7A3:
+        has_jongseong = (code - 0xAC00) % 28 != 0
+    else:
+        has_jongseong = last in "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ13678"
+    parts = particles.split("/")
+    if len(parts) == 2:
+        return word + (parts[0] if has_jongseong else parts[1])
+    return word + particles
+
 def quest_title(title: str, subtitle: str = "", terms: List[str] | None = None) -> None:
     st.markdown(f"### {title}")
     if subtitle:
@@ -10289,9 +10311,14 @@ def scroll_to_top() -> None:
             const scrollTop = () => {
               try { window.parent.scrollTo({top: 0, left: 0, behavior: 'auto'}); }
               catch(e) { try { window.parent.scrollTo(0, 0); } catch(_) {} }
+              try { window.scrollTo({top: 0, left: 0, behavior: 'auto'}); } catch(_) {}
+              try { document.documentElement.scrollTop = 0; } catch(_) {}
             };
             scrollTop();
             setTimeout(scrollTop, 80);
+            setTimeout(scrollTop, 200);
+            setTimeout(scrollTop, 450);
+            setTimeout(scrollTop, 800);
             </script>
             """,
             height=0,
@@ -16194,14 +16221,31 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
 
     x = 86
     y = 84
+    # 공유 이미지: 진단서 화면 위주로 구성
+    _share_name = str(payload.get("name", "나"))
+    _share_chart = payload.get("chart")
+    _share_pillars = ganji_text(_share_chart) if _share_chart else "- / - / - / -"
+    _pillar_parts = [p.strip() for p in _share_pillars.split("/")]
+
     draw.text((x, y), "사주MRI", fill="#d64273", font=f_logo)
-    draw.text((W-320, y+4), "혼자보기 요약 카드", fill="#3f2a33", font=f_label)
+    draw.text((W-300, y+4), "사주 진단서 요약", fill="#3f2a33", font=f_label)
 
-    y += 58
-    for line in _wrap_for_image(draw, title_plain, f_title, W-170)[:2]:
-        draw.text((x, y), line, fill="#3f2a33", font=f_title)
-        y += 64
+    y += 56
+    # 이름 + 사주 원국
+    draw.text((x, y), f"{_share_name} 님의 사주 원국", fill="#9d174d", font=f_small)
+    y += 34
 
+    # 4기둥 8글자 크게 표시
+    _p_labels = ["년주", "월주", "일주", "시주"]
+    _cell_w = (W - 172) // 4
+    for pi, (_pl, _pv) in enumerate(zip(_p_labels, _pillar_parts)):
+        cx_p = x + pi * _cell_w + _cell_w // 2
+        draw.text((cx_p - 16, y), _pl, fill="#9d174d", font=f_tiny)
+        _pv_display = _pv if _pv else "-"
+        draw.text((cx_p - 28, y + 24), _pv_display, fill="#3f2a33", font=f_title)
+    y += 90
+
+    # 체질 한줄 설명
     for line in _wrap_for_image(draw, tone_plain, f_small, W-170)[:2]:
         draw.text((x, y), line, fill="#6a4552", font=f_small)
         y += 30
@@ -18262,9 +18306,10 @@ def render_sewun_text_overview(payload: dict) -> None:
     st.markdown("### 🌸 올해의 처방")
 
     # ── 올해 행 찾기 ────────────────────────────────────────
-    this_year = str(_dt.datetime.now().year)
-    row_this  = next((r for r in sewun_rows if str(r.get("연도", "")) == this_year), None)
-    row_next  = next((r for r in sewun_rows if str(r.get("연도", "")) == str(int(this_year) + 1)), None)
+    _year_int = _dt.datetime.now().year
+    this_year = str(_year_int)
+    row_this  = next((r for r in sewun_rows if str(r.get("연도", "")).replace("년", "").strip() == this_year), None)
+    row_next  = next((r for r in sewun_rows if str(r.get("연도", "")).replace("년", "").strip() == str(int(this_year) + 1)), None)
 
     if row_this:
         gz    = str(row_this.get("세운", "-"))
@@ -18984,9 +19029,20 @@ def render_single_summary(payload: Dict[str, object]) -> None:
     shinsal = result.get("shinsal", {}) or {}
     holistic = result.get("holistic", {}) or {}
 
+    # ── 4기둥 8글자 크게 표시 ──
+    _pillars_raw = ganji_text(chart)
+    _parts = [p.strip() for p in _pillars_raw.split("/")]
+    _labels = ["년주", "월주", "일주", "시주"]
+    _pillar_html_cells = "".join(
+        f"<div style='text-align:center;'><div style='font-size:9px;color:#9d174d;margin-bottom:2px;'>{_labels[i]}</div>"
+        f"<div style='font-size:24px;font-weight:900;letter-spacing:2px;color:#3f2a33;'>{p}</div></div>"
+        for i, p in enumerate(_parts)
+    )
     st.markdown(
-        f"<span class='summary-chip'>원국: {html.escape(str(ganji_text(chart)), quote=True)}</span>"
-        f"<span class='summary-chip'>표시 버전: {APP_VERSION}</span>",
+        f"<div style='background:#fff0f8;border:2px solid #f5c9d8;border-radius:10px;"
+        f"padding:10px 16px;margin-bottom:8px;'><div style='display:flex;justify-content:space-around;'>"
+        f"{_pillar_html_cells}</div>"
+        f"<div style='font-size:9px;color:#b0758a;text-align:right;margin-top:4px;'>{APP_VERSION}</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -19002,10 +19058,6 @@ def render_single_summary(payload: Dict[str, object]) -> None:
 
     if view == "🏥 사주 진단서":
         render_hanuneyo_text_explanation(payload, char, result)
-        with st.expander("📊 요약 도표 보기", expanded=False):
-            render_mbti_character_hero(payload)
-            render_axis_inline_summary(payload, result)
-            render_compact_first_glance(payload, char)
         if st.button("📸 이 첫 화면을 바로 공유 이미지로 저장", key="single_inline_share_btn_v591", use_container_width=True):
             st.session_state["single_inline_share_open_v591"] = not st.session_state.get("single_inline_share_open_v591", False)
         if st.session_state.get("single_inline_share_open_v591", False):
@@ -19029,7 +19081,6 @@ def render_single_summary(payload: Dict[str, object]) -> None:
                 )
             except Exception:
                 pass
-        render_revisit_guide_card(APP_PUBLIC_URL)
 
     elif view == "🌊 10년의 처방":
         render_daewun_text_overview(payload)
@@ -21011,7 +21062,7 @@ multi_payload = None
 meal_payload = None
 
 if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력":
-    quest_title(" 내 사주MRI — 빠른 한 줄 입력", "생년월일과 시간을 한 줄로 입력합니다. 시간이 없으면 삼주 간이 분석으로 진행합니다.", ["빠른 입력", "자동 산출"])
+    quest_title(" 내 사주MRI — 빠른 입력", "", ["빠른 입력", "자동 산출"])
     quick_name = st.text_input("별명", value="나", key="single_quick_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     quick_line = st.text_input("한 줄 입력", value="", placeholder="YYYYMMDD HHMM 남자 양력", key="single_quick_line")
     quick_yaja = st.checkbox("야자시 모드 시도", value=False, key="single_quick_yaja")
@@ -21038,7 +21089,7 @@ if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력"
             st.stop()
 
 if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
-    quest_title("🌸 내 사주MRI — 원국 직접 입력", "검증된 원국을 직접 선택해 분석을 시작합니다.", ["원국", "천간", "지지"])
+    quest_title("🌸 내 사주MRI — 원국 직접 입력", "", ["원국", "천간", "지지"])
     single_direct_name = st.text_input("별명", value="나", key="single_direct_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     row1 = st.columns(4)
     with row1[0]:
@@ -21087,7 +21138,7 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
         }
 
 elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
-    quest_title("🌸 내 사주MRI", "생년월일시만 넣고 바로 봅니다.", ["원국", "오늘", "대운"])
+    quest_title("🌸 내 사주MRI", "", ["원국", "오늘", "대운"])
 
     render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
 
@@ -21178,7 +21229,7 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
                 st.stop()
 
 elif input_mode in ["케미 분석", "친구와 배틀"]:
-    quest_title(" 케미 분석", "2~5명의 오행·조후·흐름·긴장도를 겹쳐 보고, 케미 유형과 관계 구도를 분석합니다.", ["케미", "오행", "조후", "관계"])
+    quest_title(" 케미 분석", "", ["케미", "오행", "조후", "관계"])
     participant_count = st.radio(
         "몇 명을 분석할까요?",
         [2, 3, 4, 5],
