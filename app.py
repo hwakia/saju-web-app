@@ -21941,4 +21941,4 @@ elif payload.get("multi_chem"):
     render_multi_chem_result(participants)
 
 elif not payload.get("battle"):
-    render_singl
+        render_single_summary(payload)
