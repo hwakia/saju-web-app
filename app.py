@@ -8077,9 +8077,9 @@ div[data-testid="stRadio"] span {
     border:2px solid rgba(214,66,115,.52);
     box-shadow:0 11px 24px rgba(214,66,115,.115);
 }
-.manse-luck-card.good { background:linear-gradient(135deg,#ffffff,#f1fff8); }
+.manse-luck-card.good { background:linear-gradient(135deg,#0d1e14,#112018); }
 .manse-luck-card.caution { background:linear-gradient(135deg,#1e1018,#1a1408); }
-.manse-luck-card.hard { background:linear-gradient(135deg,#ffffff,#fff0f5); }
+.manse-luck-card.hard { background:linear-gradient(135deg,#1e0d14,#200d18); }
 .manse-luck-badge {
     display:inline-flex;
     padding:.18rem .43rem;
@@ -11287,7 +11287,7 @@ div[data-testid="stAlert"] * {
     margin: 0.65rem 0 0.9rem 0;
     padding: 0.82rem 0.95rem;
     border-radius: 18px;
-    background: #fff8df;
+    background: #1e1408;
     border: 1px solid rgba(255, 180, 105, 0.42);
     color: #e8d0d8 !important;
     font-size: 0.96rem;
@@ -11371,7 +11371,7 @@ div[role="radiogroup"] label * {
 }
 div[role="radiogroup"] label:has(input:checked),
 div[role="radiogroup"] label[aria-checked="true"] {
-    background: #ffe7f0 !important;
+    background: #7b1e3d !important;
     border-color: rgba(233, 79, 133, 0.55) !important;
 }
 
@@ -11422,7 +11422,7 @@ div[data-testid="stCheckbox"] svg {
     padding:.42rem .62rem !important;
 }
 .main-character-card {
-    background: linear-gradient(135deg, #fff8fb 0%, #fffdf8 100%);
+    background: linear-gradient(135deg, #1e1018 0%, #1a1020 100%);
     border: 1px solid rgba(255, 145, 180, 0.28);
     border-radius: 20px;
     padding: 1rem 1.1rem;
@@ -11472,7 +11472,7 @@ div[data-testid="stCheckbox"] svg {
 .ability-bar-track {
     height: 13px;
     border-radius: 999px;
-    background: #f6dfe8;
+    background: #2e1422;
     overflow: hidden;
     box-shadow: inset 0 1px 2px rgba(75,45,58,0.08);
 }
@@ -11540,7 +11540,7 @@ div[data-testid="stCheckbox"] svg {
 }
 .battle-compare-track {
     height:12px;
-    background:#f4dfe7;
+    background:#2e1422;
     border-radius:999px;
     overflow:hidden;
 }
@@ -11586,7 +11586,7 @@ div[data-testid="stCheckbox"] svg {
     }
 }
 .multi-situation-wrap {
-    background: linear-gradient(135deg, #fff7fb 0%, #fffdf8 100%);
+    background: linear-gradient(135deg, #1e1018 0%, #1a1020 100%);
     border: 1px solid rgba(255,145,180,0.28);
     border-radius: 22px;
     padding: 1rem 1rem 0.9rem 1rem;
@@ -11675,7 +11675,7 @@ div[data-testid="stCheckbox"] svg {
 .meal-stage-kicker {
     display: inline-block;
     color: #f9a8c9;
-    background: #ffe4ee;
+    background: #3d1028;
     border: 1px solid rgba(214,66,115,0.24);
     border-radius: 999px;
     padding: 0.22rem 0.68rem;
@@ -11776,7 +11776,7 @@ div[data-testid="stCheckbox"] svg {
     }
 }
 .logic-mini-panel {
-    background: #fffdf8;
+    background: #1e1018;
     border: 1px dashed rgba(180, 128, 148, 0.38);
     border-radius: 16px;
     padding: 0.72rem 0.82rem;
@@ -18138,7 +18138,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
             icon  = "💊" if kind == "under" else "⚠️"
             label = f"{hj}({kw}) 보충" if kind == "under" else f"{hj}({kw}) 조절"
             st.markdown(
-                f"<div style='background:{'#f0fdf4' if kind=='under' else '#fffbeb'};"
+                f"<div style='background:{'#0d1e14' if kind=='under' else '#1a1408'};"
                 f"border-left:4px solid {color};"
                 f"padding:9px 13px;border-radius:0 6px 6px 0;"
                 f"font-size:13px;color:#ddd0d8;line-height:1.7;margin-bottom:6px;'>"
@@ -18157,7 +18157,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     if _conclusion:
         st.markdown("#### 🧩 종합 결론")
         st.markdown(
-            f"<div style='background:#f5f3ff;border-left:4px solid #7c6cd0;"
+            f"<div style='background:#1a1028;border-left:4px solid #7c6cd0;"
             f"padding:12px 16px;border-radius:0 8px 8px 0;"
             f"font-size:14px;color:#ddd0d8;line-height:1.8;'>"
             f"{_conclusion}</div>",
@@ -18753,7 +18753,7 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
     _story_full = f"{_tg_story}{_sig_story}{_rx_story}"
 
     st.markdown(
-        f"<div style='background:#faf5ff;border-left:4px solid #7c3aed;padding:12px 16px;"
+        f"<div style='background:#1a1028;border-left:4px solid #7c3aed;padding:12px 16px;"
         f"border-radius:8px;margin-bottom:10px;font-size:14px;color:#3b0764;line-height:1.8;'>"
         f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:5px;'>"
         f"이날의 처방 · {target_date.strftime('%Y년 %m월 %d일')} · {day_gz}</div>"
@@ -18900,7 +18900,7 @@ def render_daewun_text_overview(payload: dict) -> None:
 
         full_text = " ".join(filter(None, [score_story, mood_line, note_line, mod_story]))
         st.markdown(
-            f"<div style='background:#f0f7ff;border-left:4px solid #2563eb;padding:14px 16px;"
+            f"<div style='background:#0d1420;border-left:4px solid #2563eb;padding:14px 16px;"
             f"border-radius:8px;margin-bottom:12px;font-size:14px;color:#93c5fd;line-height:1.8;'>"
             f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:6px;'>"
             f"10년 처방전 · {gz} · {start_age}세부터 10년</div>"
@@ -21428,7 +21428,7 @@ def render_patch_notes() -> None:
         )
         for icon_title, desc in note["items"]:
             st.markdown(
-                f"<div style='margin:.35rem 0;padding:.4rem .65rem;background:#fdf4f7;border-radius:10px;'>"
+                f"<div style='margin:.35rem 0;padding:.4rem .65rem;background:#221018;border-radius:10px;'>"
                 f"<span style='font-weight:900;color:#7b1e3d;font-size:.88rem;'>{icon_title}</span> "
                 f"<span style='font-size:.85rem;color:#d4a0b8;'>{desc}</span>"
                 f"</div>",
