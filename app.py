@@ -8969,6 +8969,37 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-side-pad: .72rem;
 }
 .stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+/* 입력 필드 다크 테마 */
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stDateInput"] input,
+[data-testid="stTimeInput"] input,
+textarea {
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    border-radius: 8px !important;
+}
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stNumberInput"] input::placeholder,
+textarea::placeholder { color: #8b6070 !important; }
+[data-testid="stTextInput"] > div,
+[data-testid="stNumberInput"] > div,
+[data-testid="stTextInput"] > div > div,
+[data-testid="stNumberInput"] > div > div {
+    background-color: #2a1520 !important;
+    border-color: rgba(232,121,160,0.30) !important;
+}
+/* selectbox / radio 컨테이너 */
+[data-testid="stSelectbox"] > div,
+[data-testid="stRadio"] { color: #e8d0d8 !important; }
+/* expander */
+[data-testid="stExpander"] { background-color: #221018 !important; border: 1px solid rgba(232,121,160,0.20) !important; }
+[data-testid="stExpander"] summary { color: #d4a0b8 !important; }
+/* info / success / warning 박스 */
+[data-testid="stAlert"] { background-color: #2a1520 !important; color: #e8d0d8 !important; }
+[data-testid="stInfo"] { background-color: #1a2030 !important; color: #c0d0e8 !important; border-color: rgba(100,150,220,0.3) !important; }
+
 /* 전체 텍스트 가시성 강화 */
 p, span, div, li, label { color: inherit; }
 [data-testid="stMarkdownContainer"] p,
@@ -10120,7 +10151,7 @@ def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saj
     """
     safe_save_url = json.dumps(str(save_url or ""), ensure_ascii=False)
     component_html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; border:1px solid #f2cbd8; background:#fff7fa; border-radius:16px; padding:12px; color:#e8d0d8;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; border:1px solid rgba(232,121,160,0.30); background:#1e1018; border-radius:16px; padding:12px; color:#e8d0d8;">
       <div style="font-weight:800; margin-bottom:6px;">내 사주 기기 저장</div>
       <div style="font-size:13px; line-height:1.45; color:#c090a8; margin-bottom:10px;">
         같은 브라우저에서 다시 열 때 입력을 줄이기 위해, 이 기기에 개인용 바로가기 URL을 저장합니다.
@@ -10128,8 +10159,8 @@ def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saj
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button id="saveBtn" style="display:none; border:1px solid #7b1e3d; background:#7b1e3d; color:white; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">이 기기에 저장</button>
-        <a id="loadLink" target="_parent" style="display:none; text-decoration:none; border:1px solid #7b1e3d; background:white; color:#7b1e3d; border-radius:999px; padding:8px 12px; font-weight:800;">저장된 내 사주 불러오기</a>
-        <button id="clearBtn" style="display:none; border:1px solid #e7c6d0; background:white; color:#d4a0b8; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">저장 삭제</button>
+        <a id="loadLink" target="_parent" style="display:none; text-decoration:none; border:1px solid #e879a0; background:#2a1520; color:#e879a0; border-radius:999px; padding:8px 12px; font-weight:800;">저장된 내 사주 불러오기</a>
+        <button id="clearBtn" style="display:none; border:1px solid rgba(232,121,160,0.30); background:#2a1520; color:#c090a8; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">저장 삭제</button>
       </div>
       <div id="msg" style="margin-top:8px; font-size:13px; color:#d4a0b8;"></div>
     </div>
