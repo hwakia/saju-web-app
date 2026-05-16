@@ -8672,7 +8672,7 @@ div[data-testid="stRadio"] span {
     margin-top:.62rem;
     border-radius:18px;
     padding:.78rem .86rem;
-    background:linear-gradient(135deg,#ffffff,#fff8fb);
+    background:linear-gradient(135deg,#1e1018,#221220);
     border:1px solid rgba(214,66,115,.16);
 }
 .today-compass-prescription .today-compass-body {
@@ -8703,7 +8703,7 @@ div[data-testid="stRadio"] span {
     margin:.2rem 0 1rem 0;
 }
 .compact-glance-card{
-    background:linear-gradient(135deg,#ffffff,#fff8fb);
+    background:linear-gradient(135deg,#1e1018,#221220);
     border:1px solid rgba(214,66,115,.18);
     border-radius:20px;
     padding:.9rem 1rem;
@@ -8924,7 +8924,7 @@ div[data-testid="stRadio"] > label {
     margin-bottom:.4rem !important;
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label {
-    background:#fffafd !important;
+    background:#1e1018 !important;
     border:1.5px solid rgba(214,66,115,.24) !important;
     border-radius:999px !important;
     padding:.58rem .95rem !important;
@@ -8933,7 +8933,7 @@ div[data-testid="stRadio"] div[role="radiogroup"] label {
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked),
 div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] {
-    background:linear-gradient(135deg,#ffe5ef,#fff7fb) !important;
+    background:linear-gradient(135deg,#2a1520,#1e1018) !important;
     border-color:rgba(214,66,115,.78) !important;
     box-shadow:0 10px 24px rgba(214,66,115,.14);
 }
@@ -9526,7 +9526,7 @@ div[data-testid="stTimeInput"] label {
 
     .stButton > button {
         border: 1px solid rgba(214,66,115,.18) !important;
-        background: linear-gradient(180deg,#fff,#fff7fb) !important;
+        background: linear-gradient(180deg,#1e1018,#221220) !important;
     }
 
     .stButton > button[kind="primary"] {
@@ -9593,7 +9593,7 @@ div[data-testid="stTimeInput"] label {
         border-radius: 16px !important;
         overflow: hidden !important;
         border: 1px solid rgba(230,164,184,.22) !important;
-        background: #fff !important;
+        background: #1e1018 !important;
     }
 
     [data-testid="stExpander"] summary {
@@ -9921,7 +9921,7 @@ div[data-testid="stTimeInput"] label {
 /* v5.112: 첫 결과화면 하단 재방문 안내 — QR 제거, 3단계 안내 */
 .revisit-guide-compact {
     margin-top: .72rem !important;
-    background: linear-gradient(135deg,#fffdf8,#fff7fb) !important;
+    background: linear-gradient(135deg,#1e1018,#221220) !important;
     border: 1px solid rgba(230,164,184,.34) !important;
 }
 .revisit-mini-steps {
@@ -10915,7 +10915,7 @@ label, .stRadio label, .stCheckbox label {
 [data-testid="stCaptionContainer"] { color: rgba(63,42,51,0.82) !important; }
 div[data-baseweb="input"] > div,
 .stDateInput input, .stTimeInput input, .stTextInput input, .stNumberInput input {
-    background: #ffffff !important;
+    background: #1e1018 !important;
     color: #3d2a34 !important;
 }
 .stButton > button {
@@ -10929,7 +10929,7 @@ div[data-baseweb="input"] > div,
     transition: all 0.16s ease;
 }
 .stButton > button:hover {
-    background: #fff1f6;
+    background: #1e1018;
     border-color: rgba(255, 115, 158, 0.65);
     transform: translateY(-1px);
 }
@@ -10973,7 +10973,7 @@ div[data-baseweb="input"] > div,
 button[data-baseweb="tab"] { color: rgba(75,45,58,0.84); font-weight: 800; }
 hr { border-color: rgba(255,145,180,0.22); }
 div[data-testid="stAlert"] {
-    background: #fff7df !important;
+    background: #1a1408 !important;
     color: #e8d0d8 !important;
     border: 1px solid rgba(255, 180, 105, 0.42) !important;
     border-radius: 16px !important;
@@ -11202,7 +11202,7 @@ div[data-testid="stAlert"] * {
 .step-panel {
     padding: 1.25rem 1.2rem;
     border-radius: 26px;
-    background: linear-gradient(135deg, #fff8fb, #fff2f7);
+    background: linear-gradient(135deg, #1e1018, #221220);
     border: 1px solid rgba(255,145,180,0.26);
     box-shadow: 0 16px 36px rgba(255, 125, 165, 0.14);
     text-align: center;
@@ -11222,7 +11222,7 @@ div[data-testid="stAlert"] * {
     text-align:center;
     padding: 1rem;
     border-radius: 20px;
-    background: #fff6fa;
+    background: #1e1018;
     border: 1px solid rgba(255,145,180,0.20);
     min-height: 112px;
 }
@@ -11245,7 +11245,7 @@ div[data-testid="stAlert"] * {
     margin: 0.8rem 0 1rem 0;
 }
 .ability-card {
-    background: #fff6fa;
+    background: #1e1018;
     border: 1px solid rgba(255,145,180,0.22);
     border-radius: 20px;
     padding: 1rem 1rem;
@@ -11313,7 +11313,7 @@ div[data-testid="stAlert"] * {
 .storage-panel {
     padding: 1rem 1.05rem;
     border-radius: 20px;
-    background: #fff8fb;
+    background: #1e1018;
     border: 1px solid rgba(255,145,180,0.25);
     margin: 0.8rem 0 1rem 0;
 }
@@ -11331,7 +11331,7 @@ div[data-testid="stAlert"] * {
 .native-summary-card {
     padding: 1rem 1.05rem;
     border-radius: 20px;
-    background: #fff6fa;
+    background: #1e1018;
     border: 1px solid rgba(255,145,180,0.24);
     margin: 0.75rem 0;
 }
@@ -11344,7 +11344,7 @@ div[role="radiogroup"] {
     gap: 0.35rem !important;
 }
 div[role="radiogroup"] label {
-    background: #fff8fb !important;
+    background: #1e1018 !important;
     border: 1px solid rgba(255,145,180,0.22) !important;
     border-radius: 999px !important;
     padding: 0.35rem 0.58rem !important;
@@ -11358,7 +11358,7 @@ div[role="radiogroup"] {
     flex-wrap: wrap !important;
 }
 div[role="radiogroup"] label {
-    background: #fff8fb !important;
+    background: #1e1018 !important;
     border: 1px solid rgba(255,145,180,0.28) !important;
     border-radius: 999px !important;
     padding: 0.36rem 0.62rem !important;
@@ -11379,7 +11379,7 @@ div[role="radiogroup"] label[aria-checked="true"] {
 .roster-reuse-panel {
     padding: 0.95rem 1rem;
     border-radius: 20px;
-    background: #fff8fb;
+    background: #1e1018;
     border: 1px solid rgba(255,145,180,0.26);
     margin: 0.9rem 0 1rem 0;
 }
@@ -11394,7 +11394,7 @@ div[role="radiogroup"] label[aria-checked="true"] {
     line-height: 1.6 !important;
 }
 div[data-testid="stCheckbox"] label {
-    background: #fff8fb !important;
+    background: #1e1018 !important;
     border: 1px solid rgba(255,145,180,0.24) !important;
     border-radius: 16px !important;
     padding: 0.55rem 0.75rem !important;
@@ -11416,7 +11416,7 @@ div[data-testid="stCheckbox"] svg {
 }
 .result-arena [data-testid="stToggle"] label,
 .result-arena [data-testid="stCheckbox"] label {
-    background:#fff8fb !important;
+    background:#1e1018 !important;
     border:1px solid rgba(255,145,180,0.22) !important;
     border-radius:14px !important;
     padding:.42rem .62rem !important;
@@ -11972,7 +11972,7 @@ div[data-testid="stCheckbox"] svg {
 
     .stButton > button {
         border: 1px solid rgba(214,66,115,.18) !important;
-        background: linear-gradient(180deg,#fff,#fff7fb) !important;
+        background: linear-gradient(180deg,#1e1018,#221220) !important;
     }
 
     .stButton > button[kind="primary"] {
@@ -12039,7 +12039,7 @@ div[data-testid="stCheckbox"] svg {
         border-radius: 16px !important;
         overflow: hidden !important;
         border: 1px solid rgba(230,164,184,.22) !important;
-        background: #fff !important;
+        background: #1e1018 !important;
     }
 
     [data-testid="stExpander"] summary {
@@ -12367,7 +12367,7 @@ div[data-testid="stCheckbox"] svg {
 /* v5.112: 첫 결과화면 하단 재방문 안내 — QR 제거, 3단계 안내 */
 .revisit-guide-compact {
     margin-top: .72rem !important;
-    background: linear-gradient(135deg,#fffdf8,#fff7fb) !important;
+    background: linear-gradient(135deg,#1e1018,#221220) !important;
     border: 1px solid rgba(230,164,184,.34) !important;
 }
 .revisit-mini-steps {
@@ -23222,3 +23222,50 @@ elif payload.get("multi_chem"):
 
 elif not payload.get("battle"):
         render_single_summary(payload)
+
+
+# ── JS: 라디오 버튼 다크 강제 적용 ──
+st.markdown("""
+<script>
+(function applyDarkRadio() {
+    function styleRadios() {
+        // 라디오 라벨 전체
+        document.querySelectorAll('[data-testid="stRadio"] label').forEach(function(label) {
+            label.style.setProperty('background-color', '#2a1520', 'important');
+            label.style.setProperty('border', '1.5px solid rgba(232,121,160,0.40)', 'important');
+            label.style.setProperty('border-radius', '999px', 'important');
+            label.style.setProperty('color', '#c090a8', 'important');
+            label.style.setProperty('padding', '6px 16px', 'important');
+            // 체크 상태
+            var inp = label.querySelector('input[type="radio"]');
+            if (inp && inp.checked) {
+                label.style.setProperty('background-color', '#7b1e3d', 'important');
+                label.style.setProperty('border-color', '#e879a0', 'important');
+                label.style.setProperty('color', '#ffffff', 'important');
+            }
+        });
+        // input 필드
+        document.querySelectorAll('input[type="text"], input[type="number"]').forEach(function(inp) {
+            inp.style.setProperty('background-color', '#2a1520', 'important');
+            inp.style.setProperty('color', '#e8d0d8', 'important');
+            inp.style.setProperty('border', '1px solid rgba(232,121,160,0.30)', 'important');
+        });
+        // 입력 wrapper
+        document.querySelectorAll('div[data-baseweb="base-input"], div[data-baseweb="input"]').forEach(function(div) {
+            div.style.setProperty('background-color', '#2a1520', 'important');
+            div.style.setProperty('border-color', 'rgba(232,121,160,0.30)', 'important');
+        });
+    }
+    // 초기 적용 + 변경 감지
+    styleRadios();
+    var observer = new MutationObserver(styleRadios);
+    observer.observe(document.body, {childList: true, subtree: true});
+    // 라디오 클릭 시 재적용
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.type === 'radio') {
+            setTimeout(styleRadios, 50);
+        }
+    });
+})();
+</script>
+""", unsafe_allow_html=True)
