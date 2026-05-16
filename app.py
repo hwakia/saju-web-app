@@ -8968,7 +8968,13 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-card-radius: 18px;
     --mobile-side-pad: .72rem;
 }
-.stApp { overflow-x: hidden !important; }
+.stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+[data-testid="stAppViewContainer"] { background-color: #1a0d14 !important; }
+[data-testid="stHeader"] { background-color: #1a0d14 !important; }
+section.main { background-color: #1a0d14 !important; }
+.block-container { background-color: #1a0d14 !important; }
+[data-testid="stSidebar"] { background-color: #2a1520 !important; }
+body { background-color: #1a0d14 !important; color: #e8d0d8 !important; }
 [data-testid="stAppViewContainer"] { overflow-x: hidden !important; }
 [data-testid="stHeader"] { background: rgba(26,13,20,.95) !important; backdrop-filter: blur(10px); }
 /* 버튼형 내부 페이지 */
@@ -20896,7 +20902,7 @@ def render_element_distribution_gauge(result: Dict[str, object]) -> None:
         val = float(pct.get(el, 0.0) or 0.0)
         state = element_state(val)
         html_rows.append(_mini_bar_html(labels.get(el, el), val, 100, state))
-    st.markdown("<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>" + "".join(html_rows) + "</div>", unsafe_allow_html=True)
+    st.markdown("<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>" + "".join(html_rows) + "</div>", unsafe_allow_html=True)
     st.caption("오행 분포는 원국의 기본 재료입니다. 많고 적음만으로 단정하지 않고 월령·조후·일간 강약과 함께 봅니다.")
 
 
@@ -20906,7 +20912,7 @@ def render_strength_scale(result: Dict[str, object]) -> None:
     label, label_note = refined_strength_interpretation(result)
     st.markdown("####  일간 강약 저울")
     st.markdown(f"""
-    <div style="background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:1rem;margin:.35rem 0;">
+    <div style="background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:1rem;margin:.35rem 0;">
         <div style="display:flex;justify-content:space-between;font-weight:900;color:#5b3f4b;"><span>신약</span><span>중화</span><span>신강</span></div>
         <div style="position:relative;height:18px;background:linear-gradient(90deg,#c7ddff,#fff4c7,#ffc6d9);border-radius:99px;margin:.7rem 0 .45rem 0;border:1px solid rgba(145,115,129,.20);">
             <div style="position:absolute;left:{pos:.1f}%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#7b1e3d;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);"></div>
@@ -20935,7 +20941,7 @@ def render_climate_gauge(result: Dict[str, object]) -> None:
     humid = max(10, min(90, 48 + water * 0.8 - fire * 0.45))
     st.markdown("#### 🌡️ 조후 감각")
     climate_html = (
-        "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
+        "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
         + _mini_bar_html("온도감", temp, 100, "왼쪽은 차가움, 오른쪽은 뜨거움")
         + _mini_bar_html("습도감", humid, 100, "왼쪽은 건조함, 오른쪽은 습함")
         + "</div>"
@@ -20995,7 +21001,7 @@ def render_interaction_signal(result: Dict[str, object]) -> None:
     alliance_score = min(6.0, alliance_strength)
 
     st.markdown("####  원국 내부 작용")
-    html_block = "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
+    html_block = "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
     html_block += _mini_bar_html("결속 형성도 合", alliance_score, 6, "삼합·방합은 1개만 있어도 강하게 반영")
     html_block += _mini_bar_html("변동 신호 沖", counts["충"], 6, "움직임과 충돌을 만드는 신호")
     html_block += _mini_bar_html("압박 신호 刑", counts["형"], 6, "긴장과 압박으로 작용할 수 있는 신호")
@@ -21050,7 +21056,7 @@ def render_compatibility_axis_gauge(compatibility: Dict[str, object]) -> None:
         return
     st.markdown("##### 케미 4축 게이지")
     labels = [("상호 보완성", "서로 부족한 축을 메워주는 힘"), ("동맹성", "결속·협력 신호"), ("긴장도", "높을수록 자극과 변동이 큼"), ("흐름 동조성", "리듬과 방향이 맞는 정도")]
-    html_block = "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
+    html_block = "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
     for label, caption in labels:
         html_block += _mini_bar_html(label, float(axes.get(label, axes.get(label.replace('성',''), 0)) or 0), 100, caption)
     html_block += "</div>"
@@ -21062,7 +21068,7 @@ def render_meal_spoke_distribution(meal_result: Dict[str, object]) -> None:
     if not rows:
         return
     st.markdown("##### 뽑기 칸 배정")
-    html_block = "<div style='background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
+    html_block = "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
     for r in sorted(rows, key=lambda x: (-int(x.get("assigned_spokes",0)), str(x.get("participant","")))):
         name = str(r.get("participant", "-"))
         spokes = int(r.get("assigned_spokes", 0) or 0)
@@ -21171,7 +21177,7 @@ def render_calculation_steps() -> None:
     steps = ["원국 산출", "오행 분포 계산", "월령·계절 보정", "합충형파해 보정", "일간 강약 판정", "조후 방향 판정", "3대 능력치 점수화", "대운·세운 연결", "검증 상태 확인"]
     html_block = "<div style='display:flex;flex-wrap:wrap;gap:.5rem;margin:.45rem 0;'>"
     for i, step in enumerate(steps, start=1):
-        html_block += f"<div style='flex:1 1 160px;background:#fff;border:1px solid rgba(230,164,184,.28);border-radius:14px;padding:.72rem;'><div style='font-weight:950;color:#7b1e3d;'>STEP {i}</div><div style='font-weight:850;color:#5b3f4b;'>{html.escape(step)}</div></div>"
+        html_block += f"<div style='flex:1 1 160px;background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:14px;padding:.72rem;'><div style='font-weight:950;color:#7b1e3d;'>STEP {i}</div><div style='font-weight:850;color:#5b3f4b;'>{html.escape(step)}</div></div>"
     html_block += "</div>"
     st.markdown(html_block, unsafe_allow_html=True)
 
@@ -21946,19 +21952,15 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
     # ── 최신 패치 공지 ──
     st.markdown(
         f"""
-        <div style='background:#f5eaed;border:1.5px solid #d4a0b0;border-radius:10px;
+        <div style='background:#1e0d18;border:1.5px solid #5a2840;border-radius:10px;
         padding:12px 16px;margin-bottom:14px;'>
         <div style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>
           <span style='background:#7b1e3d;color:#fff;border-radius:4px;padding:2px 8px;
           font-size:11px;font-weight:700;'>🆕 {APP_VERSION} 업데이트</span>
-          <span style='font-size:11px;color:#5c1126;'>2026년 5월</span>
+          <span style='font-size:11px;color:#c090a8;'>2026년 5월</span>
         </div>
-        <div style='font-size:13px;color:#5b2038;line-height:1.9;'>
-          · 모임 케미 분석 기능이 추가되었습니다<br>
-          · 올해 처방전에 세운 글자의 합·충·용신·기신 상세 분석 추가<br>
-          · 진단서에 신약·신강 판단 근거 / 용신·기신·희신 / 식상생재·재생관·관인상생 흐름 구조 설명 추가<br>
-          · 체질·신살 설명이 4~5문장으로 상세하게 확장되었습니다<br>
-          · 공유 이미지가 진단서 화면 위주로 재구성됐어
+        <div style='font-size:13px;color:#d4a0b8;line-height:1.9;'>
+          · 모임 케미 기능이 추가되었어
         </div>
         </div>
         """,
