@@ -23228,51 +23228,75 @@ elif not payload.get("battle"):
 st.markdown("""
 <script>
 (function injectDarkStyle() {
-    var css = [
-        /* ── 라디오 버튼 ── */
-        '[data-testid="stRadio"] label,',
-        'div[role="radiogroup"] label {',
-        '    background-color: #2a1520 !important;',
-        '    border: 1.5px solid rgba(232,121,160,0.40) !important;',
-        '    border-radius: 999px !important;',
-        '    color: #c090a8 !important;',
-        '    padding: 6px 16px !important;',
-        '    transition: background-color 0s !important;',
-        '}',
-        '[data-testid="stRadio"] label:has(input:checked),',
-        'div[role="radiogroup"] label:has(input:checked) {',
-        '    background-color: #7b1e3d !important;',
-        '    border-color: #e879a0 !important;',
-        '    color: #ffffff !important;',
-        '}',
-        /* ── 라디오 내부 p 태그 ── */
-        '[data-testid="stRadio"] label p,',
-        'div[role="radiogroup"] label p {',
-        '    color: inherit !important;',
-        '}',
-        /* ── 텍스트 입력 wrapper ── */
-        'div[data-baseweb="base-input"],',
-        'div[data-baseweb="input"] {',
-        '    background-color: #2a1520 !important;',
-        '    border-color: rgba(232,121,160,0.30) !important;',
-        '}',
-        /* ── 텍스트 입력 필드 ── */
-        'div[data-baseweb="base-input"] input,',
-        'div[data-baseweb="input"] input,',
-        'input[type="text"], input[type="number"] {',
-        '    background-color: #2a1520 !important;',
-        '    color: #e8d0d8 !important;',
-        '    caret-color: #e879a0 !important;',
-        '}',
-        /* ── 셀렉트박스 ── */
-        'div[data-baseweb="select"] > div {',
-        '    background-color: #2a1520 !important;',
-        '    border-color: rgba(232,121,160,0.30) !important;',
-        '    color: #e8d0d8 !important;',
-        '}',
-        /* ── 셀렉트박스 드롭다운 옵션 ── */
-        'ul[data-baseweb="menu"], li[role="option"] {',
-        '    background-color: #2a1520 !important;',
-        '    color: #e8d0d8 !important;',
-        '}',
-        'li[role
+    var css =
+        /* 라디오 버튼 */
+        '[data-testid=\"stRadio\"] label,' +
+        'div[role=\"radiogroup\"] label {' +
+        '  background-color:#2a1520!important;' +
+        '  border:1.5px solid rgba(232,121,160,0.40)!important;' +
+        '  border-radius:999px!important;' +
+        '  color:#c090a8!important;' +
+        '  padding:6px 16px!important;' +
+        '  transition:none!important;' +
+        '}' +
+        '[data-testid=\"stRadio\"] label:has(input:checked),' +
+        'div[role=\"radiogroup\"] label:has(input:checked) {' +
+        '  background-color:#7b1e3d!important;' +
+        '  border-color:#e879a0!important;' +
+        '  color:#ffffff!important;' +
+        '}' +
+        '[data-testid=\"stRadio\"] label p,' +
+        'div[role=\"radiogroup\"] label p {' +
+        '  color:inherit!important;' +
+        '}' +
+        /* 입력 wrapper */
+        'div[data-baseweb=\"base-input\"],' +
+        'div[data-baseweb=\"input\"] {' +
+        '  background-color:#2a1520!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '}' +
+        /* 입력 필드 */
+        'div[data-baseweb=\"base-input\"] input,' +
+        'div[data-baseweb=\"input\"] input,' +
+        'input[type=\"text\"],input[type=\"number\"] {' +
+        '  background-color:#2a1520!important;' +
+        '  color:#e8d0d8!important;' +
+        '  caret-color:#e879a0!important;' +
+        '}' +
+        /* 셀렉트박스 */
+        'div[data-baseweb=\"select\"] > div {' +
+        '  background-color:#2a1520!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '  color:#e8d0d8!important;' +
+        '}' +
+        /* 드롭다운 옵션 */
+        'ul[data-baseweb=\"menu\"],li[role=\"option\"] {' +
+        '  background-color:#2a1520!important;' +
+        '  color:#e8d0d8!important;' +
+        '}' +
+        'li[role=\"option\"]:hover {' +
+        '  background-color:#3d1a2b!important;' +
+        '}' +
+        /* number_input 버튼 */
+        'button[data-testid=\"stNumberInputStepDown\"],' +
+        'button[data-testid=\"stNumberInputStepUp\"] {' +
+        '  background-color:#3d1a2b!important;' +
+        '  color:#e8d0d8!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '}';
+
+    var style = document.createElement('style');
+    style.id = 'saju-dark-override';
+    style.textContent = css;
+
+    function inject() {
+        if (!document.getElementById('saju-dark-override')) {
+            (document.head || document.documentElement).appendChild(style.cloneNode(true));
+        }
+    }
+    inject();
+    document.addEventListener('DOMContentLoaded', inject);
+    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
+})();
+</script>
+""", unsafe_allow_html=True)
