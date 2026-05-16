@@ -8969,6 +8969,26 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-side-pad: .72rem;
 }
 .stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+/* 다크 테마 버튼 오버라이드 */
+[data-testid="stBaseButton-secondary"],
+button[kind="secondary"],
+.stButton > button:not([kind="primary"]) {
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
+}
+[data-testid="stBaseButton-secondary"]:hover,
+.stButton > button:not([kind="primary"]):hover {
+    background-color: #3a1e2c !important;
+    border-color: #e879a0 !important;
+    color: #f0b8d0 !important;
+}
+/* 링크처럼 생긴 버튼(개인정보 처리방침 등) */
+[data-testid="stBaseButton-tertiary"] {
+    background-color: #2a1520 !important;
+    color: #e879a0 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+}
 [data-testid="stAppViewContainer"] { background-color: #1a0d14 !important; }
 [data-testid="stHeader"] { background-color: #1a0d14 !important; }
 section.main { background-color: #1a0d14 !important; }
@@ -10573,10 +10593,10 @@ st.markdown("""
     padding: 1.35rem 1.5rem 1.15rem 1.5rem;
     border-radius: 28px;
     background:
-        radial-gradient(circle at 15% 15%, rgba(255,255,255,0.95), transparent 32%),
-        linear-gradient(135deg, rgba(255,255,255,0.94), rgba(255,239,246,0.98));
-    border: 1px solid rgba(255, 145, 180, 0.24);
-    box-shadow: 0 16px 38px rgba(255, 125, 165, 0.16);
+        radial-gradient(circle at 15% 15%, rgba(232,121,160,0.12), transparent 40%),
+        linear-gradient(135deg, rgba(42,21,32,0.98), rgba(30,13,20,1.0));
+    border: 1px solid rgba(232,121,160,0.28);
+    box-shadow: 0 16px 38px rgba(232,121,160,0.10);
     margin-bottom: 1rem;
     text-align: center;
 }
@@ -10592,7 +10612,7 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
 }
 .hero-subtitle {
-    color: var(--palja-muted);
+    color: #c090a8;
     font-size: 1rem;
     margin-top: 0.65rem;
     line-height: 1.65;
