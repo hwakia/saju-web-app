@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 
 def _interaction_detail_html(interactions: list) -> str:
@@ -201,8 +202,6 @@ def _interaction_detail_html(interactions: list) -> str:
 # 검색 팁: "[SECTION N]" 으로 검색하면 해당 섹션으로 점프
 # 라인 번호는 변경될 수 있으므로 섹션 마커 텍스트로 검색 권장
 # ============================================================
-
-from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
