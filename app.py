@@ -2,7 +2,7 @@
 
 
 # app.py
-# 사주MRI Streamlit 앱 v5.145-grandma-deepwine
+# 사주MRI Streamlit 앱 v5.145-deepwine
 # 실행: python -m streamlit run app.py
 
 
@@ -13173,7 +13173,7 @@ def render_climate_thermometer(result: Dict[str, object]) -> None:
         color = "#3b82f6"
     pin = max(2, min(98, temp))
     fill = pin
-    st.markdown("#### 🌡️ 조후 기운")
+    st.markdown("#### 🌡️ 조후 온도계")
     st.markdown(f"""
     <div style="background:#fff;border:1px solid rgba(230,164,184,.30);border-radius:18px;padding:.85rem .9rem;margin:.3rem 0 .45rem 0;">
         <div style="display:flex;justify-content:space-between;color:#7a5665;font-size:.82rem;font-weight:850;margin-bottom:.45rem;">
@@ -13983,7 +13983,7 @@ def daily_interaction_summary(interactions: List[Dict[str, str]]) -> str:
     if "합" in kinds and not any(k in kinds for k in ["형", "파", "해"]):
         return "오늘은 묶임과 협력 신호가 비교적 좋습니다. 사람·일정·자료를 연결하기에 괜찮습니다."
     if any(k in kinds for k in ["형", "파", "해"]):
-        return "오늘은 작은 어긋남이나 예민함을 줄이는 쪽이 좋습니다. 확인과 거리 조절이 필요해."
+        return "오늘은 작은 어긋남이나 예민함을 줄이는 쪽이 좋습니다. 확인과 거리 조절이 처방입니다."
     return "오늘은 큰 충돌보다 조율 중심으로 쓰기 좋은 날입니다."
 
 
@@ -14359,7 +14359,7 @@ def render_today_compass_card(payload: Dict[str, object]) -> None:
         </div>
         {interaction_html}
         <div class="today-compass-prescription">
-            <div class="today-compass-label">할머니 한마디</div>
+            <div class="today-compass-label">한 줄 처방</div>
             <div class="today-compass-body">{html.escape(compass['prescription'])}</div>
         </div>
         <div class="today-compass-note">※ 오늘의 나침반은 매일의 기운을 가볍게 보는 보조 카드입니다. 중요한 결정은 현실 조건을 우선하세요.</div>
@@ -14388,7 +14388,7 @@ def _today_luck_background_line(payload: Dict[str, object]) -> str:
 
 
 def render_today_quick_entry(payload: Dict[str, object]) -> None:
-    """오늘의 기운 첫 화면: 핵심 4개만 Streamlit 기본 컴포넌트로 표시한다."""
+    """오늘의 처방 첫 화면: 핵심 4개만 Streamlit 기본 컴포넌트로 표시한다."""
     chart = payload.get("chart")
     result = payload.get("result", {}) or {}
     if chart is None:
@@ -14402,7 +14402,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     prescription = str(compass.get("ten_god_action") or compass.get("prescription") or compass.get("ten_god_short") or "-")
     interaction_overview = str(compass.get("interaction_overview") or "합·충·형·파·해 특이 신호 약함")
 
-    st.markdown("### 🌤 오늘의 기운")
+    st.markdown("### 🌤 오늘의 처방")
     st.caption(f"{compass.get('date', '-')} · 오늘의 기운 {compass.get('day_gz', '-')}")
 
     # ── 진단 풀이 텍스트 ─────────────────────────────────
@@ -14461,7 +14461,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
         f"border-radius:8px;margin-bottom:12px;font-size:14px;color:#14532d;line-height:1.8;'>"
         f"<div style='display:flex;justify-content:space-between;align-items:center;"
         f"margin-bottom:5px;'>"
-        f"<span style='font-size:12px;color:#6b7280;'>오늘의 기운 · {_day_gz}</span>"
+        f"<span style='font-size:12px;color:#6b7280;'>오늘 처방전 · {_day_gz}</span>"
         f"<span style='font-size:12px;font-weight:700;color:{_flow_color};'>"
         f"오늘 흐름 {_flow_grade}</span>"
         f"</div>"
@@ -14511,7 +14511,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             except TypeError:
                 card = st.container()
             with card:
-                st.markdown("**할머니 한마디**")
+                st.markdown("**한 줄 처방**")
                 st.markdown(prescription)
 
     if "중첩" in interaction_overview:
@@ -14519,7 +14519,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     st.caption("세부 천간·지지, 원국 반응, 합충 상세는 아래 상세 보기에서 확인하세요.")
 
     detail_choice = _ORIGINAL_ST_RADIO(
-        "🌤 오늘의 기운 상세 보기",
+        "🌤 오늘의 처방 상세 보기",
         ["감추기", "상세 보기"],
         index=0,
         horizontal=True,
@@ -16228,7 +16228,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     _pillar_parts = [p.strip() for p in _share_pillars.split("/")]
 
     draw.text((x, y), "사주MRI", fill="#7b1e3d", font=f_logo)
-    draw.text((W-300, y+4), "사주 풀이 요약", fill="#3f2a33", font=f_label)
+    draw.text((W-300, y+4), "사주 진단서 요약", fill="#3f2a33", font=f_label)
 
     y += 56
     # 이름 + 사주 원국
@@ -17171,7 +17171,7 @@ def _chem_story_text(mine: dict, friend: dict, compatibility: dict, chem: dict) 
 
 
 def _render_chem_prescription(mine: dict, friend: dict, compatibility: dict) -> None:
-    """케미 조언 — 두 사람이 잘 지내는 방법을 풀어준다."""
+    """케미 처방전 — 두 사람이 잘 지내는 방법을 풀어준다."""
     axes     = compatibility.get("axes") or {}
     complement = float(axes.get("상호 보완성", 0) or 0)
     alliance   = float(axes.get("동맹성", 0) or 0)
@@ -17181,7 +17181,7 @@ def _render_chem_prescription(mine: dict, friend: dict, compatibility: dict) -> 
 
     advices = []
     if complement >= 65:
-        advices.append("🌿 서로 다른 강점이 잘 맞으니, 상대가 잘하는 것을 존중하고 역할을 나눠봐. 같이 하면 혼자보다 훨씬 커지는 사이야.")
+        advices.append("💊 서로 다른 강점이 잘 맞으니, 상대가 잘하는 것을 존중하고 역할을 나눠봐. 같이 하면 혼자보다 훨씬 커지는 사이야.")
     if alliance >= 65:
         advices.append("🪞 닮은 점이 많아서 편하지만, 같은 약점도 공유해. 서로에게 새로운 시각을 일부러 가져다줘봐.")
     if tension >= 60:
@@ -17194,7 +17194,7 @@ def _render_chem_prescription(mine: dict, friend: dict, compatibility: dict) -> 
     if not advices:
         advices.append("🎛️ 서로 맞춰가는 사이야. 기대치를 솔직하게 이야기하는 것이 이 관계를 오래 가게 하는 비결이야.")
 
-    st.markdown("#### 📋 케미 조언")
+    st.markdown("#### 📋 케미 처방")
     for adv in advices:
         st.markdown(
             f"<div style='background:#fff7fb;border-left:3px solid #7b1e3d;"
@@ -17485,7 +17485,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     st.markdown(
         f"<div style='background:#fff7fb;border:1px solid #f8d0e0;padding:9px 13px;"
         f"border-radius:6px;font-size:13px;color:#374151;line-height:1.7;margin-bottom:4px;'>"
-        f"{_t['note']}<br>🌿 조언: {_t['rx']}</div>",
+        f"{_t['note']}<br>💊 처방: {_t['rx']}</div>",
         unsafe_allow_html=True,
     )
 
@@ -17529,11 +17529,11 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     st.divider()
 
     # ── 모임 처방 ──────────────────────────────────────────────
-    st.markdown("#### 📋 모임 조언")
+    st.markdown("#### 📋 모임 처방")
     if ga["group_rx"]:
         for kind, hj, kw, rx_text in ga["group_rx"]:
             color = "#16a34a" if kind == "under" else "#d97706"
-            icon  = "🌿" if kind == "under" else "⚠️"
+            icon  = "💊" if kind == "under" else "⚠️"
             label = f"{hj}({kw}) 보충" if kind == "under" else f"{hj}({kw}) 조절"
             st.markdown(
                 f"<div style='background:{'#f0fdf4' if kind=='under' else '#fffbeb'};"
@@ -17547,7 +17547,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         st.markdown(
             f"<div style='background:#f0fdf4;border-left:4px solid #16a34a;"
             f"padding:9px 13px;border-radius:0 6px 6px 0;font-size:13px;color:#374151;'>"
-            f"✅ 오행이 균형 잡혀 있어 특별한 조언이 필요 없어. 지금처럼 만나면 돼!</div>",
+            f"✅ 오행이 균형 잡혀 있어 특별한 처방이 필요 없어. 지금처럼 만나면 돼!</div>",
             unsafe_allow_html=True,
         )
     st.caption("이 진단은 명리학 원리를 바탕으로 한 오락·참고용이야. 실제 관계의 결론을 단정하지 않아.")
@@ -18127,7 +18127,7 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
         f"<div style='background:#faf5ff;border-left:4px solid #7c3aed;padding:12px 16px;"
         f"border-radius:8px;margin-bottom:10px;font-size:14px;color:#3b0764;line-height:1.8;'>"
         f"<div style='font-size:12px;color:#6b7280;margin-bottom:5px;'>"
-        f"이날의 기운 · {target_date.strftime('%Y년 %m월 %d일')} · {day_gz}</div>"
+        f"이날의 처방 · {target_date.strftime('%Y년 %m월 %d일')} · {day_gz}</div>"
         f"{_story_full}</div>",
         unsafe_allow_html=True,
     )
@@ -18142,7 +18142,7 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
         st.write(f"신호: {signal_text}")
         st.write(f"큰 배경: {compass.get('month_background', '-')}")
         st.write(f"개요: {interaction_overview}")
-        st.write(f"할머니 한마디: {prescription}")
+        st.write(f"한 줄 처방: {prescription}")
 
 
 def render_daily_luck_calendar(payload: Dict[str, object]) -> None:
@@ -18197,14 +18197,14 @@ def render_daily_luck_calendar(payload: Dict[str, object]) -> None:
 
 
 def render_daewun_text_overview(payload: dict) -> None:
-    """🌊 10년의 흐름 — 요약 풀이 + 대운 카드 그리드."""
+    """🌊 10년의 처방 — 요약 풀이 + 대운 카드 그리드."""
     luck_flow   = payload.get("luck_flow") or {}
     result      = payload.get("result", {}) or {}
     chart       = payload.get("chart")
     current     = luck_flow.get("current_daewun") if isinstance(luck_flow, dict) else None
     daewuns     = payload.get("daewuns") or luck_flow.get("daewuns") or []
 
-    st.markdown("### 🌊 10년의 흐름")
+    st.markdown("### 🌊 10년의 처방")
 
     # ── 진단 풀이 ───────────────────────────────────────
     if current:
@@ -18274,7 +18274,7 @@ def render_daewun_text_overview(payload: dict) -> None:
             f"<div style='background:#f0f7ff;border-left:4px solid #2563eb;padding:14px 16px;"
             f"border-radius:8px;margin-bottom:12px;font-size:14px;color:#1e3a8a;line-height:1.8;'>"
             f"<div style='font-size:12px;color:#6b7280;margin-bottom:6px;'>"
-            f"10년 풀이 · {gz} · {start_age}세부터 10년</div>"
+            f"10년 처방전 · {gz} · {start_age}세부터 10년</div>"
             f"{full_text}</div>",
             unsafe_allow_html=True,
         )
@@ -18282,7 +18282,7 @@ def render_daewun_text_overview(payload: dict) -> None:
             st.caption("전체 대운 목록은 생년월일시 자동 산출 모드에서 표시됩니다.")
     else:
         st.info(
-            "10년의 흐름은 생년월일시 자동 산출 모드일 때 표시됩니다. "
+            "10년의 처방은 생년월일시 자동 산출 모드일 때 표시됩니다. "
             "직접 원국을 입력한 경우 대운 정보가 없습니다."
         )
 
@@ -18298,12 +18298,12 @@ def render_daewun_text_overview(payload: dict) -> None:
 
 
 def render_sewun_text_overview(payload: dict) -> None:
-    """🌸 올해의 기운 — 세운 풀이 + 상세 연도표."""
+    """🌸 올해의 처방 — 세운 풀이 + 상세 연도표."""
     import datetime as _dt
     luck_flow  = payload.get("luck_flow") or {}
     sewun_rows = (luck_flow or {}).get("sewun_rows") or []
 
-    st.markdown("### 🌸 올해의 기운")
+    st.markdown("### 🌸 올해의 처방")
 
     # ── 올해 행 찾기 ────────────────────────────────────────
     _year_int = _dt.datetime.now().year
@@ -18384,17 +18384,17 @@ def render_sewun_text_overview(payload: dict) -> None:
             f"<div style='background:#f5eaed;border-left:4px solid #7b1e3d;padding:14px 16px;"
             f"border-radius:8px;margin-bottom:12px;font-size:14px;color:#4a0e20;line-height:1.8;'>"
             f"<div style='font-size:12px;color:#5c1126;margin-bottom:6px;'>"
-            f"올해의 기운 · {gz} · {this_year}년</div>"
+            f"올해 처방전 · {gz} · {this_year}년</div>"
             f"{full_text}{next_hint}</div>",
             unsafe_allow_html=True,
         )
     else:
         st.info(
-            "올해의 기운은 생년월일시 자동 산출 모드일 때 표시됩니다. "
+            "올해의 처방은 생년월일시 자동 산출 모드일 때 표시됩니다. "
             "직접 원국을 입력한 경우 세운 정보가 없습니다."
         )
 
-    # ── 올해 세운 상세 분석 (할머니 의사 텍스트) ─────────────
+    # ── 올해 세운 상세 분석 ────────────────────────────────────
     _sewun_chart  = payload.get("chart")
     _sewun_result = payload.get("result", {}) or {}
     if row_this and _sewun_chart and gz not in ("-", ""):
@@ -18455,7 +18455,7 @@ def render_sewun_text_overview(payload: dict) -> None:
             _fs = [_FLOW_PLAIN.get(f, f) for f in _active_flows[:2]]
             _flow_story = f"원국에 {', '.join(_fs)}이 작동하고 있어. 올해 세운 기운이 이 흐름을 타면 더 강하게 나타날 수 있어."
 
-        with st.expander("🔮 올해 세운 깊이 보기 (합·충·용신·체질 분석)", expanded=False):
+        with st.expander("🩺 올해 세운 깊이 보기 (합·충·용신·체질 분석)", expanded=False):
             # 1. 세운 글자와 용신/기신
             st.markdown(
                 f"<div style='background:#f5eaed;border-left:4px solid #7b1e3d;padding:12px 14px;"
@@ -18533,7 +18533,7 @@ def render_sewun_text_overview(payload: dict) -> None:
                     if _sn_txt:
                         st.caption(f"· {_sn} ({_pos}): {_sn_txt}")
 
-    st.caption("올해의 기운은 매년 바뀌어. 10년 큰 흐름 위에 올해 파도가 얼마나 높은지 보는 거거든.")
+    st.caption("올해의 처방은 매년 바뀌는 연간 기운이야. 10년 큰 흐름 위에 올해 파도가 얼마나 높은지 보는 거거든.")
 
     # ── 상세보기 ────────────────────────────────────────────
     if sewun_rows:
@@ -18542,13 +18542,13 @@ def render_sewun_text_overview(payload: dict) -> None:
             render_manse_sewun_cards(luck_flow)
 
 
-def render_single_page_buttons(default: str = "📜 사주 풀이") -> str:
+def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
     """결과 화면을 일반인용 첫 화면과 전문가 상세보기로 분리한다."""
     pages = [
-        ("📜 풀이",     "📜 사주 풀이"),
-        ("🌊 10년 흐름", "🌊 10년의 흐름"),
-        ("🌸 올해 기운", "🌸 올해의 기운"),
-        ("🌤 오늘",     "🌤 오늘의 기운"),
+        ("🏥 진단서",   "🏥 사주 진단서"),
+        ("🌊 10년 처방", "🌊 10년의 처방"),
+        ("🌸 올해 처방", "🌸 올해의 처방"),
+        ("🌤 오늘",     "🌤 오늘의 처방"),
         ("📅 캘린더",   "일운캘린더"),
         ("📸 공유",     "공유 카드"),
         ("🔎 상세",     "전문가 상세보기"),
@@ -18706,8 +18706,8 @@ def render_hanuneyo_text_explanation(payload, char, result):
             "과열성": "검진 결과, 불기운이 확실히 강한 과열 체질이야. 몸도 기운도 쉽게 달아오르거든. 열정은 넘치는데 자칫 소진이 빠를 수 있어. 식히는 방향 — 물 기운이나 차가운 환경, 느긋하게 쉬는 시간이 이 체질한테는 보약이야.",
             "열성":   "따뜻한 기운이 강한 체질이야. 어딜 가나 온기를 뿜어내거든. 주변 사람들이 네 옆에 있으면 따뜻하다고 느끼는 경우가 많아. 다만 너무 달아오르면 과열되기 쉬우니, 가끔은 혼자 조용히 쉬는 시간을 챙겨봐.",
             "온성":   "사주 온도가 딱 균형권이야. 차갑지도 뜨겁지도 않은 — 가장 안정적인 체질 중 하나야. 어떤 환경에서도 적응을 잘 하는 편이거든. 이 균형을 유지하는 게 이 체질의 핵심이야.",
-            "냉성":   "서늘한 냉성 체질이야. 차분하고 냉정하게 세상을 보는 눈이 있거든. 감정에 휩쓸리지 않고 판단하는 힘이 강한 편이야. 다만 너무 차가워지면 고립되기 쉬우니 — 따뜻한 사람들 곁에 있는 게 이 체질에 제일 좋아.",
-            "한랭성": "검진 결과, 한랭 체질이야. 겨울 새벽처럼 차가운 기운이 강하거든. 깊이 생각하는 힘은 있지만 움직임이 무거워질 수 있어. 따뜻한 음식, 따뜻한 사람, 햇볕 — 이게 이 체질한테 가장 필요한 거야. 온기를 적극적으로 채워봐.",
+            "냉성":   "서늘한 냉성 체질이야. 차분하고 냉정하게 세상을 보는 눈이 있거든. 감정에 휩쓸리지 않고 판단하는 힘이 강한 편이야. 다만 너무 차가워지면 고립되기 쉬우니 — 따뜻한 사람들 곁에 있는 게 이 체질의 처방이야.",
+            "한랭성": "검진 결과, 한랭 체질이야. 겨울 새벽처럼 차가운 기운이 강하거든. 깊이 생각하는 힘은 있지만 움직임이 무거워질 수 있어. 따뜻한 음식, 따뜻한 사람, 햇볕 — 이게 이 체질한테 가장 필요한 처방이야. 온기를 적극적으로 채워봐.",
         }
         el_story = {
             "木": ("나무 기운", "새싹이 올라오듯 뻗어나가고 싶어 하는"),
@@ -18808,7 +18808,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
     }
 
     # ══════════════════════════════════════════════════════════
-    # 📜 사주 풀이 렌더링  (개편 — 결과 먼저 · 조언 추가)
+    # 🏥 사주 진단서 렌더링  (개편 — 결과 먼저 · 처방전 추가)
     # ══════════════════════════════════════════════════════════
 
     # ── 1. 진단명 카드 (일주 설명 통합) ──────────────────────
@@ -18825,7 +18825,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         f"<div style='background:#f0f4ff;border-left:4px solid #3B5BDB;padding:14px 16px;"
         f"border-radius:8px;margin-bottom:10px;'>"
         f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
-        f"<div style='font-size:11px;color:#6b7280;letter-spacing:1px;margin-bottom:6px;'>사주 풀이</div>"
+        f"<div style='font-size:11px;color:#6b7280;letter-spacing:1px;margin-bottom:6px;'>진단서</div>"
         f"<div style='font-size:11px;background:#3B5BDB;color:#fff;border-radius:4px;"
         f"padding:2px 8px;font-weight:700;'>원국 참고점 {_total_score:.0f}점 · {_score_label}</div>"
         f"</div>"
@@ -18890,7 +18890,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
     st.divider()
 
     # ── 4. 🌡️ 사주 체온계 (결과 배지 먼저) ──────────────────
-    st.markdown("#### 🌡️ 기운 척도")
+    st.markdown("#### 🌡️ 사주 체온계")
     _thermo_colors = {
         "과열성": ("#dc2626", "#fef2f2"),
         "열성":   ("#ea580c", "#fff7ed"),
@@ -18999,8 +18999,8 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     st.divider()
 
-    # ── 7. 📋 조언 ───────────────────────────────────────────
-    st.markdown("#### 📋 조언")
+    # ── 7. 📋 처방전 ─────────────────────────────────────────
+    st.markdown("#### 📋 처방전")
     _ELEMENT_RX = {
         "木": {
             "color": "🟢 초록·파랑", "direction": "동쪽",
@@ -19050,7 +19050,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 f"<div style='background:#f0fdf4;border-left:4px solid #16a34a;"
                 f"padding:12px 14px;border-radius:6px;margin-bottom:8px;'>"
                 f"<div style='font-size:12px;font-weight:700;color:#16a34a;margin-bottom:6px;'>"
-                f"🌿 보충 기운 — {_rx_el}기운 채우기</div>"
+                f"💊 보충 처방 — {_rx_el}기운 채우기</div>"
                 f"<div style='font-size:13px;color:#374151;line-height:1.9;'>"
                 f"· 색상 / 방향: {_rx['color']} / {_rx['direction']}<br>"
                 f"· 음식: {_rx['food']}<br>"
@@ -19066,7 +19066,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
             f"<div style='background:#fffbeb;border-left:4px solid #d97706;"
             f"padding:12px 14px;border-radius:6px;margin-bottom:8px;'>"
             f"<div style='font-size:12px;font-weight:700;color:#d97706;margin-bottom:6px;'>"
-            f"🌡️ 기운 조절 — {_t_key}</div>"
+            f"🌡️ 체온 처방 — {_t_key} 조절</div>"
             f"<div style='font-size:13px;color:#374151;line-height:1.8;'>{_t_rx}</div>"
             f"</div>",
             unsafe_allow_html=True,
@@ -19101,7 +19101,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
             "천을귀인": "귀인이 곁에 있는 사주야. 힘들 때 예상 밖의 손길이 오는 구조거든. 너무 혼자 다 해결하려 하지 말고, 도움을 요청해봐 — 이 사주는 그때 진가가 나와.",
             "문창귀인": "머리로 정리하고 표현하는 힘이 있는 사주야. 글·말·기획처럼 생각을 꺼내는 일에서 빛이 나거든. 이걸 살릴 일을 하나씩 만들어봐.",
             "역마":     "가만있으면 답답해지는 사주야. 이동하고 바꾸고 새 판에 뛰어들 때 기회가 열리거든. 반대로 너무 한 자리에만 묶여 있으면 탈이 나는 경우가 많아.",
-            "도화":     "시선이 닿는 사주야. 분위기를 만들고 사람을 끌어당기는 힘이 있거든. 이걸 잘 쓰면 사람이 모이고, 과하면 피곤해질 수 있어 — 노출 관리가 중요해.",
+            "도화":     "시선이 닿는 사주야. 분위기를 만들고 사람을 끌어당기는 힘이 있거든. 이걸 잘 쓰면 사람이 모이고, 과하면 피곤해질 수 있어 — 노출 관리가 처방이야.",
             "화개":     "혼자 깊이 파고드는 걸 즐기는 사주야. 취향이 깊고 몰입력이 강하거든. 좋은 기운인데 — 자기 세계에 너무 갇히지 않도록 가끔은 밖으로 나와봐.",
             "공망":     "이 자리는 바로 손에 잡히지 않는 자리야. 기대한 만큼 바로 오지 않는 경우가 있거든. 없는 게 아니야 — 돌아가는 방식이거든. 직접 밀기보다 우회 전략이 훨씬 잘 맞아.",
         }
@@ -19331,7 +19331,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
             st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
-    st.caption("이 풀이는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
+    st.caption("이 진단서는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
 
 
 def render_single_summary(payload: Dict[str, object]) -> None:
@@ -19368,9 +19368,9 @@ def render_single_summary(payload: Dict[str, object]) -> None:
         )
 
     char = get_mbti_character(chart, result)
-    view = render_single_page_buttons(default="📜 사주 풀이")
+    view = render_single_page_buttons(default="🏥 사주 진단서")
 
-    if view == "📜 사주 풀이":
+    if view == "🏥 사주 진단서":
         render_hanuneyo_text_explanation(payload, char, result)
         if st.button("📸 이 첫 화면을 바로 공유 이미지로 저장", key="single_inline_share_btn_v591", use_container_width=True):
             st.session_state["single_inline_share_open_v591"] = not st.session_state.get("single_inline_share_open_v591", False)
@@ -19396,13 +19396,13 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             except Exception:
                 pass
 
-    elif view == "🌊 10년의 흐름":
+    elif view == "🌊 10년의 처방":
         render_daewun_text_overview(payload)
 
-    elif view == "🌸 올해의 기운":
+    elif view == "🌸 올해의 처방":
         render_sewun_text_overview(payload)
 
-    elif view == "🌤 오늘의 기운":
+    elif view == "🌤 오늘의 처방":
         render_today_quick_entry(payload)
 
     elif view == "일운캘린더":
@@ -20473,14 +20473,14 @@ def render_patch_notes() -> None:
             "tag_color": "#7b1e3d",
             "items": [
                 ("📌 4기둥 8글자 상단 표시", "결과 화면 맨 위에 년주·월주·일주·시주 8글자가 크게 표시돼. 내 원국이 한눈에 보여."),
-                ("📜 사주 풀이 텍스트 강화", "체질·신살 설명이 4~5문장으로 훨씬 풍부해졌어. 각 항목이 왜 그런지 이유까지 설명해줘."),
-                ("🔍 올해 세운 상세 분석 추가", "올해 세운 글자가 내 원국의 용신인지 기신인지, 합·충이 어떻게 걸리는지 깊이 보기 메뉴가 생겼어."),
-                ("⚖️ 사주 풀이 흐름 구조 추가", "신약·신강 판단 근거, 용신·기신·희신, 식상생재·재생관·관인상생이 작동하는지 쉽게 풀어줘."),
-                ("📸 공유 이미지 개편", "공유 카드가 4기둥 8글자 + 사주 풀이 스타일로 바뀌었어. 내 사주 한눈에 공유할 수 있어."),
+                ("🩺 진단서 텍스트 대폭 강화", "체질·신살·처방전 설명이 4~5문장으로 훨씬 풍부해졌어. 각 항목이 왜 그런지 이유까지 설명해줘."),
+                ("🔍 올해 처방전 상세 분석 추가", "올해 세운 글자가 내 원국의 용신인지 기신인지, 합·충이 어떻게 걸리는지 깊이 보기 메뉴가 생겼어."),
+                ("⚖️ 진단서 흐름 구조 설명 추가", "신약·신강 판단 근거, 용신·기신·희신, 식상생재·재생관·관인상생이 작동하는지 쉽게 풀어줘."),
+                ("📸 공유 이미지 개편", "공유 카드가 4기둥 8글자 + 진단서 스타일로 바뀌었어. 내 사주 한눈에 공유할 수 있어."),
                 ("✨ 말투 개선", "딱딱한 전문 용어 대신 친근하고 쉬운 말로 바꿨어. 읽기 편하지?"),
-                ("📊 점수 표기 추가", "사주 풀이 곳곳에 점수가 붙었어. 내 점수가 어떻게 나왔는지 한눈에 볼 수 있어."),
-                ("✨ 신살 카드 추가", "사주 풀이에 천을귀인·문창귀인·역마·도화·화개·공망 신살이 카드 형태로 표시돼."),
-                ("⚠️ 겁재·형살 오늘 기운 반영", "오늘 기운에서 겁재나 형살 신호가 잡히면 주의 표시가 뜨고 설명이 추가됐어."),
+                ("📊 점수 표기 추가", "진단서·처방전 곳곳에 점수가 붙었어. 내 점수가 어떻게 나왔는지 한눈에 볼 수 있어."),
+                ("✨ 신살 카드 추가", "진단서에 천을귀인·문창귀인·역마·도화·화개·공망 신살이 카드 형태로 표시돼."),
+                ("⚠️ 겁재·형살 오늘 처방전 반영", "오늘 처방전에서 겁재 기운이나 형살 신호가 잡히면 주의 표시가 뜨고 설명이 추가됐어."),
             ],
         },
         {
@@ -21321,10 +21321,10 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         </div>
         <div style='font-size:13px;color:#5b2038;line-height:1.9;'>
           · 내 사주 4기둥 8글자가 결과 화면 상단에 크게 표시돼<br>
-          · 올해 세운 글자의 합·충·용신·기신 상세 분석 추가<br>
-          · 신약·신강 판단 근거 / 용신·기신·희신 / 식상생재·재생관·관인상생 흐름 구조 설명 추가<br>
-          · 체질·신살 설명이 4~5문장으로 훨씬 풍부하고 친근하게 바뀌었어<br>
-          · 공유 이미지가 사주 풀이 화면 위주로 재구성됐어
+          · 올해 처방전에 세운 글자의 합·충·용신·기신 상세 분석 추가<br>
+          · 진단서에 신약·신강 판단 근거 / 용신·기신·희신 / 식상생재·재생관·관인상생 흐름 구조 설명 추가<br>
+          · 체질·신살·처방 설명이 4~5문장으로 훨씬 풍부하고 친근하게 바뀌었어<br>
+          · 공유 이미지가 진단서 화면 위주로 재구성됐어
         </div>
         </div>
         """,
@@ -21339,7 +21339,7 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.selected_main_mode = "혼자 보기"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("내 원국 분석 · 오늘의 기운 · 대운 흐름")
+        st.caption("내 원국 분석 · 오늘의 처방 · 대운 흐름")
     with landing_cols[1]:
         if st.button(" 케미 분석", use_container_width=True, key="landing_friend"):
             st.session_state.selected_main_mode = "케미 분석"
@@ -21383,7 +21383,7 @@ if input_mode == "혼자 보기":
     )
     st.session_state.single_view_mode = single_view_mode
     if single_view_mode != "생년월일시 자동 산출":
-        st.caption("원국 직접 입력 방식은 생년월일시 원문이 없으므로 대운·세운·오늘의 기운 일부가 제한될 수 있습니다.")
+        st.caption("원국 직접 입력 방식은 생년월일시 원문이 없으므로 대운·세운·오늘의 처방 일부가 제한될 수 있습니다.")
 
 if input_mode != "__결과 보기__":
     if st.session_state.last_input_mode is None:
