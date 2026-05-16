@@ -23224,48 +23224,55 @@ elif not payload.get("battle"):
         render_single_summary(payload)
 
 
-# ── JS: 라디오 버튼 다크 강제 적용 ──
+# ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
 st.markdown("""
 <script>
-(function applyDarkRadio() {
-    function styleRadios() {
-        // 라디오 라벨 전체
-        document.querySelectorAll('[data-testid="stRadio"] label').forEach(function(label) {
-            label.style.setProperty('background-color', '#2a1520', 'important');
-            label.style.setProperty('border', '1.5px solid rgba(232,121,160,0.40)', 'important');
-            label.style.setProperty('border-radius', '999px', 'important');
-            label.style.setProperty('color', '#c090a8', 'important');
-            label.style.setProperty('padding', '6px 16px', 'important');
-            // 체크 상태
-            var inp = label.querySelector('input[type="radio"]');
-            if (inp && inp.checked) {
-                label.style.setProperty('background-color', '#7b1e3d', 'important');
-                label.style.setProperty('border-color', '#e879a0', 'important');
-                label.style.setProperty('color', '#ffffff', 'important');
-            }
-        });
-        // input 필드
-        document.querySelectorAll('input[type="text"], input[type="number"]').forEach(function(inp) {
-            inp.style.setProperty('background-color', '#2a1520', 'important');
-            inp.style.setProperty('color', '#e8d0d8', 'important');
-            inp.style.setProperty('border', '1px solid rgba(232,121,160,0.30)', 'important');
-        });
-        // 입력 wrapper
-        document.querySelectorAll('div[data-baseweb="base-input"], div[data-baseweb="input"]').forEach(function(div) {
-            div.style.setProperty('background-color', '#2a1520', 'important');
-            div.style.setProperty('border-color', 'rgba(232,121,160,0.30)', 'important');
-        });
-    }
-    // 초기 적용 + 변경 감지
-    styleRadios();
-    var observer = new MutationObserver(styleRadios);
-    observer.observe(document.body, {childList: true, subtree: true});
-    // 라디오 클릭 시 재적용
-    document.addEventListener('change', function(e) {
-        if (e.target && e.target.type === 'radio') {
-            setTimeout(styleRadios, 50);
-        }
-    });
-})();
-</script>
-""", unsafe_allow_html=True)
+(function injectDarkStyle() {
+    var css = [
+        /* ── 라디오 버튼 ── */
+        '[data-testid="stRadio"] label,',
+        'div[role="radiogroup"] label {',
+        '    background-color: #2a1520 !important;',
+        '    border: 1.5px solid rgba(232,121,160,0.40) !important;',
+        '    border-radius: 999px !important;',
+        '    color: #c090a8 !important;',
+        '    padding: 6px 16px !important;',
+        '    transition: background-color 0s !important;',
+        '}',
+        '[data-testid="stRadio"] label:has(input:checked),',
+        'div[role="radiogroup"] label:has(input:checked) {',
+        '    background-color: #7b1e3d !important;',
+        '    border-color: #e879a0 !important;',
+        '    color: #ffffff !important;',
+        '}',
+        /* ── 라디오 내부 p 태그 ── */
+        '[data-testid="stRadio"] label p,',
+        'div[role="radiogroup"] label p {',
+        '    color: inherit !important;',
+        '}',
+        /* ── 텍스트 입력 wrapper ── */
+        'div[data-baseweb="base-input"],',
+        'div[data-baseweb="input"] {',
+        '    background-color: #2a1520 !important;',
+        '    border-color: rgba(232,121,160,0.30) !important;',
+        '}',
+        /* ── 텍스트 입력 필드 ── */
+        'div[data-baseweb="base-input"] input,',
+        'div[data-baseweb="input"] input,',
+        'input[type="text"], input[type="number"] {',
+        '    background-color: #2a1520 !important;',
+        '    color: #e8d0d8 !important;',
+        '    caret-color: #e879a0 !important;',
+        '}',
+        /* ── 셀렉트박스 ── */
+        'div[data-baseweb="select"] > div {',
+        '    background-color: #2a1520 !important;',
+        '    border-color: rgba(232,121,160,0.30) !important;',
+        '    color: #e8d0d8 !important;',
+        '}',
+        /* ── 셀렉트박스 드롭다운 옵션 ── */
+        'ul[data-baseweb="menu"], li[role="option"] {',
+        '    background-color: #2a1520 !important;',
+        '    color: #e8d0d8 !important;',
+        '}',
+        'li[role
