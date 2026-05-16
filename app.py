@@ -4748,7 +4748,7 @@ def render_role_winner_hero(meal_result: Dict[str, object]) -> None:
     safe_title = html.escape(str(cfg.get("title", "오늘의 뽑기")), quote=True)
     emoji = html.escape(str(cfg.get("emoji", "🎲")), quote=True)
     st.markdown(textwrap.dedent(f"""
-    <div style="background:linear-gradient(135deg,#fff7fb 0%,#fff7ed 100%);border:1px solid rgba(230,164,184,.45);border-radius:24px;padding:1.05rem 1.15rem;margin:.75rem 0 1rem 0;text-align:center;box-shadow:0 14px 34px rgba(214,66,115,.10);">
+    <div style="background:linear-gradient(135deg,#1e1018 0%,#1a1408 100%);border:1px solid rgba(230,164,184,.45);border-radius:24px;padding:1.05rem 1.15rem;margin:.75rem 0 1rem 0;text-align:center;box-shadow:0 14px 34px rgba(214,66,115,.10);">
         <div style="display:inline-block;background:#1e1018;border:1px solid rgba(214,66,115,.22);border-radius:999px;padding:.22rem .72rem;color:#f9a8c9;font-weight:950;font-size:.88rem;">{emoji} {safe_title}</div>
         <div style="margin-top:.55rem;color:#d4a0b8;font-weight:850;">오늘의 당첨자</div>
         <div style="font-size:2.2rem;line-height:1.12;font-weight:950;color:#7b1e3d;margin-top:.2rem;">{emoji} {safe_name}</div>
@@ -7670,7 +7670,7 @@ st.markdown("""
 .small-muted{font-size:.82rem;color:#c090a8;margin-top:.55rem;line-height:1.55;}
 .pipeline-card{padding:1rem;margin:.75rem 0;border-radius:18px;background:#1e1018;border:1px solid rgba(90,40,64,.50);box-shadow:none;}
 .flow-pipeline{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin:.7rem 0;}
-.flow-node{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:.55rem .7rem;border-radius:16px;background:#0d1828;border:1px solid #dbeafe;color:#94a3b8;}
+.flow-node{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:.55rem .7rem;border-radius:16px;background:#0d1828;border:1px solid rgba(100,150,220,0.35);color:#94a3b8;}
 .flow-node b{font-size:.9rem;}
 .flow-node em{font-style:normal;font-weight:900;color:#60a5fa;}
 .pipe-pipeline{gap:.55rem;align-items:center;flex-wrap:wrap;}
@@ -7691,7 +7691,7 @@ st.markdown("""
 .pipe-broken .pipe-line::after{content:"";display:inline-block;width:12px;height:12px;border-right:3px solid #94a3b8;border-bottom:3px solid #94a3b8;transform:rotate(35deg);margin-left:8px;margin-top:-5px;}
 .pipe-broken .pipe-arrow{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid #cbd5e1;}
 .shinsal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:.85rem 0 1.1rem;}
-.shinsal-card{position:relative;overflow:hidden;border-radius:26px;padding:1.08rem 1.05rem;border:1px solid rgba(214,66,115,.17);background:linear-gradient(135deg,#fff7fb,#fffdf8);box-shadow:0 14px 30px rgba(80,40,60,.08);}
+.shinsal-card{position:relative;overflow:hidden;border-radius:26px;padding:1.08rem 1.05rem;border:1px solid rgba(214,66,115,.17);background:linear-gradient(135deg,#1e1018,#221220);box-shadow:0 14px 30px rgba(80,40,60,.08);}
 .shinsal-card::after{content:"";position:absolute;right:-34px;top:-34px;width:116px;height:116px;border-radius:999px;background:rgba(214,66,115,.08);}
 .shinsal-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.55rem;position:relative;z-index:1;}
 .shinsal-icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:18px;background:#1e1018;box-shadow:0 8px 18px rgba(80,40,60,.08);font-size:2rem;line-height:1;flex:0 0 54px;}
@@ -7884,7 +7884,7 @@ div[data-testid="stRadio"] span {
 
 /* v5.76: 만세력 원국 카드 매트릭스 복원 */
 .manse-wrap {
-    background: linear-gradient(135deg,#fffafc 0%,#fff7ed 48%,#f8fbff 100%);
+    background: linear-gradient(135deg,#1e1018 0%,#1a1408 48%,#0d1828 100%);
     border: 1px solid rgba(230,164,184,.36);
     border-radius: 24px;
     padding: 1rem .9rem;
@@ -7962,7 +7962,7 @@ div[data-testid="stRadio"] span {
 .manse-el-목 { background:linear-gradient(135deg,#e7fff6,#bcebd9); }
 .manse-el-화 { background:linear-gradient(135deg,#fff0f4,#ffb6c9); }
 .manse-el-토 { background:linear-gradient(135deg,#fff7db,#efd07c); }
-.manse-el-금 { background:linear-gradient(135deg,#f8fafc,#d8dee8); }
+.manse-el-금 { background:linear-gradient(135deg,#1a2030,#1e2438); }
 .manse-el-수 { background:linear-gradient(135deg,#eef6ff,#b7d7ff); }
 .manse-ko {
     text-align:center;
@@ -8021,7 +8021,7 @@ div[data-testid="stRadio"] span {
     margin:.95rem 0 1.05rem 0;
     padding:.9rem .85rem;
     border-radius:22px;
-    background:linear-gradient(135deg,#fffafc 0%,#fff7ed 56%,#f8fbff 100%);
+    background:linear-gradient(135deg,#1e1018 0%,#1a1408 56%,#0d1828 100%);
     border:1px solid rgba(230,164,184,.32);
     box-shadow:0 12px 26px rgba(80,40,60,.055);
 }
@@ -8078,7 +8078,7 @@ div[data-testid="stRadio"] span {
     box-shadow:0 11px 24px rgba(214,66,115,.115);
 }
 .manse-luck-card.good { background:linear-gradient(135deg,#ffffff,#f1fff8); }
-.manse-luck-card.caution { background:linear-gradient(135deg,#ffffff,#fff7ed); }
+.manse-luck-card.caution { background:linear-gradient(135deg,#1e1018,#1a1408); }
 .manse-luck-card.hard { background:linear-gradient(135deg,#ffffff,#fff0f5); }
 .manse-luck-badge {
     display:inline-flex;
@@ -8232,7 +8232,7 @@ div[data-testid="stRadio"] span {
     padding: 1rem;
     border-radius: 30px;
     border: 1px solid rgba(70,92,120,.16);
-    background: linear-gradient(135deg,#f8fbff 0%,#fff8fb 56%,#fffdf7 100%);
+    background: linear-gradient(135deg,#0d1828 0%,#1e1018 56%,#1a1408 100%);
     box-shadow: 0 18px 36px rgba(40,64,90,.08);
 }
 .saju-landscape-head {
@@ -8308,7 +8308,7 @@ div[data-testid="stRadio"] span {
 .saju-landscape-mini-card {
     padding:.68rem .72rem;
     border-radius:18px;
-    background:linear-gradient(135deg,#fff8fb,#f8fbff);
+    background:linear-gradient(135deg,#1e1018,#0d1828);
     border:1px solid rgba(214,66,115,.12);
 }
 .saju-landscape-mini-label {
@@ -8426,7 +8426,7 @@ div[data-testid="stRadio"] span {
     margin-bottom:.72rem;
     padding:.68rem .74rem;
     border-radius:18px;
-    background:linear-gradient(135deg,#f8fbff,#fff8fb);
+    background:linear-gradient(135deg,#0d1828,#1e1018);
     border:1px solid rgba(70,92,120,.12);
     color:#e8d0d8 !important;
     font-size:.84rem;
@@ -8969,6 +8969,26 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-side-pad: .72rem;
 }
 .stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+/* 라디오 baseweb 강제 다크 */
+[data-baseweb="radio"] + div,
+label[data-baseweb="radio"],
+[role="radio"] { background: transparent !important; }
+div[data-testid="stRadio"] label > div:first-child {
+    background-color: transparent !important;
+    border-color: #e879a0 !important;
+}
+/* Streamlit 2024 라디오 pill 컨테이너 */
+div[data-testid="stRadio"] > div > label {
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.40) !important;
+    color: #e8d0d8 !important;
+}
+div[data-testid="stRadio"] > div > label[data-checked="true"],
+div[data-testid="stRadio"] > div > label:has(input:checked) {
+    background-color: #7b1e3d !important;
+    border-color: #e879a0 !important;
+}
+
 /* ── 라디오 버튼 전면 다크 ── */
 [data-testid="stRadio"] > div { gap: 8px !important; }
 [data-testid="stRadio"] label {
@@ -9155,7 +9175,7 @@ div[data-testid="stButton"] > button{border-radius:999px;min-height:42px;font-we
 }
 
 /* 재방문 안내 카드 */
-.revisit-guide-card{background:#1a1408;border:1px solid #f0d8c0;border-radius:18px;padding:14px 16px;color:#4a2f32;margin-bottom:10px;}
+.revisit-guide-card{background:#1a1408;border:1px solid rgba(232,121,160,0.25);border-radius:18px;padding:14px 16px;color:#e8d0d8;margin-bottom:10px;}
 .revisit-guide-title{font-weight:800;color:#f890b8;margin-bottom:8px;font-size:1rem;}
 .revisit-guide-body{line-height:1.65;font-size:.95rem;}
 /* 핵심 메뉴는 selectbox/라디오 모두 모바일에서 터치하기 쉽게 */
@@ -11558,7 +11578,7 @@ div[data-testid="stCheckbox"] svg {
 
 /* v5.04: 오늘의 뽑기 대기 화면 — 밝은 카드형으로 가독성 우선 */
 .meal-stage-wrap {
-    background: linear-gradient(135deg, #fffafc 0%, #fff7ed 52%, #fff1f5 100%);
+    background: linear-gradient(135deg, #1e1018 0%, #1a1408 52%, #221018 100%);
     border: 1px solid rgba(230,164,184,0.42);
     border-radius: 26px;
     padding: 1.15rem 1.15rem;
@@ -17862,7 +17882,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     bs_color = "#16a34a" if bs >= 70 else ("#d97706" if bs >= 50 else "#dc2626")
     bs_label = "균형 우수" if bs >= 70 else ("보통 균형" if bs >= 50 else "불균형 주의")
     st.markdown(
-        f"<div style='background:#0d1828;border:1px solid #dde3f8;border-radius:8px;"
+        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
         f"padding:10px 14px;margin-bottom:12px;'>"
         f"<span style='background:#3B5BDB;color:#fff;border-radius:4px;padding:2px 8px;"
         f"font-size:12px;font-weight:700;margin-right:8px;'>오행 균형 점수</span>"
@@ -17993,7 +18013,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     dist = _s["distribution"]
     dist_str = " / ".join(f"{k} {v}명" for k, v in dist.items() if v > 0)
     st.markdown(
-        f"<div style='background:#0d1828;border:1px solid #dde3f8;border-radius:8px;"
+        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
         f"padding:9px 13px;margin-bottom:6px;font-size:13px;color:#ddd0d8;line-height:1.7;'>"
         f"<span style='font-weight:700;color:#3B5BDB;'>{_s['balance']}</span>"
         f" ({dist_str}) — {_s['note']}</div>",
@@ -18227,7 +18247,7 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
     safe_chem_score = html.escape(str(round(float(compatibility.get("score", 0) or 0))), quote=True)
 
     st.markdown(f"""
-    <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#fff7fb,#fffdf8);border:1px solid rgba(255,145,180,.30);border-radius:26px;box-shadow:0 14px 30px rgba(255,125,165,.12);margin:.5rem 0 1rem 0;">
+    <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#1e1018,#221220);border:1px solid rgba(255,145,180,.30);border-radius:26px;box-shadow:0 14px 30px rgba(255,125,165,.12);margin:.5rem 0 1rem 0;">
         <div style="font-size:2.4rem;line-height:1;">{chem['stamp']}</div>
         <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#7b1e3d;letter-spacing:-.05em;">{safe_chem_title}</div>
         <div style="margin-top:.35rem;color:#e8d0d8;font-weight:950;font-size:1.15rem;">궁합점수 {safe_chem_score}/100</div>
@@ -19535,7 +19555,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
     dom_kw, dom_desc_text = element_nature.get(dominant_el, ("", ""))
     # 결과 요약 배지
     _comp_html = (
-        f"<div style='background:#0d1828;border:1px solid #dde3f8;border-radius:8px;"
+        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
         f"padding:10px 14px;margin-bottom:10px;'>"
         f"<span style='background:#3B5BDB;color:#fff;border-radius:4px;padding:2px 8px;"
         f"font-size:12px;font-weight:700;margin-right:8px;'>주성분</span>"
