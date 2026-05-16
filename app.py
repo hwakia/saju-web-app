@@ -1,5 +1,176 @@
 
 
+def _interaction_detail_html(interactions: list) -> str:
+    """감지된 합·충·형 각각에 대해 성립 근거와 효과를 카드 형태로 반환한다."""
+
+    # 타입별 배경색/아이콘/제목색
+    TYPE_STYLE = {
+        "삼합":  {"bg": "#f5eaed", "border": "#c9a0b0", "icon": "🔺", "color": "#4a0e20"},
+        "방합":  {"bg": "#f0edf8", "border": "#b8aed9", "icon": "🔷", "color": "#312060"},
+        "반합":  {"bg": "#f3edf5", "border": "#c8aed5", "icon": "🔸", "color": "#3d1a55"},
+        "육합":  {"bg": "#edf5f0", "border": "#a0c8b0", "icon": "🔗", "color": "#14442a"},
+        "충":    {"bg": "#fff8ed", "border": "#e0b87a", "icon": "⚡", "color": "#6b3a00"},
+        "형":    {"bg": "#fdf0f0", "border": "#e0a0a0", "icon": "⚔️", "color": "#6b1414"},
+        "파":    {"bg": "#f5f0e8", "border": "#c8b888", "icon": "🔩", "color": "#4a3500"},
+        "해":    {"bg": "#eef5f8", "border": "#90b8d0", "icon": "🌊", "color": "#0a3a50"},
+    }
+
+    # 타입별 상세 설명 DB
+    TYPE_DESC = {
+        "삼합": {
+            "성립": (
+                "지지 12글자를 오행 4국(수·목·화·금)으로 묶을 때, "
+                "같은 국에 속한 3글자가 원국에 모두 있으면 삼합이 성립합니다. "
+                "4국의 구성은 ① 申子辰 수국 ② 亥卯未 목국 ③ 寅午戌 화국 ④ 巳酉丑 금국입니다. "
+                "월지에 중심 글자(子·卯·午·酉)가 포함되면 합력이 더 강해집니다."
+            ),
+            "효과": (
+                "해당 오행 기운이 집중·강화됩니다. 특히 그 오행이 용신이면 능력과 흐름이 살아나고, "
+                "기신이면 과잉·고집·막힘으로 작용할 수 있습니다. "
+                "원래 글자들의 오행이 완전히 사라지지는 않고 비율 보정으로 작동합니다. "
+                "삼합은 합 중 가장 강력한 결속이라 점수 반영 폭이 가장 큽니다."
+            ),
+        },
+        "방합": {
+            "성립": (
+                "같은 계절·방위에 속한 지지 3글자가 원국에 모두 있으면 방합이 성립합니다. "
+                "① 寅卯辰(봄·동방·목) ② 巳午未(여름·남방·화) "
+                "③ 申酉戌(가을·서방·금) ④ 亥子丑(겨울·북방·수)."
+            ),
+            "효과": (
+                "삼합과 유사하게 해당 오행이 강화됩니다. "
+                "방합은 '방향성'이 강해 일관된 흐름·집중력·한 방향으로의 밀어붙임으로 나타납니다. "
+                "월지 포함 시 계절 에너지 증폭 효과가 더 뚜렷합니다."
+            ),
+        },
+        "반합": {
+            "성립": (
+                "삼합 3글자 중 중심 글자(子·卯·午·酉)를 포함한 2글자가 원국에 있을 때 성립합니다. "
+                "완전한 삼합이 아닌 부분 결합이므로 합력은 삼합의 절반 정도입니다."
+            ),
+            "효과": (
+                "삼합 방향으로 오행이 기울되, 완전히 합화(合化)하지는 않습니다. "
+                "흐름·성향·방향성이 그쪽으로 기우는 정도로 보면 됩니다. "
+                "나머지 1글자가 세운·대운에서 들어오면 삼합이 완성되는 경우도 있습니다."
+            ),
+        },
+        "육합": {
+            "성립": (
+                "子丑·寅亥·卯戌·辰酉·巳申·午未 — 지지를 마주보듯 짝지은 6쌍 중 "
+                "해당 두 글자가 원국에 함께 있으면 성립합니다."
+            ),
+            "효과": (
+                "두 지지가 결합해 새 오행 성질을 띠게 됩니다. "
+                "子丑→토, 寅亥→목, 卯戌→화, 辰酉→금, 巳申→수, 午未→토. "
+                "삼합·방합보다 합력이 약하고, 월지·일지가 아닌 경우 체감이 덜합니다. "
+                "두 글자가 묶여 서로의 독립적 작용이 줄어드는 '견인' 효과가 있습니다."
+            ),
+        },
+        "충": {
+            "성립": (
+                "지지 12글자 중 서로 마주보는(180°) 6쌍이 충입니다: "
+                "子午·丑未·寅申·卯酉·辰戌·巳亥. "
+                "원국 어느 기둥이든 이 두 글자가 동시에 있으면 성립하며, "
+                "월지·일지를 포함하면 강도가 더 셉니다."
+            ),
+            "효과": (
+                "충돌·변동·이동 신호입니다. "
+                "두 기운이 서로 밀어내며 한쪽 또는 양쪽 기운이 흔들립니다. "
+                "부정적으로는 급격한 환경 변화·갈등·이별·이직 등으로 나타날 수 있고, "
+                "긍정적으로는 고인 것을 흔들어 새 흐름을 만드는 계기가 됩니다. "
+                "특히 기신 글자를 충이 흔들어주는 경우 오히려 기운이 풀리기도 합니다."
+            ),
+        },
+        "형": {
+            "성립": (
+                "형(刑)은 합도 충도 아닌 제3의 긴장 구조입니다. "
+                "子卯(무례지형) / 寅巳申(무은지형 삼형) / 丑戌未(지세지형 삼형) — "
+                "원국에 이 글자 조합이 존재하면 성립합니다. "
+                "삼형은 2글자만 있어도 부분 작용합니다."
+            ),
+            "효과": (
+                "압박·긴장·과잉 행동 신호입니다. "
+                "인사신 삼형은 '힘 있는 글자들이 서로 견제'하며 과도한 행동이나 신체적 긴장으로 나타날 수 있고, "
+                "축술미 삼형은 '고집·자기중심'의 형태로, "
+                "자묘 형은 '예의·경계 침범'의 형태로 읽습니다. "
+                "단독으로 나쁘다고 보기보다, 해당 자리의 십성 맥락과 함께 판단합니다."
+            ),
+        },
+        "파": {
+            "성립": (
+                "파(破)는 子酉·丑辰·寅亥·卯午·巳申·未戌 조합입니다. "
+                "삼합 결합을 방해하거나 '엇박'으로 기운이 새는 구조를 뜻합니다."
+            ),
+            "효과": (
+                "계획이 어그러지거나 막판에 빈틈이 생기는 신호입니다. "
+                "관계에서는 협력이 잘 되다가 어느 순간 어긋나는 패턴으로 나타날 수 있습니다. "
+                "충·형보다 강도는 낮고, 보조적으로만 참고합니다."
+            ),
+        },
+        "해": {
+            "성립": (
+                "해(害, 穿)는 子未·丑午·寅巳·卯辰·申亥·酉戌 조합입니다. "
+                "육합 관계를 방해하는 '새는 자리'로 이해합니다."
+            ),
+            "효과": (
+                "관계·상황이 조금씩 손상되거나 시기·질투·갈등이 끼어드는 신호입니다. "
+                "충처럼 직접 충돌하지 않고 서서히 기운을 소모시킵니다. "
+                "해당 자리에 재성·관성 등 중요한 십성이 있을 때 주의해서 봅니다."
+            ),
+        },
+    }
+
+    cards_html = []
+    seen_names = set()
+
+    for it in interactions:
+        itype = str(it.get("type", ""))
+        name  = str(it.get("name", ""))
+        elem  = str(it.get("element", "") or "")
+        strength = str(it.get("strength", "") or "")
+        desc  = str(it.get("description", "") or "")
+
+        # 중복 제거
+        key = (itype, name)
+        if key in seen_names:
+            continue
+        seen_names.add(key)
+
+        style = TYPE_STYLE.get(itype, TYPE_STYLE.get("형", {"bg":"#f5f5f5","border":"#ccc","icon":"🎴","color":"#333"}))
+        detail = TYPE_DESC.get(itype, {"성립": "전통 명리 기준에 따라 성립이 확인되었습니다.", "효과": desc or "원국 에너지 흐름에 영향을 줍니다."})
+
+        elem_badge = f"<span style='background:{style['color']};color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:6px;'>{elem} 기운</span>" if elem else ""
+        strength_badge = f"<span style='font-size:10px;color:{style['color']};opacity:.7;margin-left:4px;'>({strength})</span>" if strength else ""
+
+        card = (
+            f"<div style='background:{style['bg']};border:1.5px solid {style['border']};"
+            f"border-radius:14px;padding:14px 16px;margin:8px 0;'>"
+            # 타이틀 행
+            f"<div style='display:flex;align-items:center;gap:6px;margin-bottom:10px;'>"
+            f"<span style='font-size:18px;'>{style['icon']}</span>"
+            f"<span style='font-weight:900;font-size:15px;color:{style['color']};'>{name}</span>"
+            f"{elem_badge}{strength_badge}"
+            f"</div>"
+            # 성립
+            f"<div style='margin-bottom:8px;'>"
+            f"<div style='font-size:11px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>성립 규칙</div>"
+            f"<div style='font-size:13px;color:#3a2a30;line-height:1.7;'>{detail['성립']}</div>"
+            f"</div>"
+            # 효과
+            f"<div>"
+            f"<div style='font-size:11px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>효과 · 의미</div>"
+            f"<div style='font-size:13px;color:#3a2a30;line-height:1.7;'>{detail['효과']}</div>"
+            f"</div>"
+            f"</div>"
+        )
+        cards_html.append(card)
+
+    if not cards_html:
+        return ""
+    return "".join(cards_html)
+
+
+
 
 # app.py
 # 사주MRI Streamlit 앱 v5.145-deepwine
@@ -7436,7 +7607,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.146"
+APP_VERSION = "v5.147"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20406,6 +20577,15 @@ def render_interaction_signal(result: Dict[str, object]) -> None:
         st.caption(note)
     if interactions and not compound_notes:
         st.caption("합국·육합은 기운을 묶는 신호입니다. 참여 글자의 원래 십성·신살 의미도 함께 참고합니다.")
+
+    # ── 상세 설명 expander ──────────────────────────────────
+    detail_html = _interaction_detail_html(interactions)
+    if detail_html:
+        with st.expander("📖 감지된 합·충·형 — 성립 규칙과 효과 상세 보기", expanded=False):
+            st.markdown(
+                "<div style='padding:4px 0;'>" + detail_html + "</div>",
+                unsafe_allow_html=True,
+            )
 
 def render_luck_timeline(luck_flow: Dict[str, object] | None) -> None:
     if not luck_flow or not luck_flow.get("sewun_rows"):
