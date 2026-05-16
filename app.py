@@ -8969,6 +8969,28 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-side-pad: .72rem;
 }
 .stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+/* 전체 텍스트 가시성 강화 */
+p, span, div, li, label { color: inherit; }
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stMarkdownContainer"] li { color: #e8d0d8 !important; }
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p { color: #c090a8 !important; }
+.stCaption, .stCaption p { color: #c090a8 !important; }
+[data-testid="stText"] { color: #e8d0d8 !important; }
+/* 헤딩 */
+h1, h2, h3, h4 { color: #f0b8d0 !important; }
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4 { color: #f0b8d0 !important; }
+/* 히어로 타이틀 명시 */
+.hero-title { color: #f0b8d0 !important; }
+.hero-title span { -webkit-text-fill-color: unset !important; color: #f0b8d0 !important;
+    background: linear-gradient(92deg, #ff80b0 0%, #e879a0 50%, #c084fc 90%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.hero-subtitle { color: #d4a0b8 !important; }
+
 /* 다크 테마 버튼 오버라이드 */
 [data-testid="stBaseButton-secondary"],
 button[kind="secondary"],
@@ -10568,16 +10590,16 @@ BG_IMAGE_B64 = load_background_image_base64()
 st.markdown("""
 <style>
 :root {
-    --palja-bg: #fff7fb;
-    --palja-panel: #ffffff;
-    --palja-panel-2: #fff3f8;
-    --palja-line: rgba(235, 122, 160, 0.22);
-    --palja-text: #4b2d3a;
-    --palja-muted: rgba(75,45,58,0.66);
-    --palja-accent: #ff6f9f;
-    --palja-accent-2: #9b7cff;
-    --palja-mint: #66cfa3;
-    --palja-warm: #ffb86b;
+    --palja-bg: #1a0d14;
+    --palja-panel: #2a1520;
+    --palja-panel-2: #221018;
+    --palja-line: rgba(232, 121, 160, 0.28);
+    --palja-text: #e8d0d8;
+    --palja-muted: rgba(212,160,184,0.85);
+    --palja-accent: #e879a0;
+    --palja-accent-2: #a78bfa;
+    --palja-mint: #4ade80;
+    --palja-warm: #fb923c;
 }
 .stApp {
     background:
@@ -10795,9 +10817,9 @@ textarea::placeholder {
     opacity: 0.65 !important;
 }
 :root {
-    --palja-readable-text: #3f2a33;
-    --palja-readable-muted: #674b57;
-    --palja-readable-title: #d94378;
+    --palja-readable-text: #e8d0d8;
+    --palja-readable-muted: #c090a8;
+    --palja-readable-title: #e879a0;
 }
 
 /* 웹 화면에서 상단 히어로가 잘리는 느낌 보정 */
