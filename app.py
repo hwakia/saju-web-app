@@ -620,7 +620,7 @@ def detect_special_pattern(chart: "Chart", adjusted_scores: Dict[str, float], st
     officer_el = next(e for e in ELEMENTS if CONTROLS[e] == day_el)
     if pct[day_el] + pct[resource_el] >= 60 and strength_index >= 70 and pct[officer_el] < 12 and pct[wealth_el] < 15:
         if pct[day_el] >= 40:
-            return {"is_special": True, "type": "종왕", "direction": day_el, "confidence": min(1.0, (pct[day_el]-30)/30), "reasons": [f"일간 오행 {day_el}이 {pct[day_el]:.1f}%"]}
+            return {"is_special": True, "type": "종왕", "direction": day_el, "confidence": min(1.0, (pct[day_el]-30)/30), "reasons": [f"일간 오행 {josa(day_el, "이/가")} {pct[day_el]:.1f}%"]}
         return {"is_special": True, "type": "종강", "direction": day_el, "confidence": min(1.0, (pct[day_el]+pct[resource_el]-55)/30), "reasons": [f"비겁·인성 합계 {pct[day_el]+pct[resource_el]:.1f}%"]}
     if strength_index <= 25:
         if pct[wealth_el] >= 45:
@@ -1777,7 +1777,7 @@ def detect_outer_pattern(chart: "Chart") -> Dict[str, object]:
             "is_outer": True,
             "type": "양인격",
             "clarity": 0.65,
-            "reasons": [f"월지 {month_branch}이 일간 {day_stem}의 양인 — 양인격 성립"],
+            "reasons": [f"월지 {josa(month_branch, "이/가")} 일간 {day_stem}의 양인 — 양인격 성립"],
         }
 
     # 건록격
@@ -1786,7 +1786,7 @@ def detect_outer_pattern(chart: "Chart") -> Dict[str, object]:
             "is_outer": True,
             "type": "건록격",
             "clarity": 0.55,
-            "reasons": [f"월지 {month_branch}이 일간 {day_stem}의 록 — 건록격 성립"],
+            "reasons": [f"월지 {josa(month_branch, "이/가")} 일간 {day_stem}의 록 — 건록격 성립"],
         }
 
     return {"is_outer": False, "type": None, "clarity": 0.0, "reasons": []}
@@ -2869,10 +2869,10 @@ def analyze_single_luck_cycle(
     for label, el, weight in [("대운 천간", stem_el, 7.0), ("대운 지지", branch_el, 6.0)]:
         if el in primary:
             useful_score += weight
-            favorable.append(f"{label}의 {el}이 보완 방향")
+            favorable.append(f"{label}의 {josa(el, "이/가")} 보완 방향")
         if el in burden:
             useful_score -= weight * 0.85
-            caution.append(f"{label}의 {el}이 부담 방향")
+            caution.append(f"{label}의 {josa(el, "이/가")} 부담 방향")
     for el in hidden_els:
         if el in primary:
             useful_score += 1.2
@@ -2906,10 +2906,10 @@ def analyze_single_luck_cycle(
         favorable.append("대운이 원국의 부족 오행을 일부 보완")
     if stem_el == max_el:
         balance_score -= 2.0
-        caution.append(f"대운 천간이 이미 강한 {max_el}을 더 보탬")
+        caution.append(f"대운 천간이 이미 강한 {josa(max_el, "을/를")} 더 보탬")
     if branch_el == max_el:
         balance_score -= 2.0
-        caution.append(f"대운 지지가 이미 강한 {max_el}을 더 보탬")
+        caution.append(f"대운 지지가 이미 강한 {josa(max_el, "을/를")} 더 보탬")
     if any(el in primary for el in [stem_el, branch_el]):
         balance_score += 2.0
     if any(el in burden for el in [stem_el, branch_el]):
@@ -4863,11 +4863,11 @@ def apply_meal_roulette_selection(meal_result: Dict[str, object]) -> Dict[str, o
     if selected.get("participant") == top_row.get("participant"):
         confidence = "배정 확률대로 적중"
         if role_type == "meal":
-            summary = f"{selected['participant']}은 회피력이 낮게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
+            summary = f"{josa(selected['participant'], '은/는')} 회피력이 낮게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
         elif role_type == "workload":
-            summary = f"{selected['participant']}은 일감흡수력이 높게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
+            summary = f"{josa(selected['participant'], '은/는')} 일감흡수력이 높게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
         else:
-            summary = f"{selected['participant']}은 총대부름력이 높게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
+            summary = f"{josa(selected['participant'], '은/는')} 총대부름력이 높게 잡혀 뽑기 칸을 많이 받았고, 결과 카드에서도 오늘의 당첨자로 공개되었습니다."
     else:
         confidence = "뽑기 반전"
         summary = (
@@ -6345,9 +6345,9 @@ def make_battle_summary(my_payload: Dict[str, object], friend_payload: Dict[str,
     fr_sewun_wins = sum(1 for r in sewun_rows if r["판정"] == "상대 쪽이 강함")
 
     if total_diff > 0:
-        main_sentence = f"팔자 총점은 {my_payload['name']}이 {abs(total_diff):.1f}점 차이로 승리했습니다."
+        main_sentence = f"팔자 총점은 {josa(my_payload['name'], '이/가')} {abs(total_diff):.1f}점 차이로 승리했습니다."
     elif total_diff < 0:
-        main_sentence = f"팔자 총점은 {friend_payload['name']}이 {abs(total_diff):.1f}점 차이로 승리했습니다."
+        main_sentence = f"팔자 총점은 {josa(friend_payload['name'], '이/가')} {abs(total_diff):.1f}점 차이로 승리했습니다."
     else:
         main_sentence = "팔자 총점은 비슷함입니다."
 
@@ -6574,14 +6574,23 @@ def josa(word: str, particles: str) -> str:
         josa("산", "은/는")   → "산은"
         josa("나무", "이/가") → "나무가"
     """
+    # 한자 지지 발음 기준 받침 여부 (子~亥)
+    _BRANCH_JONGSEONG = {
+        "子": False, "丑": True,  "寅": True,  "卯": False,
+        "辰": True,  "巳": False, "午": False, "未": False,
+        "申": True,  "酉": False, "戌": True,  "亥": False,
+    }
     if not word:
         return particles.split("/")[0] if "/" in particles else particles
     last = word[-1]
-    code = ord(last)
-    if 0xAC00 <= code <= 0xD7A3:
-        has_jongseong = (code - 0xAC00) % 28 != 0
+    if last in _BRANCH_JONGSEONG:
+        has_jongseong = _BRANCH_JONGSEONG[last]
     else:
-        has_jongseong = last in "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ13678"
+        code = ord(last)
+        if 0xAC00 <= code <= 0xD7A3:
+            has_jongseong = (code - 0xAC00) % 28 != 0
+        else:
+            has_jongseong = last in "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ13678"
     parts = particles.split("/")
     if len(parts) == 2:
         return word + (parts[0] if has_jongseong else parts[1])
@@ -7301,7 +7310,7 @@ def diplomacy_narrative(participants: List[Dict[str, object]]) -> Dict[str, obje
     comments = []
     for row in structure_rows:
         comments.append(
-            f"{row['참가자']}은/는 {row['세력 포지션']}에 가깝고, 관계 성향은 {row['관계 성향']}입니다. "
+            f"{josa(row['참가자'], '은/는')} {row['세력 포지션']}에 가깝고, 관계 성향은 {row['관계 성향']}입니다. "
             f"가장 가까운 축은 {row['가장 가까운 축']}, 조율하면 좋은 축은 {row['가장 조심할 축']}입니다."
         )
 
@@ -7605,7 +7614,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.148"
+APP_VERSION = "v5.149"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -14174,7 +14183,7 @@ def month_background_summary(month_gz: str) -> str:
         return f"월운 {gz} · {stem_el} 기운이 한 달 배경으로 깔립니다. {stem_theme['use']}"
     return (
         f"월운 {gz} · {stem_el}/{branch_el} 기운이 함께 깔리는 달입니다. "
-        f"{stem_el}은 {stem_theme['keyword']}, {branch_el}은 {branch_theme['keyword']} 쪽 배경으로 참고합니다."
+        f"{josa(stem_el, "은/는")} {stem_theme['keyword']}, {josa(branch_el, "은/는")} {branch_theme['keyword']} 쪽 배경으로 참고합니다."
     )
 
 
@@ -15152,7 +15161,7 @@ def build_saju_landscape_model(payload: Dict[str, object]) -> Dict[str, object]:
     root_reason = (f"뿌리는 {', '.join(root_positions)} 쪽에서 확인됩니다." if root_positions else "직접 받치는 뿌리는 약한 편입니다.")
     scene_signature = f"{season_desc} · {soil_kind} · {_water_mode_label(water_mode)}" + (" · 금생수 형상" if metal_supports_water else "")
 
-    one = f"{season_desc} 위에 {stem_meta.get('yin_yang','')}의 {day_name}이 중심이 되고, {dominant[0]} 기운이 장면의 주조를 이룹니다."
+    one = f"{season_desc} 위에 {stem_meta.get('yin_yang','')}의 {josa(day_name, "이/가")} 중심이 되고, {dominant[0]} 기운이 장면의 주조를 이룹니다."
     if metal_supports_water and water_mode in {"stream", "surface", "brook", "moisture"}:
         one += " 금이 물을 생하는 결을 살려, 바위·광물 틈에서 물기가 이어지는 형상을 반영했습니다."
     if primary:
@@ -15609,7 +15618,7 @@ def _compose_saju_landscape_image_prompt(model: Dict[str, object], preset_key: s
         "스타일은 두꺼운 임파스토 유화, 팔레트나이프 질감, 추상적이지만 장면은 읽히는 표현, 감정과 흐름이 살아 있는 회화여야 합니다.",
         "인물은 작게 두고 풍경과 기운의 흐름이 주인공이 되게 합니다.",
         "텍스트, 표, 아이콘, 로고, 워터마크는 넣지 않습니다.",
-        f"주인공 기운은 {model.get('day_stem','')} {model.get('day_name','')}이며 {model.get('yin_yang','')}의 성질을 가집니다.",
+        f"주인공 기운은 {model.get('day_stem','')} {(lambda n: josa(n, "이/") if n else "")(model.get('day_name',''))}며 {model.get('yin_yang','')}의 성질을 가집니다.",
         f"배경은 {model.get('season_desc','')}이고, 풍경의 핵심 배경 서명은 {model.get('scene_signature','')}입니다.",
         f"겉으로 드러난 기운은 {visible}, 지지의 받침은 {branches}입니다.",
         f"강한 기운은 {dominant}, 보완 포인트는 {primary}, 부담 요소는 {burden}입니다.",
@@ -17299,20 +17308,20 @@ def _chem_story_text(mine: dict, friend: dict, compatibility: dict, chem: dict) 
 
     # 점수 이야기
     if score >= 78:
-        score_story = f"어이구, {my_name}이랑 {fr_name} 보게. 궁합점수가 {score:.0f}점이야! 이런 케미 쉽게 보기 힘들거든."
+        score_story = f"어이구, {josa(my_name, "이/")}랑 {fr_name} 보게. 궁합점수가 {score:.0f}점이야! 이런 케미 쉽게 보기 힘들거든."
     elif score >= 65:
-        score_story = f"그래, {my_name}이랑 {fr_name}이 꽤 잘 맞는 사이야. {score:.0f}점이면 좋은 편이거든."
+        score_story = f"그래, {josa(my_name, "이/")}랑 {josa(fr_name, "이/가")} 꽤 잘 맞는 사이야. {score:.0f}점이면 좋은 편이거든."
     elif score >= 50:
-        score_story = f"{my_name}이랑 {fr_name}이 보통 수준의 케미야. {score:.0f}점. 맞는 부분도 있고, 조율도 좀 필요해."
+        score_story = f"{josa(my_name, "이/")}랑 {josa(fr_name, "이/가")} 보통 수준의 케미야. {score:.0f}점. 맞는 부분도 있고, 조율도 좀 필요해."
     elif score >= 35:
-        score_story = f"음, {my_name}이랑 {fr_name}이 좀 다른 결을 가진 사이야. {score:.0f}점이니까, 맞춰가려는 노력이 필요해."
+        score_story = f"음, {josa(my_name, "이/")}랑 {josa(fr_name, "이/가")} 좀 다른 결을 가진 사이야. {score:.0f}점이니까, 맞춰가려는 노력이 필요해."
     else:
-        score_story = f"솔직히 말하면, {my_name}이랑 {fr_name}이 오행 구조가 꽤 달라. {score:.0f}점. 쉽지는 않겠지만, 그래서 서로 배울 것도 더 많은 사이야."
+        score_story = f"솔직히 말하면, {josa(my_name, "이/")}랑 {josa(fr_name, "이/가")} 오행 구조가 꽤 달라. {score:.0f}점. 쉽지는 않겠지만, 그래서 서로 배울 것도 더 많은 사이야."
 
     # 케미 유형 이야기
     type_stories = {
-        "퍼즐형 케미": (f"이 둘은 딱 퍼즐 조각처럼 맞는 사이야. {my_name}이 부족한 걸 {fr_name}이 갖고 있고, "
-                       f"{fr_name}이 약한 부분을 {my_name}이 채워줘. 어, 이런 관계가 오래가는 법이거든."),
+        "퍼즐형 케미": (f"이 둘은 딱 퍼즐 조각처럼 맞는 사이야. {josa(my_name, "이/가")} 부족한 걸 {josa(fr_name, "이/가")} 갖고 있고, "
+                       f"{josa(fr_name, "이/가")} 약한 부분을 {josa(my_name, "이/가")} 채워줘. 어, 이런 관계가 오래가는 법이거든."),
         "거울형 케미": (f"아이고, 이 두 사람 얼마나 닮았는지. 생각하는 방식, 움직이는 리듬, 중요하게 여기는 것들이 "
                        f"비슷비슷해. 말 반만 해도 알아듣는 그런 사이야."),
         "스파크형 케미": (f"이 사이에서는 불꽃이 좀 튀겠어. 서로 자극하고 흔드는 기운이 있거든. 나쁜 게 아니야 — "
@@ -19053,7 +19062,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
     if weak_el and weak_el not in ("-", dominant_el):
         wk_note = element_weak_note.get(weak_el, "")
         st.markdown(
-            f"**결핍 성분 {weak_el}은 고작 {float(weak_pct):.1f}%** — {wk_note}"
+            f"**결핍 성분 {josa(weak_el, "은/는")} 고작 {float(weak_pct):.1f}%** — {wk_note}"
         )
 
     st.divider()
@@ -20645,9 +20654,18 @@ def render_patch_notes() -> None:
 
     PATCH_NOTES = [
         {
-            "version": "v5.144",
+            "version": "v5.149",
             "date": "2026년 5월",
             "tag": "🆕 현재 버전",
+            "tag_color": "#7b1e3d",
+            "items": [
+                ("👥 모임 케미 분석 추가", "여러 명이 함께할 때 모임 전체의 오행 조화와 케미를 분석합니다."),
+            ],
+        },
+        {
+            "version": "v5.144",
+            "date": "2026년 5월",
+            "tag": "이전 버전",
             "tag_color": "#7b1e3d",
             "items": [
                 ("📌 4기둥 8글자 상단 표시", "결과 화면 맨 위에 년주·월주·일주·시주 8글자가 크게 표시됩니다."),
@@ -21498,7 +21516,7 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
           <span style='font-size:11px;color:#5c1126;'>2026년 5월</span>
         </div>
         <div style='font-size:13px;color:#5b2038;line-height:1.9;'>
-          · 내 사주 4기둥 8글자가 결과 화면 상단에 크게 표시됩니다<br>
+          · 모임 케미 분석 기능이 추가되었습니다<br>
           · 올해 처방전에 세운 글자의 합·충·용신·기신 상세 분석 추가<br>
           · 진단서에 신약·신강 판단 근거 / 용신·기신·희신 / 식상생재·재생관·관인상생 흐름 구조 설명 추가<br>
           · 체질·신살 설명이 4~5문장으로 상세하게 확장되었습니다<br>
@@ -22005,7 +22023,7 @@ elif input_mode == "오늘의 뽑기":
     age_basis = DEFAULT_AGE_BASIS
     st.caption(f"자동 산출 공통 기준: {KOREA_DEFAULT_CORRECTION_LABEL} 태양시 보정 · {DEFAULT_AGE_BASIS}.")
 
-    st.info(f"{role_cfg['emoji']} {role_cfg['title']}은 기준일의 월운·일운과, 가능한 경우 대운을 함께 보고 각 원국의 역할 신호를 참고해 '{role_cfg['score_name']}'과 뽑기 칸을 계산합니다. 오늘의 당첨자는 결과 카드 뒤집기로 공개됩니다.")
+    st.info(f"{role_cfg['emoji']} {role_cfg['title']}는 기준일의 월운·일운과, 가능한 경우 대운을 함께 보고 각 원국의 역할 신호를 참고해 '{role_cfg['score_name']}'과 뽑기 칸을 계산합니다. 오늘의 당첨자는 결과 카드 뒤집기로 공개됩니다.")
 
     roster_for_meal = st.session_state.get("saved_participants", [])
     selected_roster_for_meal = []
