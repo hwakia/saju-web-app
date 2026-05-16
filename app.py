@@ -7613,7 +7613,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.151"
+APP_VERSION = "v5.152"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -12530,14 +12530,19 @@ def _climate_character_axis(chart: Chart, result: Dict[str, object]) -> Dict[str
     if balance_gap >= 12:
         return {
             "adj": "활기 있게 표현하는",
-            "tone": "불과 계절감이 살아 있어 따뜻한 추진력과 표현 에너지가 먼저 느껴집니다.",
+            "tone": "불기운과 계절 에너지가 살아 있어서 추진력이랑 표현력이 먼저 느껴지는 사주야. 달아오르기 쉬우니까 가끔씩 식히는 시간도 챙겨봐.",
             "color": "#ef4444",
             "climate_note": "표현과 추진 쪽으로 기울어져 생동감, 속도감, 표현력이 강하게 체감됩니다.",
         }
     if balance_gap <= -12:
-        note = "차가운 기운과 금수의 압력이 커서 판단력·거리감·정리력이 먼저 느껴집니다."
+        note = "차갑고 단단한 기운이 강해서 판단력이랑 거리감, 정리하는 힘이 먼저 느껴지는 사주야."
         if caution_notes:
-            note += " " + " / ".join(caution_notes) + "."
+            note += (
+                " 그런데 여기서 한 가지 더 — 巳(사)·酉(유)·丑(축) 이 세 글자가 원국 지지에 다 있으면"
+                " 사유축 금국(金局)이 성립하거든. 금국이 뭔지 알아? 이 세 글자가 뭉쳐서"
+                " 금 기운을 한꺼번에 키우는 구조야. 그러면 원래 불 기운으로 따뜻함을 줬던 巳의 온기가"
+                " 금 쪽으로 끌려가서 약해지는 거야. 그래서 온도가 생각보다 더 서늘하게 나오는 거거든."
+            )
         return {
             "adj": "차분하게 구조화하는",
             "tone": note,
@@ -12548,14 +12553,14 @@ def _climate_character_axis(chart: Chart, result: Dict[str, object]) -> Dict[str
     if caution_notes:
         return {
             "adj": "겉은 부드럽고 속은 냉철한",
-            "tone": "겉으로는 균형감이 있지만, 합국 구조상 온기가 금 쪽으로 끌려가 실제 체감은 조금 서늘하게 볼 수 있습니다.",
+            "tone": "겉으로는 균형 잡혀 보이는데, 금국 구조상 온기가 금 쪽으로 끌려가고 있어. 실제 체감은 좀 서늘한 편이야. 따뜻한 보완이 도움이 돼.",
             "color": "#f59e0b",
             "climate_note": "표면상 균형과 실제 온도 체감이 다를 수 있습니다. " + " / ".join(caution_notes) + ".",
         }
 
     return {
         "adj": "부드럽게 균형 잡는",
-        "tone": "화와 수가 한쪽으로 크게 치우치지 않아 과열되거나 차갑게 식는 느낌이 덜한 편입니다.",
+        "tone": "화랑 수 기운이 한쪽으로 크게 쏠리지 않아서 과열되거나 차갑게 식는 느낌이 덜한 편이야. 지금 이 균형 잘 유지해봐.",
         "color": "#10b981",
         "climate_note": "전체 온도감과 반응 속도는 비교적 고른 편입니다. 다만 합충과 운의 흐름에 따라 체감은 달라질 수 있습니다.",
     }
@@ -19183,14 +19188,13 @@ def render_hanuneyo_text_explanation(payload, char, result):
     )
 
     # ── 2. 진단명 쉬운 설명 ──────────────────────────────────
+    _diag_full = diag_plain + (f"<br><br>{char_tone}" if char_tone else "")
     st.markdown(
         f"<div style='background:#f8faff;border:1px solid #c7d4f5;padding:10px 14px;"
-        f"border-radius:6px;margin-bottom:4px;font-size:14px;color:#374151;line-height:1.7;'>"
-        f"{diag_plain}</div>",
+        f"border-radius:6px;margin-bottom:4px;font-size:14px;color:#374151;line-height:1.8;'>"
+        f"{_diag_full}</div>",
         unsafe_allow_html=True,
     )
-    if char_tone:
-        st.caption(f"💬 {char_tone}")
 
     st.divider()
 
@@ -21871,13 +21875,9 @@ if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력"
     quick_yaja = st.checkbox("야자시 모드 시도", value=False, key="single_quick_yaja")
     quick_age_basis = DEFAULT_AGE_BASIS
     st.caption(f"자동 산출 기준: {KOREA_DEFAULT_CORRECTION_LABEL} 태양시 보정 · {DEFAULT_AGE_BASIS}.")
-    quick_consent = st.checkbox("본인 정보 또는 입력 권한이 있는 정보입니다.", value=False, key="single_quick_consent")
     analyze_clicked = st.button("빠른 입력으로 분석 시작", type="primary", use_container_width=True, key="single_quick_start")
     st.caption("형식 예시는 날짜·시간 형식만 안내합니다. 시간 입력을 생략하면 시주 미상 삼주 간이 분석으로 진행됩니다.")
     if analyze_clicked:
-        if not quick_consent:
-            st.warning("분석을 진행하려면 정보 입력 권한 확인이 필요합니다.")
-            st.stop()
         try:
             parsed = parse_quick_single_line(quick_line)
             correction_minutes = LOCATION_CORRECTION_MINUTES[KOREA_DEFAULT_CORRECTION_LABEL]
@@ -21967,7 +21967,6 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
             b_time = manual_time_input("태어난 시간", time(12, 0), key="single_time_text")
     with time_row[1]:
         use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
-        consent_auto = st.checkbox("입력 권한 확인", value=False, key="auto_consent")
 
     age_basis = DEFAULT_AGE_BASIS
     correction_label = KOREA_DEFAULT_CORRECTION_LABEL
@@ -21977,6 +21976,9 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
         st.session_state["_my_saju_prefill_notice_v5138"] = False
+
+    auto_run_clicked = bool(st.session_state.pop("_my_saju_auto_run_pending_v5140", False))
+    analyze_clicked = st.button("분석 시작", type="primary", use_container_width=True, key="auto_start")
 
     render_my_saju_save_link_tool(
         single_auto_name or "나",
@@ -21989,18 +21991,12 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
         key_prefix="single_auto_my_saju_save_v5138",
     )
 
-    auto_run_clicked = bool(st.session_state.pop("_my_saju_auto_run_pending_v5140", False))
-    analyze_clicked = st.button("분석 시작", type="primary", use_container_width=True, key="auto_start")
-
     if analyze_clicked or auto_run_clicked:
         if b_date is None:
             st.error("생년월일을 8자리 숫자 또는 YYYY-MM-DD 형식으로 입력해 주세요. 예: YYYYMMDD")
             st.stop()
         if not time_unknown and b_time is None:
             st.error("태어난 시간을 3~4자리 숫자 또는 HH:MM 형식으로 입력해 주세요. 예: HHMM")
-            st.stop()
-        if not consent_auto:
-            st.warning("자동 산출을 진행하려면 정보 입력 권한 확인이 필요합니다.")
             st.stop()
         if b_time is None:
             if Solar is None:
