@@ -7614,7 +7614,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.150"
+APP_VERSION = "v5.151"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -19458,16 +19458,24 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 _prof = {}
             _summary = str(_prof.get("summary", "") or "")
             _meaning = str(_prof.get("meaning", "") or "")
+            _how     = str(_prof.get("how", "") or "")
             _icon    = str(_prof.get("icon", "🎴") or "🎴")
             _doc_txt = _SH_DOC_TEXT.get(_sn, "")
             _em, _tag, _bg, _bc = _SH_TONE.get(_sn, ("🎴", "보조 신호", "#f9fafb", "#6b7280"))
             _rsign   = f"+{_reflect:.1f}" if _reflect > 0 else f"{_reflect:.1f}" if _reflect < 0 else "±0"
+            # 성립 조건 섹션 (how 있을 때만)
+            _how_section = (
+                f"<div style='background:rgba(255,255,255,0.6);border-left:3px solid #94a3b8;"
+                f"margin-top:8px;padding:7px 10px;border-radius:4px;"
+                f"font-size:12px;color:#475569;line-height:1.8;'>"
+                f"\U0001f4cc <b>어떻게 성립하냐면</b> \u2014 {_how}</div>"
+            ) if _how else ""
             # 의사 텍스트 카드 (있을 때만)
             _doc_section = (
                 f"<div style='background:rgba(255,255,255,0.7);border-left:3px solid {_bc};"
                 f"margin-top:8px;padding:8px 10px;border-radius:4px;"
                 f"font-size:13px;color:#1f2937;line-height:1.8;'>"
-                f"💬 {_doc_txt}</div>"
+                f"\U0001f4ac {_doc_txt}</div>"
             ) if _doc_txt else ""
             st.markdown(
                 f"<div style='background:{_bg};border:1px solid {_bc};border-radius:10px;"
@@ -19483,6 +19491,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 f"<div style='font-size:13px;color:#374151;line-height:1.7;margin-bottom:4px;'>"
                 f"{_summary}</div>"
                 f"<div style='font-size:12px;color:#6b7280;line-height:1.6;'>{_meaning}</div>"
+                f"{_how_section}"
                 f"{_doc_section}"
                 f"</div>",
                 unsafe_allow_html=True,
@@ -19505,6 +19514,18 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _fw_idx = float(result.get("strength_index", 50) or 50)
         _fw_lbl = str(result.get("strength_label", "중화"))
         _fw_detail = result.get("strength_detail", {}) or {}
+        st.markdown(
+            "<div style='background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;"
+            "padding:10px 14px;margin-bottom:10px;font-size:12px;color:#0369a1;line-height:1.9;'>"
+            "💡 <b>십성 용어 간단 풀이</b><br>"
+            "• <b>비겁(比劫)</b> — 나와 같은 오행, 동료·경쟁자 에너지야. 자아 강도랑 연결돼.<br>"
+            "• <b>인성(印星)</b> — 나를 키워주는 기운이야. 공부, 배움, 환경·어머니 에너지야.<br>"
+            "• <b>식상(食傷)</b> — 내가 표현하고 만들어내는 기운이야. 창의, 행동, 자식 에너지야.<br>"
+            "• <b>재성(財星)</b> — 내가 활용하고 관리하는 기운이야. 돈, 물질, 아버지 에너지야.<br>"
+            "• <b>관성(官星)</b> — 나를 통제하고 다듬는 기운이야. 조직, 책임, 남편·직업 에너지야."
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
         _STRENGTH_WHY = {
             "극신강": (
@@ -19555,32 +19576,102 @@ def render_hanuneyo_text_explanation(payload, char, result):
             "金": "쇠·결단·끊고 정리하는 기운",
             "水": "물·지혜·흘러가는 기운",
         }
+        # 용신·기신 개념 설명 (할머니 말투)
+        _YONG_CONCEPT = (
+            "용신이 뭔지부터 얘기해줄게. 사주에서 <b>용신(用神)</b>이란 "
+            "이 원국의 균형을 잡아주는 핵심 기운이야 — 내 사주가 어느 쪽으로 쏠려 있으면, "
+            "그걸 보완해주는 방향의 오행이 용신이 되는 거거든. "
+            "<b>희신(喜神)</b>은 용신을 도와주는 기운이고, "
+            "<b>기신(忌神)</b>은 반대로 부담을 키우는 기운이야. "
+            "이건 절대 불변의 나쁜 기운이 아니야 — 내 원국 구조상 '지금은 이 방향이 편하다'는 신호야."
+        )
+        def _yong_logic_explain(logic_str):
+            if not logic_str:
+                return ""
+            if "신강" in logic_str or "식상·재성" in logic_str:
+                return (
+                    "이 사주는 일간이 강한 <b>신강(身强)</b> 구조야. "
+                    "신강이란 나를 도와주는 기운(비겁·인성)이 원국에 넘친다는 뜻이야. "
+                    "힘이 넘치면 출구가 필요하거든 — 그래서 내가 쓰고 표현하는 기운(<b>식상·재성</b>)이 용신이야. "
+                    "<b>비겁(比劫)</b>은 나와 같은 기운, <b>인성(印星)</b>은 날 키워주는 기운인데 "
+                    "이미 충분하니까 더 받으면 오히려 부담이야."
+                )
+            elif "신약" in logic_str or "인성·비겁" in logic_str:
+                return (
+                    "이 사주는 일간이 약한 <b>신약(身弱)</b> 구조야. "
+                    "신약이란 나를 빼가는 기운(재성·관성·식상)이 받쳐주는 기운보다 많다는 뜻이야. "
+                    "약한 나를 키워줘야 하니까 <b>인성(印星·날 키우는 기운)</b>과 "
+                    "<b>비겁(比劫·동료 기운)</b>이 용신이 되는 거야. "
+                    "<b>재성(財星)</b>은 내가 활용하는 기운, <b>관성(官星)</b>은 날 제어하는 기운인데 "
+                    "약한 상태에서 더 쓰면 버거워지니까 기신 방향이야."
+                )
+            elif "중화" in logic_str or "조후" in logic_str:
+                return (
+                    "이 사주는 강약이 대체로 균형 잡힌 <b>중화(中和)</b> 구조야. "
+                    "강약보다 사주의 온도 균형, 즉 <b>조후(調候)</b>가 더 중요해. "
+                    "조후란 사주 안의 차갑고 뜨거운 기운이 잘 섞여 있냐는 거야 — "
+                    "너무 뜨거우면 서늘한 기운이, 너무 차가우면 따뜻한 기운이 용신이 돼."
+                )
+            elif "통관" in logic_str:
+                return (
+                    "이 사주에는 두 기운이 강하게 충돌하는 구조가 있어 — 이걸 <b>통관(通關)</b> 상황이라고 해. "
+                    "두 기운이 싸울 때 사이에서 중재해주는 오행이 <b>통관용신</b>이야. "
+                    "충돌을 직접 해결하려 하지 말고, 이 가운데 기운을 살려주는 환경이 이 사주에 보약이거든."
+                )
+            return ""
+        _logic_explain = _yong_logic_explain(_fw_logic)
+        # 개념 설명 박스 (용신 개념 + 선정 원리)
+        st.markdown(
+            f"<div style='background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;"
+            f"padding:11px 14px;margin-bottom:10px;'>"
+            f"<div style='font-size:12px;color:#6b7280;font-weight:700;margin-bottom:5px;'>💡 용신·기신이 뭔지 알고 보면 달라</div>"
+            f"<div style='font-size:13px;color:#374151;line-height:1.95;'>{_YONG_CONCEPT}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        if _logic_explain:
+            st.markdown(
+                f"<div style='background:#f8f0ff;border-left:4px solid #7c3aed;padding:10px 14px;"
+                f"border-radius:6px;margin-bottom:10px;'>"
+                f"<div style='font-size:12px;color:#7c3aed;font-weight:700;margin-bottom:4px;'>🧩 이 사주의 용신 선정 원리</div>"
+                f"<div style='font-size:13px;color:#374151;line-height:1.95;'>{_logic_explain}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
         if _fw_primary:
+            _primary_items = "".join(f"<b>{e}</b> ({_EL_DESC.get(e, e)})<br>" for e in _fw_primary)
             st.markdown(
                 f"<div style='background:#f0fdf4;border-left:4px solid #16a34a;padding:10px 14px;"
                 f"border-radius:6px;margin-bottom:8px;'>"
                 f"<div style='font-size:12px;color:#16a34a;font-weight:700;margin-bottom:4px;'>💚 용신 / 희신 (도움이 되는 기운)</div>"
                 f"<div style='font-size:13px;color:#374151;line-height:1.9;'>"
-                + "".join(f"<b>{e}</b> ({_EL_DESC.get(e, e)})<br>" for e in _fw_primary) +
-                f"<span style='font-size:12px;color:#16a34a;'>이 기운이 들어오는 환경, 계절, 사람 옆에 있으면 체감이 좋아지거든.</span>"
+                f"{_primary_items}"
+                f"<span style='font-size:12px;color:#16a34a;line-height:1.9;'>"
+                f"이 오행이 강한 계절·환경·직업·사람 옆에 있으면 몸이 편해지고 흐름이 열려. "
+                f"이 방향 색깔이나 방위도 이 사주엔 잘 맞아."
+                f"</span>"
                 f"</div></div>",
                 unsafe_allow_html=True,
             )
         if _fw_burden:
+            _burden_items = "".join(f"<b>{e}</b> ({_EL_DESC.get(e, e)})<br>" for e in _fw_burden)
             st.markdown(
                 f"<div style='background:#fef2f2;border-left:4px solid #dc2626;padding:10px 14px;"
                 f"border-radius:6px;margin-bottom:8px;'>"
                 f"<div style='font-size:12px;color:#dc2626;font-weight:700;margin-bottom:4px;'>❌ 기신 (부담이 되는 기운)</div>"
                 f"<div style='font-size:13px;color:#374151;line-height:1.9;'>"
-                + "".join(f"<b>{e}</b> ({_EL_DESC.get(e, e)})<br>" for e in _fw_burden) +
-                f"<span style='font-size:12px;color:#dc2626;'>이 기운이 넘치면 원국이 버거워져. 완전히 피할 순 없지만 줄이면 훨씬 편해져.</span>"
+                f"{_burden_items}"
+                f"<span style='font-size:12px;color:#dc2626;line-height:1.9;'>"
+                f"이 기운이 넘치면 원국이 버거워져. 기신이 아예 없을 순 없어 — "
+                f"다만 이 방향이 강해지는 시기엔 무리하지 않는 게 현명해."
+                f"</span>"
                 f"</div></div>",
                 unsafe_allow_html=True,
             )
         if _fw_cond:
             st.caption(f"조건부 참고 기운: {', '.join(_fw_cond)} — 상황에 따라 도움이 되기도 해.")
         if _fw_logic:
-            st.caption(f"선정 원리: {_fw_logic}")
+            st.caption(f"선정 원리 요약: {_fw_logic}")
 
         st.markdown("#### 🔗 원국 합·충 구조")
         _fw_inter = result.get("interactions", []) or []
@@ -19673,6 +19764,8 @@ def render_hanuneyo_text_explanation(payload, char, result):
             st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
     st.caption("이 진단서는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
+
+
 
 
 def render_single_summary(payload: Dict[str, object]) -> None:
