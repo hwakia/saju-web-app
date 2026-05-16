@@ -8969,6 +8969,89 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-side-pad: .72rem;
 }
 .stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+/* ── 라디오 버튼 전면 다크 ── */
+[data-testid="stRadio"] > div { gap: 8px !important; }
+[data-testid="stRadio"] label {
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
+    border-radius: 999px !important;
+    padding: 6px 14px !important;
+    color: #e8d0d8 !important;
+    cursor: pointer !important;
+}
+[data-testid="stRadio"] label:has(input:checked) {
+    background-color: #7b1e3d !important;
+    border-color: #e879a0 !important;
+    color: #fff !important;
+}
+[data-testid="stRadio"] label span { color: inherit !important; }
+/* 라디오 원형 마커 숨기기 (pill 스타일로) */
+[data-testid="stRadio"] label div[data-baseweb="radio"] { display: none !important; }
+
+/* ── 텍스트 인풋 다크 (재강화) ── */
+[data-testid="stTextInput"] > div > div {
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    border-radius: 8px !important;
+}
+[data-testid="stTextInput"] input {
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    caret-color: #e879a0 !important;
+}
+[data-testid="stTextInput"] input:focus,
+[data-testid="stTextInput"] > div > div:focus-within {
+    border-color: #e879a0 !important;
+    box-shadow: 0 0 0 2px rgba(232,121,160,0.20) !important;
+}
+
+/* ── 체크박스 다크 ── */
+[data-testid="stCheckbox"] label {
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    color: #e8d0d8 !important;
+}
+[data-testid="stCheckbox"] label:has(input:checked) {
+    background-color: #3a1e2c !important;
+    border-color: #e879a0 !important;
+}
+
+/* ── 셀렉트박스 다크 ── */
+[data-testid="stSelectbox"] > div > div {
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    color: #e8d0d8 !important;
+    border-radius: 8px !important;
+}
+[data-testid="stSelectbox"] svg { fill: #e879a0 !important; }
+
+/* ── 날짜/시간 인풋 ── */
+[data-testid="stDateInput"] > div,
+[data-testid="stTimeInput"] > div {
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    border-radius: 8px !important;
+}
+[data-testid="stDateInput"] input,
+[data-testid="stTimeInput"] input { background-color: #2a1520 !important; color: #e8d0d8 !important; }
+
+/* ── 버튼 secondary 재강화 ── */
+[data-testid="stBaseButton-secondary"] > div,
+.stButton button:not([kind="primary"]) {
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
+    border-radius: 999px !important;
+}
+
+/* ── 인풋 라벨 ── */
+[data-testid="stTextInput"] label,
+[data-testid="stRadio"] > label,
+[data-testid="stCheckbox"] > label,
+[data-testid="stSelectbox"] > label { color: #d4a0b8 !important; font-weight: 600 !important; }
+
 /* 전역 카드/박스 다크 오버라이드 */
 [data-testid="stMetric"],
 [data-testid="metric-container"] { background-color: #2a1520 !important; border-radius: 12px !important; }
