@@ -19402,17 +19402,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
         return "".join(parts)
 
     _grandma_intro_html = _make_grandma_intro()
-    st.markdown(
-        f"<div style='background:linear-gradient(135deg,#fff8f8 0%,#fdf0f4 100%);"
-        f"border:1.5px solid #e8b4c4;border-radius:10px;padding:16px 18px;"
-        f"margin-bottom:14px;'>"
-        f"<div style='font-size:12px;font-weight:700;color:#8b2252;margin-bottom:10px;'>"
-        f"💬 할머니 한마디 — 이 사주 이렇게 읽어</div>"
-        f"<div style='font-size:14px;color:#f0d8e8;line-height:2.0;'>"
-        f"{_grandma_intro_html}</div>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
 
     # ── 1. 진단명 카드 (일주 설명 통합) ──────────────────────
     diag_line1, diag_line2 = diagnosis_name.split("\n")
@@ -19425,32 +19414,34 @@ def render_hanuneyo_text_explanation(payload, char, result):
         "주의 필요"
     )
     st.markdown(
-        f"<div style='background:#0d1828;border-left:4px solid #3B5BDB;padding:14px 16px;"
+        f"<div style='background:#1e1018;border-left:4px solid #e879a0;padding:14px 16px;"
         f"border-radius:8px;margin-bottom:10px;'>"
         f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
-        f"<div style='font-size:11px;color:#a0b4bc;letter-spacing:1px;margin-bottom:6px;'>진단서</div>"
-        f"<div style='font-size:11px;background:#3B5BDB;color:#fff;border-radius:4px;"
+        f"<div style='font-size:11px;color:#c090a8;letter-spacing:1px;margin-bottom:6px;'>진단서</div>"
+        f"<div style='font-size:11px;background:#7b1e3d;color:#fff;border-radius:4px;"
         f"padding:2px 8px;font-weight:700;'>총점 {_total_score:.0f}점 · {_score_label}</div>"
         f"</div>"
-        f"<div style='font-size:13px;color:#4b5563;margin-bottom:4px;'>{diag_line1}</div>"
-        f"<div style='font-size:17px;font-weight:700;color:#93c5fd;line-height:1.5;margin-bottom:10px;'>{diag_line2}</div>"
-        f"<div style='border-top:1px solid #c7d4f5;padding-top:8px;'>"
-        f"<div style='font-size:12px;color:#b0c4cc;margin-bottom:3px;'>"
-        f"<span style='font-weight:600;color:#3B5BDB;'>일간 {day_stem}</span>&nbsp;"
+        f"<div style='font-size:13px;color:#c090a8;margin-bottom:4px;'>{diag_line1}</div>"
+        f"<div style='font-size:17px;font-weight:700;color:#f0b8d0;line-height:1.5;margin-bottom:10px;'>{diag_line2}</div>"
+        f"<div style='border-top:1px solid rgba(232,121,160,0.20);padding-top:8px;'>"
+        f"<div style='font-size:12px;color:#d4a0b8;margin-bottom:3px;'>"
+        f"<span style='font-weight:600;color:#e879a0;'>일간 {day_stem}</span>&nbsp;"
         f"{stem_name} — {stem_desc}</div>"
-        f"<div style='font-size:12px;color:#b0c4cc;'>"
-        f"<span style='font-weight:600;color:#3B5BDB;'>일지 {day_branch}</span>&nbsp;"
+        f"<div style='font-size:12px;color:#d4a0b8;'>"
+        f"<span style='font-weight:600;color:#e879a0;'>일지 {day_branch}</span>&nbsp;"
         f"{branch_name} — {branch_desc}</div>"
         f"</div></div>",
         unsafe_allow_html=True,
     )
 
-    # ── 2. 진단명 쉬운 설명 ──────────────────────────────────
-    _diag_full = diag_plain + (f"<br><br>{char_tone}" if char_tone else "")
+    # ── 2. 진단 통합 설명 (체질·강약·오행·용신 + 할머니 말투) ──────
+    _grandma_part = f"<div style='margin-bottom:12px;line-height:2.0;'>{_grandma_intro_html}</div>" if _grandma_intro_html else ""
+    _diag_body = diag_plain + (f"<br><br>{char_tone}" if char_tone else "")
     st.markdown(
-        f"<div style='background:#1a1428;border:1px solid #3040a0;padding:10px 14px;"
-        f"border-radius:6px;margin-bottom:4px;font-size:14px;color:#ddd0d8;line-height:1.8;'>"
-        f"{_diag_full}</div>",
+        f"<div style='background:#1e1018;border:1px solid rgba(232,121,160,0.25);"
+        f"border-radius:10px;padding:16px 18px;margin-bottom:4px;"
+        f"font-size:14px;color:#e8d0d8;line-height:1.9;'>"
+        f"{_grandma_part}{_diag_body}</div>",
         unsafe_allow_html=True,
     )
 
