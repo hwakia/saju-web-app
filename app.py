@@ -22525,13 +22525,9 @@ elif input_mode in ["케미 분석", "친구와 배틀"]:
                     "direct_values": [ys, yb, ms, mb, ds, db, hs, hb, gender],
                 })
 
-    consent_battle = st.checkbox("모든 케미 참가자의 정보를 입력할 권한 또는 동의를 받았습니다.", value=False, key="friend_battle_consent")
     analyze_clicked = st.button("케미 분석 시작", type="primary", use_container_width=True, key="friend_battle_start")
 
     if analyze_clicked:
-        if not consent_battle:
-            st.warning("케미 분석을 하려면 모든 참가자의 정보 입력 동의 확인이 필요합니다.")
-            st.stop()
         if len(selected_roster_for_battle) > int(participant_count):
             st.error("입력된 사람이 2명을 초과했습니다.")
             st.stop()
@@ -22642,13 +22638,9 @@ elif input_mode == "__legacy_group_disabled__":
                     "direct_values": [ys, yb, ms, mb, ds, db, hs, hb, gender],
                 })
 
-    consent_multi = st.checkbox("모든 참가자의 정보를 입력할 권한 또는 동의를 받았습니다.", value=False, key="multi_consent")
     analyze_clicked = st.button("모두의 케미 시작", type="primary", use_container_width=True, key="multi_start")
 
     if analyze_clicked:
-        if not consent_multi:
-            st.warning("케미 분석을 하려면 모든 참가자의 정보 입력 동의 확인이 필요합니다.")
-            st.stop()
         correction_minutes = LOCATION_CORRECTION_MINUTES[correction_label]
         try:
             participants = []
@@ -22790,15 +22782,11 @@ elif input_mode == "오늘의 뽑기":
                     "direct_values": [ys, yb, ms, mb, ds, db, hs, hb, gender],
                 })
 
-    consent_meal = st.checkbox("모든 참가자의 정보를 입력할 권한 또는 동의를 받았습니다.", value=False, key="meal_consent")
     analyze_clicked = st.button(f"{role_cfg['emoji']} {role_cfg['title']} 돌리기", type="primary", use_container_width=True, key="meal_start")
 
     if analyze_clicked:
         if meal_date is None:
             st.error("뽑기 기준일을 YYYY-MM-DD 형식으로 입력해 주세요.")
-            st.stop()
-        if not consent_meal:
-            st.warning("오늘의 뽑기를 진행하려면 모든 참가자의 정보 입력 동의 확인이 필요합니다.")
             st.stop()
         if Solar is None:
             st.error("오늘의 뽑기는 기준일의 월운·일운 산출이 필요하므로 lunar_python이 설치되어 있어야 합니다. requirements.txt를 확인하세요.")
