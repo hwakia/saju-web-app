@@ -8969,6 +8969,92 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-side-pad: .72rem;
 }
 .stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
+/* ══ 입력 필드 완전 다크 (Streamlit 내부 구조 전부 공략) ══ */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="search"],
+textarea {
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    border-radius: 8px !important;
+}
+/* Streamlit baseweb input wrapper */
+div[data-baseweb="input"],
+div[data-baseweb="base-input"],
+div[data-baseweb="textarea"] {
+    background-color: #2a1520 !important;
+    border-color: rgba(232,121,160,0.30) !important;
+}
+div[data-baseweb="input"] input,
+div[data-baseweb="base-input"] input,
+div[data-baseweb="textarea"] textarea {
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+}
+
+/* ══ 라디오 버튼 완전 다크 (Streamlit baseweb 전부 공략) ══ */
+/* 라디오 그룹 전체 */
+div[role="radiogroup"] { gap: 8px !important; }
+
+/* 모든 라디오 라벨 — 미선택 */
+div[role="radiogroup"] label,
+div[data-testid="stRadio"] label,
+[data-baseweb="radio-group"] label {
+    background-color: #2a1520 !important;
+    border: 1.5px solid rgba(232,121,160,0.40) !important;
+    border-radius: 999px !important;
+    padding: 7px 16px !important;
+    color: #c090a8 !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+}
+
+/* 선택된 라디오 */
+div[role="radiogroup"] label:has(input:checked),
+div[data-testid="stRadio"] label:has(input:checked),
+[data-baseweb="radio-group"] label:has(input:checked) {
+    background-color: #7b1e3d !important;
+    border-color: #e879a0 !important;
+    color: #ffffff !important;
+}
+
+/* 라디오 원형 도트 숨기기 */
+div[role="radiogroup"] label svg,
+div[data-testid="stRadio"] label svg,
+[data-baseweb="radio"] svg { display: none !important; }
+div[data-baseweb="radio"] { width: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
+
+/* ══ 체크박스 다크 ══ */
+div[data-baseweb="checkbox"] label,
+div[data-testid="stCheckbox"] label {
+    background-color: #2a1520 !important;
+    border: 1.5px solid rgba(232,121,160,0.35) !important;
+    border-radius: 10px !important;
+    padding: 7px 14px !important;
+    color: #d4a0b8 !important;
+}
+div[data-baseweb="checkbox"] label:has(input:checked),
+div[data-testid="stCheckbox"] label:has(input:checked) {
+    background-color: #3a1e2c !important;
+    border-color: #e879a0 !important;
+    color: #f0b8d0 !important;
+}
+div[data-baseweb="checkbox"] svg { color: #e879a0 !important; }
+
+/* ══ 셀렉트박스 내부 ══ */
+div[data-baseweb="select"] > div {
+    background-color: #2a1520 !important;
+    border-color: rgba(232,121,160,0.30) !important;
+    color: #e8d0d8 !important;
+}
+div[data-baseweb="popover"] { background-color: #2a1520 !important; }
+div[data-baseweb="menu"] { background-color: #2a1520 !important; }
+div[data-baseweb="option"] { background-color: #2a1520 !important; color: #e8d0d8 !important; }
+div[data-baseweb="option"]:hover { background-color: #3a1e2c !important; }
+
 /* 라디오 baseweb 강제 다크 */
 [data-baseweb="radio"] + div,
 label[data-baseweb="radio"],
