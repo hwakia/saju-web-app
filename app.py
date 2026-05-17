@@ -23660,4 +23660,131 @@ elif payload.get("multi"):
     st.markdown("#### 다음에 할 일")
     multi_storage_mode = st.radio("보관 방식", ["원국 보관", "생년월일시까지 보관"], index=0, key="multi_storage_mode", horizontal=True)
     if multi_storage_mode == "생년월일시까지 보관":
-  
+          st.caption("자동 산출 참가자 중 생년월일시와 대운 정보가 있는 사람만 생년월일시까지 보관됩니다. 직접 원국 입력자는 원국 보관으로 처리됩니다.")
+    save_cols = st.columns(3)
+    selected_to_save = []
+    for idx, p in enumerate(participants):
+        if st.checkbox(f"{p['name']} 보관", key=f"multi_save_pick_{idx}"):
+            selected_to_save.append(p)
+    with save_cols[0]:
+        if st.button("선택 참가자 보관", use_container_width=True, key="multi_save_selected"):
+            if not selected_to_save:
+                st.warning("보관할 참가자를 선택하세요.")
+            else:
+                for p in selected_to_save:
+                    st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
+                st.success(f"{len(selected_to_save)}명을 보관함에 추가했습니다.")
+    with save_cols[1]:
+        if st.button("전체 보관", use_container_width=True, key="multi_save_all"):
+            for p in participants:
+                st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
+            st.success("모든 참가자를 보관함에 추가했습니다.")
+    with save_cols[2]:
+        if st.button("이 멤버로 오늘의 뽑기", type="primary", use_container_width=True, key="multi_to_today_roulette"):
+            st.session_state.prefill_roulette_participants = normalize_participant_names(list(participants))
+            reset_navigation_to("오늘의 뽑기")
+            st.rerun()
+
+
+    if safe_toggle("리포트 다운로드", value=False, key="multi_report_toggle"):
+        report = make_multi_report(participants, summary)
+        _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        st.download_button(
+            label="케미 분석 리포트 다운로드",
+            data=report.encode("utf-8"),
+            file_name=f"palja_multi_battle_report_{_ts}.md",
+            mime="text/markdown",
+            key="download_multi_battle_report",
+        )
+
+
+elif payload.get("multi_chem"):
+    participants = payload["participants"]
+    st.markdown(
+        f"<span class='summary-chip'>모드: 모임 케미</span>"
+        f"<span class='summary-chip'>참가자 수: {len(participants)}명</span>"
+        f"<span class='summary-chip'>태양시 보정: {payload.get('correction_label', '한국 평균 -30분')}</span>",
+        unsafe_allow_html=True,
+    )
+    render_multi_chem_result(participants)
+
+elif not payload.get("battle"):
+        render_single_summary(payload)
+
+
+# ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
+st.markdown("""
+<script>
+(function injectDarkStyle() {
+    var css =
+        /* 라디오 버튼 */
+        '[data-testid=\"stRadio\"] label,' +
+        'div[role=\"radiogroup\"] label {' +
+        '  background-color:#2a1520!important;' +
+        '  border:1.5px solid rgba(232,121,160,0.40)!important;' +
+        '  border-radius:999px!important;' +
+        '  color:#c090a8!important;' +
+        '  padding:6px 16px!important;' +
+        '  transition:none!important;' +
+        '}' +
+        '[data-testid=\"stRadio\"] label:has(input:checked),' +
+        'div[role=\"radiogroup\"] label:has(input:checked) {' +
+        '  background-color:#7b1e3d!important;' +
+        '  border-color:#e879a0!important;' +
+        '  color:#ffffff!important;' +
+        '}' +
+        '[data-testid=\"stRadio\"] label p,' +
+        'div[role=\"radiogroup\"] label p {' +
+        '  color:inherit!important;' +
+        '}' +
+        /* 입력 wrapper */
+        'div[data-baseweb=\"base-input\"],' +
+        'div[data-baseweb=\"input\"] {' +
+        '  background-color:#2a1520!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '}' +
+        /* 입력 필드 */
+        'div[data-baseweb=\"base-input\"] input,' +
+        'div[data-baseweb=\"input\"] input,' +
+        'input[type=\"text\"],input[type=\"number\"] {' +
+        '  background-color:#2a1520!important;' +
+        '  color:#e8d0d8!important;' +
+        '  caret-color:#e879a0!important;' +
+        '}' +
+        /* 셀렉트박스 */
+        'div[data-baseweb=\"select\"] > div {' +
+        '  background-color:#2a1520!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '  color:#e8d0d8!important;' +
+        '}' +
+        /* 드롭다운 옵션 */
+        'ul[data-baseweb=\"menu\"],li[role=\"option\"] {' +
+        '  background-color:#2a1520!important;' +
+        '  color:#e8d0d8!important;' +
+        '}' +
+        'li[role=\"option\"]:hover {' +
+        '  background-color:#3d1a2b!important;' +
+        '}' +
+        /* number_input 버튼 */
+        'button[data-testid=\"stNumberInputStepDown\"],' +
+        'button[data-testid=\"stNumberInputStepUp\"] {' +
+        '  background-color:#3d1a2b!important;' +
+        '  color:#e8d0d8!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '}';
+
+    var style = document.createElement('style');
+    style.id = 'saju-dark-override';
+    style.textContent = css;
+
+    function inject() {
+        if (!document.getElementById('saju-dark-override')) {
+            (document.head || document.documentElement).appendChild(style.cloneNode(true));
+        }
+    }
+    inject();
+    document.addEventListener('DOMContentLoaded', inject);
+    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
+})();
+</script>
+""", unsafe_allow_html=True)
