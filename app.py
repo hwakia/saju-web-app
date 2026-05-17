@@ -8837,11 +8837,9 @@ div[data-testid="stRadio"] span {
     margin: .9rem 0 1rem 0;
     padding: 1rem 1.05rem;
     border-radius: 24px;
-    border: 1px solid rgba(16,185,129,.24);
-    background:
-        radial-gradient(circle at 8% 12%, rgba(255,255,255,.96), transparent 34%),
-        linear-gradient(135deg,#ecfdf5 0%,#fff7fb 54%,#fffaf0 100%);
-    box-shadow: 0 14px 30px rgba(16,185,129,.08);
+    border: 1px solid rgba(16,185,129,.30);
+    background: linear-gradient(135deg,#0d1e14 0%,#1a1028 54%,#1e1018 100%);
+    box-shadow: 0 14px 30px rgba(16,185,129,.06);
 }
 .today-compass-head {
     display:flex;
@@ -15433,17 +15431,9 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
 
     if "중첩" in interaction_overview:
         st.caption("※ 같은 지지쌍에서 합·형·파가 함께 잡히는 경우는 복합 신호로 묶어 표시합니다.")
-    st.caption("세부 천간·지지, 원국 반응, 합충 상세는 아래 상세 보기에서 확인하세요.")
+    st.caption("세부 천간·지지, 원국 반응, 합충 상세는 아래에서 확인하세요.")
 
-    detail_choice = _ORIGINAL_ST_RADIO(
-        "🌤 오늘의 처방 상세 보기",
-        ["감추기", "상세 보기"],
-        index=0,
-        horizontal=True,
-        key="today_luck_detail_visibility_v5130",
-        help="첫 화면은 핵심만 보고, 필요할 때만 상세 내용을 펼칩니다.",
-    )
-    if detail_choice == "상세 보기":
+    with st.expander("🌤 오늘의 처방 상세 보기", expanded=False):
         render_today_compass_card(payload)
 
 
