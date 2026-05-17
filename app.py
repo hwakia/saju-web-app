@@ -23841,4 +23841,10 @@ _stcomp.html("""
         if (!document.getElementById('saju-dark-override')) {
             (document.head || document.documentElement).appendChild(style.cloneNode(true));
         }
-   
+    }
+    inject();
+    document.addEventListener('DOMContentLoaded', inject);
+    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
+})();
+</script>
+""", height=0, scrolling=False)
