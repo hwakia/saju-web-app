@@ -14296,15 +14296,42 @@ def _render_flow_pipeline_card(chart: Chart, result: Dict[str, object], row: Dic
             segment_notes.append(f"{el}→{next_el}: {seg_note}")
             nodes.append(_pipe_segment_html(seg_score))
 
+    # 원국 근거 HTML 구성
+    _source_items = []
+    for _role, _el in elements:
+        _srcs = _element_sources_for_chart(chart, _el)
+        if _srcs:
+            _src_text = ", ".join(_srcs[:2])
+            _source_items.append(
+                f"<div style='margin-bottom:5px;'>"
+                f"<span style='font-size:11px;font-weight:800;color:#f472b6;'>{html.escape(_role)} ({html.escape(_el)})</span>"
+                f"<span style='font-size:11px;color:#888;margin:0 5px;'>→</span>"
+                f"<span style='font-size:11px;color:#b0a8c0;'>{html.escape(_src_text)}</span>"
+                f"</div>"
+            )
+        else:
+            _source_items.append(
+                f"<div style='margin-bottom:5px;'>"
+                f"<span style='font-size:11px;font-weight:800;color:#f472b6;'>{html.escape(_role)} ({html.escape(_el)})</span>"
+                f"<span style='font-size:11px;color:#888;margin:0 5px;'>→</span>"
+                f"<span style='font-size:11px;color:#665060;'>원국에 직접 확인 안 됨 (운에서 보완 가능)</span>"
+                f"</div>"
+            )
+    _source_block = (
+        "<div style='background:#1a0e18;border-left:3px solid rgba(244,114,182,.35);"
+        "border-radius:0 6px 6px 0;padding:8px 12px;margin-top:8px;'>"
+        "<div style='font-size:11px;font-weight:800;color:#c090a8;margin-bottom:5px;'>📍 원국 어디에서 이 흐름이 나오냐면</div>"
+        + "".join(_source_items) +
+        "</div>"
+    ) if _source_items else ""
+
     st.markdown(
         "<div class='pipeline-card'>"
         f"<div class='signal-title'>{html.escape(title)} <span class='viz-pill'>{html.escape(strength)}</span> <span class='viz-pill'>{html.escape(str(visual['note']))}</span></div>"
         f"<div class='flow-strength-row'><div class='flow-strength-label'><span>흐름 전체 작동도</span><span>{int(visual['meter'])}%</span></div><div class='flow-strength-meter'><span style='width:{int(visual['meter'])}%;'></span></div></div>"
-        f"<div class='small-muted'>위 퍼센트는 이 흐름 전체가 얼마나 힘 있게 굴러가는지, 아래 라벨은 각 구간의 연결 상태를 뜻합니다.</div>"
         f"<div class='flow-pipeline pipe-pipeline'>{''.join(nodes)}</div>"
         f"<div class='signal-body'>{html.escape(desc)}</div>"
-        f"<div class='small-muted'>{html.escape(' / '.join(segment_notes[:3]))}</div>"
-        f"<div class='small-muted'>{html.escape(source_sentence)}</div>"
+        + _source_block +
         "</div>",
         unsafe_allow_html=True,
     )
