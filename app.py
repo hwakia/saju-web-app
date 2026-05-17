@@ -20758,7 +20758,21 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 "<div style='font-size:12px;color:#4ade80;font-weight:700;margin-bottom:4px;'>🔗 합 — 묶이고 연결되는 구조</div>"
                 "<div style='font-size:13px;color:#ddd0d8;line-height:1.9;'>"
                 + "".join(
-                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')}<br>"
+                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')} "
+                    + (lambda _b: (
+                        f"<span style='font-size:11px;color:#7ecfa8;'>📍 "
+                        + ", ".join(
+                            f"{br}("
+                            + next((pos for pos,pb in [("년지",chart.year.branch),("월지",chart.month.branch),("일지",chart.day.branch)]+([( "시지",chart.hour.branch)] if chart.hour else []) if pb==br), "?")
+                            + ")"
+                            for br in _b
+                        )
+                        + "이(가) 만나 성립</span>"
+                    ))([
+                        c for c in it['name']
+                        if c in set([chart.year.branch,chart.month.branch,chart.day.branch]+([chart.hour.branch] if chart.hour else []))
+                    ])
+                    + "<br>"
                     for it in _fw_bindings[:4]
                 ) +
                 "<span style='font-size:12px;color:#4ade80;'>→ 합이 있으면 해당 기운이 변화·강화돼. 용신 방향 합은 사주에 힘이 되고, 기신 방향 합은 부담이 될 수 있어.</span>"
@@ -20774,7 +20788,21 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 "<div style='font-size:12px;color:#fb923c;font-weight:700;margin-bottom:4px;'>⚡ 충·형 — 부딪히고 긴장하는 구조</div>"
                 "<div style='font-size:13px;color:#ddd0d8;line-height:1.9;'>"
                 + "".join(
-                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')}<br>"
+                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')} "
+                    + (lambda _b: (
+                        f"<span style='font-size:11px;color:#fb923c;'>📍 "
+                        + ", ".join(
+                            f"{br}("
+                            + next((pos for pos,pb in [("년지",chart.year.branch),("월지",chart.month.branch),("일지",chart.day.branch)]+([( "시지",chart.hour.branch)] if chart.hour else []) if pb==br), "?")
+                            + ")"
+                            for br in _b
+                        )
+                        + "이(가) 충·형 관계</span>"
+                    ) if _b else "")([
+                        c for c in it['name']
+                        if c in set([chart.year.branch,chart.month.branch,chart.day.branch]+([chart.hour.branch] if chart.hour else []))
+                    ])
+                    + "<br>"
                     for it in _fw_clashes[:4]
                 ) +
                 "<span style='font-size:12px;color:#fb923c;'>→ 충·형이 있으면 해당 자리에서 변동·긴장이 생기기 쉬워. 기신 기운을 흔드는 충은 오히려 도움이 되기도 해 — 무조건 나쁜 건 아니야.</span>"
@@ -20820,7 +20848,29 @@ def render_hanuneyo_text_explanation(payload, char, result):
             _doc = _FLOW_DOC.get(_fn, "")
             if not _doc or _fn == "식신제살/상관패인":
                 continue
-            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#f9fafb"))
+            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#1a1820"))
+            # 원국 근거 구성
+            _fsrc_items = []
+            for _frole, _fel in _flow_elements_for_name(chart, _fn):
+                _fsrcs = _element_sources_for_chart(chart, _fel)
+                if _fsrcs:
+                    _fsrc_items.append(
+                        f"<span style='font-size:11px;font-weight:800;color:{_fc};'>{html.escape(_frole)}({html.escape(_fel)})</span>"
+                        f"<span style='font-size:11px;color:#888;margin:0 4px;'>→</span>"
+                        f"<span style='font-size:11px;color:#b0a8c0;'>{html.escape(', '.join(_fsrcs[:2]))}</span>"
+                    )
+                else:
+                    _fsrc_items.append(
+                        f"<span style='font-size:11px;font-weight:800;color:{_fc};'>{html.escape(_frole)}({html.escape(_fel)})</span>"
+                        f"<span style='font-size:11px;color:#665060;margin-left:4px;'>원국에 직접 없음 (운에서 보완)</span>"
+                    )
+            _fsrc_html = (
+                "<div style='background:#180d16;border-left:2px solid rgba(244,114,182,.3);"
+                "border-radius:0 5px 5px 0;padding:6px 10px;margin-top:6px;'>"
+                "<div style='font-size:11px;color:#c090a8;font-weight:700;margin-bottom:3px;'>📍 원국 어디서 이 흐름이 나오냐면</div>"
+                + "<br>".join(_fsrc_items) +
+                "</div>"
+            ) if _fsrc_items else ""
             st.markdown(
                 f"<div style='background:{_fbg};border-left:3px solid {_fc};"
                 f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
@@ -20830,6 +20880,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 f"padding:1px 7px;'>{_fs}</span>"
                 f"</div>"
                 f"<div style='font-size:13px;color:#ddd0d8;line-height:1.8;'>{_doc}</div>"
+                + _fsrc_html +
                 f"</div>",
                 unsafe_allow_html=True,
             )
