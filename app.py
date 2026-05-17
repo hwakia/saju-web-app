@@ -7634,8 +7634,9 @@ st.markdown("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<style>
-
+<script>
+(function injectBaseCSS() {
+    var css = `
 /* ══════════════════════════════════════════
    0. 폰트 & 베이스
    ══════════════════════════════════════════ */
@@ -7830,10 +7831,20 @@ tbody tr:nth-child(even) td {
     .stButton button { font-size: 0.9rem !important; min-height: 44px !important; }
     thead th, tbody td { font-size: 0.82rem !important; padding: 0.45rem 0.55rem !important; }
 }
-
-</style>
+`;
+    var el = document.getElementById('saju-base-css');
+    if (!el) {
+        el = document.createElement('style');
+        el.id = 'saju-base-css';
+        el.textContent = css;
+        (document.head || document.documentElement).appendChild(el);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectBaseCSS);
+    }
+})();
+</script>
 """, unsafe_allow_html=True)
-
 # v5.54 UI 보강 CSS
 st.markdown("""
 <style>
