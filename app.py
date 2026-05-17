@@ -20062,12 +20062,15 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     # 3축 요약
     _axis_rows = []
-    for _an, _icon_a in [("기초체력","💪"),("흐름과연결","🔄"),("현실작동력","⚙️")]:
+    for _an, _icon_a in [("기초체력","💪"),("흐름과 연결","🔄"),("현실작동력","⚙️")]:
         _ai = score_map.get(_an, {}) or {}
         _pct = float(_ai.get("pct", 0) or 0)
+        _score_v = float(_ai.get("score", 0) or 0)
+        _max_v   = float(_ai.get("max", 0) or 0)
         _st_a = "강함" if _pct >= 68 else "보통" if _pct >= 45 else "약함"
         _sc_a = {"강함":"#4ade80","보통":"#fbbf24","약함":"#f87171"}.get(_st_a,"#c090a8")
-        _axis_rows.append((_icon_a, _an, _pct, _st_a, _sc_a))
+        _score_label_a = f"{_score_v:.0f}/{_max_v:.0f}점" if _max_v > 0 else f"{_score_v:.1f}점"
+        _axis_rows.append((_icon_a, _an, _score_label_a, _st_a, _sc_a))
 
     # 합충형파해 요약
     _interactions = result.get("interactions", []) or []
@@ -20143,14 +20146,14 @@ def render_hanuneyo_text_explanation(payload, char, result):
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:8px;letter-spacing:1px;'>▸ 기운의 3대 축</div>
       <div style='display:flex;gap:8px;flex-wrap:wrap;'>
 """
-    for _icon_a, _an, _pct, _st_a, _sc_a in _axis_rows:
+    for _icon_a, _an, _score_label_a, _st_a, _sc_a in _axis_rows:
         _cert_html += (
             f"<div style='flex:1;min-width:90px;background:rgba(30,16,24,0.8);"
             f"border:1px solid {_sc_a}44;border-radius:10px;padding:10px;text-align:center;'>"
             f"<div style='font-size:20px;'>{_icon_a}</div>"
             f"<div style='font-size:12px;font-weight:700;color:#c0a0b4;margin:3px 0;'>{_an}</div>"
             f"<div style='font-size:15px;font-weight:900;color:{_sc_a};'>{_st_a}</div>"
-            f"<div style='font-size:12px;color:{_sc_a};'>{_pct:.0f}%</div>"
+            f"<div style='font-size:12px;color:{_sc_a};'>{_score_label_a}</div>"
             f"</div>"
         )
     _cert_html += f"""
@@ -23838,10 +23841,4 @@ _stcomp.html("""
         if (!document.getElementById('saju-dark-override')) {
             (document.head || document.documentElement).appendChild(style.cloneNode(true));
         }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
-})();
-</script>
-""", height=0, scrolling=False)
+   
