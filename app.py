@@ -18656,8 +18656,13 @@ def render_multi_chem_result(participants: list) -> None:
         if s >= 52: return "#d97706"
         return "#dc2626"
 
-    svg = [f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" '
-           f'style="max-width:320px;height:auto;display:block;margin:0 auto 8px;">']
+    svg = [
+        f'<div style="background:rgba(20,8,16,0.96);border:1px solid rgba(230,164,184,.30);'
+        f'border-radius:18px;padding:10px 6px;margin:6px 0;">',
+        f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" '
+        f'style="width:100%;max-width:460px;height:auto;display:block;margin:0 auto 4px;">',
+        f'<rect width="{W}" height="{H}" fill="transparent"/>',
+    ]
 
     # 엣지 (관계선)
     for p in pairs:
@@ -18678,7 +18683,7 @@ def render_multi_chem_result(participants: list) -> None:
         # 점수 배지
         svg.append(
             f'<rect x="{mx - 16:.1f}" y="{my - 9:.1f}" width="32" height="18" '
-            f'rx="4" fill="white" fill-opacity="0.93" stroke="{color}" stroke-width="0.9"/>'
+            f'rx="4" fill="#1e1018" fill-opacity="0.96" stroke="{color}" stroke-width="1.2"/>'
         )
         svg.append(
             f'<text x="{mx:.1f}" y="{my + 5:.1f}" text-anchor="middle" '
@@ -18710,7 +18715,7 @@ def render_multi_chem_result(participants: list) -> None:
                 f'{role_type}</text>'
             )
 
-    svg.append("</svg>")
+    svg.append("</svg></div>")
     st.markdown("".join(svg), unsafe_allow_html=True)
 
     # ── 베스트 / 조율 포인트 ────────────────────────────────────
