@@ -138,8 +138,8 @@ def _interaction_detail_html(interactions: list) -> str:
         style = TYPE_STYLE.get(itype, TYPE_STYLE.get("형", {"bg":"#f5f5f5","border":"#ccc","icon":"🎴","color":"#333"}))
         detail = TYPE_DESC.get(itype, {"성립": "전통 명리 기준에 따라 성립이 확인되었습니다.", "효과": desc or "원국 에너지 흐름에 영향을 줍니다."})
 
-        elem_badge = f"<span style='background:{style['color']};color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:6px;'>{elem} 기운</span>" if elem else ""
-        strength_badge = f"<span style='font-size:10px;color:{style['color']};opacity:.7;margin-left:4px;'>({strength})</span>" if strength else ""
+        elem_badge = f"<span style='background:{style['color']};color:#fff;font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;'>{elem} 기운</span>" if elem else ""
+        strength_badge = f"<span style='font-size:12px;color:{style['color']};opacity:.7;margin-left:4px;'>({strength})</span>" if strength else ""
 
         card = (
             f"<div style='background:{style['bg']};border:1.5px solid {style['border']};"
@@ -152,12 +152,12 @@ def _interaction_detail_html(interactions: list) -> str:
             f"</div>"
             # 성립
             f"<div style='margin-bottom:8px;'>"
-            f"<div style='font-size:11px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>어떻게 이루어지냐면</div>"
+            f"<div style='font-size:13px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>어떻게 이루어지냐면</div>"
             f"<div style='font-size:13px;color:#d4a0b8;line-height:1.7;'>{detail['성립']}</div>"
             f"</div>"
             # 효과
             f"<div>"
-            f"<div style='font-size:11px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>어떤 작용을 하냐면</div>"
+            f"<div style='font-size:13px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>어떤 작용을 하냐면</div>"
             f"<div style='font-size:13px;color:#d4a0b8;line-height:1.7;'>{detail['효과']}</div>"
             f"</div>"
             f"</div>"
@@ -4751,7 +4751,7 @@ def render_role_winner_hero(meal_result: Dict[str, object]) -> None:
     <div style="background:linear-gradient(135deg,#1e1018 0%,#1a1408 100%);border:1px solid rgba(230,164,184,.45);border-radius:24px;padding:1.05rem 1.15rem;margin:.75rem 0 1rem 0;text-align:center;box-shadow:0 14px 34px rgba(214,66,115,.10);">
         <div style="display:inline-block;background:#1e1018;border:1px solid rgba(214,66,115,.22);border-radius:999px;padding:.22rem .72rem;color:#f9a8c9;font-weight:950;font-size:.88rem;">{emoji} {safe_title}</div>
         <div style="margin-top:.55rem;color:#d4a0b8;font-weight:850;">오늘의 당첨자</div>
-        <div style="font-size:2.2rem;line-height:1.12;font-weight:950;color:#7b1e3d;margin-top:.2rem;">{emoji} {safe_name}</div>
+        <div style="font-size:2.2rem;line-height:1.12;font-weight:950;color:#e879a0;margin-top:.2rem;">{emoji} {safe_name}</div>
         <div style="color:#d4a0b8;font-weight:900;margin-top:.45rem;">{safe_score_short} {safe_score}점 · {safe_confidence}</div>
         <div style="color:#d4a0b8;font-weight:760;line-height:1.55;margin-top:.35rem;">{safe_summary}</div>
     </div>
@@ -6796,7 +6796,7 @@ def render_rank_pyramid(title: str, rows: List[Dict[str, object]], caption: str 
         st.markdown(f"""
         <div style="width:{width}%;margin:.28rem auto;padding:.55rem .75rem;border:1px solid rgba(230,164,184,.38);border-radius:16px;background:#1e1018;box-shadow:0 8px 18px rgba(214,66,115,.08);text-align:center;min-width:220px;">
             <div style="font-weight:900;color:#d4a0b8;">{safe_rank}위 · {safe_name}</div>
-            <div style="font-weight:900;color:#7b1e3d;font-size:1.05rem;">{score:.1f}점</div>
+            <div style="font-weight:900;color:#e879a0;font-size:1.05rem;">{score:.1f}점</div>
             <div style="font-size:.82rem;color:#d4a0b8;">{safe_sub}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -6842,7 +6842,7 @@ def render_compact_chemistry_overview(participants: List[Dict[str, object]]) -> 
             <div class="mini-card">
                 <div class="mini-card-title">{html.escape(title, quote=True)}</div>
                 <div class="mini-card-value">{html.escape(str(name), quote=True)}</div>
-                <div style="color:#7b1e3d;font-weight:900;margin-top:.35rem;">{html.escape(str(value), quote=True)}</div>
+                <div style="color:#e879a0;font-weight:900;margin-top:.35rem;">{html.escape(str(value), quote=True)}</div>
                 <div style="color:#d4a0b8;font-size:.86rem;margin-top:.35rem;line-height:1.45;">{html.escape(body, quote=True)}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -7629,6 +7629,211 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ── 제로베이스 디자인 시스템 ──
+st.markdown("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+
+/* ══════════════════════════════════════════
+   0. 폰트 & 베이스
+   ══════════════════════════════════════════ */
+html, body, * {
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
+                 -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* ══════════════════════════════════════════
+   1. 타이포그래피 시스템
+   ══════════════════════════════════════════ */
+/* 본문 기본 */
+.stMarkdown p,
+.stMarkdown li,
+[data-testid="stMarkdownContainer"] p {
+    font-size: 1rem !important;           /* 16px */
+    font-weight: 500 !important;
+    line-height: 2.0 !important;
+    color: #f0e0ea !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* 캡션 */
+[data-testid="stCaptionContainer"] p,
+.stMarkdown small {
+    font-size: 0.875rem !important;       /* 14px */
+    font-weight: 500 !important;
+    color: #c8a0b8 !important;
+    line-height: 1.75 !important;
+}
+
+/* 헤더 */
+.stMarkdown h1 {
+    font-size: 1.6rem !important;
+    font-weight: 900 !important;
+    color: #f5c0d8 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.3 !important;
+}
+.stMarkdown h2 {
+    font-size: 1.35rem !important;
+    font-weight: 900 !important;
+    color: #f0b0cc !important;
+    letter-spacing: -0.02em !important;
+}
+.stMarkdown h3 {
+    font-size: 1.15rem !important;
+    font-weight: 900 !important;
+    color: #e879a0 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.4 !important;
+}
+.stMarkdown h4 {
+    font-size: 1.05rem !important;
+    font-weight: 900 !important;
+    color: #f0b0cc !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* bold 강조 */
+.stMarkdown strong, .stMarkdown b {
+    font-weight: 900 !important;
+    color: #f5c8dc !important;
+}
+
+/* ══════════════════════════════════════════
+   2. Streamlit 네이티브 UI 텍스트
+   ══════════════════════════════════════════ */
+/* 레이블 */
+[data-testid="stWidgetLabel"] p,
+label, .stRadio label p, .stCheckbox label p {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #e0c0d4 !important;
+}
+/* 입력값 텍스트 */
+input, textarea, select {
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    color: #f0e0ea !important;
+}
+/* expander */
+[data-testid="stExpander"] summary p {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: #f0c8dc !important;
+}
+/* 탭 */
+[data-testid="stTabs"] [role="tab"] p {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+}
+/* 버튼 */
+.stButton button {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+}
+/* 경고/정보 박스 */
+[data-testid="stAlert"] p {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    color: #f0e0ea !important;
+    line-height: 1.85 !important;
+}
+/* selectbox 선택값 */
+[data-baseweb="select"] span {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    color: #f0e0ea !important;
+}
+/* number input */
+[data-testid="stNumberInput"] input {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: #f0e0ea !important;
+    text-align: center !important;
+}
+/* 메트릭 */
+[data-testid="stMetric"] label {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: #c8a0b8 !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 1.5rem !important;
+    font-weight: 900 !important;
+    color: #e879a0 !important;
+}
+
+/* ══════════════════════════════════════════
+   3. 카드/박스 공통 텍스트
+   ══════════════════════════════════════════ */
+/* 모든 div 안 기본 텍스트 밝게 */
+.stMarkdown div, [data-testid="stMarkdownContainer"] div {
+    color: #f0e0ea;
+}
+/* 테이블 */
+table { width: 100% !important; border-collapse: collapse !important; }
+thead th {
+    background: rgba(123,30,61,0.55) !important;
+    color: #f5c8dc !important;
+    font-weight: 900 !important;
+    font-size: 0.9rem !important;
+    padding: 0.6rem 0.8rem !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+}
+tbody td {
+    color: #f0e0ea !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    padding: 0.55rem 0.8rem !important;
+    border: 1px solid rgba(232,121,160,0.18) !important;
+    line-height: 1.75 !important;
+}
+tbody tr:nth-child(even) td {
+    background: rgba(42,21,32,0.6) !important;
+}
+
+/* ══════════════════════════════════════════
+   4. 카드 경계 강화 (배경과 구분)
+   ══════════════════════════════════════════ */
+.shinsal-card {
+    border: 1px solid rgba(232,121,160,0.35) !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.4) !important;
+}
+.pipeline-card {
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.35) !important;
+}
+.ability-card {
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.35) !important;
+}
+.daewun-flow-card {
+    border: 2px solid rgba(90,40,64,0.80) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+}
+
+/* ══════════════════════════════════════════
+   5. 모바일 (≤ 768px)
+   ══════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .stMarkdown p,
+    [data-testid="stMarkdownContainer"] p {
+        font-size: 0.95rem !important;
+        line-height: 1.9 !important;
+    }
+    .stMarkdown h3 { font-size: 1.05rem !important; }
+    .stMarkdown h4 { font-size: 0.98rem !important; }
+    [data-testid="stCaptionContainer"] p { font-size: 0.82rem !important; }
+    .stButton button { font-size: 0.9rem !important; min-height: 44px !important; }
+    thead th, tbody td { font-size: 0.82rem !important; padding: 0.45rem 0.55rem !important; }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # v5.54 UI 보강 CSS
 st.markdown("""
 <style>
@@ -7645,7 +7850,7 @@ st.markdown("""
 .daewun-flow-track{display:flex;gap:.55rem;overflow-x:auto;padding:.35rem .1rem .55rem .1rem;}
 .daewun-flow-card{min-width:104px;background:#1e1018;border:2px solid #5a2840;border-radius:16px;padding:.75rem .65rem;text-align:center;box-shadow:none;}
 .daewun-flow-card.current{background:#2a1520;border-color:#e879a0;}
-.daewun-flow-badge{font-size:.74rem;color:#b888a0;font-weight:900;}
+.daewun-flow-badge{font-size:.86rem;color:#b888a0;font-weight:900;}
 .daewun-flow-age{font-size:.82rem;color:#c090a8;}
 .daewun-flow-gz{font-size:1.28rem;font-weight:950;color:#f0b8d0;}
 .daewun-flow-score{font-size:.85rem;color:#e879a0;font-weight:900;}
@@ -7663,7 +7868,7 @@ st.markdown("""
 .mini-meter{height:12px;background:#2e1422;border-radius:999px;overflow:hidden;margin-top:.35rem;}
 .mini-meter span{display:block;height:100%;background:linear-gradient(90deg,#8ab7ff,#f2c94c,#ef4444);border-radius:999px;}
 .flow-strength-row{margin:.5rem 0 .35rem 0;}
-.flow-strength-label{display:flex;justify-content:space-between;gap:.5rem;font-size:.76rem;color:#c090a8;font-weight:900;margin-bottom:.2rem;}
+.flow-strength-label{display:flex;justify-content:space-between;gap:.5rem;font-size:.88rem;color:#c090a8;font-weight:900;margin-bottom:.2rem;}
 .flow-strength-meter{height:9px;background:#222030;border-radius:999px;overflow:hidden;}
 .flow-strength-meter span{display:block;height:100%;background:#64748b;border-radius:999px;}
 
@@ -7679,7 +7884,7 @@ st.markdown("""
 .pipe-main{display:inline-flex;align-items:center;width:100%;min-width:58px;}
 .pipe-line{display:inline-block;border-radius:999px;min-width:44px;width:100%;box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
 .pipe-arrow{display:inline-block;width:0;height:0;margin-left:-1px;}
-.pipe-label{font-size:.68rem;font-weight:900;color:#c090a8;white-space:nowrap;line-height:1;}
+.pipe-label{font-size:.82rem;font-weight:900;color:#c090a8;white-space:nowrap;line-height:1;}
 .pipe-good .pipe-line{height:18px;background:#334155;}
 .pipe-good .pipe-arrow{border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:13px solid #334155;}
 .pipe-mid .pipe-line{height:12px;background:#64748b;}
@@ -7696,14 +7901,14 @@ st.markdown("""
 .shinsal-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.55rem;position:relative;z-index:1;}
 .shinsal-icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:18px;background:#1e1018;box-shadow:0 8px 18px rgba(80,40,60,.08);font-size:2rem;line-height:1;flex:0 0 54px;}
 .shinsal-name{font-size:1.22rem;font-weight:950;color:#f0b8d0;letter-spacing:-.04em;line-height:1.1;}
-.shinsal-type{font-size:.78rem;color:#d4a0b8;font-weight:900;margin-top:.18rem;}
+.shinsal-type{font-size:.88rem;color:#d4a0b8;font-weight:900;margin-top:.18rem;}
 .shinsal-badge{display:inline-block;margin:.1rem 0 .45rem 0;padding:.22rem .62rem;border-radius:999px;background:rgba(214,66,115,.10);color:#e879a0;font-weight:950;font-size:.8rem;}
 .shinsal-summary{font-size:.94rem;color:#f0b8d0;line-height:1.55;font-weight:780;margin:.35rem 0 .62rem;}
 .shinsal-detail{background:rgba(30,16,24,.92);border:1px solid rgba(230,164,184,.22);border-radius:16px;padding:.68rem .75rem;margin:.45rem 0;position:relative;z-index:1;}
-.shinsal-detail-title{font-size:.78rem;color:#e879a0;font-weight:950;margin-bottom:.22rem;}
+.shinsal-detail-title{font-size:.88rem;color:#e879a0;font-weight:950;margin-bottom:.22rem;}
 .shinsal-detail-body{font-size:.84rem;color:#d4a0b8;line-height:1.52;font-weight:650;}
-.shinsal-pos{font-size:.78rem;color:#d4a0b8;margin-top:.5rem;font-weight:800;}
-.shinsal-footnote{font-size:.78rem;color:#d4a0b8;line-height:1.45;margin-top:.6rem;}
+.shinsal-pos{font-size:.88rem;color:#d4a0b8;margin-top:.5rem;font-weight:800;}
+.shinsal-footnote{font-size:.88rem;color:#d4a0b8;line-height:1.45;margin-top:.6rem;}
 
 
 /* v5.51: 모바일 색대비 보정 — 흰 글씨는 진한 배경에서만 사용 */
@@ -7938,7 +8143,7 @@ div[data-testid="stRadio"] span {
     text-align:center;
     color:#c090a8 !important;
     font-weight:900;
-    font-size:.78rem;
+    font-size:.88rem;
     padding:.32rem .18rem .15rem .18rem;
     min-height:1.55rem;
 }
@@ -7967,7 +8172,7 @@ div[data-testid="stRadio"] span {
 .manse-ko {
     text-align:center;
     color:#d4a0b8 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:820;
     margin-top:-.05rem;
 }
@@ -7979,14 +8184,14 @@ div[data-testid="stRadio"] span {
 }
 .manse-hidden-title {
     color:#c090a8 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:950;
     margin-bottom:.22rem;
     text-align:center;
 }
 .manse-hidden-line {
     color:#e8d0d8 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     line-height:1.38;
     font-weight:780;
     text-align:center;
@@ -8006,7 +8211,7 @@ div[data-testid="stRadio"] span {
 }
 .manse-summary-title {
     color:#e879a0 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:950;
     margin-bottom:.18rem;
 }
@@ -8040,7 +8245,7 @@ div[data-testid="stRadio"] span {
 }
 .manse-luck-sub {
     color:#c090a8 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     line-height:1.42;
     font-weight:760;
     margin-top:.13rem;
@@ -8054,7 +8259,7 @@ div[data-testid="stRadio"] span {
     background:#1e1018;
     border:1px solid rgba(230,164,184,.34);
     color:#e879a0 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:950;
     white-space:nowrap;
 }
@@ -8092,7 +8297,7 @@ div[data-testid="stRadio"] span {
 }
 .manse-luck-age {
     color:#c090a8 !important;
-    font-size:.74rem;
+    font-size:.86rem;
     font-weight:900;
 }
 .manse-luck-gz {
@@ -8115,7 +8320,7 @@ div[data-testid="stRadio"] span {
     border-radius:999px;
     border:1px solid rgba(63,42,51,.12);
     color:#e8d0d8 !important;
-    font-size:.68rem;
+    font-size:.82rem;
     font-weight:880;
 }
 .manse-luck-el.el-목 { background:#0d1e14; }
@@ -8130,7 +8335,7 @@ div[data-testid="stRadio"] span {
 }
 .manse-luck-note {
     color:#d4a0b8 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     line-height:1.38;
     font-weight:720;
     margin-top:.28rem;
@@ -8169,7 +8374,7 @@ div[data-testid="stRadio"] span {
 }
 .manse-sewun-year {
     color:#c090a8 !important;
-    font-size:.76rem;
+    font-size:.88rem;
     font-weight:950;
 }
 .manse-sewun-delta {
@@ -8177,7 +8382,7 @@ div[data-testid="stRadio"] span {
     border-radius:999px;
     background:#2a1520;
     color:#e879a0 !important;
-    font-size:.68rem;
+    font-size:.82rem;
     font-weight:950;
 }
 .manse-sewun-gz {
@@ -8194,7 +8399,7 @@ div[data-testid="stRadio"] span {
 }
 .manse-sewun-note {
     color:#d4a0b8 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     line-height:1.38;
     font-weight:720;
     display:-webkit-box;
@@ -8205,18 +8410,18 @@ div[data-testid="stRadio"] span {
 @media (max-width: 768px) {
     .manse-wrap { padding:.82rem .58rem; border-radius:20px; }
     .manse-grid { gap:.25rem; }
-    .manse-head { font-size:.76rem; padding:.36rem .12rem; }
-    .manse-role { font-size:.68rem; min-height:1.35rem; padding:.25rem .08rem .1rem .08rem; }
+    .manse-head { font-size:.88rem; padding:.36rem .12rem; }
+    .manse-role { font-size:.82rem; min-height:1.35rem; padding:.25rem .08rem .1rem .08rem; }
     .manse-big {
         width:42px;
         height:42px;
         border-radius:10px;
         font-size:1.6rem;
     }
-    .manse-ko { font-size:.62rem; }
+    .manse-ko { font-size:.80rem; }
     .manse-hidden { padding:.32rem .14rem .38rem .14rem; min-height:4.65rem; }
     .manse-hidden-title { font-size:.64rem; }
-    .manse-hidden-line { font-size:.62rem; line-height:1.32; }
+    .manse-hidden-line { font-size:.80rem; line-height:1.32; }
     .manse-summary { grid-template-columns:1fr; gap:.38rem; }
     .manse-title { align-items:flex-start; flex-direction:column; }
     .manse-luck-wrap { padding:.75rem .58rem; border-radius:20px; }
@@ -8265,7 +8470,7 @@ div[data-testid="stRadio"] span {
     background:#1e1018;
     border:1px solid rgba(70,92,120,.14);
     color:#94a3b8 !important;
-    font-size:.74rem;
+    font-size:.86rem;
     font-weight:900;
     white-space:nowrap;
 }
@@ -8313,7 +8518,7 @@ div[data-testid="stRadio"] span {
 }
 .saju-landscape-mini-label {
     color:#e879a0 !important;
-    font-size:.75rem;
+    font-size:.86rem;
     font-weight:950;
     margin-bottom:.14rem;
 }
@@ -8336,7 +8541,7 @@ div[data-testid="stRadio"] span {
 }
 .saju-landscape-schema-key {
     color:#e879a0 !important;
-    font-size:.75rem;
+    font-size:.86rem;
     font-weight:950;
 }
 .saju-landscape-schema-val {
@@ -8358,7 +8563,7 @@ div[data-testid="stRadio"] span {
     background:#0d1828;
     border:1px solid rgba(70,92,120,.12);
     color:#93c5fd !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:860;
 }
 .saju-landscape-bars {
@@ -8374,7 +8579,7 @@ div[data-testid="stRadio"] span {
 }
 .saju-landscape-bar-label {
     color:#e8d0d8 !important;
-    font-size:.74rem;
+    font-size:.86rem;
     font-weight:950;
 }
 .saju-landscape-track {
@@ -8389,7 +8594,7 @@ div[data-testid="stRadio"] span {
 }
 .saju-landscape-bar-pct {
     color:#94a3b8 !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:900;
     text-align:right;
 }
@@ -8447,20 +8652,20 @@ div[data-testid="stRadio"] span {
 }
 .saju-landscape-rule-key {
     color:#93c5fd !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:950;
     margin-bottom:.12rem;
 }
 .saju-landscape-rule-val {
     color:#e8d0d8 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     line-height:1.4;
     font-weight:760;
 }
 .saju-landscape-limit {
     margin-top:.46rem;
     color:#c090a8 !important;
-    font-size:.75rem;
+    font-size:.86rem;
     line-height:1.45;
     font-weight:740;
 }
@@ -8482,7 +8687,7 @@ div[data-testid="stRadio"] span {
     align-items:center;
     gap:.6rem;
     color:#c090a8 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:950;
     margin-bottom:.5rem;
 }
@@ -8514,7 +8719,7 @@ div[data-testid="stRadio"] span {
 }
 .share-card-label {
     color:#e879a0 !important;
-    font-size:.76rem;
+    font-size:.88rem;
     font-weight:950;
     margin-bottom:.2rem;
 }
@@ -8546,7 +8751,7 @@ div[data-testid="stRadio"] span {
 }
 .share-card-caption {
     color:#c090a8 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     line-height:1.45;
     font-weight:760;
     flex:1 1 auto;
@@ -8566,7 +8771,7 @@ div[data-testid="stRadio"] span {
     background:#1a1408;
     border:1px solid rgba(214,66,115,.16);
     color:#c090a8 !important;
-    font-size:.68rem;
+    font-size:.82rem;
     font-weight:900;
     white-space:nowrap;
 }
@@ -8591,13 +8796,13 @@ div[data-testid="stRadio"] span {
 }
 .element-tone-name {
     display:block;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:950;
     margin-bottom:.08rem;
 }
 .element-tone-pct {
     display:block;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:820;
     color:#e8d0d8 !important;
 }
@@ -8639,7 +8844,7 @@ div[data-testid="stRadio"] span {
 }
 .today-compass-date {
     color:#c090a8 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:900;
     white-space:nowrap;
 }
@@ -8656,7 +8861,7 @@ div[data-testid="stRadio"] span {
 }
 .today-compass-label {
     color:#34d399 !important;
-    font-size:.74rem;
+    font-size:.86rem;
     font-weight:950;
     margin-bottom:.2rem;
 }
@@ -8681,7 +8886,7 @@ div[data-testid="stRadio"] span {
 }
 .today-compass-note {
     color:#c090a8 !important;
-    font-size:.76rem;
+    font-size:.88rem;
     line-height:1.45;
     margin-top:.46rem;
     font-weight:760;
@@ -8710,7 +8915,7 @@ div[data-testid="stRadio"] span {
     box-shadow:0 8px 20px rgba(214,66,115,.06);
 }
 .compact-glance-label{
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:950;
     color:#d4a0b8;
     margin-bottom:.28rem;
@@ -8769,7 +8974,7 @@ div[data-testid="stRadio"] span {
     background:#1e1018;
     border:1px solid rgba(14,165,233,.18);
     color:#22d3ee !important;
-    font-size:.74rem;
+    font-size:.86rem;
     font-weight:900;
     white-space:nowrap;
 }
@@ -8786,7 +8991,7 @@ div[data-testid="stRadio"] span {
 }
 .today-quick-label {
     color:#22d3ee !important;
-    font-size:.72rem;
+    font-size:.84rem;
     font-weight:950;
     margin-bottom:.17rem;
 }
@@ -8801,7 +9006,7 @@ div[data-testid="stRadio"] span {
 .today-quick-action {
     margin-top:.56rem;
     color:#c090a8 !important;
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:850;
 }
 @media (max-width: 768px) {
@@ -8893,7 +9098,7 @@ div[data-testid="stRadio"] span {
     -webkit-text-fill-color:#ffffff !important;
     border-radius:999px;
     padding:.18rem .48rem;
-    font-size:.68rem;
+    font-size:.82rem;
     font-weight:950;
     white-space:nowrap;
     box-shadow:0 7px 16px rgba(63,42,51,.18);
@@ -8959,7 +9164,7 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
         width:100% !important;
         justify-content:flex-start !important;
     }
-    .operation-marker-badge{font-size:.62rem;}
+    .operation-marker-badge{font-size:.80rem;}
 }
 
 
@@ -9332,7 +9537,7 @@ div[data-testid="stTimeInput"] label {
     .main-character-desc { font-size: .88rem !important; line-height: 1.48 !important; }
     .today-quick-title { font-size: 1.12rem !important; line-height: 1.2 !important; }
     .today-quick-sub, .today-quick-action { font-size: .82rem !important; line-height: 1.45 !important; }
-    .today-quick-pill { align-self:flex-start !important; font-size:.74rem !important; padding:.24rem .52rem !important; }
+    .today-quick-pill { align-self:flex-start !important; font-size:.86rem !important; padding:.24rem .52rem !important; }
     .compact-glance-grid, .today-quick-grid, .today-compass-grid, .share-card-grid, .shinsal-grid {
         grid-template-columns: 1fr !important;
         gap: .45rem !important;
@@ -9369,7 +9574,7 @@ div[data-testid="stTimeInput"] label {
     }
     .stDataFrame, div[data-testid="stTable"] { overflow-x: auto !important; max-width: 100% !important; }
     img { max-width: 100% !important; height: auto !important; }
-    .element-bar-row { grid-template-columns: 28px 1fr 42px !important; gap: .32rem !important; font-size:.78rem !important; }
+    .element-bar-row { grid-template-columns: 28px 1fr 42px !important; gap: .32rem !important; font-size:.88rem !important; }
     .radar-legend { flex-wrap: wrap !important; gap: .38rem !important; font-size: .78rem !important; }
 }
 @media (max-width: 420px) {
@@ -10025,7 +10230,7 @@ div[data-testid="stTimeInput"] label {
     color:#c8a0b4;
 }
 .axis-bar-score {
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:800;
     color:#b888a0;
     white-space:nowrap;
@@ -10044,7 +10249,7 @@ div[data-testid="stTimeInput"] label {
     background:linear-gradient(90deg,#f7b1c7,#c1a6ff);
 }
 .axis-bar-desc {
-    font-size:.76rem;
+    font-size:.88rem;
     color:#c090a8;
     line-height:1.32;
     margin-top:.20rem;
@@ -11434,7 +11639,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight: 850;
 }
 .main-character-name {
-    color: #7b1e3d;
+    color: #e879a0;
     font-size: 1.45rem;
     font-weight: 950;
     margin-top: 0.2rem;
@@ -11465,7 +11670,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight: 900;
 }
 .ability-bar-score {
-    color: #7b1e3d;
+    color: #e879a0;
     font-weight: 900;
     white-space: nowrap;
 }
@@ -11494,7 +11699,7 @@ div[data-testid="stCheckbox"] svg {
     font-size: 1rem;
 }
 .battle-board-verdict {
-    color: #7b1e3d;
+    color: #e879a0;
     font-weight: 950;
     font-size: 1.75rem;
     line-height: 1.2;
@@ -11534,7 +11739,7 @@ div[data-testid="stCheckbox"] svg {
     white-space:nowrap;
 }
 .battle-compare-score {
-    color:#7b1e3d;
+    color:#e879a0;
     font-weight:930;
     text-align:right;
 }
@@ -11566,7 +11771,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight:900;
 }
 .battle-chemistry-score {
-    color:#7b1e3d;
+    color:#e879a0;
     font-size:1.16rem;
     font-weight:950;
     margin-top:.2rem;
@@ -11638,7 +11843,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight: 950;
 }
 .multi-role-title {
-    color: #7b1e3d;
+    color: #e879a0;
     font-size: 1rem;
     font-weight: 930;
     margin-top: 0.15rem;
@@ -11697,7 +11902,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight: 760;
 }
 .meal-stage-alert {
-    color: #7b1e3d;
+    color: #e879a0;
     font-size: 1.08rem;
     font-weight: 950;
     margin: 0.72rem 0 0.75rem 0;
@@ -11720,7 +11925,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight: 950;
 }
 .meal-ready-spokes {
-    color: #7b1e3d;
+    color: #e879a0;
     font-size: 1.32rem;
     font-weight: 950;
     line-height: 1.25;
@@ -11800,7 +12005,7 @@ div[data-testid="stCheckbox"] svg {
     margin: 0.65rem 0 0.85rem 0;
 }
 .compact-detail-title {
-    color: #7b1e3d;
+    color: #e879a0;
     font-size: 1.12rem;
     font-weight: 950;
     margin-bottom: 0.35rem;
@@ -12471,7 +12676,7 @@ div[data-testid="stCheckbox"] svg {
     color:#c8a0b4;
 }
 .axis-bar-score {
-    font-size:.78rem;
+    font-size:.88rem;
     font-weight:800;
     color:#d4a0b8;
     white-space:nowrap;
@@ -12490,7 +12695,7 @@ div[data-testid="stCheckbox"] svg {
     background:linear-gradient(90deg,#f7b1c7,#c1a6ff);
 }
 .axis-bar-desc {
-    font-size:.76rem;
+    font-size:.88rem;
     color:#c090a8;
     line-height:1.32;
     margin-top:.20rem;
@@ -16634,7 +16839,7 @@ def _shinsal_badges_html(chart: Chart, result: Dict[str, object], limit: int = 3
         icon = html.escape(str(item.get("icon", "🎴")), quote=True)
         name = html.escape(str(item.get("name", "보조 신호")), quote=True)
         pills.append(
-            f"<span style='display:inline-flex;align-items:center;gap:.28rem;padding:.28rem .56rem;border-radius:999px;background:#1e1018;border:1px solid rgba(230,164,184,.45);color:#c090a8;font-size:.78rem;font-weight:900;box-shadow:0 4px 10px rgba(214,66,115,.06);'><span>{icon}</span><span>{name}</span></span>"
+            f"<span style='display:inline-flex;align-items:center;gap:.28rem;padding:.28rem .56rem;border-radius:999px;background:#1e1018;border:1px solid rgba(230,164,184,.45);color:#c090a8;font-size:.88rem;font-weight:900;box-shadow:0 4px 10px rgba(214,66,115,.06);'><span>{icon}</span><span>{name}</span></span>"
         )
     return "<div style='display:flex;flex-wrap:wrap;justify-content:center;gap:.38rem;margin-top:.62rem;'>" + "".join(pills) + "</div>"
 
@@ -17165,11 +17370,11 @@ def render_daewun_train(payload: Dict[str, object]) -> None:
             f"border:{border};border-radius:10px;padding:12px 10px;'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
             f"<span style='background:{badge_bg};color:#fff;border-radius:4px;padding:1px 7px;"
-            f"font-size:11px;font-weight:700;'>{badge_text}</span>"
-            f"<span style='font-size:11px;color:#a0b4bc;'>{html.escape(age)}세~</span></div>"
+            f"font-size:13px;font-weight:700;'>{badge_text}</span>"
+            f"<span style='font-size:13px;color:#a0b4bc;'>{html.escape(age)}세~</span></div>"
             f"<div style='font-size:20px;font-weight:800;color:#93c5fd;text-align:center;"
             f"letter-spacing:2px;margin-bottom:4px;'>{html.escape(gz)}{signal_icon}</div>"
-            f"<div style='font-size:11px;color:#b0c4cc;margin-bottom:4px;text-align:center;'>"
+            f"<div style='font-size:13px;color:#b0c4cc;margin-bottom:4px;text-align:center;'>"
             f"체감 {score}% · {mod:+.1f}</div>"
             f"<div style='font-size:12px;color:#c090a8;line-height:1.5;'>{html.escape(story)}</div>"
             f"</div>"
@@ -18164,10 +18369,10 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         bars_html += (
             f"<div style='flex:1;text-align:center;background:{bg};"
             f"border:{border};border-radius:8px;padding:8px 4px;'>"
-            f"<div style='font-size:9px;font-weight:700;color:{tag_c};height:14px;'>{tag}</div>"
+            f"<div style='font-size:12px;font-weight:700;color:{tag_c};height:14px;'>{tag}</div>"
             f"<div style='font-size:18px;font-weight:800;color:{color};'>{ELEM_HJ[el]}</div>"
-            f"<div style='font-size:11px;color:#b0c4cc;'>{pct:.1f}%</div>"
-            f"<div style='font-size:9px;color:#888;'>{ELEM_KW[el][:4]}</div>"
+            f"<div style='font-size:13px;color:#b0c4cc;'>{pct:.1f}%</div>"
+            f"<div style='font-size:12px;color:#888;'>{ELEM_KW[el][:4]}</div>"
             f"</div>"
         )
     bars_html += "</div>"
@@ -18216,9 +18421,9 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         _jbg  = _j["bg"]
         _n    = _j["hot"] + _j["warm"] + _j["cold"]
         _dist_html = ""
-        if _j["hot"]  > 0: _dist_html += f"<span style='background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;margin-right:4px;'>🔴 뜨거운 편 {_j['hot']}명</span>"
-        if _j["warm"] > 0: _dist_html += f"<span style='background:#f2c94c;color:#b0c4cc;border-radius:4px;padding:2px 7px;font-size:11px;margin-right:4px;'>🟡 따뜻한 편 {_j['warm']}명</span>"
-        if _j["cold"] > 0: _dist_html += f"<span style='background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;margin-right:4px;'>🔵 차가운 편 {_j['cold']}명</span>"
+        if _j["hot"]  > 0: _dist_html += f"<span style='background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:13px;margin-right:4px;'>🔴 뜨거운 편 {_j['hot']}명</span>"
+        if _j["warm"] > 0: _dist_html += f"<span style='background:#f2c94c;color:#b0c4cc;border-radius:4px;padding:2px 7px;font-size:13px;margin-right:4px;'>🟡 따뜻한 편 {_j['warm']}명</span>"
+        if _j["cold"] > 0: _dist_html += f"<span style='background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:13px;margin-right:4px;'>🔵 차가운 편 {_j['cold']}명</span>"
         st.markdown(
             f"<div style='background:{_jbg};border:2px solid {_jc};border-radius:8px;"
             f"padding:10px 14px;margin-bottom:8px;'>"
@@ -18252,7 +18457,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         f"<span style='font-size:18px;'>🌡️</span>"
         f"<span style='font-size:15px;font-weight:700;color:{tc};margin-left:8px;'>"
         f"평균 {_t['avg']:.0f}점 · {_t['label']}</span>"
-        f"<span style='font-size:11px;color:{tc};margin-left:8px;'>"
+        f"<span style='font-size:13px;color:{tc};margin-left:8px;'>"
         f"(개인 편차 ±{_t['variance']:.0f})</span>"
         f"</div>",
         unsafe_allow_html=True,
@@ -18290,7 +18495,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
             f"padding:8px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:12px;'>"
             f"<div style='min-width:56px;text-align:center;background:{rc}18;"
             f"border:1px solid {rc}55;border-radius:6px;padding:5px 4px;flex-shrink:0;'>"
-            f"<div style='font-size:10px;font-weight:700;color:{rc};line-height:1.3;'>{role['role_type']}</div>"
+            f"<div style='font-size:12px;font-weight:700;color:{rc};line-height:1.3;'>{role['role_type']}</div>"
             f"</div>"
             f"<div>"
             f"<div style='font-size:13px;font-weight:600;color:#b0c4cc;'>"
@@ -18479,7 +18684,7 @@ def render_multi_chem_result(participants: list) -> None:
         st.markdown(
             f"<div style='background:#1e1018;border:1px solid #f8d0e0;"
             f"border-radius:8px;padding:10px 14px;margin-bottom:8px;'>"
-            f"<div style='font-size:12px;font-weight:700;color:#7b1e3d;margin-bottom:4px;'>"
+            f"<div style='font-size:12px;font-weight:700;color:#e879a0;margin-bottom:4px;'>"
             f"{p['stamp']} {p['a']} × {p['b']} — {p['score']:.0f}점 · {p['type']}</div>"
             f"<div style='font-size:13px;color:#ddd0d8;line-height:1.7;'>{gtext}</div>"
             f"</div>",
@@ -18508,7 +18713,7 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
     st.markdown(f"""
     <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#1e1018,#221220);border:1px solid rgba(255,145,180,.30);border-radius:26px;box-shadow:0 14px 30px rgba(255,125,165,.12);margin:.5rem 0 1rem 0;">
         <div style="font-size:2.4rem;line-height:1;">{chem['stamp']}</div>
-        <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#7b1e3d;letter-spacing:-.05em;">{safe_chem_title}</div>
+        <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#e879a0;letter-spacing:-.05em;">{safe_chem_title}</div>
         <div style="margin-top:.35rem;color:#e8d0d8;font-weight:950;font-size:1.15rem;">궁합점수 {safe_chem_score}/100</div>
         <div style="margin-top:.55rem;color:#d4a0b8;font-weight:760;">{safe_chem_desc}</div>
         <div style="margin-top:.45rem;color:#d4a0b8;font-size:.92rem;">{safe_summary}</div>
@@ -19779,8 +19984,8 @@ def render_hanuneyo_text_explanation(payload, char, result):
         f"<div style='background:#1e1018;border-left:4px solid #e879a0;padding:14px 16px;"
         f"border-radius:8px;margin-bottom:10px;'>"
         f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
-        f"<div style='font-size:11px;color:#c090a8;letter-spacing:1px;margin-bottom:6px;'>진단서</div>"
-        f"<div style='font-size:11px;background:#7b1e3d;color:#fff;border-radius:4px;"
+        f"<div style='font-size:13px;color:#c090a8;letter-spacing:1px;margin-bottom:6px;'>진단서</div>"
+        f"<div style='font-size:13px;background:#7b1e3d;color:#fff;border-radius:4px;"
         f"padding:2px 8px;font-weight:700;'>총점 {_total_score:.0f}점 · {_score_label}</div>"
         f"</div>"
         f"<div style='font-size:13px;color:#c090a8;margin-bottom:4px;'>{diag_line1}</div>"
@@ -20097,7 +20302,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
                 f"<span style='font-size:15px;font-weight:700;color:{_bc};'>"
                 f"{_icon} {_sn}</span>"
-                f"<span style='font-size:11px;background:{_bc};color:#fff;border-radius:4px;"
+                f"<span style='font-size:13px;background:{_bc};color:#fff;border-radius:4px;"
                 f"padding:2px 7px;font-weight:700;'>{_tag} · {_rsign}점</span>"
                 f"</div>"
                 f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:6px;'>"
@@ -20366,7 +20571,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
                 f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
                 f"<span style='font-weight:700;color:{_fc};font-size:13px;'>{_fn}</span>"
-                f"<span style='font-size:11px;background:{_fc};color:#fff;border-radius:4px;"
+                f"<span style='font-size:13px;background:{_fc};color:#fff;border-radius:4px;"
                 f"padding:1px 7px;'>{_fs}</span>"
                 f"</div>"
                 f"<div style='font-size:13px;color:#ddd0d8;line-height:1.8;'>{_doc}</div>"
@@ -20396,7 +20601,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
     _parts = [p.strip() for p in _pillars_raw.split("/")]
     _labels = ["년주", "월주", "일주", "시주"]
     _pillar_html_cells = "".join(
-        f"<div style='text-align:center;'><div style='font-size:9px;color:#f0b8d0;margin-bottom:2px;'>{_labels[i]}</div>"
+        f"<div style='text-align:center;'><div style='font-size:12px;color:#f0b8d0;margin-bottom:2px;'>{_labels[i]}</div>"
         f"<div style='font-size:24px;font-weight:900;letter-spacing:2px;color:#e8d0d8;'>{p}</div></div>"
         for i, p in enumerate(_parts)
     )
@@ -20404,7 +20609,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
         f"<div style='background:#1e1018;border:2px solid #d4a0b0;border-radius:10px;"
         f"padding:10px 16px;margin-bottom:8px;'><div style='display:flex;justify-content:space-around;'>"
         f"{_pillar_html_cells}</div>"
-        f"<div style='font-size:9px;color:#b0758a;text-align:right;margin-top:4px;'>{APP_VERSION}</div></div>",
+        f"<div style='font-size:12px;color:#b0758a;text-align:right;margin-top:4px;'>{APP_VERSION}</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -20887,7 +21092,7 @@ def render_ability_bar_summary(result: Dict[str, object], prefix: str = "single"
         st.markdown(f"""
         <div class="ability-bar-row">
             <div class="ability-bar-head">
-                <span class="ability-bar-title">{info['icon']} {info['primary']} <span style="font-size:.78rem;color:#d4a0b8;">({info['legacy']})</span></span>
+                <span class="ability-bar-title">{info['icon']} {info['primary']} <span style="font-size:.88rem;color:#d4a0b8;">({info['legacy']})</span></span>
                 <span class="ability-bar-score">{score:.1f} / {max_score:.0f}</span>
             </div>
             <div style="font-size:.82rem;color:#d4a0b8;font-weight:760;margin-bottom:.32rem;">{info['short']} · {info['meaning']}</div>
@@ -20914,13 +21119,13 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
     <div style="background:#1e1018;border:1px solid rgba(230,164,184,0.45);border-radius:18px;padding:1rem 1rem 1.1rem 1rem;margin:0.35rem 0 1rem 0;">
         <div style="font-weight:900;color:#d4a0b8;font-size:1.04rem;margin-bottom:0.7rem;">총점 계산 한눈에 보기</div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.55rem;">
-            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">기초체력</div><div style="font-size:.76rem;color:#d4a0b8;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.78rem;color:#d4a0b8;">오행·월령·통근·일간</div></div>
+            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4a0b8;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">오행·월령·통근·일간</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">흐름과 연결</div><div style="font-size:.76rem;color:#d4a0b8;font-weight:800;"></div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{flow_score:.1f}</div><div style="font-size:.78rem;color:#d4a0b8;">조후·십성 흐름</div></div>
+            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4a0b8;font-weight:800;"></div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{flow_score:.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">조후·십성 흐름</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">현실작동력</div><div style="font-size:.76rem;color:#d4a0b8;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.78rem;color:#d4a0b8;">합충·현실 작동</div></div>
+            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4a0b8;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">합충·현실 작동</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 150px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4a0b8;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d95b84;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.76rem;color:#d4a0b8;">체감 보정</div></div>
+            <div style="flex:1 1 150px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4a0b8;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d95b84;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">체감 보정</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">=</div>
             <div style="flex:1 1 180px;background:linear-gradient(135deg,#fff0f5,#fffafc);border:2px solid #ebb2c4;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#d4a0b8;font-weight:800;">대표 총점</div><div style="font-size:1.6rem;color:#7b1e3d;font-weight:950;">{total:.1f}점</div></div>
         </div>
@@ -21155,13 +21360,13 @@ def _mini_bar_html(label: str, value: float, max_value: float = 100.0, caption: 
     except Exception:
         value, max_value = 0.0, 100.0
     pct = max(0.0, min(100.0, value / max_value * 100.0))
-    caption_html = f"<div style='font-size:.78rem;color:#d4a0b8;margin-top:.18rem;'>{html.escape(str(caption))}</div>" if caption else ""
+    caption_html = f"<div style='font-size:.88rem;color:#d4a0b8;margin-top:.18rem;'>{html.escape(str(caption))}</div>" if caption else ""
     value_label = f"{value:.1f}" if max_value == 100 else f"{value:.1f} / {int(max_value)}"
     return (
         f"<div style='margin:.42rem 0 .62rem 0;'>"
         f"<div style='display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;'>"
         f"<div style='font-weight:900;color:#d4a0b8;'>{html.escape(str(label))}</div>"
-        f"<div style='font-weight:900;color:#7b1e3d;'>{value_label}</div>"
+        f"<div style='font-weight:900;color:#e879a0;'>{value_label}</div>"
         f"</div>"
         f"<div style='height:10px;background:#221018;border-radius:99px;overflow:hidden;border:1px solid rgba(230,164,184,.35);'>"
         f"<div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);border-radius:99px;'></div>"
@@ -21357,7 +21562,7 @@ def render_strength_scale(result: Dict[str, object]) -> None:
         <div style="position:relative;height:18px;background:linear-gradient(90deg,#c7ddff,#fff4c7,#ffc6d9);border-radius:99px;margin:.7rem 0 .45rem 0;border:1px solid rgba(145,115,129,.20);">
             <div style="position:absolute;left:{pos:.1f}%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#7b1e3d;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);"></div>
         </div>
-        <div style="font-weight:900;color:#7b1e3d;">{label} · 강약 지수 {idx:.1f}</div>
+        <div style="font-weight:900;color:#e879a0;">{label} · 강약 지수 {idx:.1f}</div>
     </div>
     """, unsafe_allow_html=True)
     st.caption(label_note)
@@ -21486,7 +21691,7 @@ def render_luck_timeline(luck_flow: Dict[str, object] | None) -> None:
         safe_year = html.escape(str(r.get('연도', '-')), quote=True)
         safe_tag = html.escape(str(tag), quote=True)
         safe_sewun = html.escape(str(r.get('세운', '-')), quote=True)
-        cards.append(f"<div style='flex:1 1 120px;background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4a0b8;'>{safe_year}</div><div style='font-weight:900;color:#7b1e3d;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#221018;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);'></div></div><div style='font-size:.78rem;color:#d4a0b8;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
+        cards.append(f"<div style='flex:1 1 120px;background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4a0b8;'>{safe_year}</div><div style='font-weight:900;color:#7b1e3d;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#221018;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);'></div></div><div style='font-size:.88rem;color:#d4a0b8;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
     st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 
@@ -21589,20 +21794,20 @@ def render_patch_notes() -> None:
     ]
 
     for note in PATCH_NOTES:
-        tag_html = f"<span style='background:{note['tag_color']};color:#fff;font-size:.72rem;font-weight:900;padding:.18rem .55rem;border-radius:99px;margin-left:.5rem;'>{note['tag']}</span>"
+        tag_html = f"<span style='background:{note['tag_color']};color:#fff;font-size:.84rem;font-weight:900;padding:.18rem .55rem;border-radius:99px;margin-left:.5rem;'>{note['tag']}</span>"
         st.markdown(
             f"<div style='background:#1e1018;border:1.5px solid rgba(214,66,115,.18);border-radius:16px;padding:1rem 1.2rem;margin:.65rem 0;box-shadow:0 4px 12px rgba(214,66,115,.07);'>"
             f"<div style='display:flex;align-items:center;gap:.35rem;margin-bottom:.55rem;'>"
             f"<span style='font-size:1.05rem;font-weight:950;color:#e8d0d8;'>{note['version']}</span>"
             f"{tag_html}"
-            f"<span style='margin-left:auto;font-size:.78rem;color:#9b7280;'>{note['date']}</span>"
+            f"<span style='margin-left:auto;font-size:.88rem;color:#9b7280;'>{note['date']}</span>"
             f"</div>",
             unsafe_allow_html=True,
         )
         for icon_title, desc in note["items"]:
             st.markdown(
                 f"<div style='margin:.35rem 0;padding:.4rem .65rem;background:#221018;border-radius:10px;'>"
-                f"<span style='font-weight:900;color:#7b1e3d;font-size:.88rem;'>{icon_title}</span> "
+                f"<span style='font-weight:900;color:#e879a0;font-size:.88rem;'>{icon_title}</span> "
                 f"<span style='font-size:.85rem;color:#d4a0b8;'>{desc}</span>"
                 f"</div>",
                 unsafe_allow_html=True,
@@ -22396,8 +22601,8 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         padding:12px 16px;margin-bottom:14px;'>
         <div style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>
           <span style='background:#7b1e3d;color:#fff;border-radius:4px;padding:2px 8px;
-          font-size:11px;font-weight:700;'>🆕 {APP_VERSION} 업데이트</span>
-          <span style='font-size:11px;color:#c090a8;'>2026년 5월</span>
+          font-size:13px;font-weight:700;'>🆕 {APP_VERSION} 업데이트</span>
+          <span style='font-size:13px;color:#c090a8;'>2026년 5월</span>
         </div>
         <div style='font-size:13px;color:#d4a0b8;line-height:1.9;'>
           · 모임 케미 기능이 추가되었어
@@ -23328,148 +23533,4 @@ elif payload.get("multi"):
         st.caption("점수는 이 앱의 분석 모델에 따른 참고값입니다.")
 
     elif selected_view == "케미 보기":
-        quest_title(" 케미 보기", "가장 잘 맞는 조합과 조율 포인트를 확인해.", ["최고 케미", "평균", "조율 포인트"])
-        st.caption("케미는 관계의 결론이 아니라 맞물림 방식을 보는 참고 지표입니다.")
-        render_compact_chemistry_overview(participants)
-
-        if safe_toggle("케미 판정 신뢰도 보기", value=False, key="multi_chem_confidence_toggle"):
-            safe_dataframe(pd.DataFrame(pairwise_compatibility_confidence_rows(participants)), use_container_width=True, hide_index=True)
-            st.caption("원국 입력 확인 메모는 입력값을 다시 확인하면 좋은 항목이라는 뜻입니다. 케미가 틀렸다는 의미는 아닙니다.")
-
-    else:
-        selected_name = selected_view.replace(" 상세 분석", "")
-        selected = next(p for p in participants if p["name"] == selected_name)
-        quest_title(f"🧾 {selected_name} 핵심 요약", "상세 분석은 핵심 카드 중심으로 가볍게 보여줍니다.", ["원국", "대운", "세운"])
-        render_compact_participant_battle_summary(selected, prefix=f"multi_{selected_name}")
-
-    st.markdown("#### 다음에 할 일")
-    multi_storage_mode = st.radio("보관 방식", ["원국 보관", "생년월일시까지 보관"], index=0, key="multi_storage_mode", horizontal=True)
-    if multi_storage_mode == "생년월일시까지 보관":
-        st.caption("자동 산출 참가자 중 생년월일시와 대운 정보가 있는 사람만 생년월일시까지 보관됩니다. 직접 원국 입력자는 원국 보관으로 처리됩니다.")
-    save_cols = st.columns(3)
-    selected_to_save = []
-    for idx, p in enumerate(participants):
-        if st.checkbox(f"{p['name']} 보관", key=f"multi_save_pick_{idx}"):
-            selected_to_save.append(p)
-    with save_cols[0]:
-        if st.button("선택 참가자 보관", use_container_width=True, key="multi_save_selected"):
-            if not selected_to_save:
-                st.warning("보관할 참가자를 선택하세요.")
-            else:
-                for p in selected_to_save:
-                    st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
-                st.success(f"{len(selected_to_save)}명을 보관함에 추가했습니다.")
-    with save_cols[1]:
-        if st.button("전체 보관", use_container_width=True, key="multi_save_all"):
-            for p in participants:
-                st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
-            st.success("모든 참가자를 보관함에 추가했습니다.")
-    with save_cols[2]:
-        if st.button("이 멤버로 오늘의 뽑기", type="primary", use_container_width=True, key="multi_to_today_roulette"):
-            st.session_state.prefill_roulette_participants = normalize_participant_names(list(participants))
-            reset_navigation_to("오늘의 뽑기")
-            st.rerun()
-
-
-    if safe_toggle("리포트 다운로드", value=False, key="multi_report_toggle"):
-        report = make_multi_report(participants, summary)
-        _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        st.download_button(
-            label="케미 분석 리포트 다운로드",
-            data=report.encode("utf-8"),
-            file_name=f"palja_multi_battle_report_{_ts}.md",
-            mime="text/markdown",
-            key="download_multi_battle_report",
-        )
-
-
-elif payload.get("multi_chem"):
-    participants = payload["participants"]
-    st.markdown(
-        f"<span class='summary-chip'>모드: 모임 케미</span>"
-        f"<span class='summary-chip'>참가자 수: {len(participants)}명</span>"
-        f"<span class='summary-chip'>태양시 보정: {payload.get('correction_label', '한국 평균 -30분')}</span>",
-        unsafe_allow_html=True,
-    )
-    render_multi_chem_result(participants)
-
-elif not payload.get("battle"):
-        render_single_summary(payload)
-
-
-# ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
-st.markdown("""
-<script>
-(function injectDarkStyle() {
-    var css =
-        /* 라디오 버튼 */
-        '[data-testid=\"stRadio\"] label,' +
-        'div[role=\"radiogroup\"] label {' +
-        '  background-color:#2a1520!important;' +
-        '  border:1.5px solid rgba(232,121,160,0.40)!important;' +
-        '  border-radius:999px!important;' +
-        '  color:#c090a8!important;' +
-        '  padding:6px 16px!important;' +
-        '  transition:none!important;' +
-        '}' +
-        '[data-testid=\"stRadio\"] label:has(input:checked),' +
-        'div[role=\"radiogroup\"] label:has(input:checked) {' +
-        '  background-color:#7b1e3d!important;' +
-        '  border-color:#e879a0!important;' +
-        '  color:#ffffff!important;' +
-        '}' +
-        '[data-testid=\"stRadio\"] label p,' +
-        'div[role=\"radiogroup\"] label p {' +
-        '  color:inherit!important;' +
-        '}' +
-        /* 입력 wrapper */
-        'div[data-baseweb=\"base-input\"],' +
-        'div[data-baseweb=\"input\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}' +
-        /* 입력 필드 */
-        'div[data-baseweb=\"base-input\"] input,' +
-        'div[data-baseweb=\"input\"] input,' +
-        'input[type=\"text\"],input[type=\"number\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  color:#e8d0d8!important;' +
-        '  caret-color:#e879a0!important;' +
-        '}' +
-        /* 셀렉트박스 */
-        'div[data-baseweb=\"select\"] > div {' +
-        '  background-color:#2a1520!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '  color:#e8d0d8!important;' +
-        '}' +
-        /* 드롭다운 옵션 */
-        'ul[data-baseweb=\"menu\"],li[role=\"option\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  color:#e8d0d8!important;' +
-        '}' +
-        'li[role=\"option\"]:hover {' +
-        '  background-color:#3d1a2b!important;' +
-        '}' +
-        /* number_input 버튼 */
-        'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputStepUp\"] {' +
-        '  background-color:#3d1a2b!important;' +
-        '  color:#e8d0d8!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}';
-
-    var style = document.createElement('style');
-    style.id = 'saju-dark-override';
-    style.textContent = css;
-
-    function inject() {
-        if (!document.getElementById('saju-dark-override')) {
-            (document.head || document.documentElement).appendChild(style.cloneNode(true));
-        }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
-})();
-</script>
-""", unsafe_allow_html=True)
+    
