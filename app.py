@@ -7629,13 +7629,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── 제로베이스 디자인 시스템 ──
-st.markdown("""
+# ── 제로베이스 디자인 시스템 (components.html → parent head 주입) ──
+import streamlit.components.v1 as _stcomp
+_stcomp.html("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script>
-(function injectBaseCSS() {
+(function() {
     var css = `
 /* ══════════════════════════════════════════
    0. 폰트 & 베이스
@@ -7832,23 +7833,26 @@ tbody tr:nth-child(even) td {
     thead th, tbody td { font-size: 0.82rem !important; padding: 0.45rem 0.55rem !important; }
 }
 `;
-    var el = document.getElementById('saju-base-css');
-    if (!el) {
-        el = document.createElement('style');
-        el.id = 'saju-base-css';
-        el.textContent = css;
-        (document.head || document.documentElement).appendChild(el);
+    function inject() {
+        var p = window.parent ? window.parent.document : document;
+        if (!p.getElementById('saju-base-css')) {
+            var el = p.createElement('style');
+            el.id = 'saju-base-css';
+            el.textContent = css;
+            (p.head || p.documentElement).appendChild(el);
+        }
     }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', injectBaseCSS);
-    }
+    inject();
+    setTimeout(inject, 300);
+    setTimeout(inject, 1000);
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0, scrolling=False)
 # v5.54 UI 보강 CSS
-st.markdown("""
-<style>
-.svg-radar-card,.chem-radar-card{background:#1e1018;border:1px solid rgba(90,40,64,.60);border-radius:20px;padding:.75rem;box-shadow:none;}
+_stcomp.html("""
+<script>
+(function(){
+    var css=`.svg-radar-card,.chem-radar-card{background:#1e1018;border:1px solid rgba(90,40,64,.60);border-radius:20px;padding:.75rem;box-shadow:none;}
 .element-bar-row{display:grid;grid-template-columns:34px 1fr 54px;align-items:center;gap:.45rem;margin:.34rem 0;color:#d4a0b8;font-size:.88rem;}
 .element-bar-track,.chem-track{height:10px;background:#2e1422;border-radius:999px;overflow:hidden;}
 .element-bar-fill{height:100%;background:#7b1e3d;border-radius:999px;}
@@ -10416,9 +10420,26 @@ div[data-testid="stTimeInput"] label {
         font-size: .83rem !important;
     }
 }
-
-</style>
-""", unsafe_allow_html=True)
+`;
+    var p=window.parent?window.parent.document:document;
+    if(!p.getElementById('saju-css-1')){
+        var el=p.createElement('style');
+        el.id='saju-css-1';
+        el.textContent=css;
+        (p.head||p.documentElement).appendChild(el);
+    }
+    setTimeout(function(){
+        var p2=window.parent?window.parent.document:document;
+        if(!p2.getElementById('saju-css-1')){
+            var el2=p2.createElement('style');
+            el2.id='saju-css-1';
+            el2.textContent=css;
+            (p2.head||p2.documentElement).appendChild(el2);
+        }
+    },800);
+})();
+</script>
+""", height=0, scrolling=False)
 
 
 def init_session_state():
@@ -11037,9 +11058,10 @@ def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> 
 
 BG_IMAGE_B64 = load_background_image_base64()
 
-st.markdown("""
-<style>
-:root {
+_stcomp.html("""
+<script>
+(function(){
+    var css=`:root {
     --palja-bg: #1a0d14;
     --palja-panel: #2a1520;
     --palja-panel-2: #221018;
@@ -12761,14 +12783,32 @@ div[data-testid="stCheckbox"] svg {
         margin-top: .16rem !important;
     }
 }
-
-</style>
-""", unsafe_allow_html=True)
+`;
+    var p=window.parent?window.parent.document:document;
+    if(!p.getElementById('saju-css-2')){
+        var el=p.createElement('style');
+        el.id='saju-css-2';
+        el.textContent=css;
+        (p.head||p.documentElement).appendChild(el);
+    }
+    setTimeout(function(){
+        var p2=window.parent?window.parent.document:document;
+        if(!p2.getElementById('saju-css-2')){
+            var el2=p2.createElement('style');
+            el2.id='saju-css-2';
+            el2.textContent=css;
+            (p2.head||p2.documentElement).appendChild(el2);
+        }
+    },800);
+})();
+</script>
+""", height=0, scrolling=False)
 
 # ── 다크 테마 가독성 + 모바일 레이아웃 통합 CSS ──
-st.markdown("""
-<style>
-
+_stcomp.html("""
+<script>
+(function(){
+    var css=`
 /* ════════════════════════════════════════
    1. 전역 텍스트 가독성
    ════════════════════════════════════════ */
@@ -12934,9 +12974,26 @@ div[style*="font-size:12px"][style*="color:#a0b4bc"],
 div[style*="font-size:12px"][style*="color:#b0c4cc"] {
     color: #c090a8 !important;
 }
-
-</style>
-""", unsafe_allow_html=True)
+`;
+    var p=window.parent?window.parent.document:document;
+    if(!p.getElementById('saju-css-3')){
+        var el=p.createElement('style');
+        el.id='saju-css-3';
+        el.textContent=css;
+        (p.head||p.documentElement).appendChild(el);
+    }
+    setTimeout(function(){
+        var p2=window.parent?window.parent.document:document;
+        if(!p2.getElementById('saju-css-3')){
+            var el2=p2.createElement('style');
+            el2.id='saju-css-3';
+            el2.textContent=css;
+            (p2.head||p2.documentElement).appendChild(el2);
+        }
+    },800);
+})();
+</script>
+""", height=0, scrolling=False)
 
 
 BLANK = ""
@@ -23724,7 +23781,7 @@ elif not payload.get("battle"):
 
 
 # ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
-st.markdown("""
+_stcomp.html("""
 <script>
 (function injectDarkStyle() {
     var css =
@@ -23798,4 +23855,4 @@ st.markdown("""
     new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0, scrolling=False)
