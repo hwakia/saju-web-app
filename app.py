@@ -9405,7 +9405,7 @@ div[data-testid="stTimeInput"] label {
     small {
         font-size: .78rem !important;
         line-height: 1.42 !important;
-        color: #6a5560 !important;
+        color: #c090a8 !important;
     }
 
     h2, h3, h4 {
@@ -10022,7 +10022,7 @@ div[data-testid="stTimeInput"] label {
 .axis-bar-name {
     font-size:.92rem;
     font-weight:900;
-    color:#46313a;
+    color:#c8a0b4;
 }
 .axis-bar-score {
     font-size:.78rem;
@@ -10916,7 +10916,7 @@ label, .stRadio label, .stCheckbox label {
 div[data-baseweb="input"] > div,
 .stDateInput input, .stTimeInput input, .stTextInput input, .stNumberInput input {
     background: #1e1018 !important;
-    color: #3d2a34 !important;
+    color: #c090a8 !important;
 }
 .stButton > button {
     border-radius: 999px;
@@ -11150,7 +11150,7 @@ div[role="radiogroup"] *, label[data-baseweb="radio"] * {
 [data-testid="stTable"] *,
 div[data-testid="stDataFrame"] div,
 div[data-testid="stTable"] div {
-    color: #33222a !important;
+    color: #c090a8 !important;
     font-size: 0.95rem !important;
 }
 
@@ -11279,7 +11279,7 @@ div[data-testid="stAlert"] * {
     margin-bottom: 0.15rem;
 }
 .support-menu-caption {
-    color: #7a606b !important;
+    color: #c090a8 !important;
     font-size: 0.88rem !important;
     line-height: 1.55 !important;
 }
@@ -11615,7 +11615,7 @@ div[data-testid="stCheckbox"] svg {
 .legend-pill.tune { border-color: #7d9bff; color: #4d63c9; }
 .legend-pill.tense { border-color: #ff9a68; color: #d5642b; }
 .multi-situation-caption {
-    color: #6c5560;
+    color: #c090a8;
     font-size: 0.92rem;
     line-height: 1.6;
     margin-bottom: 0.9rem;
@@ -11650,7 +11650,7 @@ div[data-testid="stCheckbox"] svg {
     margin-top: 0.28rem;
 }
 .multi-role-meta {
-    color: #6b5460;
+    color: #c090a8;
     font-size: 0.9rem;
     line-height: 1.55;
     margin-top: 0.28rem;
@@ -11851,7 +11851,7 @@ div[data-testid="stCheckbox"] svg {
     small {
         font-size: .78rem !important;
         line-height: 1.42 !important;
-        color: #6a5560 !important;
+        color: #c090a8 !important;
     }
 
     h2, h3, h4 {
@@ -12468,7 +12468,7 @@ div[data-testid="stCheckbox"] svg {
 .axis-bar-name {
     font-size:.92rem;
     font-weight:900;
-    color:#46313a;
+    color:#c8a0b4;
 }
 .axis-bar-score {
     font-size:.78rem;
@@ -12544,6 +12544,179 @@ div[data-testid="stCheckbox"] svg {
         font-size: .72rem !important;
         margin-top: .16rem !important;
     }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ── 다크 테마 가독성 + 모바일 레이아웃 통합 CSS ──
+st.markdown("""
+<style>
+
+/* ════════════════════════════════════════
+   1. 전역 텍스트 가독성
+   ════════════════════════════════════════ */
+body, .stMarkdown, .stText, p, li, span, div {
+    word-break: keep-all !important;
+    overflow-wrap: break-word !important;
+}
+/* Streamlit 기본 paragraph */
+.stMarkdown p {
+    color: #e8d0d8 !important;
+    line-height: 1.85 !important;
+    font-size: 0.97rem !important;
+}
+.stMarkdown li {
+    color: #e0c8d4 !important;
+    line-height: 1.75 !important;
+}
+/* 캡션 */
+.stMarkdown small, [data-testid="stCaptionContainer"] p {
+    color: #c090a8 !important;
+    font-size: 0.84rem !important;
+}
+/* h3·h4 헤더 */
+.stMarkdown h3 { color: #f0b8d0 !important; font-size: 1.12rem !important; }
+.stMarkdown h4 { color: #e879a0 !important; font-size: 1.04rem !important; }
+/* expander 헤더 */
+[data-testid="stExpander"] summary p {
+    color: #e8d0d8 !important;
+    font-weight: 800 !important;
+}
+
+/* ════════════════════════════════════════
+   2. 카드·박스 공통 텍스트
+   ════════════════════════════════════════ */
+/* 다크 박스 내 링크 */
+a { color: #e879a0 !important; }
+/* 테이블 */
+table { width: 100% !important; border-collapse: collapse !important; }
+th, td {
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.20) !important;
+    padding: .5rem .7rem !important;
+    font-size: .88rem !important;
+    word-break: keep-all !important;
+}
+th { background: rgba(123,30,61,0.45) !important; font-weight: 900 !important; }
+tr:nth-child(even) td { background: rgba(42,21,32,0.55) !important; }
+
+/* ════════════════════════════════════════
+   3. 모바일 전용 (≤ 768px)
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* 전체 컨테이너 패딩 축소 */
+    .block-container {
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
+        padding-top: 0.8rem !important;
+    }
+    /* 긴 flex 컨테이너 줄바꿈 강제 */
+    div[style*="display:flex"], div[style*="display: flex"] {
+        flex-wrap: wrap !important;
+    }
+    /* 카드 min-width 제거 → 모바일 꽉 채움 */
+    .shinsal-card, .pipeline-card, .svg-radar-card,
+    .chem-radar-card, .luck-intensity-card,
+    .signal-card, .mode-card, .revisit-guide-card {
+        min-width: unset !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    /* 대운 흐름 카드 크기 */
+    .daewun-flow-card {
+        min-width: 80px !important;
+        padding: .5rem .45rem !important;
+        font-size: .82rem !important;
+    }
+    /* 오행 바 그리드 */
+    .element-bar-row {
+        grid-template-columns: 28px 1fr 46px !important;
+        font-size: .82rem !important;
+    }
+    /* 3축 능력 카드 세로 배열 */
+    .ability-map {
+        grid-template-columns: 1fr !important;
+        gap: .5rem !important;
+    }
+    /* 신살 그리드 1열 */
+    .shinsal-grid {
+        grid-template-columns: 1fr !important;
+        gap: .55rem !important;
+    }
+    /* 텍스트 크기 모바일 최적화 */
+    .stMarkdown p { font-size: 0.93rem !important; line-height: 1.75 !important; }
+    .stMarkdown h3 { font-size: 1.05rem !important; }
+    .stMarkdown h4 { font-size: 0.98rem !important; }
+    /* 헤더 타이틀 줄바꿈 */
+    .main-character-name {
+        font-size: 1.25rem !important;
+        word-break: break-all !important;
+    }
+    /* 인라인 박스 텍스트 크기 */
+    div[style*="font-size:14px"], div[style*="font-size: 14px"] {
+        font-size: 13px !important;
+    }
+    div[style*="font-size:16px"], div[style*="font-size: 16px"] {
+        font-size: 14px !important;
+    }
+    /* 가로 스크롤 방지 */
+    [data-testid="stAppViewContainer"],
+    section.main, .block-container {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+    /* 버튼 전체 너비 */
+    .stButton button {
+        width: 100% !important;
+        min-height: 46px !important;
+        font-size: 0.95rem !important;
+    }
+    /* selectbox 전체 너비 */
+    [data-testid="stSelectbox"] {
+        width: 100% !important;
+    }
+    /* 탭 글자 크기 */
+    [data-testid="stTabs"] [role="tab"] p {
+        font-size: 0.85rem !important;
+    }
+}
+
+/* ════════════════════════════════════════
+   4. 초소형 화면 (≤ 420px)
+   ════════════════════════════════════════ */
+@media (max-width: 420px) {
+    .stMarkdown p { font-size: 0.88rem !important; }
+    .stMarkdown h3 { font-size: 0.98rem !important; }
+    .stMarkdown h4 { font-size: 0.92rem !important; }
+    .daewun-flow-card {
+        min-width: 68px !important;
+        padding: .4rem .35rem !important;
+        font-size: .76rem !important;
+    }
+    .block-container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    /* 체온계 바 텍스트 축소 */
+    .thermometer-label { font-size: 0.82rem !important; }
+}
+
+/* ════════════════════════════════════════
+   5. 인라인 HTML 박스 공통 다크
+   ════════════════════════════════════════ */
+/* border-left 박스 텍스트 색 보장 */
+div[style*="border-left"] {
+    color: #e0c8d4 !important;
+}
+div[style*="border-left"] b,
+div[style*="border-left"] strong {
+    color: #f0b8d0 !important;
+}
+/* 진단·처방 박스 헤더 */
+div[style*="font-size:12px"][style*="color:#a0b4bc"],
+div[style*="font-size:12px"][style*="color:#b0c4cc"] {
+    color: #c090a8 !important;
 }
 
 </style>
@@ -16978,9 +17151,9 @@ def render_daewun_train(payload: Dict[str, object]) -> None:
             badge_bg = "#dc2626"
             badge_text = "역"
         else:
-            border = "1.5px solid #d1d5db"
-            bg     = "#f9fafb"
-            badge_bg = "#6b7280"
+            border = "1.5px solid #4a3a44"
+            bg     = "#1a1820"
+            badge_bg = "#4a3a44"
             badge_text = "평"
 
         signal_icon = ""
@@ -16998,7 +17171,7 @@ def render_daewun_train(payload: Dict[str, object]) -> None:
             f"letter-spacing:2px;margin-bottom:4px;'>{html.escape(gz)}{signal_icon}</div>"
             f"<div style='font-size:11px;color:#b0c4cc;margin-bottom:4px;text-align:center;'>"
             f"체감 {score}% · {mod:+.1f}</div>"
-            f"<div style='font-size:12px;color:#4b5563;line-height:1.5;'>{html.escape(story)}</div>"
+            f"<div style='font-size:12px;color:#c090a8;line-height:1.5;'>{html.escape(story)}</div>"
             f"</div>"
         )
     parts.append("</div>")
@@ -18072,7 +18245,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         "냉성 집단": ("#2563eb", "#eff6ff"),
         "한랭 집단": ("#1d4ed8", "#dbeafe"),
     }
-    tc, tbg = _THERMO_COLORS.get(_t["label"], ("#374151", "#f9fafb"))
+    tc, tbg = _THERMO_COLORS.get(_t["label"], ("#94a3b8", "#1a1820"))
     st.markdown(
         f"<div style='background:{tbg};border:2px solid {tc};border-radius:8px;"
         f"padding:10px 14px;margin-bottom:8px;display:inline-block;'>"
@@ -19674,17 +19847,17 @@ def render_hanuneyo_text_explanation(payload, char, result):
     # ── 4. 🌡️ 사주 체온계 (결과 배지 먼저) ──────────────────
     st.markdown("#### 🌡️ 사주 체온계")
     _thermo_colors = {
-        "과열성": ("#dc2626", "#fef2f2"),
-        "열성":   ("#ea580c", "#fff7ed"),
-        "온성":   ("#16a34a", "#f0fdf4"),
-        "냉성":   ("#2563eb", "#eff6ff"),
-        "한랭성": ("#1d4ed8", "#dbeafe"),
+        "과열성": ("#dc2626", "#200d0d"),
+        "열성":   ("#ea580c", "#1a1408"),
+        "온성":   ("#16a34a", "#0d1e14"),
+        "냉성":   ("#2563eb", "#0d1420"),
+        "한랭성": ("#1d4ed8", "#0d1428"),
     }
     _t_key = (
         "과열성" if temp >= 73 else "열성" if temp >= 62 else
         "온성"   if temp >= 53 else "냉성" if temp >= 42 else "한랭성"
     )
-    _tc, _tbg = _thermo_colors.get(_t_key, ("#374151", "#f9fafb"))
+    _tc, _tbg = _thermo_colors.get(_t_key, ("#94a3b8", "#1a1820"))
     _thermo_emoji = thermometer.split("  ")[0] if "  " in thermometer else thermometer
     st.markdown(
         f"<div style='background:{_tbg};border:2px solid {_tc};border-radius:8px;"
@@ -19705,9 +19878,9 @@ def render_hanuneyo_text_explanation(payload, char, result):
     order = ["기초체력", "흐름과 연결", "현실작동력"]
     _axis_icons = {"기초체력": "💪", "흐름과 연결": "🔄", "현실작동력": "⚙️"}
     _state_colors = {
-        "강함": ("#16a34a", "#f0fdf4"),
-        "보통": ("#d97706", "#fffbeb"),
-        "약함": ("#dc2626", "#fef2f2"),
+        "강함": ("#16a34a", "#0d1e14"),
+        "보통": ("#d97706", "#1a1408"),
+        "약함": ("#dc2626", "#200d0d"),
     }
     # 결과 카드 행
     _axis_results = []
@@ -19720,7 +19893,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _axis_results.append((_an, _pct, _st))
     _bars_html = "<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;'>"
     for _an, _pct, _st in _axis_results:
-        _sc, _sbg = _state_colors.get(_st, ("#374151", "#f9fafb"))
+        _sc, _sbg = _state_colors.get(_st, ("#94a3b8", "#1a1820"))
         _raw  = float((_info := score_map.get(_an, {}) or {}).get("score", 0.0) or 0.0)
         _max  = float(_info.get("max", 0.0) or 0.0)
         _max_str = f"/{_max:.0f}" if _max > 0 else ""
@@ -19871,12 +20044,12 @@ def render_hanuneyo_text_explanation(payload, char, result):
             f"신살은 사주의 중심 판단을 바꾸진 않고, 색깔을 더해주는 보조 신호야."
         )
         _SH_TONE = {
-            "천을귀인": ("💛", "길한 신호", "#fef9c3", "#ca8a04"),
-            "문창귀인": ("💙", "길한 신호", "#eff6ff", "#2563eb"),
-            "역마":     ("🟠", "중립 신호", "#fff7ed", "#ea580c"),
-            "도화":     ("🩷", "중립 신호", "#fdf2f8", "#7b1e3d"),
-            "화개":     ("🟣", "중립 신호", "#faf5ff", "#7c3aed"),
-            "공망":     ("⚪", "주의 신호", "#f8fafc", "#475569"),
+            "천을귀인": ("💛", "길한 신호", "#1a1a08", "#ca8a04"),
+            "문창귀인": ("💙", "길한 신호", "#0d1420", "#2563eb"),
+            "역마":     ("🟠", "중립 신호", "#1a1408", "#ea580c"),
+            "도화":     ("🩷", "중립 신호", "#1a0d18", "#e879a0"),
+            "화개":     ("🟣", "중립 신호", "#1a1028", "#7c3aed"),
+            "공망":     ("⚪", "주의 신호", "#1a1820", "#94a3b8"),
         }
         # 신살별 의사 텍스트
         _SH_DOC_TEXT = {
@@ -19906,14 +20079,14 @@ def render_hanuneyo_text_explanation(payload, char, result):
             _rsign   = f"+{_reflect:.1f}" if _reflect > 0 else f"{_reflect:.1f}" if _reflect < 0 else "±0"
             # 성립 조건 섹션 (how 있을 때만)
             _how_section = (
-                f"<div style='background:rgba(255,255,255,0.6);border-left:3px solid #94a3b8;"
+                f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid #94a3b8;"
                 f"margin-top:8px;padding:7px 10px;border-radius:4px;"
                 f"font-size:12px;color:#94a3b8;line-height:1.8;'>"
                 f"\U0001f4cc <b>어떻게 성립하냐면</b> \u2014 {_how}</div>"
             ) if _how else ""
             # 의사 텍스트 카드 (있을 때만)
             _doc_section = (
-                f"<div style='background:rgba(255,255,255,0.7);border-left:3px solid {_bc};"
+                f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid {_bc};"
                 f"margin-top:8px;padding:8px 10px;border-radius:4px;"
                 f"font-size:13px;color:#f0e8ec;line-height:1.8;'>"
                 f"\U0001f4ac {_doc_txt}</div>"
@@ -19957,7 +20130,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _fw_detail = result.get("strength_detail", {}) or {}
         st.markdown(
             "<div style='background:#0d1828;border:1px solid #3b82f6;border-radius:8px;"
-            "padding:10px 14px;margin-bottom:10px;font-size:12px;color:#0369a1;line-height:1.9;'>"
+            "padding:10px 14px;margin-bottom:10px;font-size:12px;color:#60a5fa;line-height:1.9;'>"
             "💡 <b>십성 용어 간단 풀이</b><br>"
             "• <b>비겁(比劫)</b> — 나와 같은 오행, 동료·경쟁자 에너지야. 자아 강도랑 연결돼.<br>"
             "• <b>인성(印星)</b> — 나를 키워주는 기운이야. 공부, 배움, 환경·어머니 에너지야.<br>"
@@ -20176,10 +20349,10 @@ def render_hanuneyo_text_explanation(payload, char, result):
             ),
         }
         _STRENGTH_COLOR = {
-            "중간~강함": ("#16a34a", "#f0fdf4"),
-            "중간":       ("#d97706", "#fffbeb"),
-            "형태만 있음": ("#6b7280", "#f9fafb"),
-            "해당 낮음":  ("#dc2626", "#fef2f2"),
+            "중간~강함": ("#16a34a", "#0d1e14"),
+            "중간":       ("#d97706", "#1a1408"),
+            "형태만 있음": ("#6b7280", "#1a1820"),
+            "해당 낮음":  ("#dc2626", "#200d0d"),
         }
         for _fw in _fw_flows:
             _fn = str(_fw.get("구조", ""))
@@ -23161,142 +23334,4 @@ elif payload.get("multi"):
 
         if safe_toggle("케미 판정 신뢰도 보기", value=False, key="multi_chem_confidence_toggle"):
             safe_dataframe(pd.DataFrame(pairwise_compatibility_confidence_rows(participants)), use_container_width=True, hide_index=True)
-            st.caption("원국 입력 확인 메모는 입력값을 다시 확인하면 좋은 항목이라는 뜻입니다. 케미가 틀렸다는 의미는 아닙니다.")
-
-    else:
-        selected_name = selected_view.replace(" 상세 분석", "")
-        selected = next(p for p in participants if p["name"] == selected_name)
-        quest_title(f"🧾 {selected_name} 핵심 요약", "상세 분석은 핵심 카드 중심으로 가볍게 보여줍니다.", ["원국", "대운", "세운"])
-        render_compact_participant_battle_summary(selected, prefix=f"multi_{selected_name}")
-
-    st.markdown("#### 다음에 할 일")
-    multi_storage_mode = st.radio("보관 방식", ["원국 보관", "생년월일시까지 보관"], index=0, key="multi_storage_mode", horizontal=True)
-    if multi_storage_mode == "생년월일시까지 보관":
-        st.caption("자동 산출 참가자 중 생년월일시와 대운 정보가 있는 사람만 생년월일시까지 보관됩니다. 직접 원국 입력자는 원국 보관으로 처리됩니다.")
-    save_cols = st.columns(3)
-    selected_to_save = []
-    for idx, p in enumerate(participants):
-        if st.checkbox(f"{p['name']} 보관", key=f"multi_save_pick_{idx}"):
-            selected_to_save.append(p)
-    with save_cols[0]:
-        if st.button("선택 참가자 보관", use_container_width=True, key="multi_save_selected"):
-            if not selected_to_save:
-                st.warning("보관할 참가자를 선택하세요.")
-            else:
-                for p in selected_to_save:
-                    st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
-                st.success(f"{len(selected_to_save)}명을 보관함에 추가했습니다.")
-    with save_cols[1]:
-        if st.button("전체 보관", use_container_width=True, key="multi_save_all"):
-            for p in participants:
-                st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
-            st.success("모든 참가자를 보관함에 추가했습니다.")
-    with save_cols[2]:
-        if st.button("이 멤버로 오늘의 뽑기", type="primary", use_container_width=True, key="multi_to_today_roulette"):
-            st.session_state.prefill_roulette_participants = normalize_participant_names(list(participants))
-            reset_navigation_to("오늘의 뽑기")
-            st.rerun()
-
-
-    if safe_toggle("리포트 다운로드", value=False, key="multi_report_toggle"):
-        report = make_multi_report(participants, summary)
-        _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        st.download_button(
-            label="케미 분석 리포트 다운로드",
-            data=report.encode("utf-8"),
-            file_name=f"palja_multi_battle_report_{_ts}.md",
-            mime="text/markdown",
-            key="download_multi_battle_report",
-        )
-
-
-elif payload.get("multi_chem"):
-    participants = payload["participants"]
-    st.markdown(
-        f"<span class='summary-chip'>모드: 모임 케미</span>"
-        f"<span class='summary-chip'>참가자 수: {len(participants)}명</span>"
-        f"<span class='summary-chip'>태양시 보정: {payload.get('correction_label', '한국 평균 -30분')}</span>",
-        unsafe_allow_html=True,
-    )
-    render_multi_chem_result(participants)
-
-elif not payload.get("battle"):
-        render_single_summary(payload)
-
-
-# ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
-st.markdown("""
-<script>
-(function injectDarkStyle() {
-    var css =
-        /* 라디오 버튼 */
-        '[data-testid=\"stRadio\"] label,' +
-        'div[role=\"radiogroup\"] label {' +
-        '  background-color:#2a1520!important;' +
-        '  border:1.5px solid rgba(232,121,160,0.40)!important;' +
-        '  border-radius:999px!important;' +
-        '  color:#c090a8!important;' +
-        '  padding:6px 16px!important;' +
-        '  transition:none!important;' +
-        '}' +
-        '[data-testid=\"stRadio\"] label:has(input:checked),' +
-        'div[role=\"radiogroup\"] label:has(input:checked) {' +
-        '  background-color:#7b1e3d!important;' +
-        '  border-color:#e879a0!important;' +
-        '  color:#ffffff!important;' +
-        '}' +
-        '[data-testid=\"stRadio\"] label p,' +
-        'div[role=\"radiogroup\"] label p {' +
-        '  color:inherit!important;' +
-        '}' +
-        /* 입력 wrapper */
-        'div[data-baseweb=\"base-input\"],' +
-        'div[data-baseweb=\"input\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}' +
-        /* 입력 필드 */
-        'div[data-baseweb=\"base-input\"] input,' +
-        'div[data-baseweb=\"input\"] input,' +
-        'input[type=\"text\"],input[type=\"number\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  color:#e8d0d8!important;' +
-        '  caret-color:#e879a0!important;' +
-        '}' +
-        /* 셀렉트박스 */
-        'div[data-baseweb=\"select\"] > div {' +
-        '  background-color:#2a1520!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '  color:#e8d0d8!important;' +
-        '}' +
-        /* 드롭다운 옵션 */
-        'ul[data-baseweb=\"menu\"],li[role=\"option\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  color:#e8d0d8!important;' +
-        '}' +
-        'li[role=\"option\"]:hover {' +
-        '  background-color:#3d1a2b!important;' +
-        '}' +
-        /* number_input 버튼 */
-        'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputStepUp\"] {' +
-        '  background-color:#3d1a2b!important;' +
-        '  color:#e8d0d8!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}';
-
-    var style = document.createElement('style');
-    style.id = 'saju-dark-override';
-    style.textContent = css;
-
-    function inject() {
-        if (!document.getElementById('saju-dark-override')) {
-            (document.head || document.documentElement).appendChild(style.cloneNode(true));
-        }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
-})();
-</script>
-""", unsafe_allow_html=True)
+            st.caption("원국 입력 확인 메모는 입력값을 다시 확인하면 좋은 항목이라는 뜻입니다. 케미가 틀렸다는 의미
