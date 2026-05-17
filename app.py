@@ -13918,12 +13918,12 @@ def render_strength_operation_spotlight(payload: Dict[str, object]) -> None:
     left_label, right_label = "환경 반응", "자력 추진"
 
     st.markdown(f"""
-    <div class="main-character-card" style="border-color:rgba(16,185,129,.24);background:linear-gradient(135deg,#f0fdf4,#fff7fb);margin:.35rem 0 1rem;">
-        <div class="main-character-label">힘 쓰는 스타일</div>
-        <div class="main-character-name">{name}</div>
-        <div class="main-character-desc">{desc}</div>
+    <div class="main-character-card" style="border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,#0d1e14,#1e1018);margin:.35rem 0 1rem;">
+        <div class="main-character-label" style="color:#7ecfa8;">힘 쓰는 스타일</div>
+        <div class="main-character-name" style="color:#e8f5ee;">{name}</div>
+        <div class="main-character-desc" style="color:#c0d8ca;">{desc}</div>
         <div style="margin-top:.7rem;">
-            <div style="display:flex;justify-content:space-between;font-size:.82rem;color:#d4a0b8;font-weight:950;">
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;color:#9abfac;font-weight:950;">
                 <span>{html.escape(left_label)}</span><span>{html.escape(right_label)}</span>
             </div>
             <div class="operation-meter">
@@ -13932,7 +13932,7 @@ def render_strength_operation_spotlight(payload: Dict[str, object]) -> None:
                     <div class="operation-marker-triangle"></div>
                 </div>
             </div>
-            <div class="operation-axis-note"><b>{axis_label}</b> · {axis_note}</div>
+            <div class="operation-axis-note" style="color:#a0ccb4;"><b style="color:#7ecfa8;">{axis_label}</b> · {axis_note}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -17410,17 +17410,17 @@ def render_daewun_train(payload: Dict[str, object]) -> None:
 
         if is_cur:
             border = "3px solid #2563eb"
-            bg     = "#eff6ff"
+            bg     = "#080e28"
             badge_bg = "#2563eb"
             badge_text = "현재"
         elif mod >= 2:
             border = "1.5px solid #16a34a"
-            bg     = "#f0fdf4"
+            bg     = "#0d1e14"
             badge_bg = "#16a34a"
             badge_text = "순"
         elif mod <= -2:
             border = "1.5px solid #dc2626"
-            bg     = "#fef2f2"
+            bg     = "#200808"
             badge_bg = "#dc2626"
             badge_text = "역"
         else:
@@ -17578,7 +17578,7 @@ def relationship_orientation_from_compatibility(compatibility: Dict[str, object]
 def render_relationship_orientation_card(compatibility: Dict[str, object]) -> None:
     orient = relationship_orientation_from_compatibility(compatibility)
     st.markdown(
-        "<div class='signal-card' style='border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,#ecfdf5,#fff7fb);margin:.7rem 0 1rem;'>"
+        "<div class='signal-card' style='border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,#0d1e14,#1e1018);margin:.7rem 0 1rem;'>"
         f"<div class='signal-title' style='font-size:1.05rem;'>{html.escape(orient['stamp'])} 케미 극대화 지향점 · {html.escape(orient['title'])}</div>"
         f"<div class='signal-body'><b>{html.escape(orient['slogan'])}</b><br>"
         f"<b>가장 빛나는 자리:</b> {html.escape(orient['best'])}<br>"
@@ -18286,7 +18286,7 @@ def group_chemistry_analysis(participants: list) -> dict:
                       "과열·충돌 위험도 있어. 서늘하게 식히는 환경·활동을 의식적으로 넣는 게 좋아.")
         johu_rx    = "서늘한 공간, 물 자주 마시기, 수기(水氣) 보충 활동"
         johu_color = "#ef4444"
-        johu_bg    = "#fef2f2"
+        johu_bg    = "#200808"
     elif cold_cnt >= n * 0.6:
         johu_label = "한랭 편향"
         johu_note  = ("모임 대부분이 차가운 기운이야. 차분하고 이성적이라 깊은 대화는 잘 되지만, "
@@ -18294,7 +18294,7 @@ def group_chemistry_analysis(participants: list) -> dict:
                       "따뜻하게 불을 지피는 활동이 큰 도움이 돼.")
         johu_rx    = "따뜻한 공간·음식·불 주변 모임, 화기(火氣) 보충 활동"
         johu_color = "#3b82f6"
-        johu_bg    = "#eff6ff"
+        johu_bg    = "#080e28"
     elif hot_cnt > 0 and cold_cnt > 0:
         johu_label = "냉열 혼재"
         johu_note  = ("뜨거운 사람과 차가운 사람이 섞여 있어. 서로 자극도 되고 보완도 되지만, "
@@ -18302,14 +18302,14 @@ def group_chemistry_analysis(participants: list) -> dict:
                       "페이스와 열기를 맞추는 과정이 중요해.")
         johu_rx    = "속도 조율, 각자 온도에 맞는 역할 분담"
         johu_color = "#d97706"
-        johu_bg    = "#fffbeb"
+        johu_bg    = "#1e1408"
     else:
         johu_label = "온화 균형"
         johu_note  = ("모임 전체의 온도감이 비교적 균일해. 크게 달아오르거나 차갑게 식는 극단이 없어서 "
                       "안정적으로 오래 함께하기 좋은 구성이야.")
         johu_rx    = "현재 패턴 유지"
         johu_color = "#16a34a"
-        johu_bg    = "#f0fdf4"
+        johu_bg    = "#0d1e14"
 
     # ── 8. 종합 결론 텍스트 생성 ────────────────────────────────
     def _make_conclusion(
@@ -18430,17 +18430,17 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         color  = ELEM_COLORS[el]
         is_over  = el in ga["over_elements"]
         is_under = el in ga["under_elements"]
-        bg     = "#fef2f2" if is_over else ("#f0fdf4" if is_under else "#f8f8fc")
+        bg     = "rgba(40,8,8,0.85)" if is_over else ("rgba(8,30,15,0.85)" if is_under else "rgba(22,10,20,0.85)")
         border = f"2px solid {color}" if (is_over or is_under) else f"1px solid {color}44"
         tag    = "▲ 과다" if is_over else ("▼ 부족" if is_under else "")
-        tag_c  = "#dc2626" if is_over else ("#16a34a" if is_under else "#aaa")
+        tag_c  = "#f87171" if is_over else ("#4ade80" if is_under else "#888")
         bars_html += (
             f"<div style='flex:1;text-align:center;background:{bg};"
             f"border:{border};border-radius:8px;padding:8px 4px;'>"
             f"<div style='font-size:12px;font-weight:700;color:{tag_c};height:14px;'>{tag}</div>"
             f"<div style='font-size:18px;font-weight:800;color:{color};'>{ELEM_HJ[el]}</div>"
             f"<div style='font-size:13px;color:#b0c4cc;'>{pct:.1f}%</div>"
-            f"<div style='font-size:12px;color:#888;'>{ELEM_KW[el][:4]}</div>"
+            f"<div style='font-size:12px;color:#a090a8;'>{ELEM_KW[el][:4]}</div>"
             f"</div>"
         )
     bars_html += "</div>"
@@ -18512,11 +18512,11 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     st.markdown("#### 🌡️ 모임 체온 진단")
     _t = ga["temp"]
     _THERMO_COLORS = {
-        "과열 집단": ("#dc2626", "#fef2f2"),
-        "열성 집단": ("#ea580c", "#fff7ed"),
-        "균형 집단": ("#16a34a", "#f0fdf4"),
-        "냉성 집단": ("#2563eb", "#eff6ff"),
-        "한랭 집단": ("#1d4ed8", "#dbeafe"),
+        "과열 집단": ("#dc2626", "#200808"),
+        "열성 집단": ("#ea580c", "#1e1008"),
+        "균형 집단": ("#16a34a", "#0d1e14"),
+        "냉성 집단": ("#2563eb", "#080e28"),
+        "한랭 집단": ("#1d4ed8", "#060c24"),
     }
     tc, tbg = _THERMO_COLORS.get(_t["label"], ("#94a3b8", "#1a1820"))
     st.markdown(
