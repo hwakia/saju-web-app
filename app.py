@@ -19970,7 +19970,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     _grandma_intro_html = _make_grandma_intro()
 
-    # ── 1. 진단명 카드 (일주 설명 통합) ──────────────────────
+    # ── 진단서 데이터 수집 ───────────────────────────────────
     diag_line1, diag_line2 = diagnosis_name.split("\n")
     _total_score = float(result.get("total", 0) or 0)
     _score_label = (
@@ -19980,37 +19980,147 @@ def render_hanuneyo_text_explanation(payload, char, result):
         "약한 편"   if _total_score >= 35 else
         "주의 필요"
     )
-    st.markdown(
-        f"<div style='background:#1e1018;border-left:4px solid #e879a0;padding:14px 16px;"
-        f"border-radius:8px;margin-bottom:10px;'>"
-        f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
-        f"<div style='font-size:13px;color:#c090a8;letter-spacing:1px;margin-bottom:6px;'>진단서</div>"
-        f"<div style='font-size:13px;background:#7b1e3d;color:#fff;border-radius:4px;"
-        f"padding:2px 8px;font-weight:700;'>총점 {_total_score:.0f}점 · {_score_label}</div>"
-        f"</div>"
-        f"<div style='font-size:13px;color:#c090a8;margin-bottom:4px;'>{diag_line1}</div>"
-        f"<div style='font-size:17px;font-weight:700;color:#f0b8d0;line-height:1.5;margin-bottom:10px;'>{diag_line2}</div>"
-        f"<div style='border-top:1px solid rgba(232,121,160,0.20);padding-top:8px;'>"
-        f"<div style='font-size:12px;color:#d4a0b8;margin-bottom:3px;'>"
-        f"<span style='font-weight:600;color:#e879a0;'>일간 {day_stem}</span>&nbsp;"
-        f"{stem_name} — {stem_desc}</div>"
-        f"<div style='font-size:12px;color:#d4a0b8;'>"
-        f"<span style='font-weight:600;color:#e879a0;'>일지 {day_branch}</span>&nbsp;"
-        f"{branch_name} — {branch_desc}</div>"
-        f"</div></div>",
-        unsafe_allow_html=True,
+    _score_color = (
+        "#16a34a" if _total_score >= 80 else
+        "#4ade80" if _total_score >= 65 else
+        "#d97706" if _total_score >= 50 else
+        "#ef4444" if _total_score >= 35 else "#dc2626"
     )
+    _t_key_diag = (
+        "과열성" if temp >= 73 else "열성" if temp >= 62 else
+        "온성"   if temp >= 53 else "냉성" if temp >= 42 else "한랭성"
+    )
+    _thermo_icon = {"과열성":"🔴","열성":"🟠","온성":"🟢","냉성":"🔵","한랭성":"❄️"}.get(_t_key_diag,"🌡️")
 
-    # ── 2. 진단 통합 설명 (체질·강약·오행·용신 + 할머니 말투) ──────
-    _grandma_part = f"<div style='margin-bottom:12px;line-height:2.0;'>{_grandma_intro_html}</div>" if _grandma_intro_html else ""
-    _diag_body = diag_plain + (f"<br><br>{char_tone}" if char_tone else "")
-    st.markdown(
-        f"<div style='background:#1e1018;border:1px solid rgba(232,121,160,0.25);"
-        f"border-radius:10px;padding:16px 18px;margin-bottom:4px;"
-        f"font-size:14px;color:#e8d0d8;line-height:1.9;'>"
-        f"{_grandma_part}{_diag_body}</div>",
-        unsafe_allow_html=True,
-    )
+    # 3축 요약
+    _axis_rows = []
+    for _an, _icon_a in [("기초체력","💪"),("흐름과연결","🔄"),("현실작동력","⚙️")]:
+        _ai = score_map.get(_an, {}) or {}
+        _pct = float(_ai.get("pct", 0) or 0)
+        _st_a = "강함" if _pct >= 68 else "보통" if _pct >= 45 else "약함"
+        _sc_a = {"강함":"#4ade80","보통":"#fbbf24","약함":"#f87171"}.get(_st_a,"#c090a8")
+        _axis_rows.append((_icon_a, _an, _pct, _st_a, _sc_a))
+
+    # 합충형파해 요약
+    _interactions = result.get("interactions", []) or []
+    _inter_summary = []
+    _inter_type_ko = {"삼합":"삼합","방합":"방합","반합":"반합","육합":"육합",
+                      "충":"충","형":"형","파":"파","해":"해","원진":"원진"}
+    for _it in _interactions[:4]:
+        _itype = str(_it.get("type",""))
+        _iname = str(_it.get("name",""))
+        if _itype and _iname:
+            _inter_summary.append(f"{_inter_type_ko.get(_itype,_itype)} <b>{_iname}</b>")
+
+    # 신살 요약
+    _shinsal_data = result.get("shinsal", {}) or {}
+    _shinsal_hits = (_shinsal_data.get("hits") or [])[:3]
+    _sh_summary = []
+    for _sh in _shinsal_hits:
+        _sh_name = str(_sh.get("신살", _sh.get("name","")))
+        _sh_pos  = str(_sh.get("위치","-"))
+        if _sh_name:
+            _sh_summary.append(f"<b>{_sh_name}</b>({_sh_pos})")
+
+    # 용신 요약
+    _fw_pri = list((useful.get("primary") or []))
+    _fw_bur = list((useful.get("burden") or []))
+    _EL_KO2 = {"木":"木(나무)","火":"火(불)","土":"土(흙)","金":"金(쇠)","水":"水(물)"}
+    _yongsin_txt = "·".join(_EL_KO2.get(e,e) for e in _fw_pri) if _fw_pri else "복합"
+    _gisin_txt   = "·".join(_EL_KO2.get(e,e) for e in _fw_bur)  if _fw_bur  else "-"
+
+    def _row(label, value, value_color="#f0e0ea"):
+        return (
+            f"<tr>"
+            f"<td style='width:30%;padding:9px 12px;font-size:14px;font-weight:700;"
+            f"color:#c8a0b8;border:1px solid rgba(232,121,160,0.18);white-space:nowrap;'>{label}</td>"
+            f"<td style='padding:9px 12px;font-size:14px;font-weight:600;"
+            f"color:{value_color};border:1px solid rgba(232,121,160,0.18);line-height:1.7;'>{value}</td>"
+            f"</tr>"
+        )
+
+    _inter_html = "  ·  ".join(_inter_summary) if _inter_summary else "특이 신호 없음"
+    _sh_html    = "  ·  ".join(_sh_summary)    if _sh_summary    else "없음"
+
+    # 진단서 HTML
+    _cert_html = f"""
+<div style='background:linear-gradient(160deg,#1e1018 0%,#1a0d18 100%);
+            border:2px solid rgba(232,121,160,0.45);
+            border-radius:16px;padding:0;margin-bottom:12px;
+            box-shadow:0 4px 24px rgba(0,0,0,0.5);overflow:hidden;'>
+
+  <!-- 헤더 -->
+  <div style='background:linear-gradient(90deg,rgba(123,30,61,0.85),rgba(42,21,32,0.9));
+              padding:14px 20px;border-bottom:1px solid rgba(232,121,160,0.30);
+              display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;'>
+    <div>
+      <div style='font-size:11px;color:#c090a8;letter-spacing:2px;font-weight:700;'>사 주 진 단 서</div>
+      <div style='font-size:22px;font-weight:900;color:#f5c8dc;letter-spacing:-0.03em;line-height:1.2;margin-top:4px;'>
+        {diag_line2}
+      </div>
+      <div style='font-size:12px;color:#c090a8;margin-top:4px;'>{diag_line1}</div>
+    </div>
+    <div style='text-align:right;'>
+      <div style='font-size:28px;font-weight:900;color:{_score_color};line-height:1;'>{_total_score:.0f}<span style='font-size:14px;'>점</span></div>
+      <div style='font-size:12px;font-weight:700;color:{_score_color};'>{_score_label}</div>
+    </div>
+  </div>
+
+  <!-- 검사 항목표 -->
+  <div style='padding:4px 16px 16px 16px;'>
+    <table style='width:100%;border-collapse:collapse;margin-top:12px;'>
+      {_row("일주(日柱)", f"<b style='font-size:17px;'>{day_stem}{day_branch}</b> &nbsp;{stem_name} · {branch_name}")}
+      {_row("사주 체온", f"{_thermo_icon} {_t_key_diag} ({temp:.0f}/100) &nbsp;<span style='font-size:12px;color:#c090a8;'>— {str(result.get('climate_label','')) or ''}</span>")}
+      {_row("주성분 / 결핍", f"<b>{dominant_el}</b> {float(dominant_pct):.1f}% &nbsp;/&nbsp; {'<b>'+weak_el+'</b> '+str(float(weak_pct))[:4]+'%' if weak_el and weak_el not in('-',dominant_el) else '결핍 없음'}")}
+      {_row("신강·신약", f"<b>{strength_label}</b> &nbsp;<span style='font-size:12px;color:#c090a8;'>— {refined_note[:30] if refined_note else ''}</span>")}
+      {_row("용신 / 기신", f"<span style='color:#4ade80;font-weight:700;'>↑ {_yongsin_txt}</span> &nbsp;/&nbsp; <span style='color:#f87171;'>↓ {_gisin_txt}</span>")}
+    </table>
+
+    <!-- 3축 능력 -->
+    <div style='margin-top:14px;border-top:1px solid rgba(232,121,160,0.18);padding-top:12px;'>
+      <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:8px;letter-spacing:1px;'>▸ 기운의 3대 축</div>
+      <div style='display:flex;gap:8px;flex-wrap:wrap;'>
+"""
+    for _icon_a, _an, _pct, _st_a, _sc_a in _axis_rows:
+        _cert_html += (
+            f"<div style='flex:1;min-width:90px;background:rgba(30,16,24,0.8);"
+            f"border:1px solid {_sc_a}44;border-radius:10px;padding:10px;text-align:center;'>"
+            f"<div style='font-size:20px;'>{_icon_a}</div>"
+            f"<div style='font-size:12px;font-weight:700;color:#c0a0b4;margin:3px 0;'>{_an}</div>"
+            f"<div style='font-size:15px;font-weight:900;color:{_sc_a};'>{_st_a}</div>"
+            f"<div style='font-size:12px;color:{_sc_a};'>{_pct:.0f}%</div>"
+            f"</div>"
+        )
+    _cert_html += f"""
+      </div>
+    </div>
+
+    <!-- 합충형파해 -->
+    <div style='margin-top:12px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
+      <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 합충형파해 신호</div>
+      <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_inter_html}</div>
+    </div>
+
+    <!-- 신살 -->
+    <div style='margin-top:10px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
+      <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 특수 신호 (신살·공망)</div>
+      <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_sh_html}</div>
+    </div>
+  </div>
+</div>
+"""
+    st.markdown(_cert_html, unsafe_allow_html=True)
+
+    # ── 종합 소견 (할머니 말투, 중복 없이) ──────────────────
+    if _grandma_intro_html:
+        st.markdown(
+            f"<div style='background:#1e1018;border-left:4px solid #e879a0;"
+            f"border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:4px;"
+            f"font-size:15px;color:#f0e0ea;line-height:2.0;'>"
+            f"<div style='font-size:11px;font-weight:700;color:#c090a8;letter-spacing:2px;margin-bottom:10px;'>종 합 소 견</div>"
+            f"{_grandma_intro_html}</div>",
+            unsafe_allow_html=True,
+        )
 
     st.divider()
 
@@ -23550,131 +23660,4 @@ elif payload.get("multi"):
     st.markdown("#### 다음에 할 일")
     multi_storage_mode = st.radio("보관 방식", ["원국 보관", "생년월일시까지 보관"], index=0, key="multi_storage_mode", horizontal=True)
     if multi_storage_mode == "생년월일시까지 보관":
-        st.caption("자동 산출 참가자 중 생년월일시와 대운 정보가 있는 사람만 생년월일시까지 보관됩니다. 직접 원국 입력자는 원국 보관으로 처리됩니다.")
-    save_cols = st.columns(3)
-    selected_to_save = []
-    for idx, p in enumerate(participants):
-        if st.checkbox(f"{p['name']} 보관", key=f"multi_save_pick_{idx}"):
-            selected_to_save.append(p)
-    with save_cols[0]:
-        if st.button("선택 참가자 보관", use_container_width=True, key="multi_save_selected"):
-            if not selected_to_save:
-                st.warning("보관할 참가자를 선택하세요.")
-            else:
-                for p in selected_to_save:
-                    st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
-                st.success(f"{len(selected_to_save)}명을 보관함에 추가했습니다.")
-    with save_cols[1]:
-        if st.button("전체 보관", use_container_width=True, key="multi_save_all"):
-            for p in participants:
-                st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
-            st.success("모든 참가자를 보관함에 추가했습니다.")
-    with save_cols[2]:
-        if st.button("이 멤버로 오늘의 뽑기", type="primary", use_container_width=True, key="multi_to_today_roulette"):
-            st.session_state.prefill_roulette_participants = normalize_participant_names(list(participants))
-            reset_navigation_to("오늘의 뽑기")
-            st.rerun()
-
-
-    if safe_toggle("리포트 다운로드", value=False, key="multi_report_toggle"):
-        report = make_multi_report(participants, summary)
-        _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        st.download_button(
-            label="케미 분석 리포트 다운로드",
-            data=report.encode("utf-8"),
-            file_name=f"palja_multi_battle_report_{_ts}.md",
-            mime="text/markdown",
-            key="download_multi_battle_report",
-        )
-
-
-elif payload.get("multi_chem"):
-    participants = payload["participants"]
-    st.markdown(
-        f"<span class='summary-chip'>모드: 모임 케미</span>"
-        f"<span class='summary-chip'>참가자 수: {len(participants)}명</span>"
-        f"<span class='summary-chip'>태양시 보정: {payload.get('correction_label', '한국 평균 -30분')}</span>",
-        unsafe_allow_html=True,
-    )
-    render_multi_chem_result(participants)
-
-elif not payload.get("battle"):
-        render_single_summary(payload)
-
-
-# ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
-st.markdown("""
-<script>
-(function injectDarkStyle() {
-    var css =
-        /* 라디오 버튼 */
-        '[data-testid=\"stRadio\"] label,' +
-        'div[role=\"radiogroup\"] label {' +
-        '  background-color:#2a1520!important;' +
-        '  border:1.5px solid rgba(232,121,160,0.40)!important;' +
-        '  border-radius:999px!important;' +
-        '  color:#c090a8!important;' +
-        '  padding:6px 16px!important;' +
-        '  transition:none!important;' +
-        '}' +
-        '[data-testid=\"stRadio\"] label:has(input:checked),' +
-        'div[role=\"radiogroup\"] label:has(input:checked) {' +
-        '  background-color:#7b1e3d!important;' +
-        '  border-color:#e879a0!important;' +
-        '  color:#ffffff!important;' +
-        '}' +
-        '[data-testid=\"stRadio\"] label p,' +
-        'div[role=\"radiogroup\"] label p {' +
-        '  color:inherit!important;' +
-        '}' +
-        /* 입력 wrapper */
-        'div[data-baseweb=\"base-input\"],' +
-        'div[data-baseweb=\"input\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}' +
-        /* 입력 필드 */
-        'div[data-baseweb=\"base-input\"] input,' +
-        'div[data-baseweb=\"input\"] input,' +
-        'input[type=\"text\"],input[type=\"number\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  color:#e8d0d8!important;' +
-        '  caret-color:#e879a0!important;' +
-        '}' +
-        /* 셀렉트박스 */
-        'div[data-baseweb=\"select\"] > div {' +
-        '  background-color:#2a1520!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '  color:#e8d0d8!important;' +
-        '}' +
-        /* 드롭다운 옵션 */
-        'ul[data-baseweb=\"menu\"],li[role=\"option\"] {' +
-        '  background-color:#2a1520!important;' +
-        '  color:#e8d0d8!important;' +
-        '}' +
-        'li[role=\"option\"]:hover {' +
-        '  background-color:#3d1a2b!important;' +
-        '}' +
-        /* number_input 버튼 */
-        'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputStepUp\"] {' +
-        '  background-color:#3d1a2b!important;' +
-        '  color:#e8d0d8!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}';
-
-    var style = document.createElement('style');
-    style.id = 'saju-dark-override';
-    style.textContent = css;
-
-    function inject() {
-        if (!document.getElementById('saju-dark-override')) {
-            (document.head || document.documentElement).appendChild(style.cloneNode(true));
-        }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
-})();
-</script>
-""", unsafe_allow_html=True)
+  
