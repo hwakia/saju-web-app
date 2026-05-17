@@ -20116,8 +20116,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
             border:2px solid rgba(232,121,160,0.45);
             border-radius:16px;padding:0;margin-bottom:12px;
             box-shadow:0 4px 24px rgba(0,0,0,0.5);overflow:hidden;'>
-
-  <!-- 헤더 -->
   <div style='background:linear-gradient(90deg,rgba(123,30,61,0.85),rgba(42,21,32,0.9));
               padding:14px 20px;border-bottom:1px solid rgba(232,121,160,0.30);
               display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;'>
@@ -20133,8 +20131,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
       <div style='font-size:12px;font-weight:700;color:{_score_color};'>{_score_label}</div>
     </div>
   </div>
-
-  <!-- 검사 항목표 -->
   <div style='padding:4px 16px 16px 16px;'>
     <table style='width:100%;border-collapse:collapse;margin-top:12px;'>
       {_row("일주(日柱)", f"<b style='font-size:17px;'>{day_stem}{day_branch}</b> &nbsp;{stem_name} · {branch_name}")}
@@ -20143,8 +20139,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
       {_row("신강·신약", f"<b>{strength_label}</b> &nbsp;<span style='font-size:12px;color:#c090a8;'>— {refined_note[:30] if refined_note else ''}</span>")}
       {_row("용신 / 기신", f"<span style='color:#4ade80;font-weight:700;'>↑ {_yongsin_txt}</span> &nbsp;/&nbsp; <span style='color:#f87171;'>↓ {_gisin_txt}</span>")}
     </table>
-
-    <!-- 3축 능력 -->
     <div style='margin-top:14px;border-top:1px solid rgba(232,121,160,0.18);padding-top:12px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:8px;letter-spacing:1px;'>▸ 기운의 3대 축</div>
       <div style='display:flex;gap:8px;flex-wrap:wrap;'>
@@ -20162,14 +20156,10 @@ def render_hanuneyo_text_explanation(payload, char, result):
     _cert_html += f"""
       </div>
     </div>
-
-    <!-- 합충형파해 -->
     <div style='margin-top:12px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 합충형파해 신호</div>
       <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_inter_html}</div>
     </div>
-
-    <!-- 신살 -->
     <div style='margin-top:10px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 특수 신호 (신살·공망)</div>
       <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_sh_html}</div>
@@ -20177,17 +20167,16 @@ def render_hanuneyo_text_explanation(payload, char, result):
   </div>
 </div>
 """
-    st.markdown(_cert_html, unsafe_allow_html=True)
+    st.html(_cert_html)
 
     # ── 종합 소견 (할머니 말투, 중복 없이) ──────────────────
     if _grandma_intro_html:
-        st.markdown(
+        st.html(
             f"<div style='background:#1e1018;border-left:4px solid #e879a0;"
             f"border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:4px;"
             f"font-size:15px;color:#f0e0ea;line-height:2.0;'>"
             f"<div style='font-size:11px;font-weight:700;color:#c090a8;letter-spacing:2px;margin-bottom:10px;'>종 합 소 견</div>"
-            f"{_grandma_intro_html}</div>",
-            unsafe_allow_html=True,
+            f"{_grandma_intro_html}</div>"
         )
 
     st.divider()
