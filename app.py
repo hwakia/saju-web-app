@@ -20511,6 +20511,69 @@ def render_hanuneyo_text_explanation(payload, char, result):
             unsafe_allow_html=True,
         )
 
+        # ── 이 사주의 십성 구성 ──────────────────────────────
+        _TEN_META = {
+            "비겁": {"icon": "🪨", "color": "#a78bfa", "role": "자아·독립",
+                      "strong": "자기 주도력과 버티는 힘이 강해. 자존감이 있고 혼자서도 밀고 나갈 수 있어.",
+                      "weak":  "혼자 버티는 힘이 약한 편이라 좋은 동료와 환경이 보약이야.",
+                      "mid":   "자아 기운이 적당해. 혼자서도, 협력해서도 움직일 수 있어."},
+            "인성": {"icon": "📚", "color": "#34d399", "role": "배움·보호",
+                      "strong": "배움과 사유 기운이 강해. 생각 정리가 잘 되고, 환경에서 에너지를 얻어.",
+                      "weak":  "인성 기운이 옅어. 스스로 움직이는 스타일이고 의존보다 독립을 선호해.",
+                      "mid":   "배움 기운이 균형 잡혀 있어. 필요할 때 흡수하고 필요할 때 행동해."},
+            "식상": {"icon": "✨", "color": "#f472b6", "role": "표현·창의",
+                      "strong": "표현하고 만들어내는 기운이 넘쳐. 창의력·행동력이 강하고 입 밖으로 잘 풀어.",
+                      "weak":  "식상이 약해. 표현보다 축적을 선호하는 편이야. 말보다 실력으로 보여주는 스타일.",
+                      "mid":   "표현 기운이 적당해. 필요할 때 꺼내 쓰고, 불필요한 에너지 낭비는 없어."},
+            "재성": {"icon": "💰", "color": "#fbbf24", "role": "현실·관리",
+                      "strong": "현실 감각과 관리 기운이 강해. 결과를 챙기고 자원을 효율적으로 쓸 줄 알아.",
+                      "weak":  "재성이 약해. 물질보다 아이디어나 원칙 쪽에 무게를 두는 편이야.",
+                      "mid":   "현실 기운이 균형 있어. 원칙도 지키면서 결과도 놓치지 않아."},
+            "관성": {"icon": "⚖️", "color": "#60a5fa", "role": "책임·규율",
+                      "strong": "책임감과 규율 기운이 강해. 조직 안에서 역할을 잘 수행하고 신뢰를 쌓아.",
+                      "weak":  "관성이 약해. 규율보다 자유로운 방식이 잘 맞아. 틀에 얽매이기 싫어하는 편이야.",
+                      "mid":   "책임 기운이 적당해. 융통성도 있고 원칙도 지킬 수 있어."},
+        }
+        _ten_items = []
+        for _tn, _tm in _TEN_META.items():
+            _tv = float(_fw_detail.get(_tn, 0) or 0)
+            if _tv >= 30:
+                _tlevel, _tlabel = "strong", "강함"
+            elif _tv <= 10:
+                _tlevel, _tlabel = "weak", "약함"
+            else:
+                _tlevel, _tlabel = "mid", "보통"
+            _ten_items.append((_tn, _tm, _tv, _tlevel, _tlabel))
+
+        _sorted_ten = sorted(_ten_items, key=lambda x: -x[2])
+        _ten_rows_html = ""
+        for _tn, _tm, _tv, _tlevel, _tlabel in _sorted_ten:
+            _bar_w = max(4, min(100, int(_tv * 2.2)))
+            _badge_bg = {"strong": "#7b1e3d", "mid": "#2a3a4a", "weak": "#1a2a1a"}.get(_tlevel, "#2a2a3a")
+            _badge_color = {"strong": "#f472b6", "mid": "#a0c4cc", "weak": "#7ecfa8"}.get(_tlevel, "#c090a8")
+            _ten_rows_html += (
+                f"<div style='margin-bottom:10px;'>"
+                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;'>"
+                f"<span style='font-size:13px;font-weight:800;color:{_tm['color']};'>{_tm['icon']} {_tn}({_tm['role']})</span>"
+                f"<span style='background:{_badge_bg};color:{_badge_color};border-radius:4px;"
+                f"padding:1px 8px;font-size:11px;font-weight:700;'>{_tlabel} {_tv:.0f}%</span>"
+                f"</div>"
+                f"<div style='background:#1a1020;border-radius:4px;height:6px;margin-bottom:4px;'>"
+                f"<div style='width:{_bar_w}%;height:100%;border-radius:4px;background:{_tm['color']};opacity:.7;'></div>"
+                f"</div>"
+                f"<div style='font-size:12px;color:#b0a8c0;line-height:1.6;'>{_tm[_tlevel]}</div>"
+                f"</div>"
+            )
+        st.markdown(
+            "<div style='background:#120e1e;border:1px solid rgba(167,139,250,.25);"
+            "border-radius:10px;padding:14px 16px;margin-bottom:12px;'>"
+            "<div style='font-size:13px;font-weight:800;color:#a78bfa;margin-bottom:10px;'>"
+            "📊 이 사주의 십성 구성</div>"
+            + _ten_rows_html +
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
         _STRENGTH_WHY = {
             "극신강": (
                 "일간 오행을 도와주는 비겁(나와 같은 기운)과 인성(나를 키우는 기운)이 원국의 절반을 훌쩍 넘어. "
