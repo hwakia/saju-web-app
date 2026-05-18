@@ -6,7 +6,7 @@ def _interaction_detail_html(interactions: list) -> str:
 
     # 타입별 배경색/아이콘/제목색
     TYPE_STYLE = {
-        "삼합":  {"bg": "#f5eaed", "border": "#c9a0b0", "icon": "🔺", "color": "#1e1b4b"},
+        "삼합":  {"bg": "#f5eaed", "border": "#c9a0b0", "icon": "🔺", "color": "#4a0e20"},
         "방합":  {"bg": "#f0edf8", "border": "#b8aed9", "icon": "🔷", "color": "#312060"},
         "반합":  {"bg": "#f3edf5", "border": "#c8aed5", "icon": "🔸", "color": "#3d1a55"},
         "육합":  {"bg": "#edf5f0", "border": "#a0c8b0", "icon": "🔗", "color": "#14442a"},
@@ -153,12 +153,12 @@ def _interaction_detail_html(interactions: list) -> str:
             # 성립
             f"<div style='margin-bottom:8px;'>"
             f"<div style='font-size:13px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>어떻게 이루어지냐면</div>"
-            f"<div style='font-size:13px;color:#9898b8;line-height:1.7;'>{detail['성립']}</div>"
+            f"<div style='font-size:13px;color:#d4a0b8;line-height:1.7;'>{detail['성립']}</div>"
             f"</div>"
             # 효과
             f"<div>"
             f"<div style='font-size:13px;font-weight:900;color:{style['color']};opacity:.7;letter-spacing:.5px;margin-bottom:3px;'>어떤 작용을 하냐면</div>"
-            f"<div style='font-size:13px;color:#9898b8;line-height:1.7;'>{detail['효과']}</div>"
+            f"<div style='font-size:13px;color:#d4a0b8;line-height:1.7;'>{detail['효과']}</div>"
             f"</div>"
             f"</div>"
         )
@@ -4748,12 +4748,12 @@ def render_role_winner_hero(meal_result: Dict[str, object]) -> None:
     safe_title = html.escape(str(cfg.get("title", "오늘의 뽑기")), quote=True)
     emoji = html.escape(str(cfg.get("emoji", "🎲")), quote=True)
     st.markdown(textwrap.dedent(f"""
-    <div style="background:linear-gradient(135deg,#16161e 0%,#1a1408 100%);border:1px solid rgba(140,140,210,.45);border-radius:24px;padding:1.05rem 1.15rem;margin:.75rem 0 1rem 0;text-align:center;box-shadow:0 14px 34px rgba(99,102,241,.10);">
-        <div style="display:inline-block;background:#16161e;border:1px solid rgba(99,102,241,.22);border-radius:999px;padding:.22rem .72rem;color:#a5b4fc;font-weight:950;font-size:.88rem;">{emoji} {safe_title}</div>
-        <div style="margin-top:.55rem;color:#9898b8;font-weight:850;">오늘의 당첨자</div>
-        <div style="font-size:2.2rem;line-height:1.12;font-weight:950;color:#818cf8;margin-top:.2rem;">{emoji} {safe_name}</div>
-        <div style="color:#9898b8;font-weight:900;margin-top:.45rem;">{safe_score_short} {safe_score}점 · {safe_confidence}</div>
-        <div style="color:#9898b8;font-weight:760;line-height:1.55;margin-top:.35rem;">{safe_summary}</div>
+    <div style="background:linear-gradient(135deg,#1e1018 0%,#1a1408 100%);border:1px solid rgba(230,164,184,.45);border-radius:24px;padding:1.05rem 1.15rem;margin:.75rem 0 1rem 0;text-align:center;box-shadow:0 14px 34px rgba(214,66,115,.10);">
+        <div style="display:inline-block;background:#1e1018;border:1px solid rgba(214,66,115,.22);border-radius:999px;padding:.22rem .72rem;color:#f9a8c9;font-weight:950;font-size:.88rem;">{emoji} {safe_title}</div>
+        <div style="margin-top:.55rem;color:#d4a0b8;font-weight:850;">오늘의 당첨자</div>
+        <div style="font-size:2.2rem;line-height:1.12;font-weight:950;color:#e879a0;margin-top:.2rem;">{emoji} {safe_name}</div>
+        <div style="color:#d4a0b8;font-weight:900;margin-top:.45rem;">{safe_score_short} {safe_score}점 · {safe_confidence}</div>
+        <div style="color:#d4a0b8;font-weight:760;line-height:1.55;margin-top:.35rem;">{safe_summary}</div>
     </div>
     """).strip(), unsafe_allow_html=True)
 
@@ -6794,10 +6794,10 @@ def render_rank_pyramid(title: str, rows: List[Dict[str, object]], caption: str 
         safe_sub = html.escape(str(row.get("보조", "")), quote=True)
         safe_rank = html.escape(str(row.get("순위", idx)), quote=True)
         st.markdown(f"""
-        <div style="width:{width}%;margin:.28rem auto;padding:.55rem .75rem;border:1px solid rgba(140,140,210,.38);border-radius:16px;background:#16161e;box-shadow:0 8px 18px rgba(99,102,241,.08);text-align:center;min-width:220px;">
-            <div style="font-weight:900;color:#9898b8;">{safe_rank}위 · {safe_name}</div>
-            <div style="font-weight:900;color:#818cf8;font-size:1.05rem;">{score:.1f}점</div>
-            <div style="font-size:.82rem;color:#9898b8;">{safe_sub}</div>
+        <div style="width:{width}%;margin:.28rem auto;padding:.55rem .75rem;border:1px solid rgba(230,164,184,.38);border-radius:16px;background:#1e1018;box-shadow:0 8px 18px rgba(214,66,115,.08);text-align:center;min-width:220px;">
+            <div style="font-weight:900;color:#d4a0b8;">{safe_rank}위 · {safe_name}</div>
+            <div style="font-weight:900;color:#e879a0;font-size:1.05rem;">{score:.1f}점</div>
+            <div style="font-size:.82rem;color:#d4a0b8;">{safe_sub}</div>
         </div>
         """, unsafe_allow_html=True)
     if caption:
@@ -6842,8 +6842,8 @@ def render_compact_chemistry_overview(participants: List[Dict[str, object]]) -> 
             <div class="mini-card">
                 <div class="mini-card-title">{html.escape(title, quote=True)}</div>
                 <div class="mini-card-value">{html.escape(str(name), quote=True)}</div>
-                <div style="color:#818cf8;font-weight:900;margin-top:.35rem;">{html.escape(str(value), quote=True)}</div>
-                <div style="color:#9898b8;font-size:.86rem;margin-top:.35rem;line-height:1.45;">{html.escape(body, quote=True)}</div>
+                <div style="color:#e879a0;font-weight:900;margin-top:.35rem;">{html.escape(str(value), quote=True)}</div>
+                <div style="color:#d4a0b8;font-size:.86rem;margin-top:.35rem;line-height:1.45;">{html.escape(body, quote=True)}</div>
             </div>
             """, unsafe_allow_html=True)
     if len(participants) >= 3:
@@ -7049,9 +7049,9 @@ def build_multi_situation_svg(participants: List[Dict[str, object]], power_map: 
         f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" aria-label="다자간 국면 도식표">'
     ]
     parts.append(f'<circle cx="{cx}" cy="{cy}" r="78" fill="#fff6fa" stroke="#ffc7d9" stroke-width="2"/>')
-    parts.append(f'<text x="{cx}" y="{cy-10}" text-anchor="middle" font-size="22" font-weight="900" fill="#9898b8">다자간 국면</text>')
-    parts.append(f'<text x="{cx}" y="{cy+18}" text-anchor="middle" font-size="13" font-weight="700" fill="#9898b8">오행처럼 서로 주고받는 흐름</text>')
-    parts.append(f'<text x="{cx}" y="{cy+38}" text-anchor="middle" font-size="13" font-weight="700" fill="#9898b8">동맹 · 협력 · 조율 · 긴장</text>')
+    parts.append(f'<text x="{cx}" y="{cy-10}" text-anchor="middle" font-size="22" font-weight="900" fill="#d4a0b8">다자간 국면</text>')
+    parts.append(f'<text x="{cx}" y="{cy+18}" text-anchor="middle" font-size="13" font-weight="700" fill="#d4a0b8">오행처럼 서로 주고받는 흐름</text>')
+    parts.append(f'<text x="{cx}" y="{cy+38}" text-anchor="middle" font-size="13" font-weight="700" fill="#d4a0b8">동맹 · 협력 · 조율 · 긴장</text>')
 
     # 관계선
     pair_rows = pairwise_compatibility_rows(participants)
@@ -7076,7 +7076,7 @@ def build_multi_situation_svg(participants: List[Dict[str, object]], power_map: 
             f'stroke="{bucket["stroke"]}" stroke-width="1.2" opacity="0.97" />'
         )
         parts.append(
-            f'<text x="{mx}" y="{my+4}" text-anchor="middle" font-size="11" font-weight="900" fill="#9898b8">{label}</text>'
+            f'<text x="{mx}" y="{my+4}" text-anchor="middle" font-size="11" font-weight="900" fill="#d4a0b8">{label}</text>'
         )
 
     # 노드
@@ -7093,8 +7093,8 @@ def build_multi_situation_svg(participants: List[Dict[str, object]], power_map: 
 
         parts.append(f'<circle cx="{x}" cy="{y}" r="{node_r}" fill="{color}" opacity="0.16" stroke="{color}" stroke-width="2.8"/>')
         parts.append(f'<circle cx="{x}" cy="{y}" r="{node_r-8}" fill="white" stroke="{color}" stroke-width="2.4"/>')
-        parts.append(f'<text x="{x}" y="{y-2}" text-anchor="middle" font-size="16" font-weight="900" fill="#d0d0e8">{html.escape(name)}</text>')
-        parts.append(f'<text x="{x}" y="{y+17}" text-anchor="middle" font-size="11.5" font-weight="800" fill="#9898b8">{html.escape(display_role)}</text>')
+        parts.append(f'<text x="{x}" y="{y-2}" text-anchor="middle" font-size="16" font-weight="900" fill="#e8d0d8">{html.escape(name)}</text>')
+        parts.append(f'<text x="{x}" y="{y+17}" text-anchor="middle" font-size="11.5" font-weight="800" fill="#d4a0b8">{html.escape(display_role)}</text>')
 
     parts.append("</svg>")
     return "".join(parts)
@@ -7445,7 +7445,7 @@ def render_score_breakdown_card(result: Dict[str, object]) -> None:
     <div class="mini-card">
         <div class="mini-card-title">점수 산식 공개</div>
         <div class="mini-card-value">기초체력 + 흐름과 연결 + 현실작동력 + 신살·공망 = {bd['최종 점수']}</div>
-        <div style="color:rgba(50,50,80,0.74); margin-top:0.55rem; line-height:1.55;">
+        <div style="color:rgba(75,45,58,0.74); margin-top:0.55rem; line-height:1.55;">
             대표 참고점은 3대 능력치 합계에 신살·공망 체감 보정을 더한 값입니다. 전체 인상 보정은 해설용 참고 신호로만 표시합니다.
         </div>
     </div>
@@ -7686,7 +7686,7 @@ html, body, * {
 .stMarkdown h3 {
     font-size: 1.15rem !important;
     font-weight: 900 !important;
-    color: #818cf8 !important;
+    color: #e879a0 !important;
     letter-spacing: -0.02em !important;
     line-height: 1.4 !important;
 }
@@ -7765,7 +7765,7 @@ input, textarea, select {
 [data-testid="stMetricValue"] {
     font-size: 1.5rem !important;
     font-weight: 900 !important;
-    color: #818cf8 !important;
+    color: #e879a0 !important;
 }
 
 /* ══════════════════════════════════════════
@@ -7783,14 +7783,14 @@ thead th {
     font-weight: 900 !important;
     font-size: 0.9rem !important;
     padding: 0.6rem 0.8rem !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
 }
 tbody td {
     color: #f0e0ea !important;
     font-size: 0.9rem !important;
     font-weight: 500 !important;
     padding: 0.55rem 0.8rem !important;
-    border: 1px solid rgba(120,120,220,0.18) !important;
+    border: 1px solid rgba(232,121,160,0.18) !important;
     line-height: 1.75 !important;
 }
 tbody tr:nth-child(even) td {
@@ -7801,15 +7801,15 @@ tbody tr:nth-child(even) td {
    4. 카드 경계 강화 (배경과 구분)
    ══════════════════════════════════════════ */
 .shinsal-card {
-    border: 1px solid rgba(120,120,220,0.35) !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
     box-shadow: 0 2px 16px rgba(0,0,0,0.4) !important;
 }
 .pipeline-card {
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     box-shadow: 0 2px 12px rgba(0,0,0,0.35) !important;
 }
 .ability-card {
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     box-shadow: 0 2px 12px rgba(0,0,0,0.35) !important;
 }
 .daewun-flow-card {
@@ -7852,34 +7852,34 @@ tbody tr:nth-child(even) td {
 _stcomp.html("""
 <script>
 (function(){
-    var css=`.svg-radar-card,.chem-radar-card{background:#16161e;border:1px solid rgba(90,40,64,.60);border-radius:20px;padding:.75rem;box-shadow:none;}
-.element-bar-row{display:grid;grid-template-columns:34px 1fr 54px;align-items:center;gap:.45rem;margin:.34rem 0;color:#9898b8;font-size:.88rem;}
+    var css=`.svg-radar-card,.chem-radar-card{background:#1e1018;border:1px solid rgba(90,40,64,.60);border-radius:20px;padding:.75rem;box-shadow:none;}
+.element-bar-row{display:grid;grid-template-columns:34px 1fr 54px;align-items:center;gap:.45rem;margin:.34rem 0;color:#d4a0b8;font-size:.88rem;}
 .element-bar-track,.chem-track{height:10px;background:#2e1422;border-radius:999px;overflow:hidden;}
-.element-bar-fill{height:100%;background:#3730a3;border-radius:999px;}
+.element-bar-fill{height:100%;background:#7b1e3d;border-radius:999px;}
 .chem-element-row{display:grid;grid-template-columns:34px 1fr;gap:.5rem;align-items:center;margin:.55rem 0;}
-.chem-element-label{font-weight:950;color:#c4c4e8;text-align:center;}
+.chem-element-label{font-weight:950;color:#f0b8d0;text-align:center;}
 .chem-line{display:grid;grid-template-columns:56px 1fr 54px;gap:.42rem;align-items:center;margin:.22rem 0;font-size:.82rem;color:#c090a8;}
 .chem-fill{height:100%;border-radius:999px;}
-.chem-fill.mine{background:#3730a3;}
+.chem-fill.mine{background:#7b1e3d;}
 .chem-fill.friend{background:#6b8cff;}
 .daewun-flow-track{display:flex;gap:.55rem;overflow-x:auto;padding:.35rem .1rem .55rem .1rem;}
-.daewun-flow-card{min-width:104px;background:#16161e;border:2px solid #5a2840;border-radius:16px;padding:.75rem .65rem;text-align:center;box-shadow:none;}
-.daewun-flow-card.current{background:#1e1e2c;border-color:#818cf8;}
+.daewun-flow-card{min-width:104px;background:#1e1018;border:2px solid #5a2840;border-radius:16px;padding:.75rem .65rem;text-align:center;box-shadow:none;}
+.daewun-flow-card.current{background:#2a1520;border-color:#e879a0;}
 .daewun-flow-badge{font-size:.86rem;color:#b888a0;font-weight:900;}
 .daewun-flow-age{font-size:.82rem;color:#c090a8;}
-.daewun-flow-gz{font-size:1.28rem;font-weight:950;color:#c4c4e8;}
-.daewun-flow-score{font-size:.85rem;color:#818cf8;font-weight:900;}
+.daewun-flow-gz{font-size:1.28rem;font-weight:950;color:#f0b8d0;}
+.daewun-flow-score{font-size:.85rem;color:#e879a0;font-weight:900;}
 .daewun-flow-icon{font-size:1.15rem;height:1.3rem;}
-.radar-legend{display:flex;gap:1rem;justify-content:center;align-items:center;margin-top:.1rem;font-size:.88rem;color:#9898b8;font-weight:850;}
+.radar-legend{display:flex;gap:1rem;justify-content:center;align-items:center;margin-top:.1rem;font-size:.88rem;color:#d4a0b8;font-weight:850;}
 .radar-legend span{display:inline-flex;gap:.35rem;align-items:center;}
 .radar-legend i{display:inline-block;width:12px;height:12px;border-radius:999px;}
 .chem-overlap-list{display:grid;gap:.35rem;margin-top:.45rem;}
-.chem-overlap-row{display:grid;grid-template-columns:34px 1fr 1fr;gap:.45rem;align-items:center;background:#1a1a26;border:1px solid rgba(140,140,210,.28);border-radius:12px;padding:.45rem .6rem;color:#9898b8;font-size:.86rem;}
-.chem-overlap-row b{color:#818cf8;}
+.chem-overlap-row{display:grid;grid-template-columns:34px 1fr 1fr;gap:.45rem;align-items:center;background:#221220;border:1px solid rgba(230,164,184,.28);border-radius:12px;padding:.45rem .6rem;color:#d4a0b8;font-size:.86rem;}
+.chem-overlap-row b{color:#e879a0;}
 .chem-overlap-row em{font-style:normal;color:#c090a8;text-align:right;}
-.luck-intensity-card{background:#16161e;border:1px solid rgba(140,140,210,.32);border-radius:16px;padding:.75rem .85rem;margin:.35rem 0 .45rem 0;}
+.luck-intensity-card{background:#1e1018;border:1px solid rgba(230,164,184,.32);border-radius:16px;padding:.75rem .85rem;margin:.35rem 0 .45rem 0;}
 .luck-intensity-label{color:#c090a8;font-size:.84rem;font-weight:850;}
-.luck-intensity-value{font-size:1.8rem;line-height:1.15;color:#818cf8;font-weight:950;}
+.luck-intensity-value{font-size:1.8rem;line-height:1.15;color:#e879a0;font-weight:950;}
 .mini-meter{height:12px;background:#2e1422;border-radius:999px;overflow:hidden;margin-top:.35rem;}
 .mini-meter span{display:block;height:100%;background:linear-gradient(90deg,#8ab7ff,#f2c94c,#ef4444);border-radius:999px;}
 .flow-strength-row{margin:.5rem 0 .35rem 0;}
@@ -7888,7 +7888,7 @@ _stcomp.html("""
 .flow-strength-meter span{display:block;height:100%;background:#64748b;border-radius:999px;}
 
 .small-muted{font-size:.82rem;color:#c090a8;margin-top:.55rem;line-height:1.55;}
-.pipeline-card{padding:1rem;margin:.75rem 0;border-radius:18px;background:#16161e;border:1px solid rgba(90,40,64,.50);box-shadow:none;}
+.pipeline-card{padding:1rem;margin:.75rem 0;border-radius:18px;background:#1e1018;border:1px solid rgba(90,40,64,.50);box-shadow:none;}
 .flow-pipeline{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin:.7rem 0;}
 .flow-node{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:.55rem .7rem;border-radius:16px;background:#0d1828;border:1px solid rgba(100,150,220,0.35);color:#94a3b8;}
 .flow-node b{font-size:.9rem;}
@@ -7911,19 +7911,19 @@ _stcomp.html("""
 .pipe-broken .pipe-line::after{content:"";display:inline-block;width:12px;height:12px;border-right:3px solid #dc2626;border-bottom:3px solid #dc2626;transform:rotate(35deg);margin-left:8px;margin-top:-5px;}
 .pipe-broken .pipe-arrow{border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid #dc2626;}
 .shinsal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:.85rem 0 1.1rem;}
-.shinsal-card{position:relative;overflow:hidden;border-radius:26px;padding:1.08rem 1.05rem;border:1px solid rgba(99,102,241,.17);background:linear-gradient(135deg,#16161e,#1a1a26);box-shadow:0 14px 30px rgba(40,40,80,.08);}
-.shinsal-card::after{content:"";position:absolute;right:-34px;top:-34px;width:116px;height:116px;border-radius:999px;background:rgba(99,102,241,.08);}
+.shinsal-card{position:relative;overflow:hidden;border-radius:26px;padding:1.08rem 1.05rem;border:1px solid rgba(214,66,115,.17);background:linear-gradient(135deg,#1e1018,#221220);box-shadow:0 14px 30px rgba(80,40,60,.08);}
+.shinsal-card::after{content:"";position:absolute;right:-34px;top:-34px;width:116px;height:116px;border-radius:999px;background:rgba(214,66,115,.08);}
 .shinsal-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.55rem;position:relative;z-index:1;}
-.shinsal-icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:18px;background:#16161e;box-shadow:0 8px 18px rgba(40,40,80,.08);font-size:2rem;line-height:1;flex:0 0 54px;}
-.shinsal-name{font-size:1.22rem;font-weight:950;color:#c4c4e8;letter-spacing:-.04em;line-height:1.1;}
-.shinsal-type{font-size:.88rem;color:#9898b8;font-weight:900;margin-top:.18rem;}
-.shinsal-badge{display:inline-block;margin:.1rem 0 .45rem 0;padding:.22rem .62rem;border-radius:999px;background:rgba(99,102,241,.10);color:#818cf8;font-weight:950;font-size:.8rem;}
-.shinsal-summary{font-size:.94rem;color:#c4c4e8;line-height:1.55;font-weight:780;margin:.35rem 0 .62rem;}
-.shinsal-detail{background:rgba(30,16,24,.92);border:1px solid rgba(140,140,210,.22);border-radius:16px;padding:.68rem .75rem;margin:.45rem 0;position:relative;z-index:1;}
-.shinsal-detail-title{font-size:.88rem;color:#818cf8;font-weight:950;margin-bottom:.22rem;}
-.shinsal-detail-body{font-size:.84rem;color:#9898b8;line-height:1.52;font-weight:650;}
-.shinsal-pos{font-size:.88rem;color:#9898b8;margin-top:.5rem;font-weight:800;}
-.shinsal-footnote{font-size:.88rem;color:#9898b8;line-height:1.45;margin-top:.6rem;}
+.shinsal-icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:18px;background:#1e1018;box-shadow:0 8px 18px rgba(80,40,60,.08);font-size:2rem;line-height:1;flex:0 0 54px;}
+.shinsal-name{font-size:1.22rem;font-weight:950;color:#f0b8d0;letter-spacing:-.04em;line-height:1.1;}
+.shinsal-type{font-size:.88rem;color:#d4a0b8;font-weight:900;margin-top:.18rem;}
+.shinsal-badge{display:inline-block;margin:.1rem 0 .45rem 0;padding:.22rem .62rem;border-radius:999px;background:rgba(214,66,115,.10);color:#e879a0;font-weight:950;font-size:.8rem;}
+.shinsal-summary{font-size:.94rem;color:#f0b8d0;line-height:1.55;font-weight:780;margin:.35rem 0 .62rem;}
+.shinsal-detail{background:rgba(30,16,24,.92);border:1px solid rgba(230,164,184,.22);border-radius:16px;padding:.68rem .75rem;margin:.45rem 0;position:relative;z-index:1;}
+.shinsal-detail-title{font-size:.88rem;color:#e879a0;font-weight:950;margin-bottom:.22rem;}
+.shinsal-detail-body{font-size:.84rem;color:#d4a0b8;line-height:1.52;font-weight:650;}
+.shinsal-pos{font-size:.88rem;color:#d4a0b8;margin-top:.5rem;font-weight:800;}
+.shinsal-footnote{font-size:.88rem;color:#d4a0b8;line-height:1.45;margin-top:.6rem;}
 
 
 /* v5.51: 모바일 색대비 보정 — 흰 글씨는 진한 배경에서만 사용 */
@@ -7941,7 +7941,7 @@ _stcomp.html("""
     .shinsal-summary,
     .privacy-notice,
     .privacy-notice li {
-        color: #d0d0e8 !important;
+        color: #e8d0d8 !important;
     }
 
     .summary-chip,
@@ -7953,7 +7953,7 @@ _stcomp.html("""
     .mode-card,
     .luck-intensity-card,
     .chem-overlap-row {
-        color: #d0d0e8 !important;
+        color: #e8d0d8 !important;
     }
 
     
@@ -7964,7 +7964,7 @@ _stcomp.html("""
     }
 
     .stButton > button[kind="primary"] {
-        background: linear-gradient(90deg, #b91c5c, #3730a3) !important;
+        background: linear-gradient(90deg, #b91c5c, #9f1239) !important;
         border-color: rgba(159, 18, 57, .85) !important;
     }
     }
@@ -7986,8 +7986,8 @@ label[data-baseweb="radio"],
 label[data-baseweb="radio"] *,
 label[data-baseweb="checkbox"],
 label[data-baseweb="checkbox"] * {
-    color: #d0d0e8 !important;
-    -webkit-text-fill-color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
+    -webkit-text-fill-color: #e8d0d8 !important;
     opacity: 1 !important;
     text-shadow: none !important;
 }
@@ -7997,8 +7997,8 @@ div[data-testid="stRadio"] label,
 div[data-testid="stRadio"] label *,
 div[data-testid="stRadio"] p,
 div[data-testid="stRadio"] span {
-    color: #d0d0e8 !important;
-    -webkit-text-fill-color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
+    -webkit-text-fill-color: #e8d0d8 !important;
     opacity: 1 !important;
 }
 
@@ -8021,8 +8021,8 @@ div[data-testid="stRadio"] span {
 .result-arena h4,
 .result-arena h5,
 .result-arena h6 {
-    color: #d0d0e8 !important;
-    -webkit-text-fill-color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
+    -webkit-text-fill-color: #e8d0d8 !important;
     opacity: 1 !important;
     text-shadow: none !important;
 }
@@ -8033,8 +8033,8 @@ div[data-testid="stRadio"] span {
 }
 
 .saju-section-heading {
-    color: #d0d0e8 !important;
-    -webkit-text-fill-color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
+    -webkit-text-fill-color: #e8d0d8 !important;
     font-weight: 950 !important;
     text-shadow: none !important;
     opacity: 1 !important;
@@ -8086,8 +8086,8 @@ div[data-testid="stRadio"] span {
     .pipe-label {
         font-size: .72rem !important;
         margin-top: .05rem !important;
-        color: #d0d0e8 !important;
-        -webkit-text-fill-color: #d0d0e8 !important;
+        color: #e8d0d8 !important;
+        -webkit-text-fill-color: #e8d0d8 !important;
     }
 
     .pipe-good .pipe-line { height: 14px !important; }
@@ -8104,11 +8104,11 @@ div[data-testid="stRadio"] span {
 
 /* v5.76: 만세력 원국 카드 매트릭스 복원 */
 .manse-wrap {
-    background: linear-gradient(135deg,#16161e 0%,#1a1408 48%,#0d1828 100%);
-    border: 1px solid rgba(140,140,210,.36);
+    background: linear-gradient(135deg,#1e1018 0%,#1a1408 48%,#0d1828 100%);
+    border: 1px solid rgba(230,164,184,.36);
     border-radius: 24px;
     padding: 1rem .9rem;
-    box-shadow: 0 14px 30px rgba(99,102,241,.08);
+    box-shadow: 0 14px 30px rgba(214,66,115,.08);
     margin: .7rem 0 1rem 0;
 }
 .manse-title {
@@ -8117,12 +8117,12 @@ div[data-testid="stRadio"] span {
     align-items:flex-end;
     gap:.6rem;
     margin-bottom:.72rem;
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
 }
 .manse-title b {
     font-size:1.32rem;
     font-weight:950;
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
 }
 .manse-title span {
     font-size:.8rem;
@@ -8135,24 +8135,24 @@ div[data-testid="stRadio"] span {
     gap:.42rem;
 }
 .manse-col {
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.32);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.32);
     border-radius:18px;
     overflow:hidden;
-    box-shadow:0 8px 18px rgba(40,40,80,.05);
+    box-shadow:0 8px 18px rgba(80,40,60,.05);
 }
 .manse-col.manse-day {
-    border:2px solid rgba(99,102,241,.50);
-    box-shadow:0 10px 24px rgba(99,102,241,.12);
+    border:2px solid rgba(214,66,115,.50);
+    box-shadow:0 10px 24px rgba(214,66,115,.12);
 }
 .manse-head {
-    background:#1e1e2c;
-    color:#d0d0e8 !important;
+    background:#2a1520;
+    color:#e8d0d8 !important;
     text-align:center;
     padding:.42rem .2rem;
     font-weight:950;
     font-size:.88rem;
-    border-bottom:1px solid rgba(140,140,210,.32);
+    border-bottom:1px solid rgba(230,164,184,.32);
 }
 .manse-role {
     text-align:center;
@@ -8173,29 +8173,29 @@ div[data-testid="stRadio"] span {
     font-size:2.08rem;
     line-height:1;
     font-weight:950;
-    border:2px solid rgba(40,40,70,.18);
-    color:#9898b8 !important;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.65), 0 6px 14px rgba(40,40,80,.08);
+    border:2px solid rgba(63,42,51,.18);
+    color:#d4a0b8 !important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.65), 0 6px 14px rgba(80,40,60,.08);
 }
 .manse-big.stem { margin-top:.1rem; }
 .manse-big.branch { margin-bottom:.25rem; }
-.manse-el-목 { background:linear-gradient(135deg,#0d1a10,#1a2a18); }
-.manse-el-화 { background:linear-gradient(135deg,#1a0808,#2a1010); }
-.manse-el-토 { background:linear-gradient(135deg,#1a1408,#2a2010); }
+.manse-el-목 { background:linear-gradient(135deg,#e7fff6,#bcebd9); }
+.manse-el-화 { background:linear-gradient(135deg,#fff0f4,#ffb6c9); }
+.manse-el-토 { background:linear-gradient(135deg,#fff7db,#efd07c); }
 .manse-el-금 { background:linear-gradient(135deg,#1a2030,#1e2438); }
-.manse-el-수 { background:linear-gradient(135deg,#08101a,#101828); }
+.manse-el-수 { background:linear-gradient(135deg,#eef6ff,#b7d7ff); }
 .manse-ko {
     text-align:center;
-    color:#9898b8 !important;
+    color:#d4a0b8 !important;
     font-size:.84rem;
     font-weight:820;
     margin-top:-.05rem;
 }
 .manse-hidden {
-    border-top:1px dashed rgba(140,140,210,.45);
+    border-top:1px dashed rgba(230,164,184,.45);
     padding:.42rem .35rem .5rem .35rem;
     min-height:4.4rem;
-    background:#16161e;
+    background:#1e1018;
 }
 .manse-hidden-title {
     color:#c090a8 !important;
@@ -8205,7 +8205,7 @@ div[data-testid="stRadio"] span {
     text-align:center;
 }
 .manse-hidden-line {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.84rem;
     line-height:1.38;
     font-weight:780;
@@ -8219,19 +8219,19 @@ div[data-testid="stRadio"] span {
     margin-top:.7rem;
 }
 .manse-summary-card {
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.3);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.3);
     border-radius:16px;
     padding:.65rem .7rem;
 }
 .manse-summary-title {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.88rem;
     font-weight:950;
     margin-bottom:.18rem;
 }
 .manse-summary-body {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.84rem;
     line-height:1.48;
     font-weight:720;
@@ -8241,9 +8241,9 @@ div[data-testid="stRadio"] span {
     margin:.95rem 0 1.05rem 0;
     padding:.9rem .85rem;
     border-radius:22px;
-    background:linear-gradient(135deg,#16161e 0%,#1a1408 56%,#0d1828 100%);
-    border:1px solid rgba(140,140,210,.32);
-    box-shadow:0 12px 26px rgba(40,40,80,.055);
+    background:linear-gradient(135deg,#1e1018 0%,#1a1408 56%,#0d1828 100%);
+    border:1px solid rgba(230,164,184,.32);
+    box-shadow:0 12px 26px rgba(80,40,60,.055);
 }
 .manse-luck-head {
     display:flex;
@@ -8253,7 +8253,7 @@ div[data-testid="stRadio"] span {
     margin-bottom:.68rem;
 }
 .manse-luck-title {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:1.06rem;
     font-weight:950;
     letter-spacing:-.035em;
@@ -8271,9 +8271,9 @@ div[data-testid="stRadio"] span {
     justify-content:center;
     padding:.28rem .54rem;
     border-radius:999px;
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.34);
-    color:#818cf8 !important;
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.34);
+    color:#e879a0 !important;
     font-size:.84rem;
     font-weight:950;
     white-space:nowrap;
@@ -8286,26 +8286,26 @@ div[data-testid="stRadio"] span {
 .manse-luck-card {
     position:relative;
     min-height:136px;
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.34);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.34);
     border-radius:18px;
     padding:.66rem .62rem .7rem .62rem;
     overflow:hidden;
-    box-shadow:0 8px 18px rgba(40,40,80,.045);
+    box-shadow:0 8px 18px rgba(80,40,60,.045);
 }
 .manse-luck-card.current {
-    border:2px solid rgba(99,102,241,.52);
-    box-shadow:0 11px 24px rgba(99,102,241,.115);
+    border:2px solid rgba(214,66,115,.52);
+    box-shadow:0 11px 24px rgba(214,66,115,.115);
 }
 .manse-luck-card.good { background:linear-gradient(135deg,#0d1e14,#112018); }
-.manse-luck-card.caution { background:linear-gradient(135deg,#16161e,#1a1408); }
+.manse-luck-card.caution { background:linear-gradient(135deg,#1e1018,#1a1408); }
 .manse-luck-card.hard { background:linear-gradient(135deg,#1e0d14,#200d18); }
 .manse-luck-badge {
     display:inline-flex;
     padding:.18rem .43rem;
     border-radius:999px;
-    background:#1e1e2c;
-    color:#818cf8 !important;
+    background:#2a1520;
+    color:#e879a0 !important;
     font-size:.66rem;
     font-weight:950;
     margin-bottom:.34rem;
@@ -8316,7 +8316,7 @@ div[data-testid="stRadio"] span {
     font-weight:900;
 }
 .manse-luck-gz {
-    color:#9898b8 !important;
+    color:#d4a0b8 !important;
     font-size:1.65rem;
     line-height:1.05;
     font-weight:950;
@@ -8333,23 +8333,23 @@ div[data-testid="stRadio"] span {
     display:inline-flex;
     padding:.15rem .36rem;
     border-radius:999px;
-    border:1px solid rgba(40,40,70,.12);
-    color:#d0d0e8 !important;
+    border:1px solid rgba(63,42,51,.12);
+    color:#e8d0d8 !important;
     font-size:.82rem;
     font-weight:880;
 }
 .manse-luck-el.el-목 { background:#0d1e14; }
-.manse-luck-el.el-화 { background:#16161e; }
+.manse-luck-el.el-화 { background:#1e1018; }
 .manse-luck-el.el-토 { background:#1a1408; }
 .manse-luck-el.el-금 { background:#0d1828; }
 .manse-luck-el.el-수 { background:#0d1828; }
 .manse-luck-score {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.82rem;
     font-weight:950;
 }
 .manse-luck-note {
-    color:#9898b8 !important;
+    color:#d4a0b8 !important;
     font-size:.84rem;
     line-height:1.38;
     font-weight:720;
@@ -8363,7 +8363,7 @@ div[data-testid="stRadio"] span {
     position:absolute;
     right:.54rem;
     bottom:.48rem;
-    color:rgba(99,102,241,.18) !important;
+    color:rgba(214,66,115,.18) !important;
     font-size:2.1rem;
     font-weight:950;
     line-height:1;
@@ -8374,11 +8374,11 @@ div[data-testid="stRadio"] span {
     gap:.5rem;
 }
 .manse-sewun-card {
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.32);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.32);
     border-radius:18px;
     padding:.66rem .66rem .72rem .66rem;
-    box-shadow:0 8px 18px rgba(40,40,80,.045);
+    box-shadow:0 8px 18px rgba(80,40,60,.045);
 }
 .manse-sewun-top {
     display:flex;
@@ -8395,25 +8395,25 @@ div[data-testid="stRadio"] span {
 .manse-sewun-delta {
     padding:.16rem .38rem;
     border-radius:999px;
-    background:#1e1e2c;
-    color:#818cf8 !important;
+    background:#2a1520;
+    color:#e879a0 !important;
     font-size:.82rem;
     font-weight:950;
 }
 .manse-sewun-gz {
-    color:#9898b8 !important;
+    color:#d4a0b8 !important;
     font-size:1.45rem;
     font-weight:950;
     letter-spacing:-.04em;
 }
 .manse-sewun-score {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.82rem;
     font-weight:950;
     margin:.1rem 0 .22rem 0;
 }
 .manse-sewun-note {
-    color:#9898b8 !important;
+    color:#d4a0b8 !important;
     font-size:.84rem;
     line-height:1.38;
     font-weight:720;
@@ -8452,7 +8452,7 @@ div[data-testid="stRadio"] span {
     padding: 1rem;
     border-radius: 30px;
     border: 1px solid rgba(70,92,120,.16);
-    background: linear-gradient(135deg,#0d1828 0%,#16161e 56%,#1a1408 100%);
+    background: linear-gradient(135deg,#0d1828 0%,#1e1018 56%,#1a1408 100%);
     box-shadow: 0 18px 36px rgba(40,64,90,.08);
 }
 .saju-landscape-head {
@@ -8482,7 +8482,7 @@ div[data-testid="stRadio"] span {
     align-items:center;
     padding:.36rem .62rem;
     border-radius:999px;
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(70,92,120,.14);
     color:#94a3b8 !important;
     font-size:.86rem;
@@ -8496,7 +8496,7 @@ div[data-testid="stRadio"] span {
     align-items:stretch;
 }
 .saju-landscape-art {
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(70,92,120,.12);
     border-radius:24px;
     padding:.58rem;
@@ -8508,13 +8508,13 @@ div[data-testid="stRadio"] span {
     display:block;
 }
 .saju-landscape-panel {
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(90,40,64,.50);
     border-radius:24px;
     padding:.86rem .9rem;
 }
 .saju-landscape-panel-title {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.88rem;
     font-weight:950;
     margin:.02rem 0 .45rem 0;
@@ -8528,17 +8528,17 @@ div[data-testid="stRadio"] span {
 .saju-landscape-mini-card {
     padding:.68rem .72rem;
     border-radius:18px;
-    background:linear-gradient(135deg,#16161e,#0d1828);
-    border:1px solid rgba(99,102,241,.12);
+    background:linear-gradient(135deg,#1e1018,#0d1828);
+    border:1px solid rgba(214,66,115,.12);
 }
 .saju-landscape-mini-label {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.86rem;
     font-weight:950;
     margin-bottom:.14rem;
 }
 .saju-landscape-mini-body {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.82rem;
     line-height:1.45;
     font-weight:780;
@@ -8555,12 +8555,12 @@ div[data-testid="stRadio"] span {
     align-items:flex-start;
 }
 .saju-landscape-schema-key {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.86rem;
     font-weight:950;
 }
 .saju-landscape-schema-val {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.84rem;
     line-height:1.45;
     font-weight:780;
@@ -8593,7 +8593,7 @@ div[data-testid="stRadio"] span {
     align-items:center;
 }
 .saju-landscape-bar-label {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.86rem;
     font-weight:950;
 }
@@ -8617,8 +8617,8 @@ div[data-testid="stRadio"] span {
     margin-top:.3rem;
     padding:.62rem .72rem;
     border-radius:18px;
-    background:linear-gradient(135deg,#16161e,#1a1a26);
-    color:#d0d0e8 !important;
+    background:linear-gradient(135deg,#fff0f5,#fffaf0);
+    color:#e8d0d8 !important;
     font-size:.9rem;
     line-height:1.45;
     font-weight:900;
@@ -8628,7 +8628,7 @@ div[data-testid="stRadio"] span {
     border-radius:22px;
     overflow:hidden;
     border:1px solid rgba(70,92,120,.13);
-    background:#16161e;
+    background:#1e1018;
 }
 .share-landscape-mini svg { width:100%; height:auto; display:block; }
 @media (max-width: 768px) {
@@ -8646,9 +8646,9 @@ div[data-testid="stRadio"] span {
     margin-bottom:.72rem;
     padding:.68rem .74rem;
     border-radius:18px;
-    background:linear-gradient(135deg,#0d1828,#16161e);
+    background:linear-gradient(135deg,#0d1828,#1e1018);
     border:1px solid rgba(70,92,120,.12);
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.84rem;
     line-height:1.48;
     font-weight:790;
@@ -8662,7 +8662,7 @@ div[data-testid="stRadio"] span {
 .saju-landscape-rule-card {
     border-radius:16px;
     padding:.58rem .62rem;
-    background:#16161e;
+    background:#1e1018;
     border:1px dashed rgba(70,92,120,.18);
 }
 .saju-landscape-rule-key {
@@ -8672,7 +8672,7 @@ div[data-testid="stRadio"] span {
     margin-bottom:.12rem;
 }
 .saju-landscape-rule-val {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-size:.88rem;
     line-height:1.4;
     font-weight:760;
@@ -8693,8 +8693,8 @@ div[data-testid="stRadio"] span {
     background:
         radial-gradient(circle at 12% 10%, rgba(255,255,255,.95), transparent 34%),
         linear-gradient(135deg,#fff7fb 0%,#fffdf8 56%,#f7fbff 100%);
-    border: 1px solid rgba(99,102,241,.22);
-    box-shadow: 0 16px 34px rgba(99,102,241,.10);
+    border: 1px solid rgba(214,66,115,.22);
+    box-shadow: 0 16px 34px rgba(214,66,115,.10);
 }
 .share-card-kicker {
     display:flex;
@@ -8707,13 +8707,13 @@ div[data-testid="stRadio"] span {
     margin-bottom:.5rem;
 }
 .share-card-logo {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-weight:950;
     letter-spacing:-.03em;
 }
 .share-card-title {
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-size:clamp(1.65rem,4.2vw,2.35rem);
     line-height:1.18;
     letter-spacing:-.055em;
@@ -8727,20 +8727,20 @@ div[data-testid="stRadio"] span {
     gap:.55rem;
 }
 .share-card-box {
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(90,40,64,.60);
     border-radius:18px;
     padding:.72rem .78rem;
 }
 .share-card-label {
-    color:#818cf8 !important;
+    color:#e879a0 !important;
     font-size:.88rem;
     font-weight:950;
     margin-bottom:.2rem;
 }
 .share-card-body {
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-size:.92rem;
     line-height:1.5;
     font-weight:780;
@@ -8748,8 +8748,8 @@ div[data-testid="stRadio"] span {
 }
 .share-card-line {
     margin-top:.62rem;
-    background:linear-gradient(135deg,#16161e,#1a1a26);
-    border:1px solid rgba(99,102,241,.18);
+    background:linear-gradient(135deg,#fff0f5,#fffaf0);
+    border:1px solid rgba(214,66,115,.18);
     border-radius:20px;
     padding:.82rem .88rem;
 }
@@ -8784,7 +8784,7 @@ div[data-testid="stRadio"] span {
     padding:.28rem .52rem;
     border-radius:999px;
     background:#1a1408;
-    border:1px solid rgba(99,102,241,.16);
+    border:1px solid rgba(214,66,115,.16);
     color:#c090a8 !important;
     font-size:.82rem;
     font-weight:900;
@@ -8800,7 +8800,7 @@ div[data-testid="stRadio"] span {
     border-radius:16px;
     padding:.48rem .36rem .5rem .36rem;
     text-align:center;
-    border:1px solid rgba(140,140,210,.20);
+    border:1px solid rgba(230,164,184,.20);
     box-shadow:0 6px 14px rgba(0,0,0,.18);
 }
 .element-tone-symbol {
@@ -8819,7 +8819,7 @@ div[data-testid="stRadio"] span {
     display:block;
     font-size:.84rem;
     font-weight:820;
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
 }
 @media (max-width: 768px) {
     .share-card-wrap { padding:.88rem; border-radius:22px; }
@@ -8838,7 +8838,7 @@ div[data-testid="stRadio"] span {
     padding: 1rem 1.05rem;
     border-radius: 24px;
     border: 1px solid rgba(16,185,129,.30);
-    background: linear-gradient(135deg,#0d1e14 0%,#14141e 54%,#16161e 100%);
+    background: linear-gradient(135deg,#0d1e14 0%,#1a1028 54%,#1e1018 100%);
     box-shadow: 0 14px 30px rgba(16,185,129,.06);
 }
 .today-compass-head {
@@ -8867,7 +8867,7 @@ div[data-testid="stRadio"] span {
     gap:.5rem;
 }
 .today-compass-box {
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(16,185,129,.18);
     border-radius:17px;
     padding:.68rem .72rem;
@@ -8879,8 +8879,8 @@ div[data-testid="stRadio"] span {
     margin-bottom:.2rem;
 }
 .today-compass-body {
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-size:.88rem;
     line-height:1.45;
     font-weight:780;
@@ -8890,8 +8890,8 @@ div[data-testid="stRadio"] span {
     margin-top:.62rem;
     border-radius:18px;
     padding:.78rem .86rem;
-    background:linear-gradient(135deg,#16161e,#1a1a26);
-    border:1px solid rgba(99,102,241,.16);
+    background:linear-gradient(135deg,#1e1018,#221220);
+    border:1px solid rgba(214,66,115,.16);
 }
 .today-compass-prescription .today-compass-body {
     font-size:.98rem;
@@ -8921,22 +8921,22 @@ div[data-testid="stRadio"] span {
     margin:.2rem 0 1rem 0;
 }
 .compact-glance-card{
-    background:linear-gradient(135deg,#16161e,#1a1a26);
-    border:1px solid rgba(99,102,241,.18);
+    background:linear-gradient(135deg,#1e1018,#221220);
+    border:1px solid rgba(214,66,115,.18);
     border-radius:20px;
     padding:.9rem 1rem;
-    box-shadow:0 8px 20px rgba(99,102,241,.06);
+    box-shadow:0 8px 20px rgba(214,66,115,.06);
 }
 .compact-glance-label{
     font-size:.88rem;
     font-weight:950;
-    color:#9898b8;
+    color:#d4a0b8;
     margin-bottom:.28rem;
 }
 .compact-glance-title{
     font-size:1.02rem;
     font-weight:950;
-    color:#d0d0e8;
+    color:#e8d0d8;
     line-height:1.35;
     word-break:keep-all;
 }
@@ -8984,7 +8984,7 @@ div[data-testid="stRadio"] span {
 .today-quick-pill {
     padding:.32rem .58rem;
     border-radius:999px;
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(14,165,233,.18);
     color:#22d3ee !important;
     font-size:.86rem;
@@ -8997,7 +8997,7 @@ div[data-testid="stRadio"] span {
     gap:.48rem;
 }
 .today-quick-box {
-    background:#16161e;
+    background:#1e1018;
     border:1px solid rgba(14,165,233,.14);
     border-radius:17px;
     padding:.62rem .68rem;
@@ -9009,8 +9009,8 @@ div[data-testid="stRadio"] span {
     margin-bottom:.17rem;
 }
 .today-quick-body {
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-size:.86rem;
     line-height:1.45;
     font-weight:820;
@@ -9041,7 +9041,7 @@ div[data-testid="stRadio"] span {
     grid-template-columns: 48px 1fr;
     gap: .5rem;
     align-items: start;
-    background: #16161e;
+    background: #1e1018;
     border: 1px solid rgba(16,185,129,.16);
     border-radius: 16px;
     padding: .56rem .62rem;
@@ -9059,28 +9059,28 @@ div[data-testid="stRadio"] span {
 }
 .today-interaction-kind.good { background: #047857; }
 .today-interaction-kind.change { background: #b45309; }
-.today-interaction-kind.caution { background: #3730a3; }
+.today-interaction-kind.caution { background: #9f1239; }
 .today-interaction-kind.soft { background: #5f3f4d; }
 .today-interaction-body {
-    color: #d0d0e8 !important;
-    -webkit-text-fill-color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
+    -webkit-text-fill-color: #e8d0d8 !important;
     font-size: .84rem;
     line-height: 1.45;
     font-weight: 760;
     word-break: keep-all;
 }
 .today-interaction-body b {
-    color: #d0d0e8 !important;
-    -webkit-text-fill-color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
+    -webkit-text-fill-color: #e8d0d8 !important;
 }
 .today-interaction-empty {
     margin-top:.62rem;
-    background:#16161e;
+    background:#1e1018;
     border:1px dashed rgba(16,185,129,.22);
     border-radius:16px;
     padding:.68rem .72rem;
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-size:.86rem;
     line-height:1.45;
     font-weight:780;
@@ -9093,7 +9093,7 @@ div[data-testid="stRadio"] span {
     border-radius: 999px;
     margin: 1.1rem 0 .42rem 0;
     background: linear-gradient(90deg,#8ab7ff 0%,#f2c94c 50%,#ef4444 100%);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.62), 0 7px 18px rgba(40,40,80,.08);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.62), 0 7px 18px rgba(80,40,60,.08);
 }
 .operation-marker {
     position:absolute;
@@ -9106,7 +9106,7 @@ div[data-testid="stRadio"] span {
     z-index:3;
 }
 .operation-marker-badge {
-    background:#2e2e42;
+    background:#3f2a33;
     color:#ffffff !important;
     -webkit-text-fill-color:#ffffff !important;
     border-radius:999px;
@@ -9114,60 +9114,60 @@ div[data-testid="stRadio"] span {
     font-size:.82rem;
     font-weight:950;
     white-space:nowrap;
-    box-shadow:0 7px 16px rgba(40,40,70,.18);
+    box-shadow:0 7px 16px rgba(63,42,51,.18);
 }
 .operation-marker-triangle {
     width:0;
     height:0;
     border-left:7px solid transparent;
     border-right:7px solid transparent;
-    border-top:8px solid #2e2e42;
+    border-top:8px solid #3f2a33;
 }
 .operation-axis-note {
     margin-top:.35rem;
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-size:.92rem;
     line-height:1.45;
     font-weight:820;
 }
 .operation-axis-note b {
-    color:#818cf8 !important;
-    -webkit-text-fill-color:#818cf8 !important;
+    color:#e879a0 !important;
+    -webkit-text-fill-color:#e879a0 !important;
 }
 div[data-testid="stRadio"] > label {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
     font-weight:950 !important;
     font-size:1.03rem !important;
     margin-bottom:.4rem !important;
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label {
-    background:#16161e !important;
-    border:1.5px solid rgba(99,102,241,.24) !important;
+    background:#1e1018 !important;
+    border:1.5px solid rgba(214,66,115,.24) !important;
     border-radius:999px !important;
     padding:.58rem .95rem !important;
     min-height:48px !important;
-    box-shadow:0 8px 18px rgba(99,102,241,.045);
+    box-shadow:0 8px 18px rgba(214,66,115,.045);
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked),
 div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] {
-    background:linear-gradient(135deg,#1e1e2c,#16161e) !important;
-    border-color:rgba(99,102,241,.78) !important;
-    box-shadow:0 10px 24px rgba(99,102,241,.14);
+    background:linear-gradient(135deg,#2a1520,#1e1018) !important;
+    border-color:rgba(214,66,115,.78) !important;
+    box-shadow:0 10px 24px rgba(214,66,115,.14);
 }
 div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) *,
 div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
-    color:#d0d0e8 !important;
-    -webkit-text-fill-color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
+    -webkit-text-fill-color:#e8d0d8 !important;
     font-weight:950 !important;
 }
 .share-image-tools {
     margin:.52rem 0 1rem 0;
     padding:.72rem .82rem;
     border-radius:18px;
-    background:#16161e;
-    border:1px dashed rgba(99,102,241,.28);
-    color:#9898b8 !important;
+    background:#1e1018;
+    border:1px dashed rgba(214,66,115,.28);
+    color:#d4a0b8 !important;
     font-size:.86rem;
     line-height:1.45;
     font-weight:760;
@@ -9186,7 +9186,7 @@ div[data-testid="stRadio"] div[role="radiogroup"] label[aria-checked="true"] * {
     --mobile-card-radius: 18px;
     --mobile-side-pad: .72rem;
 }
-.stApp { overflow-x: hidden !important; background-color: #0f0f14 !important; }
+.stApp { overflow-x: hidden !important; background-color: #1a0d14 !important; }
 /* ══ 입력 필드 완전 다크 (Streamlit 내부 구조 전부 공략) ══ */
 input[type="text"],
 input[type="number"],
@@ -9194,23 +9194,23 @@ input[type="date"],
 input[type="time"],
 input[type="search"],
 textarea {
-    background-color: #1e1e2c !important;
-    color: #d0d0e8 !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     border-radius: 8px !important;
 }
 /* Streamlit baseweb input wrapper */
 div[data-baseweb="input"],
 div[data-baseweb="base-input"],
 div[data-baseweb="textarea"] {
-    background-color: #1e1e2c !important;
-    border-color: rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    border-color: rgba(232,121,160,0.30) !important;
 }
 div[data-baseweb="input"] input,
 div[data-baseweb="base-input"] input,
 div[data-baseweb="textarea"] textarea {
-    background-color: #1e1e2c !important;
-    color: #d0d0e8 !important;
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
 }
 
 /* ══ 라디오 버튼 완전 다크 (Streamlit baseweb 전부 공략) ══ */
@@ -9221,8 +9221,8 @@ div[role="radiogroup"] { gap: 8px !important; }
 div[role="radiogroup"] label,
 div[data-testid="stRadio"] label,
 [data-baseweb="radio-group"] label {
-    background-color: #1e1e2c !important;
-    border: 1.5px solid rgba(120,120,220,0.40) !important;
+    background-color: #2a1520 !important;
+    border: 1.5px solid rgba(232,121,160,0.40) !important;
     border-radius: 999px !important;
     padding: 7px 16px !important;
     color: #c090a8 !important;
@@ -9234,8 +9234,8 @@ div[data-testid="stRadio"] label,
 div[role="radiogroup"] label:has(input:checked),
 div[data-testid="stRadio"] label:has(input:checked),
 [data-baseweb="radio-group"] label:has(input:checked) {
-    background-color: #3730a3 !important;
-    border-color: #818cf8 !important;
+    background-color: #7b1e3d !important;
+    border-color: #e879a0 !important;
     color: #ffffff !important;
 }
 
@@ -9248,29 +9248,29 @@ div[data-baseweb="radio"] { width: 0 !important; height: 0 !important; margin: 0
 /* ══ 체크박스 다크 ══ */
 div[data-baseweb="checkbox"] label,
 div[data-testid="stCheckbox"] label {
-    background-color: #1e1e2c !important;
-    border: 1.5px solid rgba(120,120,220,0.35) !important;
+    background-color: #2a1520 !important;
+    border: 1.5px solid rgba(232,121,160,0.35) !important;
     border-radius: 10px !important;
     padding: 7px 14px !important;
-    color: #9898b8 !important;
+    color: #d4a0b8 !important;
 }
 div[data-baseweb="checkbox"] label:has(input:checked),
 div[data-testid="stCheckbox"] label:has(input:checked) {
     background-color: #3a1e2c !important;
-    border-color: #818cf8 !important;
-    color: #c4c4e8 !important;
+    border-color: #e879a0 !important;
+    color: #f0b8d0 !important;
 }
-div[data-baseweb="checkbox"] svg { color: #818cf8 !important; }
+div[data-baseweb="checkbox"] svg { color: #e879a0 !important; }
 
 /* ══ 셀렉트박스 내부 ══ */
 div[data-baseweb="select"] > div {
-    background-color: #1e1e2c !important;
-    border-color: rgba(120,120,220,0.30) !important;
-    color: #d0d0e8 !important;
+    background-color: #2a1520 !important;
+    border-color: rgba(232,121,160,0.30) !important;
+    color: #e8d0d8 !important;
 }
-div[data-baseweb="popover"] { background-color: #1e1e2c !important; }
-div[data-baseweb="menu"] { background-color: #1e1e2c !important; }
-div[data-baseweb="option"] { background-color: #1e1e2c !important; color: #d0d0e8 !important; }
+div[data-baseweb="popover"] { background-color: #2a1520 !important; }
+div[data-baseweb="menu"] { background-color: #2a1520 !important; }
+div[data-baseweb="option"] { background-color: #2a1520 !important; color: #e8d0d8 !important; }
 div[data-baseweb="option"]:hover { background-color: #3a1e2c !important; }
 
 /* 라디오 baseweb 강제 다크 */
@@ -9279,33 +9279,33 @@ label[data-baseweb="radio"],
 [role="radio"] { background: transparent !important; }
 div[data-testid="stRadio"] label > div:first-child {
     background-color: transparent !important;
-    border-color: #818cf8 !important;
+    border-color: #e879a0 !important;
 }
 /* Streamlit 2024 라디오 pill 컨테이너 */
 div[data-testid="stRadio"] > div > label {
-    background-color: #1e1e2c !important;
-    border: 1px solid rgba(120,120,220,0.40) !important;
-    color: #d0d0e8 !important;
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.40) !important;
+    color: #e8d0d8 !important;
 }
 div[data-testid="stRadio"] > div > label[data-checked="true"],
 div[data-testid="stRadio"] > div > label:has(input:checked) {
-    background-color: #3730a3 !important;
-    border-color: #818cf8 !important;
+    background-color: #7b1e3d !important;
+    border-color: #e879a0 !important;
 }
 
 /* ── 라디오 버튼 전면 다크 ── */
 [data-testid="stRadio"] > div { gap: 8px !important; }
 [data-testid="stRadio"] label {
-    background-color: #1e1e2c !important;
-    border: 1px solid rgba(120,120,220,0.35) !important;
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
     border-radius: 999px !important;
     padding: 6px 14px !important;
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     cursor: pointer !important;
 }
 [data-testid="stRadio"] label:has(input:checked) {
-    background-color: #3730a3 !important;
-    border-color: #818cf8 !important;
+    background-color: #7b1e3d !important;
+    border-color: #e879a0 !important;
     color: #fff !important;
 }
 [data-testid="stRadio"] label span { color: inherit !important; }
@@ -9314,59 +9314,59 @@ div[data-testid="stRadio"] > div > label:has(input:checked) {
 
 /* ── 텍스트 인풋 다크 (재강화) ── */
 [data-testid="stTextInput"] > div > div {
-    background-color: #1e1e2c !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     border-radius: 8px !important;
 }
 [data-testid="stTextInput"] input {
-    background-color: #1e1e2c !important;
-    color: #d0d0e8 !important;
-    caret-color: #818cf8 !important;
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    caret-color: #e879a0 !important;
 }
 [data-testid="stTextInput"] input:focus,
 [data-testid="stTextInput"] > div > div:focus-within {
-    border-color: #818cf8 !important;
-    box-shadow: 0 0 0 2px rgba(120,120,220,0.20) !important;
+    border-color: #e879a0 !important;
+    box-shadow: 0 0 0 2px rgba(232,121,160,0.20) !important;
 }
 
 /* ── 체크박스 다크 ── */
 [data-testid="stCheckbox"] label {
-    background-color: #1e1e2c !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     border-radius: 8px !important;
     padding: 6px 12px !important;
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
 }
 [data-testid="stCheckbox"] label:has(input:checked) {
     background-color: #3a1e2c !important;
-    border-color: #818cf8 !important;
+    border-color: #e879a0 !important;
 }
 
 /* ── 셀렉트박스 다크 ── */
 [data-testid="stSelectbox"] > div > div {
-    background-color: #1e1e2c !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
-    color: #d0d0e8 !important;
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
+    color: #e8d0d8 !important;
     border-radius: 8px !important;
 }
-[data-testid="stSelectbox"] svg { fill: #818cf8 !important; }
+[data-testid="stSelectbox"] svg { fill: #e879a0 !important; }
 
 /* ── 날짜/시간 인풋 ── */
 [data-testid="stDateInput"] > div,
 [data-testid="stTimeInput"] > div {
-    background-color: #1e1e2c !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     border-radius: 8px !important;
 }
 [data-testid="stDateInput"] input,
-[data-testid="stTimeInput"] input { background-color: #1e1e2c !important; color: #d0d0e8 !important; }
+[data-testid="stTimeInput"] input { background-color: #2a1520 !important; color: #e8d0d8 !important; }
 
 /* ── 버튼 secondary 재강화 ── */
 [data-testid="stBaseButton-secondary"] > div,
 .stButton button:not([kind="primary"]) {
-    background-color: #1e1e2c !important;
-    color: #d0d0e8 !important;
-    border: 1px solid rgba(120,120,220,0.35) !important;
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
     border-radius: 999px !important;
 }
 
@@ -9374,21 +9374,21 @@ div[data-testid="stRadio"] > div > label:has(input:checked) {
 [data-testid="stTextInput"] label,
 [data-testid="stRadio"] > label,
 [data-testid="stCheckbox"] > label,
-[data-testid="stSelectbox"] > label { color: #9898b8 !important; font-weight: 600 !important; }
+[data-testid="stSelectbox"] > label { color: #d4a0b8 !important; font-weight: 600 !important; }
 
 /* 전역 카드/박스 다크 오버라이드 */
 [data-testid="stMetric"],
-[data-testid="metric-container"] { background-color: #1e1e2c !important; border-radius: 12px !important; }
+[data-testid="metric-container"] { background-color: #2a1520 !important; border-radius: 12px !important; }
 [data-testid="stExpander"] > div { background-color: #221018 !important; }
-[data-testid="stForm"] { background-color: #16161e !important; border: 1px solid rgba(120,120,220,0.20) !important; }
+[data-testid="stForm"] { background-color: #1e1018 !important; border: 1px solid rgba(232,121,160,0.20) !important; }
 div.stAlert > div { border-radius: 10px !important; }
-[data-testid="stAlert"][data-baseweb="notification"] { background-color: #16161e !important; }
+[data-testid="stAlert"][data-baseweb="notification"] { background-color: #1e1018 !important; }
 /* 탭 */
-[data-testid="stTabs"] [role="tablist"] { background-color: #1e1e2c !important; border-radius: 10px !important; }
+[data-testid="stTabs"] [role="tablist"] { background-color: #2a1520 !important; border-radius: 10px !important; }
 [data-testid="stTabs"] [role="tab"] { color: #c090a8 !important; }
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] { color: #818cf8 !important; background-color: #3a1e2c !important; }
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] { color: #e879a0 !important; background-color: #3a1e2c !important; }
 /* 구분선 */
-hr { border-color: rgba(120,120,220,0.20) !important; }
+hr { border-color: rgba(232,121,160,0.20) !important; }
 
 /* 입력 필드 다크 테마 */
 [data-testid="stTextInput"] input,
@@ -9396,9 +9396,9 @@ hr { border-color: rgba(120,120,220,0.20) !important; }
 [data-testid="stDateInput"] input,
 [data-testid="stTimeInput"] input,
 textarea {
-    background-color: #1e1e2c !important;
-    color: #d0d0e8 !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
     border-radius: 8px !important;
 }
 [data-testid="stTextInput"] input::placeholder,
@@ -9408,67 +9408,67 @@ textarea::placeholder { color: #8b6070 !important; }
 [data-testid="stNumberInput"] > div,
 [data-testid="stTextInput"] > div > div,
 [data-testid="stNumberInput"] > div > div {
-    background-color: #1e1e2c !important;
-    border-color: rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    border-color: rgba(232,121,160,0.30) !important;
 }
 /* selectbox / radio 컨테이너 */
 [data-testid="stSelectbox"] > div,
-[data-testid="stRadio"] { color: #d0d0e8 !important; }
+[data-testid="stRadio"] { color: #e8d0d8 !important; }
 /* expander */
-[data-testid="stExpander"] { background-color: #221018 !important; border: 1px solid rgba(120,120,220,0.20) !important; }
-[data-testid="stExpander"] summary { color: #9898b8 !important; }
+[data-testid="stExpander"] { background-color: #221018 !important; border: 1px solid rgba(232,121,160,0.20) !important; }
+[data-testid="stExpander"] summary { color: #d4a0b8 !important; }
 /* info / success / warning 박스 */
-[data-testid="stAlert"] { background-color: #1e1e2c !important; color: #d0d0e8 !important; }
+[data-testid="stAlert"] { background-color: #2a1520 !important; color: #e8d0d8 !important; }
 [data-testid="stInfo"] { background-color: #1a2030 !important; color: #c0d0e8 !important; border-color: rgba(100,150,220,0.3) !important; }
 
 /* 전체 텍스트 가시성 강화 */
 p, span, div, li, label { color: inherit; }
 [data-testid="stMarkdownContainer"] p,
 [data-testid="stMarkdownContainer"] span,
-[data-testid="stMarkdownContainer"] li { color: #d0d0e8 !important; }
+[data-testid="stMarkdownContainer"] li { color: #e8d0d8 !important; }
 [data-testid="stCaptionContainer"],
 [data-testid="stCaptionContainer"] p { color: #c090a8 !important; }
 .stCaption, .stCaption p { color: #c090a8 !important; }
-[data-testid="stText"] { color: #d0d0e8 !important; }
+[data-testid="stText"] { color: #e8d0d8 !important; }
 /* 헤딩 */
-h1, h2, h3, h4 { color: #c4c4e8 !important; }
+h1, h2, h3, h4 { color: #f0b8d0 !important; }
 [data-testid="stMarkdownContainer"] h1,
 [data-testid="stMarkdownContainer"] h2,
 [data-testid="stMarkdownContainer"] h3,
-[data-testid="stMarkdownContainer"] h4 { color: #c4c4e8 !important; }
+[data-testid="stMarkdownContainer"] h4 { color: #f0b8d0 !important; }
 /* 히어로 타이틀 명시 */
-.hero-title { color: #c4c4e8 !important; }
-.hero-title span { -webkit-text-fill-color: unset !important; color: #c4c4e8 !important;
-    background: linear-gradient(92deg, #818cf8 0%, #818cf8 50%, #c084fc 90%);
+.hero-title { color: #f0b8d0 !important; }
+.hero-title span { -webkit-text-fill-color: unset !important; color: #f0b8d0 !important;
+    background: linear-gradient(92deg, #ff80b0 0%, #e879a0 50%, #c084fc 90%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.hero-subtitle { color: #9898b8 !important; }
+.hero-subtitle { color: #d4a0b8 !important; }
 
 /* 다크 테마 버튼 오버라이드 */
 [data-testid="stBaseButton-secondary"],
 button[kind="secondary"],
 .stButton > button:not([kind="primary"]) {
-    background-color: #1e1e2c !important;
-    color: #d0d0e8 !important;
-    border: 1px solid rgba(120,120,220,0.35) !important;
+    background-color: #2a1520 !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.35) !important;
 }
 [data-testid="stBaseButton-secondary"]:hover,
 .stButton > button:not([kind="primary"]):hover {
     background-color: #3a1e2c !important;
-    border-color: #818cf8 !important;
-    color: #c4c4e8 !important;
+    border-color: #e879a0 !important;
+    color: #f0b8d0 !important;
 }
 /* 링크처럼 생긴 버튼(개인정보 처리방침 등) */
 [data-testid="stBaseButton-tertiary"] {
-    background-color: #1e1e2c !important;
-    color: #818cf8 !important;
-    border: 1px solid rgba(120,120,220,0.30) !important;
+    background-color: #2a1520 !important;
+    color: #e879a0 !important;
+    border: 1px solid rgba(232,121,160,0.30) !important;
 }
-[data-testid="stAppViewContainer"] { background-color: #0f0f14 !important; }
-[data-testid="stHeader"] { background-color: #0f0f14 !important; }
-section.main { background-color: #0f0f14 !important; }
-.block-container { background-color: #0f0f14 !important; }
-[data-testid="stSidebar"] { background-color: #1e1e2c !important; }
-body { background-color: #0f0f14 !important; color: #d0d0e8 !important; }
+[data-testid="stAppViewContainer"] { background-color: #1a0d14 !important; }
+[data-testid="stHeader"] { background-color: #1a0d14 !important; }
+section.main { background-color: #1a0d14 !important; }
+.block-container { background-color: #1a0d14 !important; }
+[data-testid="stSidebar"] { background-color: #2a1520 !important; }
+body { background-color: #1a0d14 !important; color: #e8d0d8 !important; }
 [data-testid="stAppViewContainer"] { overflow-x: hidden !important; }
 [data-testid="stHeader"] { background: rgba(26,13,20,.95) !important; backdrop-filter: blur(10px); }
 /* 버튼형 내부 페이지 */
@@ -9479,7 +9479,7 @@ div[data-testid="stButton"] > button{border-radius:999px;min-height:42px;font-we
 }
 
 /* 재방문 안내 카드 */
-.revisit-guide-card{background:#1a1408;border:1px solid rgba(120,120,220,0.25);border-radius:18px;padding:14px 16px;color:#d0d0e8;margin-bottom:10px;}
+.revisit-guide-card{background:#1a1408;border:1px solid rgba(232,121,160,0.25);border-radius:18px;padding:14px 16px;color:#e8d0d8;margin-bottom:10px;}
 .revisit-guide-title{font-weight:800;color:#f890b8;margin-bottom:8px;font-size:1rem;}
 .revisit-guide-body{line-height:1.65;font-size:.95rem;}
 /* 핵심 메뉴는 selectbox/라디오 모두 모바일에서 터치하기 쉽게 */
@@ -9544,7 +9544,7 @@ div[data-testid="stTimeInput"] label {
         border-radius: var(--mobile-card-radius) !important;
         padding: .82rem .78rem !important;
         margin: .46rem 0 !important;
-        box-shadow: 0 8px 18px rgba(40,40,80,.06) !important;
+        box-shadow: 0 8px 18px rgba(80,40,60,.06) !important;
     }
     .main-character-name { font-size: 1.32rem !important; line-height: 1.22 !important; word-break: keep-all !important; }
     .main-character-desc { font-size: .88rem !important; line-height: 1.48 !important; }
@@ -9635,7 +9635,7 @@ div[data-testid="stTimeInput"] label {
     .hero-wrap {
         padding: .88rem .78rem .94rem !important;
         border-radius: 20px !important;
-        box-shadow: 0 10px 24px rgba(40,40,80,.07) !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.07) !important;
     }
 
     .hero-title {
@@ -9676,7 +9676,7 @@ div[data-testid="stTimeInput"] label {
         border-radius: 18px !important;
         padding: .76rem .74rem !important;
         margin: .38rem 0 !important;
-        box-shadow: 0 8px 18px rgba(40,40,80,.055) !important;
+        box-shadow: 0 8px 18px rgba(80,40,60,.055) !important;
     }
 
     .main-character-label,
@@ -9739,18 +9739,18 @@ div[data-testid="stTimeInput"] label {
         font-size: .94rem !important;
         font-weight: 900 !important;
         letter-spacing: -.01em !important;
-        box-shadow: 0 8px 16px rgba(99,102,241,.10) !important;
+        box-shadow: 0 8px 16px rgba(214,66,115,.10) !important;
     }
 
     .stButton > button {
-        border: 1px solid rgba(99,102,241,.18) !important;
-        background: linear-gradient(180deg,#16161e,#1a1a26) !important;
+        border: 1px solid rgba(214,66,115,.18) !important;
+        background: linear-gradient(180deg,#1e1018,#221220) !important;
     }
 
     .stButton > button[kind="primary"] {
-        background: linear-gradient(180deg,#3730a3,#bc275c) !important;
+        background: linear-gradient(180deg,#7b1e3d,#bc275c) !important;
         border-color: rgba(188,39,92,.92) !important;
-        box-shadow: 0 10px 18px rgba(99,102,241,.18) !important;
+        box-shadow: 0 10px 18px rgba(214,66,115,.18) !important;
         transform: translateY(0) !important;
     }
 
@@ -9804,14 +9804,14 @@ div[data-testid="stTimeInput"] label {
     }
 
     .revisit-guide-body b {
-        color: #d0d0e8 !important;
+        color: #e8d0d8 !important;
     }
 
     [data-testid="stExpander"] {
         border-radius: 16px !important;
         overflow: hidden !important;
-        border: 1px solid rgba(140,140,210,.22) !important;
-        background: #16161e !important;
+        border: 1px solid rgba(230,164,184,.22) !important;
+        background: #1e1018 !important;
     }
 
     [data-testid="stExpander"] summary {
@@ -9852,7 +9852,7 @@ div[data-testid="stTimeInput"] label {
     right: -70px;
     top: -90px;
     border-radius: 999px;
-    background: radial-gradient(circle, rgba(99,102,241,.12), rgba(99,102,241,0));
+    background: radial-gradient(circle, rgba(214,66,115,.12), rgba(214,66,115,0));
     pointer-events: none;
 }
 .single-hero-premium > *,
@@ -9865,7 +9865,7 @@ div[data-testid="stTimeInput"] label {
 }
 .page-button-guide {
     font-size: .86rem;
-    color: #9898b8;
+    color: #d4a0b8;
     margin: .1rem 0 .45rem;
     line-height: 1.45;
 }
@@ -9876,7 +9876,7 @@ div[data-testid="stTimeInput"] label {
         padding: .98rem .78rem .86rem !important;
         border-radius: 22px !important;
         margin: .22rem 0 .72rem 0 !important;
-        box-shadow: 0 10px 24px rgba(40,40,80,.075) !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.075) !important;
     }
 
     .single-hero-premium > div:nth-child(1),
@@ -9928,7 +9928,7 @@ div[data-testid="stTimeInput"] label {
     .single-hero-metrics > div > div:nth-child(1) {
         grid-row: 1 / span 2;
         font-size: .76rem !important;
-        color: #9898b8 !important;
+        color: #d4a0b8 !important;
     }
 
     .single-hero-metrics > div > div:nth-child(2) {
@@ -10076,7 +10076,7 @@ div[data-testid="stTimeInput"] label {
         grid-row: auto !important;
         font-size: .68rem !important;
         line-height: 1.18 !important;
-        color: #9898b8 !important;
+        color: #d4a0b8 !important;
         white-space: nowrap !important;
     }
 
@@ -10139,8 +10139,8 @@ div[data-testid="stTimeInput"] label {
 /* v5.112: 첫 결과화면 하단 재방문 안내 — QR 제거, 3단계 안내 */
 .revisit-guide-compact {
     margin-top: .72rem !important;
-    background: linear-gradient(135deg,#16161e,#1a1a26) !important;
-    border: 1px solid rgba(140,140,210,.34) !important;
+    background: linear-gradient(135deg,#1e1018,#221220) !important;
+    border: 1px solid rgba(230,164,184,.34) !important;
 }
 .revisit-mini-steps {
     display: flex;
@@ -10154,15 +10154,15 @@ div[data-testid="stTimeInput"] label {
     justify-content: center;
     padding: .28rem .52rem;
     border-radius: 999px;
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,.36);
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,.36);
     color: #c090a8;
     font-size: .78rem;
     font-weight: 900;
 }
 .revisit-device-note {
     margin-top: .48rem;
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: .78rem;
     line-height: 1.36;
     font-weight: 760;
@@ -10193,13 +10193,13 @@ div[data-testid="stTimeInput"] label {
 /* v5.118: 내 사주 인상 + 삼각 그래프 */
 .single-axis-triangle-wrap {
     background: rgba(255,255,255,.84);
-    border: 1px solid rgba(140,140,210,.30);
+    border: 1px solid rgba(230,164,184,.30);
     border-radius: 20px;
     padding: .85rem .75rem .5rem;
 }
 .single-axis-triangle-title {
     font-size: .82rem;
-    color: #9898b8;
+    color: #d4a0b8;
     font-weight: 900;
     margin-bottom: .12rem;
 }
@@ -10252,14 +10252,14 @@ div[data-testid="stTimeInput"] label {
     width:100%;
     height:10px;
     border-radius:999px;
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.22);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.22);
     overflow:hidden;
 }
 .axis-bar-fill {
     height:100%;
     border-radius:999px;
-    background:linear-gradient(90deg,#818cf8,#a78bfa);
+    background:linear-gradient(90deg,#f7b1c7,#c1a6ff);
 }
 .axis-bar-desc {
     font-size:.88rem;
@@ -10269,7 +10269,7 @@ div[data-testid="stTimeInput"] label {
 }
 .single-axis-triangle-wrap {
     background: rgba(255,255,255,.88);
-    border: 1px solid rgba(140,140,210,.28);
+    border: 1px solid rgba(230,164,184,.28);
     border-radius: 18px;
     padding: .42rem .42rem .12rem;
 }
@@ -10363,7 +10363,7 @@ div[data-testid="stTimeInput"] label {
     font-weight: 900;
     color: #a34d71;
     background: rgba(248, 179, 202, .18);
-    border: 1px solid rgba(140,140,210,.30);
+    border: 1px solid rgba(230,164,184,.30);
     border-radius: 999px;
     padding: .12rem .48rem;
     white-space: nowrap;
@@ -10402,7 +10402,7 @@ div[data-testid="stTimeInput"] label {
 .today-quick-muted {
     display: inline-block;
     margin-top: .18rem;
-    color: #9898b8 !important;
+    color: #d4a0b8 !important;
     font-size: .78rem;
     line-height: 1.36;
     font-weight: 760;
@@ -10589,18 +10589,18 @@ def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saj
     """
     safe_save_url = json.dumps(str(save_url or ""), ensure_ascii=False)
     component_html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; border:1px solid rgba(120,120,220,0.30); background:#16161e; border-radius:16px; padding:12px; color:#d0d0e8;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; border:1px solid rgba(232,121,160,0.30); background:#1e1018; border-radius:16px; padding:12px; color:#e8d0d8;">
       <div style="font-weight:800; margin-bottom:6px;">내 사주 기기 저장</div>
       <div style="font-size:13px; line-height:1.45; color:#c090a8; margin-bottom:10px;">
         같은 브라우저에서 다시 열 때 입력을 줄이기 위해, 이 기기에 개인용 바로가기 URL을 저장합니다.
         생년월일시가 URL에 포함되므로 공용기기에서는 사용하지 마세요.
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button id="saveBtn" style="display:none; border:1px solid #3730a3; background:#3730a3; color:white; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">이 기기에 저장</button>
-        <a id="loadLink" target="_parent" style="display:none; text-decoration:none; border:1px solid #818cf8; background:#1e1e2c; color:#818cf8; border-radius:999px; padding:8px 12px; font-weight:800;">저장된 내 사주 불러오기</a>
-        <button id="clearBtn" style="display:none; border:1px solid rgba(120,120,220,0.30); background:#1e1e2c; color:#c090a8; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">저장 삭제</button>
+        <button id="saveBtn" style="display:none; border:1px solid #7b1e3d; background:#7b1e3d; color:white; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">이 기기에 저장</button>
+        <a id="loadLink" target="_parent" style="display:none; text-decoration:none; border:1px solid #e879a0; background:#2a1520; color:#e879a0; border-radius:999px; padding:8px 12px; font-weight:800;">저장된 내 사주 불러오기</a>
+        <button id="clearBtn" style="display:none; border:1px solid rgba(232,121,160,0.30); background:#2a1520; color:#c090a8; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">저장 삭제</button>
       </div>
-      <div id="msg" style="margin-top:8px; font-size:13px; color:#9898b8;"></div>
+      <div id="msg" style="margin-top:8px; font-size:13px; color:#d4a0b8;"></div>
     </div>
     <script>
       (function() {{
@@ -10915,7 +10915,7 @@ def render_admin_analytics_dashboard() -> None:
         return
 
     st.markdown(
-        "<div class='signal-card' style='border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,#0d1e14,#16161e);'>"
+        "<div class='signal-card' style='border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,#ecfdf5,#fff7fb);'>"
         "<div class='signal-title'>🔐 관리자 테스트 모드</div>"
         "<div class='signal-body'>이 접속은 앱 방문 통계에서 제외됩니다. Streamlit 기본 Analytics에는 별도로 잡힐 수 있습니다.</div>"
         "</div>",
@@ -11060,13 +11060,13 @@ _stcomp.html("""
 <script>
 (function(){
     var css=`:root {
-    --palja-bg: #0f0f14;
-    --palja-panel: #1e1e2c;
+    --palja-bg: #1a0d14;
+    --palja-panel: #2a1520;
     --palja-panel-2: #221018;
     --palja-line: rgba(232, 121, 160, 0.28);
-    --palja-text: #d0d0e8;
+    --palja-text: #e8d0d8;
     --palja-muted: rgba(212,160,184,0.85);
-    --palja-accent: #818cf8;
+    --palja-accent: #e879a0;
     --palja-accent-2: #a78bfa;
     --palja-mint: #4ade80;
     --palja-warm: #fb923c;
@@ -11085,10 +11085,10 @@ _stcomp.html("""
     padding: 1.35rem 1.5rem 1.15rem 1.5rem;
     border-radius: 28px;
     background:
-        radial-gradient(circle at 15% 15%, rgba(120,120,220,0.12), transparent 40%),
+        radial-gradient(circle at 15% 15%, rgba(232,121,160,0.12), transparent 40%),
         linear-gradient(135deg, rgba(42,21,32,0.98), rgba(30,13,20,1.0));
-    border: 1px solid rgba(120,120,220,0.28);
-    box-shadow: 0 16px 38px rgba(120,120,220,0.10);
+    border: 1px solid rgba(232,121,160,0.28);
+    box-shadow: 0 16px 38px rgba(232,121,160,0.10);
     margin-bottom: 1rem;
     text-align: center;
 }
@@ -11099,7 +11099,7 @@ _stcomp.html("""
     line-height: 1.02;
 }
 .hero-title span {
-    background: linear-gradient(92deg, #6366f1 0%, #818cf8 48%, #a78bfa 90%);
+    background: linear-gradient(92deg, #ff5f93 0%, #ff8a72 48%, #9b7cff 90%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -11113,7 +11113,7 @@ _stcomp.html("""
     padding: 1.18rem 1.24rem;
     border-radius: 24px;
     background: rgba(255,255,255,0.96);
-    border: 1px solid rgba(100,100,220,0.24);
+    border: 1px solid rgba(255,145,180,0.24);
     box-shadow: 0 14px 34px rgba(255, 125, 165, 0.13);
     margin-bottom: 1rem;
     color: var(--palja-text);
@@ -11126,7 +11126,7 @@ _stcomp.html("""
     padding: 1.15rem 1.15rem;
     border-radius: 26px;
     background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,241,247,0.96));
-    border: 1px solid rgba(100,100,220,0.25);
+    border: 1px solid rgba(255,145,180,0.25);
     box-shadow: 0 14px 30px rgba(255, 125, 165, 0.12);
     margin-bottom: 0.75rem;
 }
@@ -11136,7 +11136,7 @@ _stcomp.html("""
     margin-bottom: 0.4rem;
 }
 .mode-card p {
-    color: rgba(50,50,80,0.70);
+    color: rgba(75,45,58,0.70);
     line-height: 1.58;
 }
 .mode-icon {
@@ -11145,13 +11145,13 @@ _stcomp.html("""
 }
 
 label, .stRadio label, .stCheckbox label {
-    color: rgba(50,50,80,0.92) !important;
+    color: rgba(75,45,58,0.92) !important;
     font-weight: 760 !important;
 }
-[data-testid="stCaptionContainer"] { color: rgba(40,40,70,0.82) !important; }
+[data-testid="stCaptionContainer"] { color: rgba(63,42,51,0.82) !important; }
 div[data-baseweb="input"] > div,
 .stDateInput input, .stTimeInput input, .stTextInput input, .stNumberInput input {
-    background: #16161e !important;
+    background: #1e1018 !important;
     color: #c090a8 !important;
 }
 .stButton > button {
@@ -11159,44 +11159,44 @@ div[data-baseweb="input"] > div,
     padding: 0.64rem 1.14rem;
     font-weight: 850;
     border: 1px solid rgba(255, 115, 158, 0.30);
-    background: #16161e;
+    background: #1e1018;
     color: #d94478;
     box-shadow: 0 8px 18px rgba(255, 120, 165, 0.12);
     transition: all 0.16s ease;
 }
 .stButton > button:hover {
-    background: #16161e;
+    background: #1e1018;
     border-color: rgba(255, 115, 158, 0.65);
     transform: translateY(-1px);
 }
 .stButton > button[kind="primary"] {
-    background: linear-gradient(90deg, #b91c5c, #3730a3);
+    background: linear-gradient(90deg, #b91c5c, #9f1239);
     border: 1px solid rgba(159, 18, 57, 0.70);
     color: #ffffff;
 }
 .stButton > button[kind="primary"]:hover {
-    background: linear-gradient(90deg, #3730a3, #1e1b4b);
+    background: linear-gradient(90deg, #9f1239, #4a0e20);
 }
 .summary-chip {
     display: inline-block;
     padding: 0.42rem 0.72rem;
     border-radius: 999px;
     background: rgba(30,16,24,0.95);
-    border: 1px solid rgba(140,140,210,.32);
-    color: #c4c4e8;
+    border: 1px solid rgba(230,164,184,.32);
+    color: #f0b8d0;
     margin: 0.16rem 0.22rem 0.16rem 0;
     font-weight: 750;
 }
 .mini-card {
     padding: 1.0rem 1.08rem;
     border-radius: 20px;
-    background: linear-gradient(135deg, #16161e, #1a1a26);
+    background: linear-gradient(135deg, #fff4f8, #f7f1ff);
     border: 1px solid rgba(255, 145, 180, 0.20);
     box-shadow: 0 8px 18px rgba(255, 125, 165, 0.08);
     height: 100%;
-    color: #d0d0e8;
+    color: #e8d0d8;
 }
-.mini-card-title { color: rgba(50,50,80,0.68); font-size:0.9rem; font-weight:800; }
+.mini-card-title { color: rgba(75,45,58,0.68); font-size:0.9rem; font-weight:800; }
 .mini-card-value { color:#e94f85; font-size:1.35rem; font-weight:900; margin-top:0.2rem; }
 .score-number {
     font-size: clamp(3rem, 8vw, 4rem);
@@ -11204,18 +11204,18 @@ div[data-baseweb="input"] > div,
     letter-spacing: -0.08em;
     color: #e94f85;
 }
-.score-label { color: rgba(40,40,70,0.82); font-weight: 750; margin-top: -0.45rem; }
+.score-label { color: rgba(63,42,51,0.82); font-weight: 750; margin-top: -0.45rem; }
 .stAlert { border-radius: 16px; }
-button[data-baseweb="tab"] { color: rgba(50,50,80,0.84); font-weight: 800; }
-hr { border-color: rgba(100,100,220,0.22); }
+button[data-baseweb="tab"] { color: rgba(75,45,58,0.84); font-weight: 800; }
+hr { border-color: rgba(255,145,180,0.22); }
 div[data-testid="stAlert"] {
     background: #1a1408 !important;
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     border: 1px solid rgba(255, 180, 105, 0.42) !important;
     border-radius: 16px !important;
 }
 div[data-testid="stAlert"] * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
 }
 div[data-testid="stAlert"] svg {
     color: #e9893f !important;
@@ -11225,7 +11225,7 @@ div[data-testid="stAlert"] p,
 div[data-testid="stAlert"] li,
 div[data-testid="stAlert"] span,
 div[data-testid="stAlert"] div {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
 }
 [data-testid="stWidgetLabel"],
 [data-testid="stWidgetLabel"] *,
@@ -11252,7 +11252,7 @@ div[data-baseweb="radio"],
 div[data-baseweb="radio"] *,
 div[data-baseweb="checkbox"],
 div[data-baseweb="checkbox"] * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
 }
 
 /* radio/checkbox 선택 표시 색상 */
@@ -11287,9 +11287,9 @@ textarea::placeholder {
     opacity: 0.65 !important;
 }
 :root {
-    --palja-readable-text: #d0d0e8;
+    --palja-readable-text: #e8d0d8;
     --palja-readable-muted: #c090a8;
-    --palja-readable-title: #818cf8;
+    --palja-readable-title: #e879a0;
 }
 
 /* 웹 화면에서 상단 히어로가 잘리는 느낌 보정 */
@@ -11393,13 +11393,13 @@ div[data-testid="stTable"] div {
 /* 탭, 알림, expander도 대비 확보 */
 button[data-baseweb="tab"],
 button[data-baseweb="tab"] * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-size: 0.98rem !important;
     font-weight: 800 !important;
 }
 div[data-testid="stAlert"],
 div[data-testid="stAlert"] * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-size: 0.99rem !important;
     line-height: 1.66 !important;
 }
@@ -11431,15 +11431,15 @@ div[data-testid="stAlert"] * {
     padding: 1.1rem 1.15rem;
     border-radius: 24px;
     background: rgba(255,255,255,0.97);
-    border: 1px solid rgba(100,100,220,0.24);
+    border: 1px solid rgba(255,145,180,0.24);
     box-shadow: 0 14px 34px rgba(255, 125, 165, 0.12);
     margin-bottom: 1rem;
 }
 .step-panel {
     padding: 1.25rem 1.2rem;
     border-radius: 26px;
-    background: linear-gradient(135deg, #16161e, #1a1a26);
-    border: 1px solid rgba(100,100,220,0.26);
+    background: linear-gradient(135deg, #1e1018, #221220);
+    border: 1px solid rgba(255,145,180,0.26);
     box-shadow: 0 16px 36px rgba(255, 125, 165, 0.14);
     text-align: center;
     margin: 1rem 0;
@@ -11458,8 +11458,8 @@ div[data-testid="stAlert"] * {
     text-align:center;
     padding: 1rem;
     border-radius: 20px;
-    background: #16161e;
-    border: 1px solid rgba(100,100,220,0.20);
+    background: #1e1018;
+    border: 1px solid rgba(255,145,180,0.20);
     min-height: 112px;
 }
 .compact-kpi .kpi-label {
@@ -11481,8 +11481,8 @@ div[data-testid="stAlert"] * {
     margin: 0.8rem 0 1rem 0;
 }
 .ability-card {
-    background: #16161e;
-    border: 1px solid rgba(100,100,220,0.22);
+    background: #1e1018;
+    border: 1px solid rgba(255,145,180,0.22);
     border-radius: 20px;
     padding: 1rem 1rem;
     min-height: 150px;
@@ -11494,7 +11494,7 @@ div[data-testid="stAlert"] * {
     margin-bottom: 0.45rem;
 }
 .ability-card-body {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-size: 0.98rem;
     line-height: 1.65;
 }
@@ -11506,7 +11506,7 @@ div[data-testid="stAlert"] * {
 .support-menu-wrap {
     margin-top: 1.15rem;
     padding-top: 0.75rem;
-    border-top: 1px dashed rgba(100,100,220,0.35);
+    border-top: 1px dashed rgba(255,145,180,0.35);
 }
 .support-menu-title {
     color: #c090a8 !important;
@@ -11525,7 +11525,7 @@ div[data-testid="stAlert"] * {
     border-radius: 18px;
     background: #1e1408;
     border: 1px solid rgba(255, 180, 105, 0.42);
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-size: 0.96rem;
     line-height: 1.65;
 }
@@ -11538,7 +11538,7 @@ div[data-testid="stAlert"] * {
 }
 .privacy-notice li {
     margin: 0.15rem 0;
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
 }
 .meal-participant-caption {
     color: #d94378 !important;
@@ -11549,8 +11549,8 @@ div[data-testid="stAlert"] * {
 .storage-panel {
     padding: 1rem 1.05rem;
     border-radius: 20px;
-    background: #16161e;
-    border: 1px solid rgba(100,100,220,0.25);
+    background: #1e1018;
+    border: 1px solid rgba(255,145,180,0.25);
     margin: 0.8rem 0 1rem 0;
 }
 .storage-panel-title {
@@ -11567,8 +11567,8 @@ div[data-testid="stAlert"] * {
 .native-summary-card {
     padding: 1rem 1.05rem;
     border-radius: 20px;
-    background: #16161e;
-    border: 1px solid rgba(100,100,220,0.24);
+    background: #1e1018;
+    border: 1px solid rgba(255,145,180,0.24);
     margin: 0.75rem 0;
 }
 .manual-input-hint {
@@ -11580,34 +11580,34 @@ div[role="radiogroup"] {
     gap: 0.35rem !important;
 }
 div[role="radiogroup"] label {
-    background: #16161e !important;
-    border: 1px solid rgba(100,100,220,0.22) !important;
+    background: #1e1018 !important;
+    border: 1px solid rgba(255,145,180,0.22) !important;
     border-radius: 999px !important;
     padding: 0.35rem 0.58rem !important;
     margin: 0.12rem 0.12rem 0.12rem 0 !important;
 }
 div[role="radiogroup"] label * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
 }
 div[role="radiogroup"] {
     gap: 0.35rem !important;
     flex-wrap: wrap !important;
 }
 div[role="radiogroup"] label {
-    background: #16161e !important;
-    border: 1px solid rgba(100,100,220,0.28) !important;
+    background: #1e1018 !important;
+    border: 1px solid rgba(255,145,180,0.28) !important;
     border-radius: 999px !important;
     padding: 0.36rem 0.62rem !important;
     margin: 0.14rem 0.14rem 0.14rem 0 !important;
     min-height: 38px !important;
 }
 div[role="radiogroup"] label * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-weight: 800 !important;
 }
 div[role="radiogroup"] label:has(input:checked),
 div[role="radiogroup"] label[aria-checked="true"] {
-    background: #3730a3 !important;
+    background: #7b1e3d !important;
     border-color: rgba(233, 79, 133, 0.55) !important;
 }
 
@@ -11615,8 +11615,8 @@ div[role="radiogroup"] label[aria-checked="true"] {
 .roster-reuse-panel {
     padding: 0.95rem 1rem;
     border-radius: 20px;
-    background: #16161e;
-    border: 1px solid rgba(100,100,220,0.26);
+    background: #1e1018;
+    border: 1px solid rgba(255,145,180,0.26);
     margin: 0.9rem 0 1rem 0;
 }
 .roster-reuse-title {
@@ -11630,14 +11630,14 @@ div[role="radiogroup"] label[aria-checked="true"] {
     line-height: 1.6 !important;
 }
 div[data-testid="stCheckbox"] label {
-    background: #16161e !important;
-    border: 1px solid rgba(100,100,220,0.24) !important;
+    background: #1e1018 !important;
+    border: 1px solid rgba(255,145,180,0.24) !important;
     border-radius: 16px !important;
     padding: 0.55rem 0.75rem !important;
     margin: 0.22rem 0 !important;
 }
 div[data-testid="stCheckbox"] label * {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-weight: 850 !important;
 }
 div[data-testid="stCheckbox"] svg {
@@ -11648,43 +11648,43 @@ div[data-testid="stCheckbox"] svg {
 .result-arena h4,
 .result-arena h3,
 .result-arena .quest-title {
-    color:#d0d0e8 !important;
+    color:#e8d0d8 !important;
 }
 .result-arena [data-testid="stToggle"] label,
 .result-arena [data-testid="stCheckbox"] label {
-    background:#16161e !important;
-    border:1px solid rgba(100,100,220,0.22) !important;
+    background:#1e1018 !important;
+    border:1px solid rgba(255,145,180,0.22) !important;
     border-radius:14px !important;
     padding:.42rem .62rem !important;
 }
 .main-character-card {
-    background: linear-gradient(135deg, #16161e 0%, #1a1020 100%);
+    background: linear-gradient(135deg, #1e1018 0%, #1a1020 100%);
     border: 1px solid rgba(255, 145, 180, 0.28);
     border-radius: 20px;
     padding: 1rem 1.1rem;
     margin: 0.9rem 0 0.8rem 0;
 }
 .main-character-label {
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: 0.92rem;
     font-weight: 850;
 }
 .main-character-name {
-    color: #818cf8;
+    color: #e879a0;
     font-size: 1.45rem;
     font-weight: 950;
     margin-top: 0.2rem;
 }
 .main-character-desc {
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: 0.98rem;
     font-weight: 700;
     margin-top: 0.25rem;
     line-height: 1.55;
 }
 .ability-bar-row {
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,0.35);
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,0.35);
     border-radius: 15px;
     padding: 0.72rem 0.86rem;
     margin: 0.55rem 0;
@@ -11697,11 +11697,11 @@ div[data-testid="stCheckbox"] svg {
     margin-bottom: 0.42rem;
 }
 .ability-bar-title {
-    color: #d0d0e8;
+    color: #e8d0d8;
     font-weight: 900;
 }
 .ability-bar-score {
-    color: #818cf8;
+    color: #e879a0;
     font-weight: 900;
     white-space: nowrap;
 }
@@ -11710,27 +11710,27 @@ div[data-testid="stCheckbox"] svg {
     border-radius: 999px;
     background: #2e1422;
     overflow: hidden;
-    box-shadow: inset 0 1px 2px rgba(50,50,80,0.08);
+    box-shadow: inset 0 1px 2px rgba(75,45,58,0.08);
 }
 .ability-bar-fill {
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #818cf8, #3730a3);
+    background: linear-gradient(90deg, #ff8fab, #7b1e3d);
 }
 .battle-board {
     background: linear-gradient(135deg, #fff7fb 0%, #fffdf7 100%);
-    border: 1px solid rgba(100,100,220,0.32);
+    border: 1px solid rgba(255,145,180,0.32);
     border-radius: 24px;
     padding: 1.15rem;
     margin: 0.9rem 0 1rem 0;
 }
 .battle-board-title {
-    color: #9898b8;
+    color: #d4a0b8;
     font-weight: 900;
     font-size: 1rem;
 }
 .battle-board-verdict {
-    color: #818cf8;
+    color: #e879a0;
     font-weight: 950;
     font-size: 1.75rem;
     line-height: 1.2;
@@ -11738,20 +11738,20 @@ div[data-testid="stCheckbox"] svg {
 }
 .battle-card-sub,
 .battle-card-line {
-    color:#9898b8;
+    color:#d4a0b8;
     font-size:0.95rem;
     line-height:1.55;
     margin-top:0.25rem;
 }
 .battle-compare-row {
-    background:#16161e;
-    border:1px solid rgba(140,140,210,0.35);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,0.35);
     border-radius:16px;
     padding:.78rem .88rem;
     margin:.58rem 0;
 }
 .battle-compare-title {
-    color:#d0d0e8;
+    color:#e8d0d8;
     font-weight:930;
     margin-bottom:.45rem;
 }
@@ -11763,14 +11763,14 @@ div[data-testid="stCheckbox"] svg {
     margin:.3rem 0;
 }
 .battle-compare-name {
-    color:#9898b8;
+    color:#d4a0b8;
     font-weight:850;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
 }
 .battle-compare-score {
-    color:#818cf8;
+    color:#e879a0;
     font-weight:930;
     text-align:right;
 }
@@ -11785,30 +11785,30 @@ div[data-testid="stCheckbox"] svg {
     border-radius:999px;
 }
 .battle-compare-fill.mine {
-    background:linear-gradient(90deg,#818cf8,#3730a3);
+    background:linear-gradient(90deg,#ff8fab,#7b1e3d);
 }
 .battle-compare-fill.friend {
     background:linear-gradient(90deg,#8ec5ff,#2563eb);
 }
 .battle-chemistry-card {
-    background:#16161e;
-    border:1px solid rgba(140,140,210,0.35);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,0.35);
     border-radius:18px;
     padding:.95rem 1rem;
     margin:1rem 0;
 }
 .battle-chemistry-title {
-    color:#9898b8;
+    color:#d4a0b8;
     font-weight:900;
 }
 .battle-chemistry-score {
-    color:#818cf8;
+    color:#e879a0;
     font-size:1.16rem;
     font-weight:950;
     margin-top:.2rem;
 }
 .battle-chemistry-text {
-    color:#9898b8;
+    color:#d4a0b8;
     line-height:1.6;
     margin-top:.35rem;
     font-weight:700;
@@ -11822,8 +11822,8 @@ div[data-testid="stCheckbox"] svg {
     }
 }
 .multi-situation-wrap {
-    background: linear-gradient(135deg, #16161e 0%, #1a1020 100%);
-    border: 1px solid rgba(100,100,220,0.28);
+    background: linear-gradient(135deg, #1e1018 0%, #1a1020 100%);
+    border: 1px solid rgba(255,145,180,0.28);
     border-radius: 22px;
     padding: 1rem 1rem 0.9rem 1rem;
     margin: 0.85rem 0 1rem 0;
@@ -11842,9 +11842,9 @@ div[data-testid="stCheckbox"] svg {
     border-radius: 999px;
     font-size: 0.86rem;
     font-weight: 900;
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,0.36);
-    color: #9898b8;
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,0.36);
+    color: #d4a0b8;
 }
 .legend-pill.ally { border-color: #ff6f9c; color: #c63d69; }
 .legend-pill.coop { border-color: #54b98b; color: #2b8f63; }
@@ -11863,24 +11863,24 @@ div[data-testid="stCheckbox"] svg {
     margin: 0.35rem 0 0.3rem 0;
 }
 .multi-role-card {
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,0.34);
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,0.34);
     border-radius: 18px;
     padding: 0.82rem 0.9rem;
 }
 .multi-role-name {
-    color: #d0d0e8;
+    color: #e8d0d8;
     font-size: 1.08rem;
     font-weight: 950;
 }
 .multi-role-title {
-    color: #818cf8;
+    color: #e879a0;
     font-size: 1rem;
     font-weight: 930;
     margin-top: 0.15rem;
 }
 .multi-role-body {
-    color: #9898b8;
+    color: #d4a0b8;
     line-height: 1.58;
     font-weight: 700;
     margin-top: 0.28rem;
@@ -11900,26 +11900,26 @@ div[data-testid="stCheckbox"] svg {
 
 /* v5.04: 오늘의 뽑기 대기 화면 — 밝은 카드형으로 가독성 우선 */
 .meal-stage-wrap {
-    background: linear-gradient(135deg, #16161e 0%, #1a1408 52%, #221018 100%);
-    border: 1px solid rgba(140,140,210,0.42);
+    background: linear-gradient(135deg, #1e1018 0%, #1a1408 52%, #221018 100%);
+    border: 1px solid rgba(230,164,184,0.42);
     border-radius: 26px;
     padding: 1.15rem 1.15rem;
     margin: 0.9rem 0 1rem 0;
-    color: #d0d0e8;
-    box-shadow: 0 14px 34px rgba(99,102,241,0.10);
+    color: #e8d0d8;
+    box-shadow: 0 14px 34px rgba(214,66,115,0.10);
 }
 .meal-stage-kicker {
     display: inline-block;
-    color: #a5b4fc;
+    color: #f9a8c9;
     background: #3d1028;
-    border: 1px solid rgba(99,102,241,0.24);
+    border: 1px solid rgba(214,66,115,0.24);
     border-radius: 999px;
     padding: 0.22rem 0.68rem;
     font-size: 0.86rem;
     font-weight: 950;
 }
 .meal-stage-title {
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: 1.55rem;
     font-weight: 950;
     margin-top: 0.55rem;
@@ -11933,7 +11933,7 @@ div[data-testid="stCheckbox"] svg {
     font-weight: 760;
 }
 .meal-stage-alert {
-    color: #818cf8;
+    color: #e879a0;
     font-size: 1.08rem;
     font-weight: 950;
     margin: 0.72rem 0 0.75rem 0;
@@ -11944,26 +11944,26 @@ div[data-testid="stCheckbox"] svg {
     gap: 0.62rem;
 }
 .meal-ready-card {
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,0.38);
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,0.38);
     border-radius: 18px;
     padding: 0.72rem 0.78rem;
-    box-shadow: 0 8px 20px rgba(99,102,241,0.07);
+    box-shadow: 0 8px 20px rgba(214,66,115,0.07);
 }
 .meal-ready-name {
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: 1.05rem;
     font-weight: 950;
 }
 .meal-ready-spokes {
-    color: #818cf8;
+    color: #e879a0;
     font-size: 1.32rem;
     font-weight: 950;
     line-height: 1.25;
     margin-top: 0.18rem;
 }
 .meal-ready-sub {
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: 0.88rem;
     font-weight: 780;
     margin-top: 0.12rem;
@@ -11976,24 +11976,24 @@ div[data-testid="stCheckbox"] svg {
     margin: 0.85rem 0 0.15rem 0;
 }
 .pick-sealed-card {
-    background: linear-gradient(135deg,#16161e 0%,#1a1a26 100%);
-    border: 1px solid rgba(99,102,241,0.30);
+    background: linear-gradient(135deg,#ffffff 0%,#fff0f5 100%);
+    border: 1px solid rgba(214,66,115,0.30);
     border-radius: 18px;
     padding: 0.78rem 0.7rem;
     text-align: center;
-    box-shadow: 0 10px 22px rgba(99,102,241,0.08);
+    box-shadow: 0 10px 22px rgba(214,66,115,0.08);
 }
 .pick-sealed-icon {
     font-size: 1.7rem;
     line-height: 1.1;
 }
 .pick-sealed-title {
-    color: #9898b8;
+    color: #d4a0b8;
     font-weight: 950;
     margin-top: 0.18rem;
 }
 .pick-sealed-sub {
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: 0.82rem;
     font-weight: 760;
     margin-top: 0.12rem;
@@ -12012,14 +12012,14 @@ div[data-testid="stCheckbox"] svg {
     }
 }
 .logic-mini-panel {
-    background: #16161e;
+    background: #1e1018;
     border: 1px dashed rgba(180, 128, 148, 0.38);
     border-radius: 16px;
     padding: 0.72rem 0.82rem;
     margin: 0.65rem 0 0.9rem 0;
 }
 .logic-mini-panel h5 {
-    color: #9898b8 !important;
+    color: #d4a0b8 !important;
     margin-bottom: 0.25rem !important;
 }
 .logic-mini-panel [data-testid="stDataFrame"] {
@@ -12029,20 +12029,20 @@ div[data-testid="stCheckbox"] svg {
     padding-top: 0.75rem;
 }
 .compact-detail-card {
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,0.35);
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,0.35);
     border-radius: 18px;
     padding: 0.9rem 1rem;
     margin: 0.65rem 0 0.85rem 0;
 }
 .compact-detail-title {
-    color: #818cf8;
+    color: #e879a0;
     font-size: 1.12rem;
     font-weight: 950;
     margin-bottom: 0.35rem;
 }
 .compact-detail-body {
-    color: #9898b8;
+    color: #d4a0b8;
     line-height: 1.62;
     font-weight: 720;
     margin: 0.18rem 0;
@@ -12050,17 +12050,17 @@ div[data-testid="stCheckbox"] svg {
 
 
 .safe-table-wrap { overflow-x:auto; margin:.4rem 0 1rem 0; }
-.safe-table { width:100%; border-collapse:separate; border-spacing:0; font-size:.88rem; background:#16161e; border:1px solid rgba(140,140,210,.35); border-radius:14px; overflow:hidden; }
-.safe-table th { text-align:left; background:#16161e; color:#9898b8; padding:.62rem .7rem; border-bottom:1px solid rgba(140,140,210,.35); white-space:nowrap; }
-.safe-table td { padding:.58rem .7rem; border-bottom:1px solid rgba(140,140,210,.22); color:#5f4550; vertical-align:top; }
+.safe-table { width:100%; border-collapse:separate; border-spacing:0; font-size:.88rem; background:#1e1018; border:1px solid rgba(230,164,184,.35); border-radius:14px; overflow:hidden; }
+.safe-table th { text-align:left; background:#fff3f7; color:#d4a0b8; padding:.62rem .7rem; border-bottom:1px solid rgba(230,164,184,.35); white-space:nowrap; }
+.safe-table td { padding:.58rem .7rem; border-bottom:1px solid rgba(230,164,184,.22); color:#5f4550; vertical-align:top; }
 .safe-table tr:last-child td { border-bottom:0; }
-.viz-pill { display:inline-flex; align-items:center; gap:.35rem; background:#16161e; border:1px solid rgba(140,140,210,.35); color:#6a4554; border-radius:999px; padding:.32rem .6rem; font-size:.82rem; font-weight:850; margin:.15rem .22rem .15rem 0; }
-.signal-card { background:#16161e; border:1px solid rgba(140,140,210,.30); border-radius:18px; padding:.85rem .9rem; margin:.45rem 0; box-shadow:0 8px 18px rgba(100,100,220,.07); }
-.signal-title { color:#9898b8; font-weight:950; margin-bottom:.25rem; }
+.viz-pill { display:inline-flex; align-items:center; gap:.35rem; background:#1e1018; border:1px solid rgba(230,164,184,.35); color:#6a4554; border-radius:999px; padding:.32rem .6rem; font-size:.82rem; font-weight:850; margin:.15rem .22rem .15rem 0; }
+.signal-card { background:#1e1018; border:1px solid rgba(230,164,184,.30); border-radius:18px; padding:.85rem .9rem; margin:.45rem 0; box-shadow:0 8px 18px rgba(255,125,165,.07); }
+.signal-title { color:#d4a0b8; font-weight:950; margin-bottom:.25rem; }
 .signal-body { color:#c090a8; line-height:1.55; font-size:.92rem; }
-.thermo-track { height:22px; background:#1e1e26; border-radius:999px; overflow:hidden; border:1px solid rgba(110,82,94,.18); position:relative; }
+.thermo-track { height:22px; background:#f1edf0; border-radius:999px; overflow:hidden; border:1px solid rgba(110,82,94,.18); position:relative; }
 .thermo-fill { height:100%; border-radius:999px; }
-.thermo-pin { position:absolute; top:50%; width:30px; height:30px; transform:translate(-50%,-50%); border-radius:999px; background:#16161e; border:3px solid #4b2d3a; box-shadow:0 4px 12px rgba(0,0,0,.16); }
+.thermo-pin { position:absolute; top:50%; width:30px; height:30px; transform:translate(-50%,-50%); border-radius:999px; background:#1e1018; border:3px solid #4b2d3a; box-shadow:0 4px 12px rgba(0,0,0,.16); }
 
 /* v5.106: 모바일 UI 전반 트리밍 — 단정하고 임팩트 있게 */
 @media (max-width: 768px) {
@@ -12099,7 +12099,7 @@ div[data-testid="stCheckbox"] svg {
     .hero-wrap {
         padding: .88rem .78rem .94rem !important;
         border-radius: 20px !important;
-        box-shadow: 0 10px 24px rgba(40,40,80,.07) !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.07) !important;
     }
 
     .hero-title {
@@ -12140,7 +12140,7 @@ div[data-testid="stCheckbox"] svg {
         border-radius: 18px !important;
         padding: .76rem .74rem !important;
         margin: .38rem 0 !important;
-        box-shadow: 0 8px 18px rgba(40,40,80,.055) !important;
+        box-shadow: 0 8px 18px rgba(80,40,60,.055) !important;
     }
 
     .main-character-label,
@@ -12203,18 +12203,18 @@ div[data-testid="stCheckbox"] svg {
         font-size: .94rem !important;
         font-weight: 900 !important;
         letter-spacing: -.01em !important;
-        box-shadow: 0 8px 16px rgba(99,102,241,.10) !important;
+        box-shadow: 0 8px 16px rgba(214,66,115,.10) !important;
     }
 
     .stButton > button {
-        border: 1px solid rgba(99,102,241,.18) !important;
-        background: linear-gradient(180deg,#16161e,#1a1a26) !important;
+        border: 1px solid rgba(214,66,115,.18) !important;
+        background: linear-gradient(180deg,#1e1018,#221220) !important;
     }
 
     .stButton > button[kind="primary"] {
-        background: linear-gradient(180deg,#3730a3,#bc275c) !important;
+        background: linear-gradient(180deg,#7b1e3d,#bc275c) !important;
         border-color: rgba(188,39,92,.92) !important;
-        box-shadow: 0 10px 18px rgba(99,102,241,.18) !important;
+        box-shadow: 0 10px 18px rgba(214,66,115,.18) !important;
         transform: translateY(0) !important;
     }
 
@@ -12268,14 +12268,14 @@ div[data-testid="stCheckbox"] svg {
     }
 
     .revisit-guide-body b {
-        color: #d0d0e8 !important;
+        color: #e8d0d8 !important;
     }
 
     [data-testid="stExpander"] {
         border-radius: 16px !important;
         overflow: hidden !important;
-        border: 1px solid rgba(140,140,210,.22) !important;
-        background: #16161e !important;
+        border: 1px solid rgba(230,164,184,.22) !important;
+        background: #1e1018 !important;
     }
 
     [data-testid="stExpander"] summary {
@@ -12316,7 +12316,7 @@ div[data-testid="stCheckbox"] svg {
     right: -70px;
     top: -90px;
     border-radius: 999px;
-    background: radial-gradient(circle, rgba(99,102,241,.12), rgba(99,102,241,0));
+    background: radial-gradient(circle, rgba(214,66,115,.12), rgba(214,66,115,0));
     pointer-events: none;
 }
 .single-hero-premium > *,
@@ -12329,7 +12329,7 @@ div[data-testid="stCheckbox"] svg {
 }
 .page-button-guide {
     font-size: .86rem;
-    color: #9898b8;
+    color: #d4a0b8;
     margin: .1rem 0 .45rem;
     line-height: 1.45;
 }
@@ -12340,7 +12340,7 @@ div[data-testid="stCheckbox"] svg {
         padding: .98rem .78rem .86rem !important;
         border-radius: 22px !important;
         margin: .22rem 0 .72rem 0 !important;
-        box-shadow: 0 10px 24px rgba(40,40,80,.075) !important;
+        box-shadow: 0 10px 24px rgba(80,40,60,.075) !important;
     }
 
     .single-hero-premium > div:nth-child(1),
@@ -12392,7 +12392,7 @@ div[data-testid="stCheckbox"] svg {
     .single-hero-metrics > div > div:nth-child(1) {
         grid-row: 1 / span 2;
         font-size: .76rem !important;
-        color: #9898b8 !important;
+        color: #d4a0b8 !important;
     }
 
     .single-hero-metrics > div > div:nth-child(2) {
@@ -12540,7 +12540,7 @@ div[data-testid="stCheckbox"] svg {
         grid-row: auto !important;
         font-size: .68rem !important;
         line-height: 1.18 !important;
-        color: #9898b8 !important;
+        color: #d4a0b8 !important;
         white-space: nowrap !important;
     }
 
@@ -12603,8 +12603,8 @@ div[data-testid="stCheckbox"] svg {
 /* v5.112: 첫 결과화면 하단 재방문 안내 — QR 제거, 3단계 안내 */
 .revisit-guide-compact {
     margin-top: .72rem !important;
-    background: linear-gradient(135deg,#16161e,#1a1a26) !important;
-    border: 1px solid rgba(140,140,210,.34) !important;
+    background: linear-gradient(135deg,#1e1018,#221220) !important;
+    border: 1px solid rgba(230,164,184,.34) !important;
 }
 .revisit-mini-steps {
     display: flex;
@@ -12618,15 +12618,15 @@ div[data-testid="stCheckbox"] svg {
     justify-content: center;
     padding: .28rem .52rem;
     border-radius: 999px;
-    background: #16161e;
-    border: 1px solid rgba(140,140,210,.36);
+    background: #1e1018;
+    border: 1px solid rgba(230,164,184,.36);
     color: #c090a8;
     font-size: .78rem;
     font-weight: 900;
 }
 .revisit-device-note {
     margin-top: .48rem;
-    color: #9898b8;
+    color: #d4a0b8;
     font-size: .78rem;
     line-height: 1.36;
     font-weight: 760;
@@ -12657,13 +12657,13 @@ div[data-testid="stCheckbox"] svg {
 /* v5.118: 내 사주 인상 + 삼각 그래프 */
 .single-axis-triangle-wrap {
     background: rgba(255,255,255,.84);
-    border: 1px solid rgba(140,140,210,.30);
+    border: 1px solid rgba(230,164,184,.30);
     border-radius: 20px;
     padding: .85rem .75rem .5rem;
 }
 .single-axis-triangle-title {
     font-size: .82rem;
-    color: #9898b8;
+    color: #d4a0b8;
     font-weight: 900;
     margin-bottom: .12rem;
 }
@@ -12709,21 +12709,21 @@ div[data-testid="stCheckbox"] svg {
 .axis-bar-score {
     font-size:.88rem;
     font-weight:800;
-    color:#9898b8;
+    color:#d4a0b8;
     white-space:nowrap;
 }
 .axis-bar-track {
     width:100%;
     height:10px;
     border-radius:999px;
-    background:#16161e;
-    border:1px solid rgba(140,140,210,.22);
+    background:#1e1018;
+    border:1px solid rgba(230,164,184,.22);
     overflow:hidden;
 }
 .axis-bar-fill {
     height:100%;
     border-radius:999px;
-    background:linear-gradient(90deg,#818cf8,#a78bfa);
+    background:linear-gradient(90deg,#f7b1c7,#c1a6ff);
 }
 .axis-bar-desc {
     font-size:.88rem;
@@ -12733,7 +12733,7 @@ div[data-testid="stCheckbox"] svg {
 }
 .single-axis-triangle-wrap {
     background: rgba(255,255,255,.88);
-    border: 1px solid rgba(140,140,210,.28);
+    border: 1px solid rgba(230,164,184,.28);
     border-radius: 18px;
     padding: .42rem .42rem .12rem;
 }
@@ -12816,7 +12816,7 @@ body, .stMarkdown, .stText, p, li, span, div {
 }
 /* Streamlit 기본 paragraph */
 .stMarkdown p {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     line-height: 1.85 !important;
     font-size: 0.97rem !important;
 }
@@ -12830,11 +12830,11 @@ body, .stMarkdown, .stText, p, li, span, div {
     font-size: 0.84rem !important;
 }
 /* h3·h4 헤더 */
-.stMarkdown h3 { color: #c4c4e8 !important; font-size: 1.12rem !important; }
-.stMarkdown h4 { color: #818cf8 !important; font-size: 1.04rem !important; }
+.stMarkdown h3 { color: #f0b8d0 !important; font-size: 1.12rem !important; }
+.stMarkdown h4 { color: #e879a0 !important; font-size: 1.04rem !important; }
 /* expander 헤더 */
 [data-testid="stExpander"] summary p {
-    color: #d0d0e8 !important;
+    color: #e8d0d8 !important;
     font-weight: 800 !important;
 }
 
@@ -12842,12 +12842,12 @@ body, .stMarkdown, .stText, p, li, span, div {
    2. 카드·박스 공통 텍스트
    ════════════════════════════════════════ */
 /* 다크 박스 내 링크 */
-a { color: #818cf8 !important; }
+a { color: #e879a0 !important; }
 /* 테이블 */
 table { width: 100% !important; border-collapse: collapse !important; }
 th, td {
-    color: #d0d0e8 !important;
-    border: 1px solid rgba(120,120,220,0.20) !important;
+    color: #e8d0d8 !important;
+    border: 1px solid rgba(232,121,160,0.20) !important;
     padding: .5rem .7rem !important;
     font-size: .88rem !important;
     word-break: keep-all !important;
@@ -12965,7 +12965,7 @@ div[style*="border-left"] {
 }
 div[style*="border-left"] b,
 div[style*="border-left"] strong {
-    color: #c4c4e8 !important;
+    color: #f0b8d0 !important;
 }
 /* 진단·처방 박스 헤더 */
 div[style*="font-size:12px"][style*="color:#a0b4bc"],
@@ -13750,7 +13750,7 @@ def _triangle_axis_svg(score_map: Dict[str, Dict[str, float]]) -> str:
         pts = [f"{cx + _math.cos(a) * r * ratio:.1f},{cy + _math.sin(a) * r * ratio:.1f}" for a in angles]
         opacity = 0.08 if idx < 5 else 0.20
         width = 1.0 if idx < 5 else 1.6
-        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(99,102,241,{opacity})' stroke-width='{width}'/>")
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(214,66,115,{opacity})' stroke-width='{width}'/>")
 
     axes = []
     labels_svg = []
@@ -13778,13 +13778,13 @@ def _triangle_axis_svg(score_map: Dict[str, Dict[str, float]]) -> str:
             f"<text x='{lx:.1f}' y='{ly + 18:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='12' font-weight='900' fill='#a34d71'>{raw_v:.0f}</text>"
         )
 
-    poly_shadow = f"<polygon points='{' '.join(points)}' fill='rgba(99,102,241,.10)' stroke='none' transform='translate(0,2)'/>"
-    poly = f"<polygon points='{' '.join(points)}' fill='rgba(99,102,241,.22)' stroke='#3730a3' stroke-width='4.0'/>"
-    dots = "".join([f"<circle cx='{p.split(',')[0]}' cy='{p.split(',')[1]}' r='6' fill='#3730a3' stroke='#fff' stroke-width='1.8'/>" for p in points])
-    center_glow = f"<circle cx='{cx}' cy='{cy}' r='16' fill='rgba(99,102,241,.07)'/>"
+    poly_shadow = f"<polygon points='{' '.join(points)}' fill='rgba(214,66,115,.10)' stroke='none' transform='translate(0,2)'/>"
+    poly = f"<polygon points='{' '.join(points)}' fill='rgba(214,66,115,.22)' stroke='#7b1e3d' stroke-width='4.0'/>"
+    dots = "".join([f"<circle cx='{p.split(',')[0]}' cy='{p.split(',')[1]}' r='6' fill='#7b1e3d' stroke='#fff' stroke-width='1.8'/>" for p in points])
+    center_glow = f"<circle cx='{cx}' cy='{cy}' r='16' fill='rgba(214,66,115,.07)'/>"
 
     return (
-        "<div style='background:rgba(255,255,255,.96);border:1px solid rgba(140,140,210,.30);border-radius:18px;"
+        "<div style='background:rgba(255,255,255,.96);border:1px solid rgba(230,164,184,.30);border-radius:18px;"
         "padding:.30rem .24rem .14rem;box-sizing:border-box;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;'>"
         "<svg viewBox='0 0 320 330' width='100%' height='100%' role='img' style='display:block;margin:auto;'>"
         + center_glow + "".join(grid + axes) + poly_shadow + poly + dots + "".join(labels_svg) +
@@ -13916,7 +13916,7 @@ def render_strength_operation_spotlight(payload: Dict[str, object]) -> None:
     left_label, right_label = "환경 반응", "자력 추진"
 
     st.markdown(f"""
-    <div class="main-character-card" style="border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,#0d1e14,#16161e);margin:.35rem 0 1rem;">
+    <div class="main-character-card" style="border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,#0d1e14,#1e1018);margin:.35rem 0 1rem;">
         <div class="main-character-label" style="color:#7ecfa8;">힘 쓰는 스타일</div>
         <div class="main-character-name" style="color:#e8f5ee;">{name}</div>
         <div class="main-character-desc" style="color:#c0d8ca;">{desc}</div>
@@ -13936,7 +13936,7 @@ def render_strength_operation_spotlight(payload: Dict[str, object]) -> None:
     """, unsafe_allow_html=True)
 
 
-def _radar_svg_single(values: List[float], labels: List[str], stroke: str = "#3730a3", fill: str = "rgba(99,102,241,.20)") -> str:
+def _radar_svg_single(values: List[float], labels: List[str], stroke: str = "#7b1e3d", fill: str = "rgba(214,66,115,.20)") -> str:
     """JS 없이 표시되는 5각형 SVG 레이더 차트."""
     import math as _math
     cx, cy, max_r = 150, 150, 104
@@ -14025,18 +14025,18 @@ def _radar_svg_dual(vals_a: List[float], vals_b: List[float], labels: List[str],
     dots = ""
     for pnt in pts_a:
         x, y = pnt.split(',')
-        dots += f"<circle cx='{x}' cy='{y}' r='3.8' fill='#3730a3'/>"
+        dots += f"<circle cx='{x}' cy='{y}' r='3.8' fill='#7b1e3d'/>"
     for pnt in pts_b:
         x, y = pnt.split(',')
         dots += f"<circle cx='{x}' cy='{y}' r='3.8' fill='#3b82f6'/>"
     legend = (
-        f"<div class='radar-legend'><span><i style='background:#3730a3'></i>{html.escape(name_a)}</span>"
+        f"<div class='radar-legend'><span><i style='background:#7b1e3d'></i>{html.escape(name_a)}</span>"
         f"<span><i style='background:#3b82f6'></i>{html.escape(name_b)}</span></div>"
     )
     svg = (
         "<svg viewBox='0 0 300 300' width='100%' height='310' role='img'>"
         + ''.join(grid + axes)
-        + f"<polygon points='{' '.join(pts_a)}' fill='rgba(99,102,241,.24)' stroke='#3730a3' stroke-width='3'/>"
+        + f"<polygon points='{' '.join(pts_a)}' fill='rgba(214,66,115,.24)' stroke='#7b1e3d' stroke-width='3'/>"
         + f"<polygon points='{' '.join(pts_b)}' fill='rgba(59,130,246,.18)' stroke='#3b82f6' stroke-width='3'/>"
         + dots + ''.join(label_nodes) + "</svg>"
     )
@@ -14090,16 +14090,16 @@ def render_climate_thermometer(result: Dict[str, object]) -> None:
     fill = pin
     st.markdown("#### 🌡️ 조후 온도계")
     st.markdown(f"""
-    <div style="background:#16161e;border:1px solid rgba(140,140,210,.30);border-radius:18px;padding:.85rem .9rem;margin:.3rem 0 .45rem 0;">
-        <div style="display:flex;justify-content:space-between;color:#9898b8;font-size:.82rem;font-weight:850;margin-bottom:.45rem;">
+    <div style="background:#1e1018;border:1px solid rgba(230,164,184,.30);border-radius:18px;padding:.85rem .9rem;margin:.3rem 0 .45rem 0;">
+        <div style="display:flex;justify-content:space-between;color:#d4a0b8;font-size:.82rem;font-weight:850;margin-bottom:.45rem;">
             <span>차가움</span><span>따뜻함</span><span>뜨거움</span>
         </div>
         <div class="thermo-track">
             <div class="thermo-fill" style="width:{fill:.1f}%;background:{color};"></div>
             <div class="thermo-pin" style="left:{pin:.1f}%;"></div>
         </div>
-        <div style="margin-top:.58rem;color:#9898b8;font-weight:900;">{html.escape(label)} · 온도감 {temp:.0f}/100</div>
-        <div style="margin-top:.24rem;color:#9898b8;font-size:.88rem;">화 {fire:.1f}% / 수 {water:.1f}% · {html.escape(note)}</div>
+        <div style="margin-top:.58rem;color:#d4a0b8;font-weight:900;">{html.escape(label)} · 온도감 {temp:.0f}/100</div>
+        <div style="margin-top:.24rem;color:#d4a0b8;font-size:.88rem;">화 {fire:.1f}% / 수 {water:.1f}% · {html.escape(note)}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -14318,7 +14318,7 @@ def _render_flow_pipeline_card(chart: Chart, result: Dict[str, object], row: Dic
                 f"</div>"
             )
     _source_block = (
-        "<div style='background:#14141c;border-left:3px solid rgba(244,114,182,.35);"
+        "<div style='background:#1a0e18;border-left:3px solid rgba(244,114,182,.35);"
         "border-radius:0 6px 6px 0;padding:8px 12px;margin-top:8px;'>"
         "<div style='font-size:11px;font-weight:800;color:#c090a8;margin-bottom:5px;'>📍 원국 어디에서 이 흐름이 나오냐면</div>"
         + "".join(_source_items) +
@@ -14525,7 +14525,7 @@ def _render_signal_list(title: str, items: List[str], empty: str) -> None:
 
 ELEMENT_VISUALS = {
     "목": {"icon": "🌿", "bg": "#0d1e14", "fg": "#4ade80"},
-    "화": {"icon": "🔥", "bg": "#18181e", "fg": "#f87171"},
+    "화": {"icon": "🔥", "bg": "#200808", "fg": "#f87171"},
     "토": {"icon": "⛰️", "bg": "#1e1408", "fg": "#fbbf24"},
     "금": {"icon": "⚔️", "bg": "#181c22", "fg": "#94a3b8"},
     "수": {"icon": "💧", "bg": "#080e28", "fg": "#60a5fa"},
@@ -14535,7 +14535,7 @@ ELEMENT_VISUALS = {
 def _element_tone_cards_html(pct: Dict[str, float]) -> str:
     cards = []
     for el in ELEMENTS:
-        meta = ELEMENT_VISUALS.get(el, {"icon": "•", "bg": "#ffffff", "fg": "#2e2e42"})
+        meta = ELEMENT_VISUALS.get(el, {"icon": "•", "bg": "#ffffff", "fg": "#3f2a33"})
         cards.append(
             "<div class='element-tone-card' style='background:{bg};color:{fg};'>"
             "<span class='element-tone-symbol'>{icon}</span>"
@@ -14617,10 +14617,10 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
     if flows:
         with st.expander("🌊 흐름 보기", expanded=False):
             if flow_rows:
-                for row in flow_rows:
-                    _render_flow_pipeline_card(chart, result, row)
-            else:
-                st.info("자동으로 크게 잡히는 흐름은 약하지만, 상세 분석에서는 특수 구조 후보와 약한 통로를 따로 확인할 수 있습니다.")
+            for row in flow_rows:
+                _render_flow_pipeline_card(chart, result, row)
+                    else:
+            st.info("자동으로 크게 잡히는 흐름은 약하지만, 상세 분석에서는 특수 구조 후보와 약한 통로를 따로 확인할 수 있습니다.")
                 
     if binding_notes or tension_notes:
         with st.expander("✨ 발현 신호 보기", expanded=False):
@@ -16732,7 +16732,7 @@ def _draw_saju_landscape_pillow(draw, model: Dict[str, object], box: Tuple[int, 
 
     bx = x2 - 124
     for el in primary[:2]:
-        color = LANDSCAPE_ELEMENT_META.get(el, {}).get("color", "#3730a3")
+        color = LANDSCAPE_ELEMENT_META.get(el, {}).get("color", "#7b1e3d")
         draw.ellipse((bx, y2-46, bx+26, y2-20), fill=color)
         draw.text((bx+8, y2-41), el, fill="white", font=font_small)
         bx += 34
@@ -16926,7 +16926,7 @@ def _shinsal_badges_html(chart: Chart, result: Dict[str, object], limit: int = 3
         icon = html.escape(str(item.get("icon", "🎴")), quote=True)
         name = html.escape(str(item.get("name", "보조 신호")), quote=True)
         pills.append(
-            f"<span style='display:inline-flex;align-items:center;gap:.28rem;padding:.28rem .56rem;border-radius:999px;background:#16161e;border:1px solid rgba(140,140,210,.45);color:#c090a8;font-size:.88rem;font-weight:900;box-shadow:0 4px 10px rgba(99,102,241,.06);'><span>{icon}</span><span>{name}</span></span>"
+            f"<span style='display:inline-flex;align-items:center;gap:.28rem;padding:.28rem .56rem;border-radius:999px;background:#1e1018;border:1px solid rgba(230,164,184,.45);color:#c090a8;font-size:.88rem;font-weight:900;box-shadow:0 4px 10px rgba(214,66,115,.06);'><span>{icon}</span><span>{name}</span></span>"
         )
     return "<div style='display:flex;flex-wrap:wrap;justify-content:center;gap:.38rem;margin-top:.62rem;'>" + "".join(pills) + "</div>"
 
@@ -16996,7 +16996,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
     img = Image.new("RGB", (W, H), "#fff8fb")
     draw = ImageDraw.Draw(img)
 
-    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#9898b8", width=3)
+    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#d4a0b0", width=3)
     draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#ffffff", outline="#f8dce6", width=2)
 
     f_logo = _share_font(32, True)
@@ -17008,20 +17008,20 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
 
     x = 86
     y = 84
-    draw.text((x, y), "사주MRI", fill="#3730a3", font=f_logo)
-    draw.text((W-310, y+4), "시각화 사주 분석", fill="#d0d0e8", font=f_label)
+    draw.text((x, y), "사주MRI", fill="#7b1e3d", font=f_logo)
+    draw.text((W-310, y+4), "시각화 사주 분석", fill="#e8d0d8", font=f_label)
 
     y += 66
     for line in _wrap_for_image(draw, title, f_title, W-170)[:2]:
-        draw.text((x, y), line, fill="#d0d0e8", font=f_title)
+        draw.text((x, y), line, fill="#e8d0d8", font=f_title)
         y += 66
 
     def box(x1, y1, x2, y2, label, body):
         draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill="#fff8fb", outline="#f1cbd7", width=2)
-        draw.text((x1+24, y1+20), label, fill="#3730a3", font=f_label)
+        draw.text((x1+24, y1+20), label, fill="#7b1e3d", font=f_label)
         yy = y1 + 62
         for ln in _wrap_for_image(draw, body, f_body, x2-x1-48)[:2]:
-            draw.text((x1+24, yy), ln, fill="#d0d0e8", font=f_body)
+            draw.text((x1+24, yy), ln, fill="#e8d0d8", font=f_body)
             yy += 39
 
     y += 20
@@ -17032,10 +17032,10 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
     box(560, y, 994, y+165, "과부하 신호", overload)
     y += 190
     draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#fff0f5", outline="#f2c2d2", width=2)
-    draw.text((112, y+20), "핵심 한 줄", fill="#3730a3", font=f_label)
+    draw.text((112, y+20), "핵심 한 줄", fill="#7b1e3d", font=f_label)
     line_y = y + 58
     for ln in _wrap_for_image(draw, one_liner, f_body, 850)[:2]:
-        draw.text((112, line_y), ln, fill="#d0d0e8", font=f_body)
+        draw.text((112, line_y), ln, fill="#e8d0d8", font=f_body)
         line_y += 38
 
     badge_items = list(badges or [])[:3]
@@ -17062,15 +17062,15 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         except Exception:
             qr_ready = False
     text_x = 236 if qr_ready else 112
-    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#3730a3", font=f_label)
-    draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#d0d0e8", font=f_small)
+    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#7b1e3d", font=f_label)
+    draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#e8d0d8", font=f_small)
     url_lines = _wrap_for_image(draw, APP_PUBLIC_URL, f_tiny, 690)[:2]
     url_y = foot_y1 + 82
     for ln in url_lines:
         draw.text((text_x, url_y), ln, fill="#c090a8", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#9898b8", font=f_tiny)
+    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#d4a0b8", font=f_tiny)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -17145,7 +17145,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     img = Image.new("RGB", (W, H), "#fff8fb")
     draw = ImageDraw.Draw(img)
 
-    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#9898b8", width=3)
+    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#d4a0b0", width=3)
     draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#ffffff", outline="#f8dce6", width=2)
 
     f_logo = _share_font(30, True)
@@ -17163,12 +17163,12 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     _share_pillars = ganji_text(_share_chart) if _share_chart else "- / - / - / -"
     _pillar_parts = [p.strip() for p in _share_pillars.split("/")]
 
-    draw.text((x, y), "사주MRI", fill="#3730a3", font=f_logo)
-    draw.text((W-300, y+4), "사주 진단서 요약", fill="#d0d0e8", font=f_label)
+    draw.text((x, y), "사주MRI", fill="#7b1e3d", font=f_logo)
+    draw.text((W-300, y+4), "사주 진단서 요약", fill="#e8d0d8", font=f_label)
 
     y += 56
     # 이름 + 사주 원국
-    draw.text((x, y), f"{_share_name} 님의 사주 원국", fill="#c4c4e8", font=f_small)
+    draw.text((x, y), f"{_share_name} 님의 사주 원국", fill="#f0b8d0", font=f_small)
     y += 34
 
     # 4기둥 8글자 크게 표시
@@ -17176,9 +17176,9 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     _cell_w = (W - 172) // 4
     for pi, (_pl, _pv) in enumerate(zip(_p_labels, _pillar_parts)):
         cx_p = x + pi * _cell_w + _cell_w // 2
-        draw.text((cx_p - 16, y), _pl, fill="#c4c4e8", font=f_tiny)
+        draw.text((cx_p - 16, y), _pl, fill="#f0b8d0", font=f_tiny)
         _pv_display = _pv if _pv else "-"
-        draw.text((cx_p - 28, y + 24), _pv_display, fill="#d0d0e8", font=f_title)
+        draw.text((cx_p - 28, y + 24), _pv_display, fill="#e8d0d8", font=f_title)
     y += 90
 
     # 체질 한줄 설명
@@ -17210,10 +17210,10 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
 
     def box(x1, y1, x2, y2, label, body_lines, fill="#fff8fb"):
         draw.rounded_rectangle((x1, y1, x2, y2), radius=22, fill=fill, outline="#f1cbd7", width=2)
-        draw.text((x1+22, y1+18), label, fill="#3730a3", font=f_label)
+        draw.text((x1+22, y1+18), label, fill="#7b1e3d", font=f_label)
         yy = y1 + 58
         for ln in body_lines:
-            draw.text((x1+22, yy), ln, fill="#d0d0e8", font=f_small)
+            draw.text((x1+22, yy), ln, fill="#e8d0d8", font=f_small)
             yy += 30
 
     scores = snap.get("scores", {}) or {}
@@ -17239,7 +17239,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         "금": ("#eef1f6", "#6b7280"),
         "수": ("#e4f1ff", "#3277d8"),
     }
-    draw.text((86, y), "오행 비율", fill="#3730a3", font=f_label)
+    draw.text((86, y), "오행 비율", fill="#7b1e3d", font=f_label)
     pill_x = 86
     pill_y = y + 38
     for el in ELEMENTS:
@@ -17252,7 +17252,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         pill_x += tw + 12
     y += 102
 
-    draw.text((86, y), "기운 3대 축", fill="#3730a3", font=f_label)
+    draw.text((86, y), "기운 3대 축", fill="#7b1e3d", font=f_label)
     y += 38
     score_boxes = [
         ("기초체력", size, "기본 재료와 버티는 힘"),
@@ -17263,23 +17263,23 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     for label, info, desc in score_boxes:
         sw = 286
         draw.rounded_rectangle((sx, y, sx+sw, y+182), radius=22, fill="#ffffff", outline="#f1cbd7", width=2)
-        draw.text((sx+20, y+16), label, fill="#d0d0e8", font=f_label)
+        draw.text((sx+20, y+16), label, fill="#e8d0d8", font=f_label)
         score = float(info.get("score", 0) or 0)
         max_score = float(info.get("max", 0) or 0)
         pct_score = float(info.get("pct", 0) or 0)
-        draw.text((sx+20, y+58), f"{score:.1f}점", fill="#3730a3", font=f_body)
+        draw.text((sx+20, y+58), f"{score:.1f}점", fill="#7b1e3d", font=f_body)
         draw.rounded_rectangle((sx+20, y+106, sx+sw-20, y+120), radius=8, fill="#f5e8ef")
-        draw.rounded_rectangle((sx+20, y+106, sx+20 + int((sw-40) * pct_score / 100.0), y+120), radius=8, fill="#3730a3")
+        draw.rounded_rectangle((sx+20, y+106, sx+20 + int((sw-40) * pct_score / 100.0), y+120), radius=8, fill="#7b1e3d")
         for ln in _wrap_for_image(draw, desc, f_tiny, sw-40)[:2]:
             draw.text((sx+20, y+136 if ln == _wrap_for_image(draw, desc, f_tiny, sw-40)[:1][0] else y+158), ln, fill="#c090a8", font=f_tiny)
         sx += sw + 18
     y += 208
 
     draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#fff0f5", outline="#f2c2d2", width=2)
-    draw.text((112, y+20), "핵심 한 줄", fill="#3730a3", font=f_label)
+    draw.text((112, y+20), "핵심 한 줄", fill="#7b1e3d", font=f_label)
     line_y = y + 58
     for ln in _wrap_for_image(draw, one_liner, f_small, 850)[:2]:
-        draw.text((112, line_y), ln, fill="#d0d0e8", font=f_small)
+        draw.text((112, line_y), ln, fill="#e8d0d8", font=f_small)
         line_y += 30
 
     foot_y1, foot_y2 = H - 188, H - 84
@@ -17295,15 +17295,15 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         except Exception:
             qr_ready = False
     text_x = 236 if qr_ready else 112
-    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#3730a3", font=f_label)
-    draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#d0d0e8", font=f_small)
+    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#7b1e3d", font=f_label)
+    draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#e8d0d8", font=f_small)
     url_lines = _wrap_for_image(draw, APP_PUBLIC_URL, f_tiny, 690)[:2]
     url_y = foot_y1 + 82
     for ln in url_lines:
         draw.text((text_x, url_y), ln, fill="#c090a8", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#9898b8", font=f_tiny)
+    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#d4a0b8", font=f_tiny)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
@@ -17439,12 +17439,12 @@ def render_daewun_train(payload: Dict[str, object]) -> None:
             badge_text = "순"
         elif mod <= -2:
             border = "1.5px solid #dc2626"
-            bg     = "#18181e"
+            bg     = "#200808"
             badge_bg = "#dc2626"
             badge_text = "역"
         else:
             border = "1.5px solid #4a3a44"
-            bg     = "#16161e"
+            bg     = "#1a1820"
             badge_bg = "#4a3a44"
             badge_text = "평"
 
@@ -17597,7 +17597,7 @@ def relationship_orientation_from_compatibility(compatibility: Dict[str, object]
 def render_relationship_orientation_card(compatibility: Dict[str, object]) -> None:
     orient = relationship_orientation_from_compatibility(compatibility)
     st.markdown(
-        "<div class='signal-card' style='border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,#0d1e14,#16161e);margin:.7rem 0 1rem;'>"
+        "<div class='signal-card' style='border-color:rgba(16,185,129,.35);background:linear-gradient(135deg,#0d1e14,#1e1018);margin:.7rem 0 1rem;'>"
         f"<div class='signal-title' style='font-size:1.05rem;'>{html.escape(orient['stamp'])} 케미 극대화 지향점 · {html.escape(orient['title'])}</div>"
         f"<div class='signal-body'><b>{html.escape(orient['slogan'])}</b><br>"
         f"<b>가장 빛나는 자리:</b> {html.escape(orient['best'])}<br>"
@@ -17753,7 +17753,7 @@ def _mini_axis_polygon(axis_values: Dict[str, float]) -> str:
     grid = []
     for ratio in [0.5, 1.0]:
         pts = [f"{cx + _math.cos(a) * max_r * ratio:.1f},{cy + _math.sin(a) * max_r * ratio:.1f}" for a in angles]
-        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(99,102,241,.18)' stroke-width='1'/>")
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(214,66,115,.18)' stroke-width='1'/>")
     pts = []
     for a, v in zip(angles, vals):
         r = max_r * max(0, min(100, v)) / 100
@@ -17768,7 +17768,7 @@ def _mini_axis_polygon(axis_values: Dict[str, float]) -> str:
         elif lx > cx + 5:
             anchor = "start"
         label_nodes.append(f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='9' font-weight='800' fill='#c090a8'>{html.escape(lab)}</text>")
-    return "<svg viewBox='0 0 160 160' width='160' height='160'>" + "".join(grid) + f"<polygon points='{' '.join(pts)}' fill='rgba(99,102,241,.22)' stroke='#3730a3' stroke-width='2'/>" + "".join(label_nodes) + "</svg>"
+    return "<svg viewBox='0 0 160 160' width='160' height='160'>" + "".join(grid) + f"<polygon points='{' '.join(pts)}' fill='rgba(214,66,115,.22)' stroke='#7b1e3d' stroke-width='2'/>" + "".join(label_nodes) + "</svg>"
 
 
 def render_luck_chemistry_panel(mine: Dict[str, object], friend: Dict[str, object], compatibility: Dict[str, object]) -> None:
@@ -17958,9 +17958,9 @@ def make_chemistry_share_card_png_bytes(
     # top header
     logo_text = "사주MRI 모두의 케미"
     pair_text = str(pair_label or "나 × 상대")[:26]
-    draw.text((x, y), logo_text, fill="#3730a3", font=f_logo)
+    draw.text((x, y), logo_text, fill="#7b1e3d", font=f_logo)
     pair_w, _ = measure(pair_text, f_label)
-    draw.text((W - 92 - pair_w, y + 2), pair_text, fill="#d0d0e8", font=f_label)
+    draw.text((W - 92 - pair_w, y + 2), pair_text, fill="#e8d0d8", font=f_label)
 
     # title row
     y += 70
@@ -17973,19 +17973,19 @@ def make_chemistry_share_card_png_bytes(
     # score hero box
     y += 6
     draw.rounded_rectangle((92, y, W-92, y+120), radius=28, fill="#fff0f6", outline="#f2c7d6", width=2)
-    draw.text((122, y+18), "한눈 궁합점수", fill="#3730a3", font=f_score_label)
-    draw.text((122, y+48), f"{int(score)}/100", fill="#3730a3", font=f_score)
+    draw.text((122, y+18), "한눈 궁합점수", fill="#7b1e3d", font=f_score_label)
+    draw.text((122, y+48), f"{int(score)}/100", fill="#7b1e3d", font=f_score)
     y += 146
 
     def panel(x1, y1, x2, y2, label, body, fill="#fff9fc", body_font=None, max_lines=3):
         bf = body_font or f_body_small
         draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill=fill, outline="#efd6df", width=2)
-        draw.text((x1+22, y1+18), label, fill="#3730a3", font=f_label)
+        draw.text((x1+22, y1+18), label, fill="#7b1e3d", font=f_label)
         yy = y1 + 56
         lines = _wrap_for_image(draw, body, bf, x2 - x1 - 44)[:max_lines]
         gap = 34 if bf == f_body_small else 38
         for ln in lines:
-            draw.text((x1+22, yy), ln, fill="#d0d0e8", font=bf)
+            draw.text((x1+22, yy), ln, fill="#e8d0d8", font=bf)
             yy += gap
 
     # 2-up panels
@@ -17999,7 +17999,7 @@ def make_chemistry_share_card_png_bytes(
 
     # one-liner highlight
     draw.rounded_rectangle((92, y, 988, y+136), radius=26, fill="#fff3f7", outline="#f2c7d6", width=2)
-    draw.text((118, y+18), "핵심 한 줄", fill="#3730a3", font=f_label)
+    draw.text((118, y+18), "핵심 한 줄", fill="#7b1e3d", font=f_label)
     yy = y + 54
     for ln in _wrap_for_image(draw, one_liner, f_body, 840)[:3]:
         draw.text((118, yy), ln, fill="#35252c", font=f_body)
@@ -18133,7 +18133,7 @@ def _render_chem_prescription(mine: dict, friend: dict, compatibility: dict) -> 
     st.markdown("#### 📋 케미 처방")
     for adv in advices:
         st.markdown(
-            f"<div style='background:#16161e;border-left:3px solid #3730a3;"
+            f"<div style='background:#1e1018;border-left:3px solid #7b1e3d;"
             f"padding:9px 13px;border-radius:6px;margin-bottom:6px;"
             f"font-size:13px;color:#ddd0d8;line-height:1.7;'>{adv}</div>",
             unsafe_allow_html=True,
@@ -18305,7 +18305,7 @@ def group_chemistry_analysis(participants: list) -> dict:
                       "과열·충돌 위험도 있어. 서늘하게 식히는 환경·활동을 의식적으로 넣는 게 좋아.")
         johu_rx    = "서늘한 공간, 물 자주 마시기, 수기(水氣) 보충 활동"
         johu_color = "#ef4444"
-        johu_bg    = "#18181e"
+        johu_bg    = "#200808"
     elif cold_cnt >= n * 0.6:
         johu_label = "한랭 편향"
         johu_note  = ("모임 대부분이 차가운 기운이야. 차분하고 이성적이라 깊은 대화는 잘 되지만, "
@@ -18433,7 +18433,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     bs_color = "#16a34a" if bs >= 70 else ("#d97706" if bs >= 50 else "#dc2626")
     bs_label = "균형 우수" if bs >= 70 else ("보통 균형" if bs >= 50 else "불균형 주의")
     st.markdown(
-        f"<div style='background:#0d1828;border:1px solid rgba(120,120,220,0.25);border-radius:8px;"
+        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
         f"padding:10px 14px;margin-bottom:12px;'>"
         f"<span style='background:#3B5BDB;color:#fff;border-radius:4px;padding:2px 8px;"
         f"font-size:12px;font-weight:700;margin-right:8px;'>오행 균형 점수</span>"
@@ -18531,13 +18531,13 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     st.markdown("#### 🌡️ 모임 체온 진단")
     _t = ga["temp"]
     _THERMO_COLORS = {
-        "과열 집단": ("#dc2626", "#18181e"),
+        "과열 집단": ("#dc2626", "#200808"),
         "열성 집단": ("#ea580c", "#1e1008"),
         "균형 집단": ("#16a34a", "#0d1e14"),
         "냉성 집단": ("#2563eb", "#080e28"),
         "한랭 집단": ("#1d4ed8", "#060c24"),
     }
-    tc, tbg = _THERMO_COLORS.get(_t["label"], ("#94a3b8", "#16161e"))
+    tc, tbg = _THERMO_COLORS.get(_t["label"], ("#94a3b8", "#1a1820"))
     st.markdown(
         f"<div style='background:{tbg};border:2px solid {tc};border-radius:8px;"
         f"padding:10px 14px;margin-bottom:8px;display:inline-block;'>"
@@ -18550,7 +18550,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        f"<div style='background:#16161e;border:1px solid #f8d0e0;padding:9px 13px;"
+        f"<div style='background:#1e1018;border:1px solid #f8d0e0;padding:9px 13px;"
         f"border-radius:6px;font-size:13px;color:#ddd0d8;line-height:1.7;margin-bottom:4px;'>"
         f"{_t['note']}<br>💊 처방: {_t['rx']}</div>",
         unsafe_allow_html=True,
@@ -18564,7 +18564,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     dist = _s["distribution"]
     dist_str = " / ".join(f"{k} {v}명" for k, v in dist.items() if v > 0)
     st.markdown(
-        f"<div style='background:#0d1828;border:1px solid rgba(120,120,220,0.25);border-radius:8px;"
+        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
         f"padding:9px 13px;margin-bottom:6px;font-size:13px;color:#ddd0d8;line-height:1.7;'>"
         f"<span style='font-weight:700;color:#3B5BDB;'>{_s['balance']}</span>"
         f" ({dist_str}) — {_s['note']}</div>",
@@ -18578,7 +18578,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     for role in ga["roles"]:
         rc = role["role_color"]
         st.markdown(
-            f"<div style='background:#16161e;border:0.5px solid #e0e0e8;border-radius:8px;"
+            f"<div style='background:#1e1018;border:0.5px solid #e0e0e8;border-radius:8px;"
             f"padding:8px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:12px;'>"
             f"<div style='min-width:56px;text-align:center;background:{rc}18;"
             f"border:1px solid {rc}55;border-radius:6px;padding:5px 4px;flex-shrink:0;'>"
@@ -18622,7 +18622,7 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
     if _conclusion:
         st.markdown("#### 🧩 종합 결론")
         st.markdown(
-            f"<div style='background:#14141e;border-left:4px solid #7c6cd0;"
+            f"<div style='background:#1a1028;border-left:4px solid #7c6cd0;"
             f"padding:12px 16px;border-radius:0 8px 8px 0;"
             f"font-size:14px;color:#ddd0d8;line-height:1.8;'>"
             f"{_conclusion}</div>",
@@ -18636,7 +18636,7 @@ def render_multi_chem_result(participants: list) -> None:
     import math as _math
 
     n = len(participants)
-    node_colors  = ["#3B5BDB", "#3730a3", "#16a34a", "#d97706", "#7c6cd0"]
+    node_colors  = ["#3B5BDB", "#7b1e3d", "#16a34a", "#d97706", "#7c6cd0"]
 
     # ── 쌍별 호환성 계산 ────────────────────────────────────────
     pairs = []
@@ -18676,7 +18676,7 @@ def render_multi_chem_result(participants: list) -> None:
         return "#dc2626"
 
     svg = [
-        f'<div style="background:rgba(20,8,16,0.96);border:1px solid rgba(140,140,210,.30);'
+        f'<div style="background:rgba(20,8,16,0.96);border:1px solid rgba(230,164,184,.30);'
         f'border-radius:18px;padding:10px 6px;margin:6px 0;">',
         f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" '
         f'style="width:100%;max-width:460px;height:auto;display:block;margin:0 auto 4px;">',
@@ -18702,7 +18702,7 @@ def render_multi_chem_result(participants: list) -> None:
         # 점수 배지
         svg.append(
             f'<rect x="{mx - 16:.1f}" y="{my - 9:.1f}" width="32" height="18" '
-            f'rx="4" fill="#16161e" fill-opacity="0.96" stroke="{color}" stroke-width="1.2"/>'
+            f'rx="4" fill="#1e1018" fill-opacity="0.96" stroke="{color}" stroke-width="1.2"/>'
         )
         svg.append(
             f'<text x="{mx:.1f}" y="{my + 5:.1f}" text-anchor="middle" '
@@ -18774,9 +18774,9 @@ def render_multi_chem_result(participants: list) -> None:
         friend_p = next(x for x in participants if x["name"] == p["b"])
         gtext = _chem_story_text(mine_p, friend_p, p["compat"], p["chem"])
         st.markdown(
-            f"<div style='background:#16161e;border:1px solid #f8d0e0;"
+            f"<div style='background:#1e1018;border:1px solid #f8d0e0;"
             f"border-radius:8px;padding:10px 14px;margin-bottom:8px;'>"
-            f"<div style='font-size:12px;font-weight:700;color:#818cf8;margin-bottom:4px;'>"
+            f"<div style='font-size:12px;font-weight:700;color:#e879a0;margin-bottom:4px;'>"
             f"{p['stamp']} {p['a']} × {p['b']} — {p['score']:.0f}점 · {p['type']}</div>"
             f"<div style='font-size:13px;color:#ddd0d8;line-height:1.7;'>{gtext}</div>"
             f"</div>",
@@ -18803,12 +18803,12 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
     safe_chem_score = html.escape(str(round(float(compatibility.get("score", 0) or 0))), quote=True)
 
     st.markdown(f"""
-    <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#16161e,#1a1a26);border:1px solid rgba(100,100,220,.30);border-radius:26px;box-shadow:0 14px 30px rgba(100,100,220,.12);margin:.5rem 0 1rem 0;">
+    <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#1e1018,#221220);border:1px solid rgba(255,145,180,.30);border-radius:26px;box-shadow:0 14px 30px rgba(255,125,165,.12);margin:.5rem 0 1rem 0;">
         <div style="font-size:2.4rem;line-height:1;">{chem['stamp']}</div>
-        <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#818cf8;letter-spacing:-.05em;">{safe_chem_title}</div>
-        <div style="margin-top:.35rem;color:#d0d0e8;font-weight:950;font-size:1.15rem;">궁합점수 {safe_chem_score}/100</div>
-        <div style="margin-top:.55rem;color:#9898b8;font-weight:760;">{safe_chem_desc}</div>
-        <div style="margin-top:.45rem;color:#9898b8;font-size:.92rem;">{safe_summary}</div>
+        <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#e879a0;letter-spacing:-.05em;">{safe_chem_title}</div>
+        <div style="margin-top:.35rem;color:#e8d0d8;font-weight:950;font-size:1.15rem;">궁합점수 {safe_chem_score}/100</div>
+        <div style="margin-top:.55rem;color:#d4a0b8;font-weight:760;">{safe_chem_desc}</div>
+        <div style="margin-top:.45rem;color:#d4a0b8;font-size:.92rem;">{safe_summary}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -18818,7 +18818,7 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
         # ── 케미 풀이 ──
         _gtext = _chem_story_text(mine, friend, compatibility, chem)
         st.markdown(
-            f"<div style='background:#16161e;border:1px solid #f8d0e0;padding:12px 16px;"
+            f"<div style='background:#1e1018;border:1px solid #f8d0e0;padding:12px 16px;"
             f"border-radius:8px;font-size:14px;color:#ddd0d8;line-height:1.8;margin-bottom:8px;'>"
             f"{_gtext}</div>",
             unsafe_allow_html=True,
@@ -19223,7 +19223,7 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
     _story_full = f"{_tg_story}{_sig_story}{_rx_story}"
 
     st.markdown(
-        f"<div style='background:#14141e;border-left:4px solid #7c3aed;padding:12px 16px;"
+        f"<div style='background:#1a1028;border-left:4px solid #7c3aed;padding:12px 16px;"
         f"border-radius:8px;margin-bottom:10px;font-size:14px;color:#3b0764;line-height:1.8;'>"
         f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:5px;'>"
         f"이날의 처방 · {target_date.strftime('%Y년 %m월 %d일')} · {day_gz}</div>"
@@ -19266,8 +19266,8 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
         f"border-radius:10px;padding:12px 14px;margin-bottom:8px;'>"
         f"<div style='font-size:12px;font-weight:800;color:#c090a8;margin-bottom:6px;'>🔮 오늘 천간·지지 십성 분석</div>"
         f"<div style='font-size:12px;color:#a0b8c8;line-height:1.7;margin-bottom:6px;'>"
-        f"<b style='color:#9898b8;'>{html.escape(_stem_detail)}</b><br>"
-        f"<b style='color:#9898b8;'>{html.escape(_branch_detail)}</b>"
+        f"<b style='color:#d4a0b8;'>{html.escape(_stem_detail)}</b><br>"
+        f"<b style='color:#d4a0b8;'>{html.escape(_branch_detail)}</b>"
         f"</div>"
     )
     if _tg_focus:
@@ -19309,7 +19309,7 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
                 f"<div style='display:flex;align-items:center;gap:6px;margin-bottom:3px;'>"
                 f"<span style='background:{_ic}22;border:1px solid {_ic}55;border-radius:4px;"
                 f"padding:1px 7px;font-size:11px;font-weight:800;color:{_ic};'>{html.escape(_ik)}</span>"
-                f"<span style='font-size:13px;font-weight:700;color:#d0d0e8;'>{html.escape(_iname)}</span>"
+                f"<span style='font-size:13px;font-weight:700;color:#e8d0d8;'>{html.escape(_iname)}</span>"
                 f"<span style='font-size:11px;color:#888;'>오늘 일지↔{html.escape(_ipos)} {html.escape(_itarget)}</span>"
                 f"</div>"
                 f"<div style='font-size:12px;color:#b0a0b8;line-height:1.6;'>{html.escape(_idesc)}</div>"
@@ -19580,9 +19580,9 @@ def render_sewun_text_overview(payload: dict) -> None:
             )
 
         st.markdown(
-            f"<div style='background:#16161e;border-left:4px solid #3730a3;padding:14px 16px;"
-            f"border-radius:8px;margin-bottom:12px;font-size:14px;color:#d0d0e8;line-height:1.8;'>"
-            f"<div style='font-size:12px;color:#c4c4e8;margin-bottom:6px;'>"
+            f"<div style='background:#1e1018;border-left:4px solid #7b1e3d;padding:14px 16px;"
+            f"border-radius:8px;margin-bottom:12px;font-size:14px;color:#e8d0d8;line-height:1.8;'>"
+            f"<div style='font-size:12px;color:#f0b8d0;margin-bottom:6px;'>"
             f"올해 처방전 · {gz} · {this_year}년</div>"
             f"{full_text}{next_hint}</div>",
             unsafe_allow_html=True,
@@ -19657,9 +19657,9 @@ def render_sewun_text_overview(payload: dict) -> None:
         with st.expander("🩺 올해 세운 깊이 보기 (합·충·용신·체질 분석)", expanded=False):
             # 1. 세운 글자와 용신/기신
             st.markdown(
-                f"<div style='background:#16161e;border-left:4px solid #3730a3;padding:12px 14px;"
+                f"<div style='background:#1e1018;border-left:4px solid #7b1e3d;padding:12px 14px;"
                 f"border-radius:6px;margin-bottom:10px;'>"
-                f"<div style='font-size:12px;color:#c4c4e8;font-weight:700;margin-bottom:6px;'>올해 세운 글자 분석 · {gz}</div>"
+                f"<div style='font-size:12px;color:#f0b8d0;font-weight:700;margin-bottom:6px;'>올해 세운 글자 분석 · {gz}</div>"
                 f"<div style='font-size:13px;color:#ddd0d8;line-height:1.9;'>"
                 + "<br>".join(f"· {r}" for r in _role_summary) +
                 f"</div></div>",
@@ -20228,9 +20228,9 @@ def render_hanuneyo_text_explanation(payload, char, result):
         return (
             f"<tr>"
             f"<td style='width:30%;padding:9px 12px;font-size:14px;font-weight:700;"
-            f"color:#c8a0b8;border:1px solid rgba(120,120,220,0.18);white-space:nowrap;'>{label}</td>"
+            f"color:#c8a0b8;border:1px solid rgba(232,121,160,0.18);white-space:nowrap;'>{label}</td>"
             f"<td style='padding:9px 12px;font-size:14px;font-weight:600;"
-            f"color:{value_color};border:1px solid rgba(120,120,220,0.18);line-height:1.7;'>{value}</td>"
+            f"color:{value_color};border:1px solid rgba(232,121,160,0.18);line-height:1.7;'>{value}</td>"
             f"</tr>"
         )
 
@@ -20239,12 +20239,12 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     # 진단서 HTML
     _cert_html = f"""
-<div style='background:linear-gradient(160deg,#16161e 0%,#1a0d18 100%);
-            border:2px solid rgba(120,120,220,0.45);
+<div style='background:linear-gradient(160deg,#1e1018 0%,#1a0d18 100%);
+            border:2px solid rgba(232,121,160,0.45);
             border-radius:16px;padding:0;margin-bottom:12px;
             box-shadow:0 4px 24px rgba(0,0,0,0.5);overflow:hidden;'>
   <div style='background:linear-gradient(90deg,rgba(123,30,61,0.85),rgba(42,21,32,0.9));
-              padding:14px 20px;border-bottom:1px solid rgba(120,120,220,0.30);
+              padding:14px 20px;border-bottom:1px solid rgba(232,121,160,0.30);
               display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;'>
     <div>
       <div style='font-size:11px;color:#c090a8;letter-spacing:2px;font-weight:700;'>사 주 진 단 서</div>
@@ -20266,7 +20266,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
       {_row("신강·신약", f"<b>{strength_label}</b> &nbsp;<span style='font-size:12px;color:#c090a8;'>— {refined_note[:30] if refined_note else ''}</span>")}
       {_row("용신 / 기신", f"<span style='color:#4ade80;font-weight:700;'>↑ {_yongsin_txt}</span> &nbsp;/&nbsp; <span style='color:#f87171;'>↓ {_gisin_txt}</span>")}
     </table>
-    <div style='margin-top:14px;border-top:1px solid rgba(120,120,220,0.18);padding-top:12px;'>
+    <div style='margin-top:14px;border-top:1px solid rgba(232,121,160,0.18);padding-top:12px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:8px;letter-spacing:1px;'>▸ 기운의 3대 축</div>
       <div style='display:flex;gap:8px;flex-wrap:wrap;'>
 """
@@ -20283,11 +20283,11 @@ def render_hanuneyo_text_explanation(payload, char, result):
     _cert_html += f"""
       </div>
     </div>
-    <div style='margin-top:12px;border-top:1px solid rgba(120,120,220,0.18);padding-top:10px;'>
+    <div style='margin-top:12px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 합충형파해 신호</div>
       <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_inter_html}</div>
     </div>
-    <div style='margin-top:10px;border-top:1px solid rgba(120,120,220,0.18);padding-top:10px;'>
+    <div style='margin-top:10px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 특수 신호 (신살·공망)</div>
       <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_sh_html}</div>
     </div>
@@ -20299,7 +20299,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
     # ── 종합 소견 (할머니 말투, 중복 없이) ──────────────────
     if _grandma_intro_html:
         st.html(
-            f"<div style='background:#16161e;border-left:4px solid #818cf8;"
+            f"<div style='background:#1e1018;border-left:4px solid #e879a0;"
             f"border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:4px;"
             f"font-size:15px;color:#f0e0ea;line-height:2.0;'>"
             f"<div style='font-size:11px;font-weight:700;color:#c090a8;letter-spacing:2px;margin-bottom:10px;'>종 합 소 견</div>"
@@ -20313,7 +20313,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
     dom_kw, dom_desc_text = element_nature.get(dominant_el, ("", ""))
     # 결과 요약 배지
     _comp_html = (
-        f"<div style='background:#0d1828;border:1px solid rgba(120,120,220,0.25);border-radius:8px;"
+        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
         f"padding:10px 14px;margin-bottom:10px;'>"
         f"<span style='background:#3B5BDB;color:#fff;border-radius:4px;padding:2px 8px;"
         f"font-size:12px;font-weight:700;margin-right:8px;'>주성분</span>"
@@ -20356,7 +20356,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         "과열성" if temp >= 73 else "열성" if temp >= 62 else
         "온성"   if temp >= 53 else "냉성" if temp >= 42 else "한랭성"
     )
-    _tc, _tbg = _thermo_colors.get(_t_key, ("#94a3b8", "#16161e"))
+    _tc, _tbg = _thermo_colors.get(_t_key, ("#94a3b8", "#1a1820"))
     _thermo_emoji = thermometer.split("  ")[0] if "  " in thermometer else thermometer
     st.markdown(
         f"<div style='background:{_tbg};border:2px solid {_tc};border-radius:8px;"
@@ -20392,7 +20392,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _axis_results.append((_an, _pct, _st))
     _bars_html = "<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;'>"
     for _an, _pct, _st in _axis_results:
-        _sc, _sbg = _state_colors.get(_st, ("#94a3b8", "#16161e"))
+        _sc, _sbg = _state_colors.get(_st, ("#94a3b8", "#1a1820"))
         _raw  = float((_info := score_map.get(_an, {}) or {}).get("score", 0.0) or 0.0)
         _max  = float(_info.get("max", 0.0) or 0.0)
         _max_str = f"/{_max:.0f}" if _max > 0 else ""
@@ -20546,9 +20546,9 @@ def render_hanuneyo_text_explanation(payload, char, result):
             "천을귀인": ("💛", "길한 신호", "#1a1a08", "#ca8a04"),
             "문창귀인": ("💙", "길한 신호", "#0d1420", "#2563eb"),
             "역마":     ("🟠", "중립 신호", "#1a1408", "#ea580c"),
-            "도화":     ("🩷", "중립 신호", "#1a0d18", "#818cf8"),
-            "화개":     ("🟣", "중립 신호", "#14141e", "#7c3aed"),
-            "공망":     ("⚪", "주의 신호", "#16161e", "#94a3b8"),
+            "도화":     ("🩷", "중립 신호", "#1a0d18", "#e879a0"),
+            "화개":     ("🟣", "중립 신호", "#1a1028", "#7c3aed"),
+            "공망":     ("⚪", "주의 신호", "#1a1820", "#94a3b8"),
         }
         # 신살별 의사 텍스트
         _SH_DOC_TEXT = {
@@ -20611,7 +20611,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
             )
     else:
         st.markdown(
-            "<div style='background:#16161e;border:1px solid #3a2830;border-radius:8px;"
+            "<div style='background:#1a1820;border:1px solid #3a2830;border-radius:8px;"
             "padding:12px 14px;font-size:13px;color:#a0b4bc;'>"
             "이 사주엔 특기할 신살·공망 신호가 없어. 그것 자체가 나쁜 건 아니야 — "
             "원국 자체 힘으로 흘러가는 구조거든."
@@ -20678,7 +20678,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _ten_rows_html = ""
         for _tn, _tm, _tv, _tlevel, _tlabel in _sorted_ten:
             _bar_w = max(4, min(100, int(_tv * 2.2)))
-            _badge_bg = {"strong": "#3730a3", "mid": "#2a3a4a", "weak": "#1a2a1a"}.get(_tlevel, "#2a2a3a")
+            _badge_bg = {"strong": "#7b1e3d", "mid": "#2a3a4a", "weak": "#1a2a1a"}.get(_tlevel, "#2a2a3a")
             _badge_color = {"strong": "#f472b6", "mid": "#a0c4cc", "weak": "#7ecfa8"}.get(_tlevel, "#c090a8")
             _ten_rows_html += (
                 f"<div style='margin-bottom:10px;'>"
@@ -20941,7 +20941,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _STRENGTH_COLOR = {
             "중간~강함": ("#16a34a", "#0d1e14"),
             "중간":       ("#d97706", "#1a1408"),
-            "형태만 있음": ("#6b7280", "#16161e"),
+            "형태만 있음": ("#6b7280", "#1a1820"),
             "해당 낮음":  ("#dc2626", "#200d0d"),
         }
         for _fw in _fw_flows:
@@ -20950,7 +20950,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
             _doc = _FLOW_DOC.get(_fn, "")
             if not _doc or _fn == "식신제살/상관패인":
                 continue
-            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#16161e"))
+            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#1a1820"))
             # 원국 근거 구성
             _fsrc_items = []
             for _frole, _fel in _flow_elements_for_name(chart, _fn):
@@ -20967,7 +20967,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
                         f"<span style='font-size:11px;color:#665060;margin-left:4px;'>원국에 직접 없음 (운에서 보완)</span>"
                     )
             _fsrc_html = (
-                "<div style='background:#14141c;border-left:2px solid rgba(244,114,182,.3);"
+                "<div style='background:#180d16;border-left:2px solid rgba(244,114,182,.3);"
                 "border-radius:0 5px 5px 0;padding:6px 10px;margin-top:6px;'>"
                 "<div style='font-size:11px;color:#c090a8;font-weight:700;margin-bottom:3px;'>📍 원국 어디서 이 흐름이 나오냐면</div>"
                 + "<br>".join(_fsrc_items) +
@@ -21009,12 +21009,12 @@ def render_single_summary(payload: Dict[str, object]) -> None:
     _parts = [p.strip() for p in _pillars_raw.split("/")]
     _labels = ["년주", "월주", "일주", "시주"]
     _pillar_html_cells = "".join(
-        f"<div style='text-align:center;'><div style='font-size:12px;color:#c4c4e8;margin-bottom:2px;'>{_labels[i]}</div>"
-        f"<div style='font-size:24px;font-weight:900;letter-spacing:2px;color:#d0d0e8;'>{p}</div></div>"
+        f"<div style='text-align:center;'><div style='font-size:12px;color:#f0b8d0;margin-bottom:2px;'>{_labels[i]}</div>"
+        f"<div style='font-size:24px;font-weight:900;letter-spacing:2px;color:#e8d0d8;'>{p}</div></div>"
         for i, p in enumerate(_parts)
     )
     st.markdown(
-        f"<div style='background:#16161e;border:2px solid #9898b8;border-radius:10px;"
+        f"<div style='background:#1e1018;border:2px solid #d4a0b0;border-radius:10px;"
         f"padding:10px 16px;margin-bottom:8px;'><div style='display:flex;justify-content:space-around;'>"
         f"{_pillar_html_cells}</div>"
         f"<div style='font-size:12px;color:#b0758a;text-align:right;margin-top:4px;'>{APP_VERSION}</div></div>",
@@ -21500,10 +21500,10 @@ def render_ability_bar_summary(result: Dict[str, object], prefix: str = "single"
         st.markdown(f"""
         <div class="ability-bar-row">
             <div class="ability-bar-head">
-                <span class="ability-bar-title">{info['icon']} {info['primary']} <span style="font-size:.88rem;color:#9898b8;">({info['legacy']})</span></span>
+                <span class="ability-bar-title">{info['icon']} {info['primary']} <span style="font-size:.88rem;color:#d4a0b8;">({info['legacy']})</span></span>
                 <span class="ability-bar-score">{score:.1f} / {max_score:.0f}</span>
             </div>
-            <div style="font-size:.82rem;color:#9898b8;font-weight:760;margin-bottom:.32rem;">{info['short']} · {info['meaning']}</div>
+            <div style="font-size:.82rem;color:#d4a0b8;font-weight:760;margin-bottom:.32rem;">{info['short']} · {info['meaning']}</div>
             <div class="ability-bar-track">
                 <div class="ability-bar-fill" style="width:{pct:.1f}%;"></div>
             </div>
@@ -21524,18 +21524,18 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
     holistic = float(result.get("holistic", {}).get("adjustment", 0.0))
     shinsal = float(result.get("shinsal", {}).get("adjustment", 0.0))
     st.markdown(f"""
-    <div style="background:#16161e;border:1px solid rgba(140,140,210,0.45);border-radius:18px;padding:1rem 1rem 1.1rem 1rem;margin:0.35rem 0 1rem 0;">
-        <div style="font-weight:900;color:#9898b8;font-size:1.04rem;margin-bottom:0.7rem;">총점 계산 한눈에 보기</div>
+    <div style="background:#1e1018;border:1px solid rgba(230,164,184,0.45);border-radius:18px;padding:1rem 1rem 1.1rem 1rem;margin:0.35rem 0 1rem 0;">
+        <div style="font-weight:900;color:#d4a0b8;font-size:1.04rem;margin-bottom:0.7rem;">총점 계산 한눈에 보기</div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.55rem;">
-            <div style="flex:1 1 170px;background:#16161e;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#9898b8;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#9898b8;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.88rem;color:#9898b8;">오행·월령·통근·일간</div></div>
+            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4a0b8;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">오행·월령·통근·일간</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 170px;background:#16161e;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#9898b8;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#9898b8;font-weight:800;"></div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{flow_score:.1f}</div><div style="font-size:.88rem;color:#9898b8;">조후·십성 흐름</div></div>
+            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4a0b8;font-weight:800;"></div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{flow_score:.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">조후·십성 흐름</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 170px;background:#16161e;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#9898b8;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#9898b8;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.88rem;color:#9898b8;">합충·현실 작동</div></div>
+            <div style="flex:1 1 170px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4a0b8;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4a0b8;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">합충·현실 작동</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 150px;background:#16161e;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#9898b8;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d95b84;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.88rem;color:#9898b8;">체감 보정</div></div>
+            <div style="flex:1 1 150px;background:#1e1018;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4a0b8;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d95b84;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.88rem;color:#d4a0b8;">체감 보정</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">=</div>
-            <div style="flex:1 1 180px;background:linear-gradient(135deg,#fff0f5,#fffafc);border:2px solid #ebb2c4;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#9898b8;font-weight:800;">대표 총점</div><div style="font-size:1.6rem;color:#3730a3;font-weight:950;">{total:.1f}점</div></div>
+            <div style="flex:1 1 180px;background:linear-gradient(135deg,#fff0f5,#fffafc);border:2px solid #ebb2c4;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#d4a0b8;font-weight:800;">대표 총점</div><div style="font-size:1.6rem;color:#7b1e3d;font-weight:950;">{total:.1f}점</div></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -21674,7 +21674,7 @@ def render_origin_identity_table(chart: Chart) -> None:
             role = relation_to_day(chart.day_master, hs)
             ko = STEMS[hs]["ko"]
             pct = int(round(float(ratio) * 100))
-            lines.append(f"{hs} {role}<br><span style='font-size:.66em;color:#9898b8;'>{ko} · {pct}%</span>")
+            lines.append(f"{hs} {role}<br><span style='font-size:.66em;color:#d4a0b8;'>{ko} · {pct}%</span>")
         return "<br>".join(lines) if lines else "-"
 
     def _big_cell(char: str, el: str, kind: str) -> str:
@@ -21686,10 +21686,10 @@ def render_origin_identity_table(chart: Chart) -> None:
                 "<div class='manse-col'>"
                 f"<div class='manse-head'>{html.escape(label)}<br><span style='font-size:.8em;'>(미상)</span></div>"
                 "<div class='manse-role'>-</div>"
-                "<div class='manse-big stem' style='background:#0d1828;color:#9898b8!important;'>?</div>"
+                "<div class='manse-big stem' style='background:#0d1828;color:#d4a0b8!important;'>?</div>"
                 "<div class='manse-ko'>시주 미상</div>"
                 "<div class='manse-role'>-</div>"
-                "<div class='manse-big branch' style='background:#0d1828;color:#9898b8!important;'>?</div>"
+                "<div class='manse-big branch' style='background:#0d1828;color:#d4a0b8!important;'>?</div>"
                 "<div class='manse-hidden'><div class='manse-hidden-title'>지장간</div><div class='manse-hidden-line'>출생시간 미상</div></div>"
                 "</div>"
             )
@@ -21768,15 +21768,15 @@ def _mini_bar_html(label: str, value: float, max_value: float = 100.0, caption: 
     except Exception:
         value, max_value = 0.0, 100.0
     pct = max(0.0, min(100.0, value / max_value * 100.0))
-    caption_html = f"<div style='font-size:.88rem;color:#9898b8;margin-top:.18rem;'>{html.escape(str(caption))}</div>" if caption else ""
+    caption_html = f"<div style='font-size:.88rem;color:#d4a0b8;margin-top:.18rem;'>{html.escape(str(caption))}</div>" if caption else ""
     value_label = f"{value:.1f}" if max_value == 100 else f"{value:.1f} / {int(max_value)}"
     return (
         f"<div style='margin:.42rem 0 .62rem 0;'>"
         f"<div style='display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;'>"
-        f"<div style='font-weight:900;color:#9898b8;'>{html.escape(str(label))}</div>"
-        f"<div style='font-weight:900;color:#818cf8;'>{value_label}</div>"
+        f"<div style='font-weight:900;color:#d4a0b8;'>{html.escape(str(label))}</div>"
+        f"<div style='font-weight:900;color:#e879a0;'>{value_label}</div>"
         f"</div>"
-        f"<div style='height:10px;background:#221018;border-radius:99px;overflow:hidden;border:1px solid rgba(140,140,210,.35);'>"
+        f"<div style='height:10px;background:#221018;border-radius:99px;overflow:hidden;border:1px solid rgba(230,164,184,.35);'>"
         f"<div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);border-radius:99px;'></div>"
         f"</div>"
         f"{caption_html}"
@@ -21868,7 +21868,7 @@ def _compatibility_polygon_svg(axis_data: List[Tuple[str, float, str]]) -> str:
     grid = []
     for ratio in [0.25, 0.5, 0.75, 1.0]:
         pts = [f"{cx + _math.cos(a) * max_r * ratio:.1f},{cy + _math.sin(a) * max_r * ratio:.1f}" for a in angles]
-        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(99,102,241,.18)' stroke-width='1'/>")
+        grid.append(f"<polygon points='{' '.join(pts)}' fill='none' stroke='rgba(214,66,115,.18)' stroke-width='1'/>")
 
     axes = []
     labels = []
@@ -21895,15 +21895,15 @@ def _compatibility_polygon_svg(axis_data: List[Tuple[str, float, str]]) -> str:
         elif idx == 2:
             ly += 5
         labels.append(
-            f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='13' font-weight='900' fill='#9898b8'>"
+            f"<text x='{lx:.1f}' y='{ly:.1f}' text-anchor='{anchor}' dominant-baseline='middle' font-size='13' font-weight='900' fill='#d4a0b8'>"
             f"{html.escape(label)}</text>"
         )
 
-    poly = f"<polygon points='{' '.join(points)}' fill='rgba(99,102,241,.22)' stroke='#3730a3' stroke-width='3'/>"
+    poly = f"<polygon points='{' '.join(points)}' fill='rgba(214,66,115,.22)' stroke='#7b1e3d' stroke-width='3'/>"
     dots = ""
     for pnt in points:
         x, y = pnt.split(",")
-        dots += f"<circle cx='{x}' cy='{y}' r='4.5' fill='#3730a3'/>"
+        dots += f"<circle cx='{x}' cy='{y}' r='4.5' fill='#7b1e3d'/>"
 
     return (
         f"<svg viewBox='0 0 {svg_w} {svg_h}' width='100%' height='340' role='img' style='display:block;margin:auto;overflow:visible;'>"
@@ -21955,7 +21955,7 @@ def render_element_distribution_gauge(result: Dict[str, object]) -> None:
         val = float(pct.get(el, 0.0) or 0.0)
         state = element_state(val)
         html_rows.append(_mini_bar_html(labels.get(el, el), val, 100, state))
-    st.markdown("<div style='background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:18px;padding:.9rem 1rem;'>" + "".join(html_rows) + "</div>", unsafe_allow_html=True)
+    st.markdown("<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>" + "".join(html_rows) + "</div>", unsafe_allow_html=True)
     st.caption("오행 분포는 원국의 기본 재료입니다. 많고 적음만으로 단정하지 않고 월령·조후·일간 강약과 함께 봅니다.")
 
 
@@ -21965,12 +21965,12 @@ def render_strength_scale(result: Dict[str, object]) -> None:
     label, label_note = refined_strength_interpretation(result)
     st.markdown("####  일간 강약 저울")
     st.markdown(f"""
-    <div style="background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:18px;padding:1rem;margin:.35rem 0;">
-        <div style="display:flex;justify-content:space-between;font-weight:900;color:#9898b8;"><span>신약</span><span>중화</span><span>신강</span></div>
+    <div style="background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:1rem;margin:.35rem 0;">
+        <div style="display:flex;justify-content:space-between;font-weight:900;color:#d4a0b8;"><span>신약</span><span>중화</span><span>신강</span></div>
         <div style="position:relative;height:18px;background:linear-gradient(90deg,#c7ddff,#fff4c7,#ffc6d9);border-radius:99px;margin:.7rem 0 .45rem 0;border:1px solid rgba(145,115,129,.20);">
-            <div style="position:absolute;left:{pos:.1f}%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#3730a3;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);"></div>
+            <div style="position:absolute;left:{pos:.1f}%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#7b1e3d;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);"></div>
         </div>
-        <div style="font-weight:900;color:#818cf8;">{label} · 강약 지수 {idx:.1f}</div>
+        <div style="font-weight:900;color:#e879a0;">{label} · 강약 지수 {idx:.1f}</div>
     </div>
     """, unsafe_allow_html=True)
     st.caption(label_note)
@@ -21994,7 +21994,7 @@ def render_climate_gauge(result: Dict[str, object]) -> None:
     humid = max(10, min(90, 48 + water * 0.8 - fire * 0.45))
     st.markdown("#### 🌡️ 조후 감각")
     climate_html = (
-        "<div style='background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:18px;padding:.9rem 1rem;'>"
+        "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
         + _mini_bar_html("온도감", temp, 100, "왼쪽은 차가움, 오른쪽은 뜨거움")
         + _mini_bar_html("습도감", humid, 100, "왼쪽은 건조함, 오른쪽은 습함")
         + "</div>"
@@ -22017,7 +22017,7 @@ def render_useful_signal(useful: Dict[str, object], result: Dict[str, object] | 
         ("🔴 과하면 부담", ", ".join(burden) or "뚜렷하지 않음"),
     ]
     st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(
-        f"<div style='flex:1 1 180px;background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#9898b8;'>{html.escape(k)}</div><div style='color:#c090a8;font-weight:800;margin-top:.35rem;'>{html.escape(v)}</div></div>" for k, v in rows
+        f"<div style='flex:1 1 180px;background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4a0b8;'>{html.escape(k)}</div><div style='color:#c090a8;font-weight:800;margin-top:.35rem;'>{html.escape(v)}</div></div>" for k, v in rows
     ) + "</div>", unsafe_allow_html=True)
     if useful.get("logic"):
         st.caption(str(useful.get("logic")))
@@ -22054,7 +22054,7 @@ def render_interaction_signal(result: Dict[str, object]) -> None:
     alliance_score = min(6.0, alliance_strength)
 
     st.markdown("####  원국 내부 작용")
-    html_block = "<div style='background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:18px;padding:.9rem 1rem;'>"
+    html_block = "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;'>"
     html_block += _mini_bar_html("결속 형성도 合", alliance_score, 6, "삼합·방합은 1개만 있어도 강하게 반영")
     html_block += _mini_bar_html("변동 신호 沖", counts["충"], 6, "움직임과 충돌을 만드는 신호")
     html_block += _mini_bar_html("압박 신호 刑", counts["형"], 6, "긴장과 압박으로 작용할 수 있는 신호")
@@ -22099,7 +22099,7 @@ def render_luck_timeline(luck_flow: Dict[str, object] | None) -> None:
         safe_year = html.escape(str(r.get('연도', '-')), quote=True)
         safe_tag = html.escape(str(tag), quote=True)
         safe_sewun = html.escape(str(r.get('세운', '-')), quote=True)
-        cards.append(f"<div style='flex:1 1 120px;background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#9898b8;'>{safe_year}</div><div style='font-weight:900;color:#3730a3;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#221018;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);'></div></div><div style='font-size:.88rem;color:#9898b8;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
+        cards.append(f"<div style='flex:1 1 120px;background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4a0b8;'>{safe_year}</div><div style='font-weight:900;color:#7b1e3d;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#221018;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);'></div></div><div style='font-size:.88rem;color:#d4a0b8;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
     st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 
@@ -22109,7 +22109,7 @@ def render_compatibility_axis_gauge(compatibility: Dict[str, object]) -> None:
         return
     st.markdown("##### 케미 4축 게이지")
     labels = [("상호 보완성", "서로 부족한 축을 메워주는 힘"), ("동맹성", "결속·협력 신호"), ("긴장도", "높을수록 자극과 변동이 큼"), ("흐름 동조성", "리듬과 방향이 맞는 정도")]
-    html_block = "<div style='background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
+    html_block = "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
     for label, caption in labels:
         html_block += _mini_bar_html(label, float(axes.get(label, axes.get(label.replace('성',''), 0)) or 0), 100, caption)
     html_block += "</div>"
@@ -22121,7 +22121,7 @@ def render_meal_spoke_distribution(meal_result: Dict[str, object]) -> None:
     if not rows:
         return
     st.markdown("##### 뽑기 칸 배정")
-    html_block = "<div style='background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
+    html_block = "<div style='background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:.9rem 1rem;margin:.5rem 0;'>"
     for r in sorted(rows, key=lambda x: (-int(x.get("assigned_spokes",0)), str(x.get("participant","")))):
         name = str(r.get("participant", "-"))
         spokes = int(r.get("assigned_spokes", 0) or 0)
@@ -22141,7 +22141,7 @@ def render_patch_notes() -> None:
             "version": "v5.150",
             "date": "2026년 5월",
             "tag": "🆕 현재 버전",
-            "tag_color": "#3730a3",
+            "tag_color": "#7b1e3d",
             "items": [
                 ("🔄 모두의 케미로 통합", "기존 '1:1 케미' 명칭을 '모두의 케미'로 전면 변경하고, 오방성 그래프에 각자의 역할(균형자·드라이버 등)을 함께 표시합니다."),
                 ("☯️ 모임 케미 조후(한난조습) 분석 추가", "모임 전체의 냉열 편향과 온도 분포를 종합 진단하고 처방을 제시합니다."),
@@ -22154,7 +22154,7 @@ def render_patch_notes() -> None:
             "version": "v5.149",
             "date": "2026년 5월",
             "tag": "이전 버전",
-            "tag_color": "#3730a3",
+            "tag_color": "#7b1e3d",
             "items": [
                 ("👥 모임 케미 분석 추가", "여러 명이 함께할 때 모임 전체의 오행 조화와 케미를 분석합니다."),
             ],
@@ -22163,7 +22163,7 @@ def render_patch_notes() -> None:
             "version": "v5.144",
             "date": "2026년 5월",
             "tag": "이전 버전",
-            "tag_color": "#3730a3",
+            "tag_color": "#7b1e3d",
             "items": [
                 ("📌 4기둥 8글자 상단 표시", "결과 화면 맨 위에 년주·월주·일주·시주 8글자가 크게 표시됩니다."),
                 ("🩺 진단서 텍스트 강화", "체질·신살·처방전 설명이 4~5문장으로 확장되어 각 항목의 이유까지 풀어줍니다."),
@@ -22204,9 +22204,9 @@ def render_patch_notes() -> None:
     for note in PATCH_NOTES:
         tag_html = f"<span style='background:{note['tag_color']};color:#fff;font-size:.84rem;font-weight:900;padding:.18rem .55rem;border-radius:99px;margin-left:.5rem;'>{note['tag']}</span>"
         st.markdown(
-            f"<div style='background:#16161e;border:1.5px solid rgba(99,102,241,.18);border-radius:16px;padding:1rem 1.2rem;margin:.65rem 0;box-shadow:0 4px 12px rgba(99,102,241,.07);'>"
+            f"<div style='background:#1e1018;border:1.5px solid rgba(214,66,115,.18);border-radius:16px;padding:1rem 1.2rem;margin:.65rem 0;box-shadow:0 4px 12px rgba(214,66,115,.07);'>"
             f"<div style='display:flex;align-items:center;gap:.35rem;margin-bottom:.55rem;'>"
-            f"<span style='font-size:1.05rem;font-weight:950;color:#d0d0e8;'>{note['version']}</span>"
+            f"<span style='font-size:1.05rem;font-weight:950;color:#e8d0d8;'>{note['version']}</span>"
             f"{tag_html}"
             f"<span style='margin-left:auto;font-size:.88rem;color:#9b7280;'>{note['date']}</span>"
             f"</div>",
@@ -22215,8 +22215,8 @@ def render_patch_notes() -> None:
         for icon_title, desc in note["items"]:
             st.markdown(
                 f"<div style='margin:.35rem 0;padding:.4rem .65rem;background:#221018;border-radius:10px;'>"
-                f"<span style='font-weight:900;color:#818cf8;font-size:.88rem;'>{icon_title}</span> "
-                f"<span style='font-size:.85rem;color:#9898b8;'>{desc}</span>"
+                f"<span style='font-weight:900;color:#e879a0;font-size:.88rem;'>{icon_title}</span> "
+                f"<span style='font-size:.85rem;color:#d4a0b8;'>{desc}</span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
@@ -22230,7 +22230,7 @@ def render_calculation_steps() -> None:
     steps = ["원국 산출", "오행 분포 계산", "월령·계절 보정", "합충형파해 보정", "일간 강약 판정", "조후 방향 판정", "3대 능력치 점수화", "대운·세운 연결", "검증 상태 확인"]
     html_block = "<div style='display:flex;flex-wrap:wrap;gap:.5rem;margin:.45rem 0;'>"
     for i, step in enumerate(steps, start=1):
-        html_block += f"<div style='flex:1 1 160px;background:#16161e;border:1px solid rgba(140,140,210,.28);border-radius:14px;padding:.72rem;'><div style='font-weight:950;color:#3730a3;'>STEP {i}</div><div style='font-weight:850;color:#9898b8;'>{html.escape(step)}</div></div>"
+        html_block += f"<div style='flex:1 1 160px;background:#1e1018;border:1px solid rgba(230,164,184,.28);border-radius:14px;padding:.72rem;'><div style='font-weight:950;color:#7b1e3d;'>STEP {i}</div><div style='font-weight:850;color:#d4a0b8;'>{html.escape(step)}</div></div>"
     html_block += "</div>"
     st.markdown(html_block, unsafe_allow_html=True)
 
@@ -22360,9 +22360,9 @@ def render_detail_tabs(payload: Dict[str, object], prefix: str | None = None) ->
         info_html = "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.65rem;margin:.45rem 0 1rem 0;'>"
         for row in info_rows:
             info_html += (
-                f"<div style='background:#16161e;border:1px solid rgba(140,140,210,.32);border-radius:16px;padding:.82rem .9rem;'>"
-                f"<div style='font-weight:950;color:#9898b8;font-size:.88rem;'>{html.escape(str(row['항목']))}</div>"
-                f"<div style='font-weight:850;color:#d0d0e8;line-height:1.55;margin-top:.28rem;white-space:normal;overflow:visible;text-overflow:clip;'>{html.escape(str(row['요약']))}</div>"
+                f"<div style='background:#1e1018;border:1px solid rgba(230,164,184,.32);border-radius:16px;padding:.82rem .9rem;'>"
+                f"<div style='font-weight:950;color:#d4a0b8;font-size:.88rem;'>{html.escape(str(row['항목']))}</div>"
+                f"<div style='font-weight:850;color:#e8d0d8;line-height:1.55;margin-top:.28rem;white-space:normal;overflow:visible;text-overflow:clip;'>{html.escape(str(row['요약']))}</div>"
                 f"</div>"
             )
         info_html += "</div>"
@@ -23008,11 +23008,11 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         <div style='background:#1e0d18;border:1.5px solid #5a2840;border-radius:10px;
         padding:12px 16px;margin-bottom:14px;'>
         <div style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>
-          <span style='background:#3730a3;color:#fff;border-radius:4px;padding:2px 8px;
+          <span style='background:#7b1e3d;color:#fff;border-radius:4px;padding:2px 8px;
           font-size:13px;font-weight:700;'>🆕 {APP_VERSION} 업데이트</span>
           <span style='font-size:13px;color:#c090a8;'>2026년 5월</span>
         </div>
-        <div style='font-size:13px;color:#9898b8;line-height:1.9;'>
+        <div style='font-size:13px;color:#d4a0b8;line-height:1.9;'>
           · 모임 케미 기능이 추가되었어
         </div>
         </div>
@@ -23878,7 +23878,7 @@ elif payload.get("multi"):
     <div class="mini-card">
         <div class="mini-card-title">케미 브리핑</div>
         <div class="mini-card-value">{top['참가자']} · {top['총점']}점</div>
-        <div style="color:rgba(50,50,80,0.78); margin-top:0.7rem; line-height:1.65;">
+        <div style="color:rgba(75,45,58,0.78); margin-top:0.7rem; line-height:1.65;">
             {summary['summary']}
         </div>
     </div>
@@ -24018,8 +24018,8 @@ _stcomp.html("""
         /* 라디오 버튼 */
         '[data-testid=\"stRadio\"] label,' +
         'div[role=\"radiogroup\"] label {' +
-        '  background-color:#1e1e2c!important;' +
-        '  border:1.5px solid rgba(120,120,220,0.40)!important;' +
+        '  background-color:#2a1520!important;' +
+        '  border:1.5px solid rgba(232,121,160,0.40)!important;' +
         '  border-radius:999px!important;' +
         '  color:#c090a8!important;' +
         '  padding:6px 16px!important;' +
@@ -24027,8 +24027,8 @@ _stcomp.html("""
         '}' +
         '[data-testid=\"stRadio\"] label:has(input:checked),' +
         'div[role=\"radiogroup\"] label:has(input:checked) {' +
-        '  background-color:#3730a3!important;' +
-        '  border-color:#818cf8!important;' +
+        '  background-color:#7b1e3d!important;' +
+        '  border-color:#e879a0!important;' +
         '  color:#ffffff!important;' +
         '}' +
         '[data-testid=\"stRadio\"] label p,' +
@@ -24038,27 +24038,27 @@ _stcomp.html("""
         /* 입력 wrapper */
         'div[data-baseweb=\"base-input\"],' +
         'div[data-baseweb=\"input\"] {' +
-        '  background-color:#1e1e2c!important;' +
-        '  border-color:rgba(120,120,220,0.30)!important;' +
+        '  background-color:#2a1520!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
         '}' +
         /* 입력 필드 */
         'div[data-baseweb=\"base-input\"] input,' +
         'div[data-baseweb=\"input\"] input,' +
         'input[type=\"text\"],input[type=\"number\"] {' +
-        '  background-color:#1e1e2c!important;' +
-        '  color:#d0d0e8!important;' +
-        '  caret-color:#818cf8!important;' +
+        '  background-color:#2a1520!important;' +
+        '  color:#e8d0d8!important;' +
+        '  caret-color:#e879a0!important;' +
         '}' +
         /* 셀렉트박스 */
         'div[data-baseweb=\"select\"] > div {' +
-        '  background-color:#1e1e2c!important;' +
-        '  border-color:rgba(120,120,220,0.30)!important;' +
-        '  color:#d0d0e8!important;' +
+        '  background-color:#2a1520!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
+        '  color:#e8d0d8!important;' +
         '}' +
         /* 드롭다운 옵션 */
         'ul[data-baseweb=\"menu\"],li[role=\"option\"] {' +
-        '  background-color:#1e1e2c!important;' +
-        '  color:#d0d0e8!important;' +
+        '  background-color:#2a1520!important;' +
+        '  color:#e8d0d8!important;' +
         '}' +
         'li[role=\"option\"]:hover {' +
         '  background-color:#3d1a2b!important;' +
@@ -24067,8 +24067,8 @@ _stcomp.html("""
         'button[data-testid=\"stNumberInputStepDown\"],' +
         'button[data-testid=\"stNumberInputStepUp\"] {' +
         '  background-color:#3d1a2b!important;' +
-        '  color:#d0d0e8!important;' +
-        '  border-color:rgba(120,120,220,0.30)!important;' +
+        '  color:#e8d0d8!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
         '}';
 
     var style = document.createElement('style');
