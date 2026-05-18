@@ -14617,10 +14617,10 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
     if flows:
         with st.expander("🌊 흐름 보기", expanded=False):
             if flow_rows:
-            for row in flow_rows:
-                _render_flow_pipeline_card(chart, result, row)
-                    else:
-            st.info("자동으로 크게 잡히는 흐름은 약하지만, 상세 분석에서는 특수 구조 후보와 약한 통로를 따로 확인할 수 있습니다.")
+                for row in flow_rows:
+                    _render_flow_pipeline_card(chart, result, row)
+            else:
+                st.info("자동으로 크게 잡히는 흐름은 약하지만, 상세 분석에서는 특수 구조 후보와 약한 통로를 따로 확인할 수 있습니다.")
                 
     if binding_notes or tension_notes:
         with st.expander("✨ 발현 신호 보기", expanded=False):
