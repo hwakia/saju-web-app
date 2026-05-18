@@ -7900,16 +7900,16 @@ _stcomp.html("""
 .pipe-line{display:inline-block;border-radius:999px;min-width:44px;width:100%;box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
 .pipe-arrow{display:inline-block;width:0;height:0;margin-left:-1px;}
 .pipe-label{font-size:.82rem;font-weight:900;color:#c090a8;white-space:nowrap;line-height:1;}
-.pipe-good .pipe-line{height:18px;background:#334155;}
-.pipe-good .pipe-arrow{border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:13px solid #334155;}
-.pipe-mid .pipe-line{height:12px;background:#64748b;}
-.pipe-mid .pipe-arrow{border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:11px solid #64748b;}
-.pipe-thin .pipe-line{height:7px;background:repeating-linear-gradient(90deg,#94a3b8,#94a3b8 8px,transparent 8px,transparent 14px);box-shadow:none;}
-.pipe-thin .pipe-arrow{border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid #94a3b8;}
+.pipe-good .pipe-line{height:22px;background:linear-gradient(90deg,#16a34a,#22c55e);box-shadow:0 2px 8px rgba(22,163,74,.35);}
+.pipe-good .pipe-arrow{border-top:12px solid transparent;border-bottom:12px solid transparent;border-left:16px solid #22c55e;}
+.pipe-mid .pipe-line{height:15px;background:linear-gradient(90deg,#d97706,#f59e0b);box-shadow:0 2px 6px rgba(245,158,11,.30);}
+.pipe-mid .pipe-arrow{border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:13px solid #f59e0b;}
+.pipe-thin .pipe-line{height:9px;background:repeating-linear-gradient(90deg,#f97316,#f97316 8px,transparent 8px,transparent 14px);box-shadow:none;}
+.pipe-thin .pipe-arrow{border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid #f97316;}
 .pipe-broken .pipe-main{position:relative;transform:rotate(-2deg);}
-.pipe-broken .pipe-line{height:5px;background:repeating-linear-gradient(90deg,#cbd5e1,#cbd5e1 6px,transparent 6px,transparent 12px);box-shadow:none;opacity:.9;}
-.pipe-broken .pipe-line::after{content:"";display:inline-block;width:12px;height:12px;border-right:3px solid #94a3b8;border-bottom:3px solid #94a3b8;transform:rotate(35deg);margin-left:8px;margin-top:-5px;}
-.pipe-broken .pipe-arrow{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid #cbd5e1;}
+.pipe-broken .pipe-line{height:6px;background:repeating-linear-gradient(90deg,#dc2626,#dc2626 6px,transparent 6px,transparent 12px);box-shadow:none;opacity:.9;}
+.pipe-broken .pipe-line::after{content:"";display:inline-block;width:12px;height:12px;border-right:3px solid #dc2626;border-bottom:3px solid #dc2626;transform:rotate(35deg);margin-left:8px;margin-top:-5px;}
+.pipe-broken .pipe-arrow{border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid #dc2626;}
 .shinsal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:.85rem 0 1.1rem;}
 .shinsal-card{position:relative;overflow:hidden;border-radius:26px;padding:1.08rem 1.05rem;border:1px solid rgba(214,66,115,.17);background:linear-gradient(135deg,#1e1018,#221220);box-shadow:0 14px 30px rgba(80,40,60,.08);}
 .shinsal-card::after{content:"";position:absolute;right:-34px;top:-34px;width:116px;height:116px;border-radius:999px;background:rgba(214,66,115,.08);}
@@ -8800,8 +8800,8 @@ div[data-testid="stRadio"] span {
     border-radius:16px;
     padding:.48rem .36rem .5rem .36rem;
     text-align:center;
-    border:1px solid rgba(63,42,51,.08);
-    box-shadow:0 6px 14px rgba(63,42,51,.04);
+    border:1px solid rgba(230,164,184,.20);
+    box-shadow:0 6px 14px rgba(0,0,0,.18);
 }
 .element-tone-symbol {
     display:block;
@@ -11181,9 +11181,9 @@ div[data-baseweb="input"] > div,
     display: inline-block;
     padding: 0.42rem 0.72rem;
     border-radius: 999px;
-    background: rgba(255, 240, 246, 0.95);
-    border: 1px solid rgba(255, 135, 170, 0.24);
-    color: rgba(75,45,58,0.84);
+    background: rgba(30,16,24,0.95);
+    border: 1px solid rgba(230,164,184,.32);
+    color: #f0b8d0;
     margin: 0.16rem 0.22rem 0.16rem 0;
     font-weight: 750;
 }
@@ -14524,11 +14524,11 @@ def _render_signal_list(title: str, items: List[str], empty: str) -> None:
 
 
 ELEMENT_VISUALS = {
-    "목": {"icon": "🌿", "bg": "#ecfdf5", "fg": "#166534"},
-    "화": {"icon": "🔥", "bg": "#fff1f2", "fg": "#be123c"},
-    "토": {"icon": "⛰️", "bg": "#fff7ed", "fg": "#9a3412"},
-    "금": {"icon": "⚔️", "bg": "#f8fafc", "fg": "#475569"},
-    "수": {"icon": "💧", "bg": "#eff6ff", "fg": "#1d4ed8"},
+    "목": {"icon": "🌿", "bg": "#0d1e14", "fg": "#4ade80"},
+    "화": {"icon": "🔥", "bg": "#200808", "fg": "#f87171"},
+    "토": {"icon": "⛰️", "bg": "#1e1408", "fg": "#fbbf24"},
+    "금": {"icon": "⚔️", "bg": "#181c22", "fg": "#94a3b8"},
+    "수": {"icon": "💧", "bg": "#080e28", "fg": "#60a5fa"},
 }
 
 
@@ -14601,7 +14601,7 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
         else:
             st.caption("관계·행동으로 바로 튀는 합충 신호는 비교적 적습니다.")
 
-    if _detail_radio_open("💪 기운의 크기 세부 설명", key="visual_size_detail_open"):
+    with st.expander("💪 기운의 크기 세부 설명", expanded=False):
         st.caption("이 항목은 원국 안에서 특정 기운이 실제로 얼마나 강하게 작동하는지 보는 참고 항목입니다. 세부 용어는 아래에 풀어서 표시합니다.")
         roots = _root_plain_detail(strength_detail.get("통근메모", ""))
         if roots:
@@ -14614,21 +14614,22 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
         if not roots and not gathering_notes:
             st.caption("특별히 크게 부풀어 오르는 구조는 약하게 잡힙니다.")
 
-    if flows and _detail_radio_open("🌊 흐름 보기", key="visual_flow_detail_open"):
-        st.caption("각 흐름은 어떤 역할의 기운이 다음 역할로 이어지는지 봅니다. 위의 ‘흐름 전체 작동도’는 그 흐름 전체가 얼마나 힘 있게 돌아가는지, 파이프 옆 ‘구간 연결 좋음/보통/약함’은 각 구간이 얼마나 매끄럽게 이어지는지 뜻합니다. 모바일에서는 잘리지 않도록 세로형 흐름으로 표시됩니다.")
-        if flow_rows:
+    if flows:
+        with st.expander("🌊 흐름 보기", expanded=False):
+            if flow_rows:
             for row in flow_rows:
                 _render_flow_pipeline_card(chart, result, row)
-        else:
+                    else:
             st.info("자동으로 크게 잡히는 흐름은 약하지만, 상세 분석에서는 특수 구조 후보와 약한 통로를 따로 확인할 수 있습니다.")
-
-    if (binding_notes or tension_notes) and _detail_radio_open("✨ 발현 신호 보기", key="visual_expression_detail_open"):
-        if binding_notes:
-            st.markdown("**연결·결속 신호**")
-            _markdown_signal_cards(binding_notes)
-        if tension_notes:
-            st.markdown("**변화·자극 신호**")
-            _markdown_signal_cards(tension_notes)
+                
+    if binding_notes or tension_notes:
+        with st.expander("✨ 발현 신호 보기", expanded=False):
+            if binding_notes:
+                st.markdown("**연결·결속 신호**")
+                _markdown_signal_cards(binding_notes)
+            if tension_notes:
+                st.markdown("**변화·자극 신호**")
+                _markdown_signal_cards(tension_notes)
 
 
 def render_character_axis_cards(payload: Dict[str, object], char: Dict[str, str]) -> None:
@@ -14683,7 +14684,7 @@ def render_character_axis_cards(payload: Dict[str, object], char: Dict[str, str]
                 </div>
                 """, unsafe_allow_html=True)
 
-    if _detail_radio_open("힘 쓰는 스타일 자세히 보기", key="character_operation_detail_open"):
+    with st.expander("힘 쓰는 스타일 자세히 보기", expanded=False):
         tips = energy_operation_user_tips(operation)
         st.caption("이 캐릭터가 힘을 내기 쉬운 환경과 조율 포인트를 정리했습니다.")
         safe_dataframe([
@@ -14692,9 +14693,10 @@ def render_character_axis_cards(payload: Dict[str, object], char: Dict[str, str]
             ("조율 포인트", "주의", tips.get("caution", "")),
         ])
 
-    if friendly_tags and _detail_radio_open("원국 구조 키워드 보기", key="character_origin_keyword_open"):
-        for tag in friendly_tags:
-            st.markdown(f"<span class='viz-pill'>{html.escape(str(tag))}</span>", unsafe_allow_html=True)
+    if friendly_tags:
+        with st.expander("원국 구조 키워드 보기", expanded=False):
+            for tag in friendly_tags:
+                st.markdown(f"<span class='viz-pill'>{html.escape(str(tag))}</span>", unsafe_allow_html=True)
 
 
 def korea_today() -> date:
@@ -19229,17 +19231,117 @@ def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], tar
         unsafe_allow_html=True,
     )
 
-    # ── 세부 카드 (기존) ─────────────────────────────────────
-    try:
-        card = st.container(border=True)
-    except TypeError:
-        card = st.container()
-    with card:
-        st.caption(f"{ten_god_line}")
-        st.write(f"신호: {signal_text}")
-        st.write(f"큰 배경: {compass.get('month_background', '-')}")
-        st.write(f"개요: {interaction_overview}")
-        st.write(f"한 줄 처방: {prescription}")
+    # ── 십성 상세 카드 ────────────────────────────────────────
+    _stem_detail  = str(compass.get("day_stem_detail", "") or "")
+    _branch_detail = str(compass.get("day_branch_detail", "") or "")
+    _tg_focus     = str(compass.get("ten_god_focus", "") or "")
+    _tg_good      = str(compass.get("ten_god_good", "") or "")
+    _tg_caution   = str(compass.get("ten_god_caution", "") or "")
+    _tg_action    = str(compass.get("ten_god_action", "") or "")
+    _interactions = compass.get("interactions", []) or []
+    _month_bg     = str(compass.get("month_background", "") or "")
+
+    # 십성 카드
+    _tg_color = {
+        "비견":"#a78bfa","겁재":"#f472b6","식신":"#34d399","상관":"#fb923c",
+        "편재":"#fbbf24","정재":"#fcd34d","편관":"#f87171","정관":"#60a5fa",
+        "편인":"#818cf8","정인":"#6ee7b7",
+    }.get(_tg_focus, "#c090a8")
+
+    _tengod_explain = {
+        "비견": "나와 같은 기운 — 자아·독립심이 강해지는 날",
+        "겁재": "나와 비슷하지만 경쟁적 기운 — 실행력은 올라가지만 충돌 주의",
+        "식신": "내가 만들고 표현하는 기운 — 창의·생산·여유가 살아나는 날",
+        "상관": "강한 표현 기운 — 아이디어는 넘치지만 말실수 조심",
+        "편재": "빠른 현실 기운 — 기회 포착은 좋지만 즉흥 지출 주의",
+        "정재": "꼼꼼한 현실 기운 — 정산·관리·계획에 딱 맞는 날",
+        "편관": "긴장·압박 기운 — 돌파력은 있지만 무리하면 역효과",
+        "정관": "책임·규범 기운 — 공식 일 처리와 신뢰 쌓기에 좋은 날",
+        "편인": "직관·관찰 기운 — 혼자 깊이 생각하거나 자료 조사에 좋아",
+        "정인": "배움·안정 기운 — 흡수하고 정리하기 좋은 날",
+    }.get(_tg_focus, "")
+
+    _tg_html = (
+        f"<div style='background:#120e1e;border:1px solid {_tg_color}44;"
+        f"border-radius:10px;padding:12px 14px;margin-bottom:8px;'>"
+        f"<div style='font-size:12px;font-weight:800;color:#c090a8;margin-bottom:6px;'>🔮 오늘 천간·지지 십성 분석</div>"
+        f"<div style='font-size:12px;color:#a0b8c8;line-height:1.7;margin-bottom:6px;'>"
+        f"<b style='color:#d4a0b8;'>{html.escape(_stem_detail)}</b><br>"
+        f"<b style='color:#d4a0b8;'>{html.escape(_branch_detail)}</b>"
+        f"</div>"
+    )
+    if _tg_focus:
+        _tg_html += (
+            f"<div style='display:inline-block;background:{_tg_color}22;border:1px solid {_tg_color}55;"
+            f"border-radius:6px;padding:3px 10px;font-size:12px;font-weight:800;color:{_tg_color};margin-bottom:6px;'>"
+            f"주요 십성: {html.escape(_tg_focus)} — {html.escape(_tengod_explain)}</div><br>"
+        )
+    if _tg_good:
+        _tg_html += f"<div style='font-size:12px;color:#7ecfa8;margin-top:4px;'>✅ {html.escape(_tg_good)}</div>"
+    if _tg_caution:
+        _tg_html += f"<div style='font-size:12px;color:#f472b6;margin-top:3px;'>⚠️ {html.escape(_tg_caution)}</div>"
+    if _tg_action:
+        _tg_html += f"<div style='font-size:12px;color:#fbbf24;margin-top:3px;'>💊 처방: {html.escape(_tg_action)}</div>"
+    _tg_html += "</div>"
+    st.markdown(_tg_html, unsafe_allow_html=True)
+
+    # 합충형 상세 카드
+    if _interactions:
+        _KIND_COLOR = {"합":"#4ade80","충":"#f87171","형":"#fb923c","파":"#a78bfa","해":"#60a5fa"}
+        _KIND_DESC  = {
+            "합":"묶이고 연결되는 기운 — 해당 방향이 강화돼",
+            "충":"부딪히는 기운 — 변동·긴장이 생기기 쉬워",
+            "형":"긴장·마찰 기운 — 규율·압박 신호야",
+            "파":"어긋나는 기운 — 계획이 틀어질 수 있어",
+            "해":"방해받는 기운 — 협력보다 독립이 나아",
+        }
+        _inter_rows = ""
+        for _it in _interactions[:5]:
+            _ik = _it.get("kind","")
+            _ic = _KIND_COLOR.get(_ik,"#c090a8")
+            _iname = _it.get("name","")
+            _ipos = _it.get("pos_label","")
+            _itarget = _it.get("target","")
+            _iimpact = _it.get("impact","")
+            _idesc = _KIND_DESC.get(_ik,"")
+            _inter_rows += (
+                f"<div style='margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #2a1a28;'>"
+                f"<div style='display:flex;align-items:center;gap:6px;margin-bottom:3px;'>"
+                f"<span style='background:{_ic}22;border:1px solid {_ic}55;border-radius:4px;"
+                f"padding:1px 7px;font-size:11px;font-weight:800;color:{_ic};'>{html.escape(_ik)}</span>"
+                f"<span style='font-size:13px;font-weight:700;color:#e8d0d8;'>{html.escape(_iname)}</span>"
+                f"<span style='font-size:11px;color:#888;'>오늘 일지↔{html.escape(_ipos)} {html.escape(_itarget)}</span>"
+                f"</div>"
+                f"<div style='font-size:12px;color:#b0a0b8;line-height:1.6;'>{html.escape(_idesc)}</div>"
+                f"<div style='font-size:12px;color:#c0d0a0;margin-top:2px;'>{html.escape(_iimpact)}</div>"
+                f"</div>"
+            )
+        st.markdown(
+            "<div style='background:#120e1e;border:1px solid rgba(244,114,182,.2);"
+            "border-radius:10px;padding:12px 14px;margin-bottom:8px;'>"
+            "<div style='font-size:12px;font-weight:800;color:#c090a8;margin-bottom:8px;'>"
+            "🔗 오늘 일진 ↔ 내 원국 합·충·형 관계</div>"
+            + _inter_rows +
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            "<div style='background:#120e1e;border:1px solid #2a1a28;border-radius:10px;"
+            "padding:10px 14px;margin-bottom:8px;font-size:12px;color:#665060;'>"
+            "🔗 오늘 일진과 원국 지지 사이에 뚜렷한 합·충·형 신호는 없어. 비교적 평온한 날이야."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+    # 이달 배경
+    if _month_bg:
+        st.markdown(
+            f"<div style='background:#0d1828;border-left:3px solid #3b82f6;"
+            f"border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:12px;color:#a0b8d0;line-height:1.7;'>"
+            f"🌙 <b style='color:#60a5fa;'>이달 배경:</b> {html.escape(_month_bg)}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def render_daily_luck_calendar(payload: Dict[str, object]) -> None:
@@ -20992,7 +21094,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
                 render_climate_thermometer(result)
 
             render_visual_analysis_core(payload)
-            if _detail_radio_open("🃏 신살·공망 보조 신호 보기", key="single_shinsal_compact_open_v590", help="신살·공망 카드를 확인합니다."):
+            with st.expander("🃏 신살·공망 보조 신호 보기", expanded=False):
                 render_shinsal_badge_cards(payload, prefix="single")
 
         elif expert_view == "운의 흐름 상세":
