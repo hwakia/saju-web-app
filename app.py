@@ -23269,7 +23269,7 @@ elif input_mode in ["케미 분석", "친구와 배틀"]:
     default_names = ["나", "상대", "친구", "동료", "지인"]
     specs = []
     for idx in range(manual_slots):
-        if safe_toggle(f"케미 참가자 {idx + 1}", value=(idx < 2), key=f"friend_battle_participant_toggle_{idx}"):
+        with st.expander(f"👤 참가자 {idx + 1}", expanded=True):
             name = st.text_input("별명", value=default_names[idx], key=f"friend_battle_name_{idx}", max_chars=10, help="실명 대신 10글자 이내 별명 사용을 권장합니다.")
             mode = st.radio("입력 방식", ["생년월일시 자동 산출", "원국 직접 입력"], horizontal=True, key=f"friend_battle_mode_{idx}", help="원국 직접 입력은 년주·월주·일주·시주 8글자를 직접 선택하는 방식입니다.")
 
@@ -23314,6 +23314,10 @@ elif input_mode in ["케미 분석", "친구와 배틀"]:
     analyze_clicked = st.button("케미 분석 시작", type="primary", use_container_width=True, key="friend_battle_start")
 
     if analyze_clicked:
+        st.session_state.selected_main_mode = "케미 분석"  # 처리 중 세션 상태 보존
+        if not specs:
+            st.error("참가자 정보를 모두 입력해 주세요.")
+            st.stop()
         if len(selected_roster_for_battle) > int(participant_count):
             st.error("입력된 사람이 2명을 초과했습니다.")
             st.stop()
