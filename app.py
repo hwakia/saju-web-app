@@ -24123,6 +24123,23 @@ elif payload.get("multi_chem"):
 elif not payload.get("battle"):
         render_single_summary(payload)
 
+else:
+    # 2명 모두의 케미 (battle=True)
+    mine = payload["mine"]
+    friend = payload["friend"]
+    battle_summary = make_battle_summary(mine, friend)
+    compatibility = compatibility_analysis(mine, friend, payload.get("relationship_mode", "친구"))
+
+    st.markdown(
+        f"<span class='summary-chip'>모드: 모두의 케미</span>"
+        f"<span class='summary-chip'>태양시 보정: {payload.get('correction_label', '한국 평균 -30분')}</span>"
+        f"<span class='summary-chip'>야자시: {'시도' if payload.get('use_yajashee') else '미시도'}</span>"
+        f"<span class='summary-chip'>나이 기준: {payload.get('age_basis', '만 나이')}</span>",
+        unsafe_allow_html=True,
+    )
+    render_battle_result_board(mine, friend, battle_summary, compatibility)
+    st.caption("비교 결과와 케미 평가는 오락·참고용이야. 사람의 우열이나 관계의 결론을 단정하지 않아.")
+
 
 # ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
 _stcomp.html("""
@@ -24174,29 +24191,4 @@ _stcomp.html("""
         '  background-color:#1e2d4a!important;' +
         '  color:#fde68a!important;' +
         '}' +
-        'li[role=\"option\"]:hover {' +
-        '  background-color:#3d1a2b!important;' +
-        '}' +
-        /* number_input 버튼 */
-        'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputStepUp\"] {' +
-        '  background-color:#3d1a2b!important;' +
-        '  color:#fde68a!important;' +
-        '  border-color:rgba(232,121,160,0.30)!important;' +
-        '}';
-
-    var style = document.createElement('style');
-    style.id = 'saju-dark-override';
-    style.textContent = css;
-
-    function inject() {
-        if (!document.getElementById('saju-dark-override')) {
-            (document.head || document.documentElement).appendChild(style.cloneNode(true));
-        }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
-})();
-</script>
-""", height=0, scrolling=False)
+       
