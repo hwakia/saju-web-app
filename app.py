@@ -6343,14 +6343,9 @@ def make_battle_summary(my_payload: Dict[str, object], friend_payload: Dict[str,
     my_sewun_wins = sum(1 for r in sewun_rows if r["판정"] == "나 쪽이 강함")
     fr_sewun_wins = sum(1 for r in sewun_rows if r["판정"] == "상대 쪽이 강함")
 
-    if total_diff > 0:
-        main_sentence = f"팔자 총점은 {josa(my_payload['name'], '이/가')} {abs(total_diff):.1f}점 차이로 승리했습니다."
-    elif total_diff < 0:
-        main_sentence = f"팔자 총점은 {josa(friend_payload['name'], '이/가')} {abs(total_diff):.1f}점 차이로 승리했습니다."
-    else:
-        main_sentence = "팔자 총점은 비슷함입니다."
+    main_sentence = ""
 
-    sub_sentence = f"3대 카테고리는 {my_payload['name']} {my_cat_wins}승, {friend_payload['name']} {fr_cat_wins}승입니다."
+    sub_sentence = f"대운·세운 흐름 기준으로 {my_payload['name']} {my_cat_wins}승, {friend_payload['name']} {fr_cat_wins}승입니다."
     if daewun_winner != "비교 불가":
         sub_sentence += f" 현재 대운은 {daewun_winner}({daewun_diff:+.1f})입니다."
     if sewun_rows:
@@ -6870,9 +6865,8 @@ def render_compact_participant_battle_summary(selected: Dict[str, object], prefi
     result = selected.get("result", {})
     origin_text = friendly_origin_summary(result.get("origin_profile", {}))
     char_name, char_desc = split_character_label(origin_text)
-    cols = st.columns(4)
+    cols = st.columns(3)
     metrics = [
-        ("총점", result.get("total", "-")),
         ("등급", result.get("grade_info", {}).get("grade", "-")),
         ("강한 축", participant_top_axis(selected)),
         ("일간 강약", friendly_strength_summary(result)),
@@ -6925,11 +6919,11 @@ def multi_battle_summary(participants: List[Dict[str, object]]) -> Dict[str, obj
     top = totals[0]
     second = totals[1] if len(totals) > 1 else None
     if second:
-        diff = round(float(top["총점"]) - float(second["총점"]), 1)
-        summary = f"총점 기준 1위는 {top['참가자']}입니다. 2위와의 차이는 {diff:+.1f}점입니다."
+        diff = 0.0
+        summary = f"대운·세운 흐름 기준 주목 참가자는 {top['참가자']}입니다."
     else:
         diff = 0.0
-        summary = f"총점 기준 1위는 {top['참가자']}입니다."
+        summary = f"참가자는 {top['참가자']}입니다."
 
     auto_count = sum(1 for p in participants if p.get("mode") == "생년월일시 자동 산출")
     direct_count = len(participants) - auto_count
@@ -20352,10 +20346,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
       </div>
       <div style='font-size:12px;color:#c090a8;margin-top:4px;'>{diag_line1}</div>
     </div>
-    <div style='text-align:right;'>
-      <div style='font-size:28px;font-weight:900;color:{_score_color};line-height:1;'>{_total_score:.0f}<span style='font-size:14px;'>점</span></div>
-      <div style='font-size:12px;font-weight:700;color:{_score_color};'>{_score_label}</div>
-    </div>
+
   </div>
   <div style='padding:4px 16px 16px 16px;'>
     <table style='width:100%;border-collapse:collapse;margin-top:12px;'>
@@ -20365,23 +20356,8 @@ def render_hanuneyo_text_explanation(payload, char, result):
       {_row("신강·신약", f"<b>{strength_label}</b> &nbsp;<span style='font-size:12px;color:#c090a8;'>— {refined_note[:30] if refined_note else ''}</span>")}
       {_row("용신 / 기신", f"<span style='color:#4ade80;font-weight:700;'>↑ {_yongsin_txt}</span> &nbsp;/&nbsp; <span style='color:#f87171;'>↓ {_gisin_txt}</span>")}
     </table>
-    <div style='margin-top:14px;border-top:1px solid rgba(232,121,160,0.18);padding-top:12px;'>
-      <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:8px;letter-spacing:1px;'>▸ 기운의 3대 축</div>
-      <div style='display:flex;gap:8px;flex-wrap:wrap;'>
 """
-    for _icon_a, _an, _score_label_a, _st_a, _sc_a in _axis_rows:
-        _cert_html += (
-            f"<div style='flex:1;min-width:90px;background:rgba(30,16,24,0.8);"
-            f"border:1px solid {_sc_a}44;border-radius:10px;padding:10px;text-align:center;'>"
-            f"<div style='font-size:20px;'>{_icon_a}</div>"
-            f"<div style='font-size:12px;font-weight:700;color:#c0a0b4;margin:3px 0;'>{_an}</div>"
-            f"<div style='font-size:15px;font-weight:900;color:{_sc_a};'>{_st_a}</div>"
-            f"<div style='font-size:12px;color:{_sc_a};'>{_score_label_a}</div>"
-            f"</div>"
-        )
     _cert_html += f"""
-      </div>
-    </div>
     <div style='margin-top:12px;border-top:1px solid rgba(232,121,160,0.18);padding-top:10px;'>
       <div style='font-size:12px;font-weight:700;color:#c090a8;margin-bottom:6px;letter-spacing:1px;'>▸ 합충형파해 신호</div>
       <div style='font-size:14px;color:#e0c8d4;line-height:1.8;'>{_inter_html}</div>
@@ -21243,7 +21219,6 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             safe_write(f"- {holistic.get('summary', '세부항목 합산과 전체 인상이 대체로 일치합니다.')}")
 
         elif expert_view == "계산 참고 지표":
-            safe_metric("총점", f"{result.get('total', '-')}점")
             score_view = st.radio(
                 "계산 지표 보기",
                 ["닫기", "점수 계산식", "점수·결과분석 로직"],
@@ -23994,7 +23969,7 @@ elif payload.get("multi"):
     st.markdown(f"""
     <div class="mini-card">
         <div class="mini-card-title">케미 브리핑</div>
-        <div class="mini-card-value">{top['참가자']} · {top['총점']}점</div>
+        <div class="mini-card-value">{top['참가자']}</div>
         <div style="color:rgba(75,45,58,0.78); margin-top:0.7rem; line-height:1.65;">
             {summary['summary']}
         </div>
@@ -24020,7 +23995,7 @@ elif payload.get("multi"):
     selected_view = st.radio("확인할 화면", select_options, key="multi_view_selector")
 
     if selected_view == "주요 분석결과 비교":
-        quest_title("🏆 주요 분석결과 비교", "참가자별 총점, 등급, 3대 능력치를 한눈에 비교합니다.", ["원국", "오행"])
+        quest_title("🏆 주요 분석결과 비교", "참가자별 등급, 대운·세운 흐름을 한눈에 비교합니다.", ["원국", "오행"])
         comparison_rows = []
         cat_map = {}
         for p in participants:
@@ -24033,29 +24008,22 @@ elif payload.get("multi"):
             comparison_rows.append({
                 "순위": row["순위"],
                 "참가자": name,
-                "총점": row["총점"],
                 "등급": row["등급"],
-                "기운의 크기": cat_map.get(name, {}).get("기운의 크기 점수", "-"),
-                "기운의 순환": cat_map.get(name, {}).get("기운의 순환 점수", "-"),
-                "기운의 발현": cat_map.get(name, {}).get("기운의 발현 점수", "-"),
                 "일간": row["일간"],
-                "대운 반영": row.get("대운 반영", "-"),
                 "현재 대운": row["현재 대운"],
                 "향후 5년 세운 평균": row["향후 5년 세운 평균"],
             })
         safe_dataframe(pd.DataFrame(comparison_rows), use_container_width=True, hide_index=True)
 
         metrics = multi_field_metrics(participants)
-        mcols = st.columns(5)
-        for idx, key in enumerate(["평균 총점", "최고점", "최저점", "점수 격차", "세력 분포"]):
-            with mcols[idx]:
-                st.markdown(f"""
-                <div class="mini-card">
-                    <div class="mini-card-title">{key}</div>
-                    <div class="mini-card-value">{metrics[key]}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        st.caption("점수는 이 앱의 분석 모델에 따른 참고값입니다.")
+        mcols = st.columns(1)
+        with mcols[0]:
+            st.markdown(f"""
+            <div class="mini-card">
+                <div class="mini-card-title">세력 분포</div>
+                <div class="mini-card-value">{metrics["세력 분포"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     elif selected_view == "케미 보기":
         quest_title(" 케미 보기", "가장 잘 맞는 조합과 조율 포인트를 확인해.", ["최고 케미", "평균", "조율 포인트"])
