@@ -14670,7 +14670,9 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
         st.caption("원국 안에서 특정 기운이 얼마나 크게 자리 잡는지를 봅니다.")
     with c3:
         st.markdown("<h4 class=\"saju-section-heading\">🌊 기운의 흐름</h4>", unsafe_allow_html=True)
-        safe_metric("흐름", f"{flow_score:.1f}/{flow_max:.0f}")
+        _fv = _axis_percent(flow_score, flow_max) * 100
+        _fl = ("극강" if _fv > 80 else "최강" if _fv > 75 else "강함+" if _fv > 70 else "강함" if _fv > 65 else "보통+" if _fv > 60 else "보통" if _fv > 55 else "약함+" if _fv > 50 else "약함")
+        safe_metric("흐름", _fl)
         st.progress(_axis_percent(flow_score, flow_max))
         if flow_rows:
             st.caption(" · ".join(_flow_plain_name(str(f.get("구조", ""))) for f in flow_rows[:2]))
@@ -20451,47 +20453,56 @@ def render_hanuneyo_text_explanation(payload, char, result):
     st.markdown("#### ⚡ 흐름과 연결")
     order = ["기초체력", "흐름과 연결", "현실작동력"]
     _axis_icons = {"기초체력": "💪", "흐름과 연결": "🔄", "현실작동력": "⚙️"}
-    _state_colors = {
-        "강함": ("#16a34a", "#0d1e14"),
-        "보통": ("#d97706", "#0d1525"),
+    # 8단계 등급 라벨 (극강>80>최강>75>강함+>70>강함>65>보통+>60>보통>55>약함+>50>약함)
+    _label_colors = {
+        "극강": ("#fbbf24", "#1a1800"),
+        "최강": ("#f59e0b", "#1a1500"),
+        "강함+": ("#16a34a", "#0d1e14"),
+        "강함": ("#22c55e", "#0d1a10"),
+        "보통+": ("#d97706", "#1a1200"),
+        "보통": ("#94a3b8", "#111827"),
+        "약함+": ("#f87171", "#1e0d0d"),
         "약함": ("#dc2626", "#200d0d"),
     }
+    def _pct_to_grade(p):
+        if p > 80:   return "극강"
+        elif p > 75: return "최강"
+        elif p > 70: return "강함+"
+        elif p > 65: return "강함"
+        elif p > 60: return "보통+"
+        elif p > 55: return "보통"
+        elif p > 50: return "약함+"
+        else:        return "약함"
     # 결과 카드 행
     _axis_results = []
     for _an in order:
         _info = score_map.get(_an, {}) or {}
         _pct  = float(_info.get("pct", 0.0) or 0.0)
-        if _pct >= 68:   _st = "강함"
-        elif _pct >= 45: _st = "보통"
-        else:            _st = "약함"
+        _st   = _pct_to_grade(_pct)
         _axis_results.append((_an, _pct, _st))
     _bars_html = "<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;'>"
     for _an, _pct, _st in _axis_results:
-        _sc, _sbg = _state_colors.get(_st, ("#94a3b8", "#111827"))
-        _raw  = float((_info := score_map.get(_an, {}) or {}).get("score", 0.0) or 0.0)
-        _max  = float(_info.get("max", 0.0) or 0.0)
-        _max_str = f"/{_max:.0f}" if _max > 0 else ""
+        _sc, _sbg = _label_colors.get(_st, ("#94a3b8", "#111827"))
         _bars_html += (
             f"<div style='background:{_sbg};border:1px solid {_sc};border-radius:8px;"
             f"padding:8px 12px;text-align:center;flex:1;min-width:90px;'>"
             f"<div style='font-size:20px;'>{_axis_icons.get(_an, '')}</div>"
             f"<div style='font-size:12px;font-weight:600;color:#b0c4cc;margin:3px 0;'>{_an}</div>"
-            f"<div style='font-size:14px;font-weight:700;color:{_sc};'>{_st}</div>"
-            f"<div style='font-size:12px;color:{_sc};'>{_raw:.0f}{_max_str}점 ({_pct:.0f}%)</div>"
+            f"<div style='font-size:22px;font-weight:900;color:{_sc};'>{_st}</div>"
             f"</div>"
         )
     _bars_html += "</div>"
     st.markdown(_bars_html, unsafe_allow_html=True)
     st.caption("사주를 세 방향으로 나눠서 봐. 재료가 얼마나 있는지, 흐름이 잘 도는지, 실제로 잘 드러나는지 — 이 셋이 고르게 돌아가는 게 제일 좋거든.")
     for _axis_name, _pct, _state in _axis_results:
-        if _state == "강함":
+        if _state in ("극강", "최강", "강함+", "강함"):
             _state_msg = axis_high.get(_axis_name, "")
-        elif _state == "보통":
+        elif _state in ("보통+", "보통"):
             _state_msg = "보통 수준이야. 상황에 따라 잘 드러나기도 하고 좀 약해지기도 해."
         else:
             _state_msg = axis_low.get(_axis_name, "")
         st.markdown(
-            f"**{_axis_icons.get(_axis_name, '')} {_axis_name} — {_state} ({_pct:.0f}%):** "
+            f"**{_axis_icons.get(_axis_name, '')} {_axis_name} — {_state}:** "
             f"{axis_desc.get(_axis_name, '')}  \n→ {_state_msg}"
         )
 
@@ -21600,6 +21611,24 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
     values = {axis_info_from_category(row["카테고리"])["primary"]: float(row.get("반영치", row.get("점수", 0))) for row in totals}
     size_score = values.get("기초체력", 0.0)
     flow_score = values.get("흐름과 연결", 0.0)
+    _flow_max_v = float(next((r.get("max", 0) for r in (result.get("score_map") or {}).values() if False), 0) or 0)
+    _flow_pct_v = 0.0
+    try:
+        _sm = result.get("score_map") or {}
+        for _k, _v in _sm.items():
+            if "순환" in str(_k) or "흐름" in str(_k):
+                _flow_pct_v = float(_v.get("pct", 0) or 0)
+                break
+        if _flow_pct_v == 0:
+            _fsm2 = {}
+            for row in (result.get("categorized_scores") or []):
+                from_ai = axis_info_from_category(row["카테고리"])
+                if from_ai.get("primary") == "흐름과 연결":
+                    _flow_pct_v = float(row.get("pct", 0) or 0)
+                    break
+    except Exception:
+        _flow_pct_v = 0.0
+    _flow_grade = ("극강" if _flow_pct_v > 80 else "최강" if _flow_pct_v > 75 else "강함+" if _flow_pct_v > 70 else "강함" if _flow_pct_v > 65 else "보통+" if _flow_pct_v > 60 else "보통" if _flow_pct_v > 55 else "약함+" if _flow_pct_v > 50 else "약함")
     expr_score = values.get("현실작동력", 0.0)
     base_total = size_score + flow_score + expr_score
     total = float(result.get("total", 0.0))
@@ -21611,7 +21640,7 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.55rem;">
             <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">오행·월령·통근·일간</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
-            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;"></div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{flow_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">조후·십성 흐름</div></div>
+            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;"></div><div style="font-size:1.35rem;color:#f59e0b;font-weight:900;">{_flow_grade}</div><div style="font-size:.88rem;color:#d4b896;">조후·십성 흐름</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
             <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">합충·현실 작동</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
