@@ -19748,6 +19748,7 @@ def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
         ("🌊 10년 처방", "🌊 10년의 처방"),
         ("🌸 올해 처방", "🌸 올해의 처방"),
         ("🌤 오늘",     "🌤 오늘의 처방"),
+        ("🪪 원국",     "🪪 사주 원국"),
         ("📅 캘린더",   "일운캘린더"),
         ("📸 공유",     "공유 카드"),
         ("🔎 상세",     "전문가 상세보기"),
@@ -19757,7 +19758,7 @@ def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
     if state_key not in st.session_state or st.session_state.get(state_key) not in valid_values:
         st.session_state[state_key] = default
 
-    row1, row2 = pages[:5], pages[5:]
+    row1, row2 = pages[:4], pages[4:]
     for row_pages in [row1, row2]:
         cols = st.columns(len(row_pages))
         for col, (short, full) in zip(cols, row_pages):
@@ -21065,6 +21066,14 @@ def render_single_summary(payload: Dict[str, object]) -> None:
 
     elif view == "🌤 오늘의 처방":
         render_today_quick_entry(payload)
+
+    elif view == "🪪 사주 원국":
+        st.markdown("### 🪪 사주 원국")
+        render_origin_identity_table(chart)
+        st.markdown("---")
+        render_manse_daewun_cards(payload)
+        if luck_flow and luck_flow.get("sewun_rows"):
+            render_manse_sewun_cards(luck_flow)
 
     elif view == "일운캘린더":
         render_daily_luck_calendar(payload)
