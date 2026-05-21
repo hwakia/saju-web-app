@@ -23244,21 +23244,20 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
     quest_title("🌸 내 사주MRI — 원국 직접 입력", "", ["원국", "천간", "지지"])
     single_direct_name = st.text_input("별명", value="나", key="single_direct_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     st.caption("년주·월주 → 일주·시주 순으로 선택하세요.")
-    _r1a = st.columns(2)
-    with _r1a[0]:
+    _r1 = st.columns(4)
+    with _r1[0]:
         st.markdown("**🌱 년주**")
         ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key="ys")
         yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key="yb")
-    with _r1a[1]:
+    with _r1[1]:
         st.markdown("**🌿 월주**")
         ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key="ms")
         mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key="mb")
-    _r1b = st.columns(2)
-    with _r1b[0]:
+    with _r1[2]:
         st.markdown("**☀️ 일주**")
         ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key="ds")
         db = st.radio("일지", branch_options, index=0, format_func=display_branch, key="db")
-    with _r1b[1]:
+    with _r1[3]:
         st.markdown("**🌙 시주**")
         hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key="hs")
         hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key="hb")
@@ -23422,17 +23421,21 @@ elif input_mode in ["케미 분석", "친구와 배틀"]:
                 })
             else:
                 st.markdown("#### 원국 직접 입력")
-                _fb_a = st.columns(2)
+                _fb_a = st.columns(4)
                 with _fb_a[0]:
-                    st.markdown("**🌱 년주 / 🌿 월주**")
+                    st.markdown("**🌱 년주**")
                     ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ys_{idx}")
                     yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_yb_{idx}")
+                with _fb_a[1]:
+                    st.markdown("**🌿 월주**")
                     ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ms_{idx}")
                     mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_mb_{idx}")
-                with _fb_a[1]:
-                    st.markdown("**☀️ 일주 / 🌙 시주**")
+                with _fb_a[2]:
+                    st.markdown("**☀️ 일주**")
                     ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ds_{idx}")
                     db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_db_{idx}")
+                with _fb_a[3]:
+                    st.markdown("**🌙 시주**")
                     hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_hs_{idx}")
                     hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_hb_{idx}")
                 gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"friend_battle_gender_{idx}")
@@ -23539,17 +23542,21 @@ elif input_mode == "__legacy_group_disabled__":
                 })
             else:
                 st.markdown("#### 원국 직접 입력")
-                _mu_a = st.columns(2)
+                _mu_a = st.columns(4)
                 with _mu_a[0]:
-                    st.markdown("**🌱 년주 / 🌿 월주**")
+                    st.markdown("**🌱 년주**")
                     ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"multi_ys_{idx}")
                     yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"multi_yb_{idx}")
+                with _mu_a[1]:
+                    st.markdown("**🌿 월주**")
                     ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"multi_ms_{idx}")
                     mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"multi_mb_{idx}")
-                with _mu_a[1]:
-                    st.markdown("**☀️ 일주 / 🌙 시주**")
+                with _mu_a[2]:
+                    st.markdown("**☀️ 일주**")
                     ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"multi_ds_{idx}")
                     db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"multi_db_{idx}")
+                with _mu_a[3]:
+                    st.markdown("**🌙 시주**")
                     hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"multi_hs_{idx}")
                     hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"multi_hb_{idx}")
                 gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"multi_gender_{idx}")
