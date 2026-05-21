@@ -7112,7 +7112,8 @@ def render_multi_situation_map(participants: List[Dict[str, object]], power_map:
             bucket = relation_bucket(score)
             with rel_cols[idx % len(rel_cols)]:
                 st.markdown(f"**{row.get('A', '-')} ↔ {row.get('B', '-')}**")
-                safe_metric(str(bucket.get("label", "케미")), f"{score:.1f}")
+                _pr_grade = ("극강" if score > 80 else "최강" if score > 75 else "강함+" if score > 70 else "강함" if score > 65 else "보통+" if score > 60 else "보통" if score > 55 else "약함+" if score > 50 else "약함")
+                safe_metric(str(bucket.get("label", "케미")), _pr_grade)
                 st.progress(int(round(max(0.0, min(100.0, score)))))
 
     st.markdown("##### 역할 카드")
@@ -14665,7 +14666,9 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
         st.caption("목·화·토·금·수의 상징 색과 아이콘으로 현재 비중을 표시합니다.")
     with c2:
         st.markdown("<h4 class=\"saju-section-heading\">💪 기운의 크기</h4>", unsafe_allow_html=True)
-        safe_metric("기본 체급", f"{size_score:.1f}/{size_max:.0f}")
+        _sv_pct = _axis_percent(size_score, size_max) * 100
+        _sv_grade = ("극강" if _sv_pct > 80 else "최강" if _sv_pct > 75 else "강함+" if _sv_pct > 70 else "강함" if _sv_pct > 65 else "보통+" if _sv_pct > 60 else "보통" if _sv_pct > 55 else "약함+" if _sv_pct > 50 else "약함")
+        safe_metric("기본 체급", _sv_grade)
         st.progress(_axis_percent(size_score, size_max))
         st.caption("원국 안에서 특정 기운이 얼마나 크게 자리 잡는지를 봅니다.")
     with c3:
@@ -14680,7 +14683,9 @@ def render_visual_analysis_core(payload: Dict[str, object]) -> None:
             st.caption("큰 흐름은 약하지만, 흐름 보기에서 약한 통로를 확인할 수 있습니다.")
     with c4:
         st.markdown("<h4 class=\"saju-section-heading\">✨ 기운의 발현</h4>", unsafe_allow_html=True)
-        safe_metric("현실 작동", f"{express_score:.1f}/{express_max:.0f}")
+        _ev_pct = _axis_percent(express_score, express_max) * 100
+        _ev_grade = ("극강" if _ev_pct > 80 else "최강" if _ev_pct > 75 else "강함+" if _ev_pct > 70 else "강함" if _ev_pct > 65 else "보통+" if _ev_pct > 60 else "보통" if _ev_pct > 55 else "약함+" if _ev_pct > 50 else "약함")
+        safe_metric("현실 작동", _ev_grade)
         st.progress(_axis_percent(express_score, express_max))
         if binding_notes or tension_notes:
             preview = []
@@ -18897,7 +18902,6 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
     <div class="chem-hero-premium" style="text-align:center;padding:1.45rem 1.1rem;background:linear-gradient(135deg,#0f172a,#0a1628);border:1px solid rgba(255,145,180,.30);border-radius:26px;box-shadow:0 14px 30px rgba(255,125,165,.12);margin:.5rem 0 1rem 0;">
         <div style="font-size:2.4rem;line-height:1;">{chem['stamp']}</div>
         <div style="font-size:clamp(1.8rem,4vw,2.55rem);font-weight:950;color:#f59e0b;letter-spacing:-.05em;">{safe_chem_title}</div>
-        <div style="margin-top:.35rem;color:#fde68a;font-weight:950;font-size:1.15rem;">궁합점수 {safe_chem_score}/100</div>
         <div style="margin-top:.55rem;color:#d4b896;font-weight:760;">{safe_chem_desc}</div>
         <div style="margin-top:.45rem;color:#d4b896;font-size:.92rem;">{safe_summary}</div>
     </div>
@@ -18961,14 +18965,17 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
             render_luck_chemistry_panel(mine, friend, compatibility)
 
         elif expert_view == "계산 참고 지표":
-            st.caption("개별 원국 점수의 우열은 표시하지 않습니다. 아래는 궁합점수와 케미 유형을 만들기 위한 관계 축입니다.")
+            st.caption("아래는 케미 유형을 만들기 위한 관계 축 등급이야.")
             axes = compatibility.get("axes") or {}
+            def _chem_v_grade(v):
+                v = float(v or 0)
+                return ("극강" if v > 80 else "최강" if v > 75 else "강함+" if v > 70 else "강함" if v > 65 else "보통+" if v > 60 else "보통" if v > 55 else "약함+" if v > 50 else "약함")
             rows = [
-                ("궁합점수", f"{round(float(compatibility.get('score', 0) or 0))}/100", "두 명식의 보완성, 동맹성, 흐름, 긴장 완충력을 종합한 관계 점수"),
-                ("상호 보완성", f"{float(axes.get('상호 보완성', 0) or 0):.0f}/100", "서로 부족한 오행과 조후를 채워주는 정도"),
-                ("동맹성", f"{float(axes.get('동맹성', 0) or 0):.0f}/100", "닮은 결, 합, 같은 방향성이 만드는 결속감"),
-                ("흐름 동조성", f"{float(axes.get('흐름 동조성', 0) or 0):.0f}/100", "생활 리듬과 기운 흐름이 함께 움직이는 정도"),
-                ("긴장도", f"{float(axes.get('긴장도', 0) or 0):.0f}/100", "충·극·자극 신호가 만드는 변화 압력. 높다고 나쁨은 아니며 관리 포인트입니다."),
+                ("종합 케미", _chem_v_grade(compatibility.get("score", 0)), "두 명식의 보완성, 동맹성, 흐름, 긴장 완충력을 종합한 관계 등급"),
+                ("상호 보완성", _chem_v_grade(axes.get("상호 보완성", 0)), "서로 부족한 오행과 조후를 채워주는 정도"),
+                ("동맹성", _chem_v_grade(axes.get("동맹성", 0)), "닮은 결, 합, 같은 방향성이 만드는 결속감"),
+                ("흐름 동조성", _chem_v_grade(axes.get("흐름 동조성", 0)), "생활 리듬과 기운 흐름이 함께 움직이는 정도"),
+                ("긴장도", _chem_v_grade(axes.get("긴장도", 0)), "충·극·자극 신호가 만드는 변화 압력. 높다고 나쁨은 아니며 관리 포인트야."),
             ]
             safe_dataframe(rows)
             if safe_toggle("케미 분석 로직 보기", value=False, key="battle_logic_panel_refactor_v590"):
@@ -21634,26 +21641,34 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
     total = float(result.get("total", 0.0))
     holistic = float(result.get("holistic", {}).get("adjustment", 0.0))
     shinsal = float(result.get("shinsal", {}).get("adjustment", 0.0))
+    _sz_sc, _sz_mx = _axis_score_lookup(result, "크기")
+    _ex_sc, _ex_mx = _axis_score_lookup(result, "발현")
+    _fl_sc, _fl_mx = _axis_score_lookup(result, "순환")
+    _sz_pct_d = _axis_percent(_sz_sc, _sz_mx) * 100
+    _ex_pct_d = _axis_percent(_ex_sc, _ex_mx) * 100
+    _tot_mx_d = _sz_mx + _fl_mx + _ex_mx
+    _tot_pct_d = (total / _tot_mx_d * 100) if _tot_mx_d > 0 else 0.0
+    _size_grade_d = ("극강" if _sz_pct_d > 80 else "최강" if _sz_pct_d > 75 else "강함+" if _sz_pct_d > 70 else "강함" if _sz_pct_d > 65 else "보통+" if _sz_pct_d > 60 else "보통" if _sz_pct_d > 55 else "약함+" if _sz_pct_d > 50 else "약함")
+    _expr_grade_d = ("극강" if _ex_pct_d > 80 else "최강" if _ex_pct_d > 75 else "강함+" if _ex_pct_d > 70 else "강함" if _ex_pct_d > 65 else "보통+" if _ex_pct_d > 60 else "보통" if _ex_pct_d > 55 else "약함+" if _ex_pct_d > 50 else "약함")
+    _total_grade_d = ("극강" if _tot_pct_d > 80 else "최강" if _tot_pct_d > 75 else "강함+" if _tot_pct_d > 70 else "강함" if _tot_pct_d > 65 else "보통+" if _tot_pct_d > 60 else "보통" if _tot_pct_d > 55 else "약함+" if _tot_pct_d > 50 else "약함")
+    _shinsal_label_d = ("보강" if shinsal > 0.5 else "완화" if shinsal < -0.5 else "중립")
     st.markdown(f"""
     <div style="background:#0f172a;border:1px solid rgba(230,164,184,0.45);border-radius:18px;padding:1rem 1rem 1.1rem 1rem;margin:0.35rem 0 1rem 0;">
-        <div style="font-weight:900;color:#d4b896;font-size:1.04rem;margin-bottom:0.7rem;">총점 계산 한눈에 보기</div>
+        <div style="font-weight:900;color:#d4b896;font-size:1.04rem;margin-bottom:0.7rem;">기운 3축 한눈에 보기</div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.55rem;">
-            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d97706;font-weight:900;">{size_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">오행·월령·통근·일간</div></div>
+            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d97706;font-weight:900;">{_size_grade_d}</div><div style="font-size:.88rem;color:#d4b896;">오행·월령·통근·일간</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">+</div>
             <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;"></div><div style="font-size:1.35rem;color:#f59e0b;font-weight:900;">{_flow_grade}</div><div style="font-size:.88rem;color:#d4b896;">조후·십성 흐름</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">+</div>
-            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d97706;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">합충·현실 작동</div></div>
+            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d97706;font-weight:900;">{_expr_grade_d}</div><div style="font-size:.88rem;color:#d4b896;">합충·현실 작동</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">+</div>
-            <div style="flex:1 1 150px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4b896;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d97706;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.88rem;color:#d4b896;">체감 보정</div></div>
+            <div style="flex:1 1 150px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4b896;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d97706;font-weight:900;">{_shinsal_label_d}</div><div style="font-size:.88rem;color:#d4b896;">체감 보정</div></div>
             <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">=</div>
-            <div style="flex:1 1 180px;background:linear-gradient(135deg,#fefce8,#fffafc);border:2px solid #ebb2c4;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#d4b896;font-weight:800;">대표 총점</div><div style="font-size:1.6rem;color:#92400e;font-weight:950;">{total:.1f}점</div></div>
+            <div style="flex:1 1 180px;background:linear-gradient(135deg,#1e2d4a,#0f172a);border:2px solid #f59e0b;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#d4b896;font-weight:800;">종합 등급</div><div style="font-size:1.6rem;color:#f59e0b;font-weight:950;">{_total_grade_d}</div></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if abs(total - base_total) >= 0.1:
-        st.caption(f"참고: 신살·공망 체감 보정 {shinsal:+.1f}점을 대표 점수에 반영했습니다. 전체 인상 보정 {holistic:+.1f}점은 해설용 참고 신호입니다.")
-    else:
-        st.caption("대표 점수는 기초체력 + 흐름과 연결 + 현실작동력에 신살·공망 체감 보정을 더한 값입니다.")
+    st.caption("기초체력·흐름과 연결·현실작동력 3축과 신살·공망 보정을 종합한 등급이야.")
 
 
 
@@ -21933,7 +21948,8 @@ def render_ability_triangle(result: Dict[str, object]) -> None:
         legacy = str(info.get("legacy", ""))
         with col:
             st.markdown(f"**{icon} {name}**")
-            safe_metric("점수", f"{score:.1f}점")
+            _sc_grade = ("극강" if pct > 80 else "최강" if pct > 75 else "강함+" if pct > 70 else "강함" if pct > 65 else "보통+" if pct > 60 else "보통" if pct > 55 else "약함+" if pct > 50 else "약함")
+            safe_metric("등급", _sc_grade)
             st.progress(int(round(max(0.0, min(100.0, pct)))))
             if legacy:
                 st.caption(f"보조 설명: {legacy}")
@@ -22210,7 +22226,7 @@ def render_luck_timeline(luck_flow: Dict[str, object] | None) -> None:
         safe_year = html.escape(str(r.get('연도', '-')), quote=True)
         safe_tag = html.escape(str(tag), quote=True)
         safe_sewun = html.escape(str(r.get('세운', '-')), quote=True)
-        cards.append(f"<div style='flex:1 1 120px;background:#0f172a;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4b896;'>{safe_year}</div><div style='font-weight:900;color:#92400e;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#111827;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#fde68a,#bda7ff);'></div></div><div style='font-size:.88rem;color:#d4b896;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
+        cards.append(f"<div style='flex:1 1 120px;background:#0f172a;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4b896;'>{safe_year}</div><div style='font-weight:900;color:#92400e;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#111827;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#fde68a,#bda7ff);'></div></div><div style='font-size:.88rem;color:#d4b896;margin-top:.25rem;'>{safe_sewun}</div></div>")
     st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 
@@ -22355,7 +22371,9 @@ def render_luck_wave_section(luck_flow: Dict[str, object] | None) -> None:
         with col_b:
             safe_metric("현재 대운", d.get("ganzhi", "-"))
         with col_c:
-            safe_metric("대운 참고점", f"{luck_flow.get('daewun_score', '-')}점", f"{float(luck_flow.get('daewun_mod', 0.0)):+.1f}점")
+            _dw_mod = float(luck_flow.get("daewun_mod", 0.0))
+            _dw_mod_label = ("흐름 좋음" if _dw_mod > 0.5 else "흐름 약함" if _dw_mod < -0.5 else "흐름 중립")
+            safe_metric("대운 흐름", _dw_mod_label)
         safe_write(f"- 시작 나이: **{d.get('start_age', '-')}세**")
         safe_write(f"- 해석: {luck_flow.get('daewun_note', '-')}")
         if luck_flow.get("sewun_rows"):
@@ -24191,4 +24209,29 @@ _stcomp.html("""
         '  background-color:#1e2d4a!important;' +
         '  color:#fde68a!important;' +
         '}' +
-       
+        'li[role="option"]:hover {' +
+        '  background-color:#92400e!important;' +
+        '}' +
+        /* number_input 버튼 */
+        'button[data-testid="stNumberInputStepDown"],' +
+        'button[data-testid="stNumberInputStepUp"] {' +
+        '  background-color:#1e2d4a!important;' +
+        '  color:#fde68a!important;' +
+        '  border-color:rgba(245,158,11,0.40)!important;' +
+        '}';
+
+    var style = document.createElement('style');
+    style.id = 'saju-dark-override';
+    style.textContent = css;
+
+    function inject() {
+        if (!document.getElementById('saju-dark-override')) {
+            (document.head || document.documentElement).appendChild(style.cloneNode(true));
+        }
+    }
+    inject();
+    document.addEventListener('DOMContentLoaded', inject);
+    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:false});
+})();
+</script>
+""", height=0, scrolling=False)
