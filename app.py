@@ -15187,7 +15187,7 @@ def _daily_ten_god_usage(chart: Chart, day_gz: str) -> Dict[str, object]:
 
 def daily_interaction_overview(interactions: List[Dict[str, str]], limit: int = 4) -> str:
     if not interactions:
-        return "합·충·형·파·해 특이 신호 약함"
+        return "특이 신호 없음"
     parts: List[str] = []
     for row in interactions[:limit]:
         name = str(row.get("name", "") or "")
@@ -15198,7 +15198,7 @@ def daily_interaction_overview(interactions: List[Dict[str, str]], limit: int = 
             label = f"{label}({pos})"
         if label and label not in parts:
             parts.append(label)
-    return " · ".join(parts) if parts else "합·충·형·파·해 특이 신호 약함"
+    return " · ".join(parts) if parts else "특이 신호 없음"
 
 
 def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: date | None = None) -> Dict[str, str]:
@@ -15440,7 +15440,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     ten_god_title = "십성 흐름"
     ten_god_body = str(compass.get("day_tengod_summary") or compass.get("ten_god_focus") or "십성 정보 제한")
     prescription = str(compass.get("ten_god_action") or compass.get("prescription") or compass.get("ten_god_short") or "-")
-    interaction_overview = str(compass.get("interaction_overview") or "합·충·형·파·해 특이 신호 약함")
+    interaction_overview = str(compass.get("interaction_overview") or "특이 신호 없음")
 
     st.markdown("### 🌤 오늘의 처방")
     st.caption(f"{compass.get('date', '-')} · 오늘의 기운 {compass.get('day_gz', '-')}")
@@ -19282,7 +19282,7 @@ def _daily_luck_calendar_rows(chart: Chart, result: Dict[str, object], start_dat
 def render_selected_daily_luck_card(chart: Chart, result: Dict[str, object], target_date: date) -> None:
     """달력에서 선택한 날짜의 일운을 풀이와 함께 보여준다."""
     compass = today_compass_payload(chart, result, target_date=target_date)
-    interaction_overview = str(compass.get("interaction_overview") or "합·충·형·파·해 특이 신호 약함")
+    interaction_overview = str(compass.get("interaction_overview") or "특이 신호 없음")
     ten_god_line = str(compass.get("day_tengod_summary") or "십성 정보 제한")
     prescription = str(compass.get("ten_god_action") or compass.get("prescription") or "-")
     signal_text  = _daily_calendar_signal_text(ten_god_line, interaction_overview)
@@ -20160,7 +20160,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         )
         p1 = _temp_para.get(_t_key, f"{_safe} 사주의 온도 균형을 먼저 봤어.")
         if char_tone:
-            p1 += f"<br><span style='font-size:13px;color:#a0b4bc;'>{char_tone}</span>"
+            p1 += f"<br><span style='color:#a0b4bc;'>{char_tone}</span>"
 
         # 2단락: 오행 주성분 + 강약
         _el_para = {
@@ -20500,18 +20500,84 @@ def render_hanuneyo_text_explanation(payload, char, result):
         )
     _bars_html += "</div>"
     st.markdown(_bars_html, unsafe_allow_html=True)
-    st.caption("사주를 세 방향으로 나눠서 봐. 재료가 얼마나 있는지, 흐름이 잘 도는지, 실제로 잘 드러나는지 — 이 셋이 고르게 돌아가는 게 제일 좋거든.")
-    for _axis_name, _pct, _state in _axis_results:
-        if _state in ("극강", "최강", "강함+", "강함"):
-            _state_msg = axis_high.get(_axis_name, "")
-        elif _state in ("보통+", "보통"):
-            _state_msg = "보통 수준이야. 상황에 따라 잘 드러나기도 하고 좀 약해지기도 해."
+
+    # ── 흐름·발현 데이터 수집 ─────────────────────────────
+    _flows_all       = result.get("flows", []) or []
+    _flow_rows       = _compress_flow_rows_for_display(_flows_all)
+    _active_flows    = {str(f.get("구조", "")) for f in _flow_rows if f.get("강도") in ["중간", "중간~강함", "강함"]}
+    _interactions_all = result.get("interactions", []) or []
+    _gathering_notes  = [_interaction_plain_note(it) for it in _interactions_all if str(it.get("type", "")) in {"삼합", "방합", "반합"}]
+    _tension_notes    = [_interaction_plain_note(it) for it in _interactions_all if str(it.get("type", "")) in {"충", "형"}]
+
+    # ── 3축 카드 + 할머니 연결 설명 ─────────────────────────
+    _axis_story = {
+        "기초체력": {
+            "high": "원국 안에 기운의 재료 자체가 넉넉히 깔려 있어. 씨앗도 있고 땅도 있는 격이야 — 쉽게 지치지 않는 체력이 여기서 나오는 거거든.",
+            "mid":  "재료가 아주 넘치거나 부족하진 않아. 쓸 만큼은 있는데, 상황에 따라 보강이 필요할 때도 있어.",
+            "low":  "재료가 좀 얇아. 자꾸 지친다거나 뭔가 부족하다는 느낌 들었지? 그 이유가 여기 있어. 재료를 채워주는 환경과 사람이 이 사주한테 진짜 약이야.",
+        },
+        "흐름과 연결": {
+            "high": "기운이 막히지 않고 잘 돌아가고 있어.{flow_str} 생각이 행동이 되고, 행동이 결과가 되는 사이클이 살아 있는 거야. 이게 있으면 혼자서도 에너지가 제 방향으로 흘러가거든.",
+            "mid":  "흐름이 부분적으로는 이어지는데 어딘가 끊기는 구간이 있어. 어느 사이클이 약한지 아래에서 확인해봐 — 그 구간만 보완하면 훨씬 잘 돌아가.",
+            "low":  "흐름 구조가 약한 편이야. 잘하는 게 있어도 그게 결과로 연결되는 데 시간이 좀 더 걸릴 수 있어. 흐름을 도와주는 환경과 사람을 곁에 두는 게 중요해.",
+        },
+        "현실작동력": {
+            "high": "가진 기운이 바깥으로 잘 드러나.{gathering_str} 머릿속에만 있는 사람이 아니라 실제로 보여주는 사람이야 — 이게 이 사주의 큰 무기야.",
+            "mid":  "드러나는 힘이 중간 정도야. 내면에 있는 걸 꺼내는 계기가 필요해 — 혼자 고민만 하기보다 작게라도 바깥으로 표현하는 게 중요해.",
+            "low":  "기운이 안으로 머무는 경향이 있어. 능력이 없는 게 아니야 — 발현되는 구조가 약한 거거든. 첫 발을 내딛는 용기가 이 사주한테 제일 중요한 거야.",
+        },
+    }
+
+    for _an, _pct, _st in _axis_results:
+        _grade_key = "high" if _st in ("극강", "최강", "강함+", "강함") else "mid" if _st in ("보통+", "보통") else "low"
+        _sc, _sbg = _label_colors.get(_st, ("#94a3b8", "#111827"))
+        _tmpl = _axis_story.get(_an, {}).get(_grade_key, axis_desc.get(_an, ""))
+        # 흐름과 연결 — 감지된 흐름 이름 삽입
+        if _an == "흐름과 연결":
+            _flow_str_list = [f for f in ["식상생재", "재관인상생", "재생관", "관인상생"] if f in _active_flows]
+            _flow_insert = (" " + "·".join(_flow_str_list) + " 흐름 구조가 확인되거든.") if _flow_str_list else " 아래 흐름 보기에서 통로를 확인할 수 있어."
+            _story = _tmpl.format(flow_str=_flow_insert)
+        # 현실작동력 — 합국·방합 감지 여부 삽입
+        elif _an == "현실작동력":
+            _g_insert = (f" 합국·방합 구조({len(_gathering_notes)}개)가 기운을 한 방향으로 뭉쳐주거든.") if _gathering_notes else " 큰 합국 구조는 약하지만, 일상적인 흐름 속에서 충분히 드러날 수 있어."
+            _story = _tmpl.format(gathering_str=_g_insert)
         else:
-            _state_msg = axis_low.get(_axis_name, "")
+            _story = _tmpl
+
         st.markdown(
-            f"**{_axis_icons.get(_axis_name, '')} {_axis_name} — {_state}:** "
-            f"{axis_desc.get(_axis_name, '')}  \n→ {_state_msg}"
+            f"<div style='border-left:3px solid {_sc};padding:8px 14px;margin:6px 0;"
+            f"background:rgba(0,0,0,0.25);border-radius:0 6px 6px 0;'>"
+            f"<div style='font-size:13px;font-weight:700;color:{_sc};margin-bottom:4px;'>"
+            f"{_axis_icons.get(_an,'')} {_an} — {_st}</div>"
+            f"<div style='font-size:14px;color:#e2e8f0;line-height:1.75;'>{_story}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
         )
+
+    # ── 자세히 보기 expander 3종 ─────────────────────────
+    if _flow_rows:
+        with st.expander("🌊 흐름 구조 자세히 보기 (식상생재·재생관·관인상생)", expanded=False):
+            st.caption("각 흐름이 원국의 어느 글자에서 나오는지, 얼마나 작동하는지 확인합니다.")
+            for _row in _flow_rows:
+                _render_flow_pipeline_card(chart, result, _row)
+    elif _flows_all:
+        with st.expander("🌊 흐름 구조 보기 (약한 통로 포함)", expanded=False):
+            st.caption("크게 작동하는 흐름은 약하지만, 잠재된 통로를 확인할 수 있습니다.")
+            _weak_rows = _compress_flow_rows_for_display(_flows_all)
+            for _row in (_weak_rows or []):
+                _render_flow_pipeline_card(chart, result, _row)
+
+    if _gathering_notes:
+        with st.expander(f"💥 합국·방합으로 커지는 기운 자세히 보기 ({len(_gathering_notes)}개 구조)", expanded=False):
+            st.caption("여러 지지가 한 방향으로 모여 기운 덩어리를 키우는 구조입니다. 발현과 현실작동력에 직접 영향을 줍니다.")
+            for _note in _gathering_notes:
+                st.markdown(f"- {_note}")
+
+    if _tension_notes:
+        with st.expander(f"⚡ 충·형 신호 보기 ({len(_tension_notes)}개)", expanded=False):
+            st.caption("원국 안에서 서로 부딪히는 기운입니다. 긴장과 변화의 원천이 되기도 해요.")
+            for _note in _tension_notes:
+                st.markdown(f"- {_note}")
 
     st.divider()
 
