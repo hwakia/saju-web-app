@@ -7878,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.169"
+APP_VERSION = "v5.171"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20449,16 +20449,10 @@ def render_hanuneyo_text_explanation(payload, char, result):
     # 🏥 사주 진단서 렌더링  (개편 — 결과 먼저 · 처방전 추가)
     # ══════════════════════════════════════════════════════════
 
-    # ── 상단 바로가기 버튼 (원국보기 / 사주예보) ─────────────
-    _top_btn_cols = st.columns(2)
-    with _top_btn_cols[0]:
-        if st.button("🪪 원국 보기", key="diag_top_goto_wonkuk", use_container_width=True):
-            st.session_state["single_mri_page_view"] = "🪪 사주 원국"
-            st.rerun()
-    with _top_btn_cols[1]:
-        if st.button("📡 사주예보 보기", key="diag_top_goto_yebo", use_container_width=True):
-            st.session_state["single_mri_page_view"] = "📡 사주 예보"
-            st.rerun()
+    # ── 상단 바로가기 버튼 (원국보기) ────────────────────────
+    if st.button("🪪 원국 보기", key="diag_top_goto_wonkuk", use_container_width=True):
+        st.session_state["single_mri_page_view"] = "🪪 사주 원국"
+        st.rerun()
 
     # ── 0. 할머니 종합 소견 인트로 박스 ─────────────────────
     def _make_grandma_intro() -> str:
@@ -20529,7 +20523,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
         # 1. 체질 소개
         parts.append(
-            f"할머니가 이 사주를 쭉 들여다봤어.<br>"
+            f"이 사주를 쭉 들여다봤어.<br>"
             f"{_temp_story.get(_t_key, '')}"
         )
 
@@ -21522,7 +21516,7 @@ def render_saju_yebo_page(payload: dict) -> None:
 
 
     # ══ 종합예보 — 할머니의 총평 (4운 카드 직하) ══════════════════
-    st.markdown("#### 📡 종합예보 — 할머니의 총평")
+    st.markdown("#### 📡 종합예보 — 총평")
 
     _PERIOD_DESC = {
         "🌊 대운": "10년 큰 흐름 전체에서",
@@ -21548,7 +21542,7 @@ def render_saju_yebo_page(payload: dict) -> None:
     _yebo_parts = []
 
     _yebo_parts.append(
-        f"할머니가 이 사주를 쭉 들여다봤어.<br>"
+        f"이 사주를 쭉 들여다봤어.<br>"
         f"제일 눈에 띄는 건 {_dom_icon}<b>{_dom_ko} 기운</b>이야 — "
         f"이 사주는 <b>{_str_ko}</b> 구조거든. "
         f"이걸 먼저 알아야 지금 운이 어떻게 작용하는지 제대로 볼 수 있어."
@@ -21720,7 +21714,7 @@ def render_saju_yebo_page(payload: dict) -> None:
         _final_yebo = (
             "종합하면, 지금은 <b>단단히 버텨야 하는 시기</b>야. "
             "운에서 들어오는 기운이 원국에 적지 않은 부담을 주고 있어. "
-            "도전보다 수비, 확장보다 안정이 맞아. 이 시기를 잘 버티면 다음 흐름이 반드시 열려 — 할머니가 보장해."
+            "도전보다 수비, 확장보다 안정이 맞아. 이 시기를 잘 버티면 다음 흐름이 반드시 열려 — 확신해."
         )
     _yebo_parts.append(_final_yebo)
 
@@ -23018,7 +23012,7 @@ def render_patch_notes() -> None:
                 ("☯️ 모임 케미 조후(한난조습) 분석 추가", "모임 전체의 냉열 편향과 온도 분포를 종합 진단하고 처방을 제시합니다."),
                 ("🧩 모임 케미 종합 결론 추가", "오행·조후·강약·역할을 한 문장으로 요약한 종합 결론이 추가됩니다."),
                 ("📊 점수 일치화", "흐름과 연결·3대 능력치·총점이 동일한 기준값으로 통일됩니다."),
-                ("💬 할머니 말투 통일", "종합소견, 체온 진단, 힘 쓰는 방식 설명 전반을 할머니 말투로 일괄 정리합니다."),
+                ("💬 친근한 말투 통일", "종합소견, 체온 진단, 힘 쓰는 방식 설명 전반을 친근한 말투로 일괄 정리합니다."),
             ],
         },
         {
@@ -23863,7 +23857,7 @@ def render_roster_reuse_menu(target: str) -> None:
 
 st.markdown("""
 <div class="hero-wrap">
-    <div class="hero-title"><span>사주예보</span></div>
+    <div class="hero-title"><span>사주MRI</span></div>
     <div class="hero-subtitle">
         내 사주 진단 · 사주예보 · 모두의 케미
     </div>
