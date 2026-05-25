@@ -24332,7 +24332,7 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
           <span style='font-size:13px;color:#b89a6b;'>2026년 5월</span>
         </div>
         <div style='font-size:13px;color:#d4b896;line-height:1.9;'>
-          · 모임 케미 기능이 추가되었어<br>
+          · 사주예보가 추가되었어 — 오늘 내 사주 기운을 한눈에 확인해봐<br>
           · 사주 맞짱이 추가되었어 — 단톡방에서 오늘의 운 대결을 즐겨봐
         </div>
         </div>
