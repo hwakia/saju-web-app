@@ -5287,6 +5287,276 @@ def build_luck_flow_rows(
 
 
 # ============================================================
+# 사주 예보 엔진
+# ============================================================
+
+def norm_branch(value) -> str:
+    """지지 정규화. 간지(2자)이면 지지만, 단독 지지면 그대로, None/빈값이면 빈 문자열."""
+    if not value:
+        return ""
+    s = str(value).strip()
+    if len(s) >= 2 and s[0] in STEMS:
+        return s[1]   # 간지에서 지지만 추출
+    return s if s in BRANCHES else ""
+
+
+def _forecast_layer_desc(items: list, combo: set) -> str:
+    """지지별 어느 층위에서 나왔는지 설명 문자열 반환."""
+    LAYER_KO = {"natal": "원국", "daewoon": "대운", "sewoon": "세운",
+                "wolwoon": "월운", "ilwoon": "일운"}
+    parts = []
+    seen: dict = {}
+    for it in items:
+        b = it["branch"]
+        if b in combo:
+            seen.setdefault(b, []).append(LAYER_KO.get(it["layer"], it["layer"]))
+    for b in combo:
+        if b in seen:
+            parts.append(f"{b}({'+'.join(seen[b])})")
+    return " · ".join(parts)
+
+
+def build_forecast_items(
+    natal_branches,
+    daewoon_branch,
+    sewoon_branch,
+    wolwoon_branch,
+    ilwoon_branch,
+) -> list:
+    """층위별 {branch, layer, weight} 아이템 리스트 생성."""
+    WEIGHTS = {"natal": 2.8, "daewoon": 4.0, "sewoon": 3.0,
+               "wolwoon": 2.0, "ilwoon": 1.0}
+    items = []
+    for b in (natal_branches or []):
+        nb = norm_branch(b)
+        if nb:
+            items.append({"branch": nb, "layer": "natal", "weight": WEIGHTS["natal"]})
+    for layer, val in [
+        ("daewoon", daewoon_branch),
+        ("sewoon",  sewoon_branch),
+        ("wolwoon", wolwoon_branch),
+        ("ilwoon",  ilwoon_branch),
+    ]:
+        nb = norm_branch(val)
+        if nb:
+            items.append({"branch": nb, "layer": layer, "weight": WEIGHTS[layer]})
+    return items
+
+
+def detect_forecast_signals(items: list) -> list:
+    """형·충·합·파·해 신호 탐지 후 점수화된 신호 리스트 반환."""
+    branch_set = {it["branch"] for it in items}
+    signals = []
+
+    def _avg_w(combo):
+        present = [it for it in items if it["branch"] in combo]
+        return sum(it["weight"] for it in present) / max(len(present), 1)
+
+    def _has_natal(combo):
+        return any(it["layer"] == "natal" and it["branch"] in combo for it in items)
+
+    def _connect_mult(combo):
+        big = {"daewoon", "sewoon"}
+        small = {"wolwoon", "ilwoon"}
+        has_big   = any(it["layer"] in big   and it["branch"] in combo for it in items)
+        has_small = any(it["layer"] in small and it["branch"] in combo for it in items)
+        return 1.20 if (has_big and has_small) else 1.0
+
+    def _dup_count(combo):
+        return max((sum(1 for it in items if it["branch"] == b) for b in combo), default=1)
+
+    def _calc(base, combo, cap, dup_max=1.60, dup_step=0.30):
+        aw  = _avg_w(combo)
+        nm  = 1.35 if _has_natal(combo) else 1.0
+        dm  = min(dup_max, 1.0 + dup_step * (_dup_count(combo) - 1))
+        cm  = _connect_mult(combo)
+        return min(cap, base * (aw / 2.8) * nm * dm * cm)
+
+    # ── 삼형 ───────────────────────────────────────────────
+    for combo, name in [
+        (frozenset(["寅", "巳", "申"]), "인사신 삼형"),
+        (frozenset(["丑", "戌", "未"]), "축술미 삼형"),
+    ]:
+        if combo <= branch_set:
+            sc = round(_calc(42, combo, 120), 1)
+            signals.append({
+                "type": "삼형", "name": name,
+                "branches": "·".join(sorted(combo)),
+                "score": sc, "sign": "pressure",
+                "desc": f"세 지지가 서로 긴장·압박하는 구조입니다. {_forecast_layer_desc(items, combo)}",
+                "tip": "무리한 결정보다 확인·정리 중심으로 움직이세요.",
+            })
+
+    # ── 자형 ───────────────────────────────────────────────
+    for b, name in [("辰","진진형"),("午","오오형"),("酉","유유형"),("亥","해해형")]:
+        cnt = sum(1 for it in items if it["branch"] == b)
+        if cnt >= 2:
+            combo = frozenset([b])
+            sc = round(_calc(18, combo, 80, dup_max=1.45, dup_step=0.23), 1)
+            signals.append({
+                "type": "자형", "name": name, "branches": f"{b}·{b}",
+                "score": sc, "sign": "pressure",
+                "desc": f"같은 지지가 반복되어 내부 긴장이 강화됩니다. {_forecast_layer_desc(items, combo)}",
+                "tip": "안에서 쌓이는 긴장을 작은 행동으로 풀어내세요.",
+            })
+
+    # ── 자묘형 ─────────────────────────────────────────────
+    if "子" in branch_set and "卯" in branch_set:
+        combo = frozenset(["子", "卯"])
+        sc = round(_calc(18, combo, 80), 1)
+        signals.append({
+            "type": "형", "name": "자묘형", "branches": "子·卯",
+            "score": sc, "sign": "pressure",
+            "desc": f"예의·형식이 어긋나는 긴장이 생기기 쉽습니다. {_forecast_layer_desc(items, combo)}",
+            "tip": "말투와 태도에 조금 더 주의하세요.",
+        })
+
+    # ── 충 ─────────────────────────────────────────────────
+    for combo, name in [
+        (frozenset(["子","午"]), "자오충"),
+        (frozenset(["丑","未"]), "축미충"),
+        (frozenset(["寅","申"]), "인신충"),
+        (frozenset(["卯","酉"]), "묘유충"),
+        (frozenset(["辰","戌"]), "진술충"),
+        (frozenset(["巳","亥"]), "사해충"),
+    ]:
+        if combo <= branch_set:
+            sc = round(_calc(22, combo, 100), 1)
+            signals.append({
+                "type": "충", "name": name,
+                "branches": "·".join(sorted(combo)),
+                "score": sc, "sign": "pressure",
+                "desc": f"두 기운이 정면으로 부딪히는 구조입니다. {_forecast_layer_desc(items, combo)}",
+                "tip": "일정·계약·이동·말투 중 하나를 점검하세요.",
+            })
+
+    # ── 해 ─────────────────────────────────────────────────
+    for combo, name in [
+        (frozenset(["子","未"]), "자미해"),
+        (frozenset(["丑","午"]), "축오해"),
+        (frozenset(["寅","巳"]), "인사해"),
+        (frozenset(["卯","辰"]), "묘진해"),
+        (frozenset(["申","亥"]), "신해해"),
+        (frozenset(["酉","戌"]), "유술해"),
+    ]:
+        if combo <= branch_set:
+            sc = round(_calc(12, combo, 60), 1)
+            signals.append({
+                "type": "해", "name": name,
+                "branches": "·".join(sorted(combo)),
+                "score": sc, "sign": "pressure",
+                "desc": f"서로 방해하는 신호입니다. {_forecast_layer_desc(items, combo)}",
+                "tip": "관계나 일의 흐름에서 방해 요소가 생기지 않도록 조심하세요.",
+            })
+
+    # ── 파 (巳申은 합/파 혼합으로 분리) ──────────────────
+    for combo, name in [
+        (frozenset(["子","酉"]), "자유파"),
+        (frozenset(["丑","辰"]), "축진파"),
+        (frozenset(["寅","亥"]), "인해파"),
+        (frozenset(["卯","午"]), "묘오파"),
+        (frozenset(["未","戌"]), "미술파"),
+    ]:
+        if combo <= branch_set:
+            sc = round(_calc(12, combo, 60), 1)
+            signals.append({
+                "type": "파", "name": name,
+                "branches": "·".join(sorted(combo)),
+                "score": sc, "sign": "pressure",
+                "desc": f"기운이 깨지거나 흐름이 끊기는 신호입니다. {_forecast_layer_desc(items, combo)}",
+                "tip": "시작한 일의 중간 점검을 권합니다.",
+            })
+
+    # 巳申 합/파 혼합
+    if frozenset(["巳","申"]) <= branch_set:
+        combo = frozenset(["巳","申"])
+        sc = round(_calc(12, combo, 60) * 0.7, 1)
+        signals.append({
+            "type": "합/파 혼합", "name": "사신 혼합", "branches": "巳·申",
+            "score": sc, "sign": "mixed",
+            "desc": f"巳申은 합이면서 파로도 작용하는 혼합 신호입니다. {_forecast_layer_desc(items, combo)}",
+            "tip": "기대와 충돌이 동시에 올 수 있으니 너무 단정 짓지 마세요.",
+        })
+
+    # ── 육합 (긍정 신호) ──────────────────────────────────
+    for combo, name in [
+        (frozenset(["子","丑"]), "자축합"),
+        (frozenset(["寅","亥"]), "인해합"),
+        (frozenset(["卯","戌"]), "묘술합"),
+        (frozenset(["辰","酉"]), "진유합"),
+        (frozenset(["午","未"]), "오미합"),
+    ]:
+        if combo <= branch_set:
+            sc = round(_calc(10, combo, 60), 1)
+            signals.append({
+                "type": "합", "name": name,
+                "branches": "·".join(sorted(combo)),
+                "score": sc, "sign": "positive",
+                "desc": f"기운이 하나로 모이는 연결 신호입니다. {_forecast_layer_desc(items, combo)}",
+                "tip": "자연스러운 인연이나 기회가 연결될 수 있습니다.",
+            })
+
+    signals.sort(key=lambda s: -s["score"])
+    return signals
+
+
+def score_forecast(signals: list) -> dict:
+    """신호 리스트로 압박·기회 점수 및 예보 단계 산출."""
+    pressure    = sum(s["score"] for s in signals if s["sign"] == "pressure")
+    mixed_part  = sum(s["score"] * 0.5 for s in signals if s["sign"] == "mixed")
+    opportunity = sum(s["score"] for s in signals if s["sign"] == "positive")
+    risk = round(pressure + mixed_part, 1)
+
+    if risk < 25:
+        level, lc, lbg = "안정",    "#22c55e", "#0d1e14"
+        summary = "큰 압박 신호 없이 평소 루틴대로 움직이기 좋은 날입니다."
+    elif risk < 55:
+        level, lc, lbg = "보통",    "#d97706", "#1a1200"
+        summary = "작은 변수가 있을 수 있습니다. 평소보다 조금 더 꼼꼼히 확인하는 것이 좋습니다."
+    elif risk < 90:
+        level, lc, lbg = "주의",    "#f97316", "#1a0d00"
+        summary = "말·계약·이동·몸 상태 중 한두 가지를 조심하세요. 무리한 결정보다 점검 중심이 좋습니다."
+    elif risk < 130:
+        level, lc, lbg = "강한 주의", "#ef4444", "#200d0d"
+        summary = "압박 신호가 겹칩니다. 무리한 결정은 미루고 확인과 정리 중심으로 쓰세요."
+    else:
+        level, lc, lbg = "고압",    "#dc2626", "#2a0808"
+        summary = "형·충 압박이 중첩됩니다. 방어적 운영, 감정 조절, 정리·점검이 핵심입니다."
+
+    return {
+        "risk": risk, "opportunity": round(opportunity, 1),
+        "level": level, "level_color": lc, "level_bg": lbg,
+        "summary": summary,
+    }
+
+
+def make_saju_forecast(
+    natal_branches,
+    daewoon_branch,
+    sewoon_branch,
+    wolwoon_branch,
+    ilwoon_branch,
+) -> dict:
+    """종합 예보 딕셔너리 반환."""
+    items   = build_forecast_items(
+        natal_branches, daewoon_branch,
+        sewoon_branch, wolwoon_branch, ilwoon_branch,
+    )
+    signals = detect_forecast_signals(items)
+    scored  = score_forecast(signals)
+    return {
+        "items":       items,
+        "signals":     signals[:5],
+        "all_signals": signals,
+        **scored,
+        "daewoon": norm_branch(daewoon_branch),
+        "sewoon":  norm_branch(sewoon_branch),
+        "wolwoon": norm_branch(wolwoon_branch),
+        "ilwoon":  norm_branch(ilwoon_branch),
+    }
+
+
+# ============================================================
 # 샘플 만세력 검증 케이스
 # ============================================================
 
@@ -7608,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.154"
+APP_VERSION = "v5.158"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -11133,7 +11403,7 @@ def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> 
             reset_navigation_to(None)
             st.rerun()
     with cols[1]:
-        if st.button("🌸 내 사주MRI", use_container_width=True, key=f"{prefix}_go_single"):
+        if st.button("🌸 내 사주 진단", use_container_width=True, key=f"{prefix}_go_single"):
             log_event("menu_click", "navigation", {"target": "solo"})
             reset_navigation_to("혼자 보기")
             st.rerun()
@@ -15562,6 +15832,87 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
         render_today_compass_card(payload)
 
 
+def render_saju_forecast_box(forecast: dict) -> None:
+    """오늘의 예보 카드 — 대운·세운·월운·일운 종합 압박 지도."""
+    if not forecast:
+        return
+
+    level      = str(forecast.get("level", "보통"))
+    lc         = str(forecast.get("level_color", "#94a3b8"))
+    lbg        = str(forecast.get("level_bg", "#111827"))
+    risk       = float(forecast.get("risk", 0))
+    oppo       = float(forecast.get("opportunity", 0))
+    summary    = str(forecast.get("summary", ""))
+    signals    = list(forecast.get("signals", []))
+    dw         = str(forecast.get("daewoon", "-") or "-")
+    sw         = str(forecast.get("sewoon",  "-") or "-")
+    ww         = str(forecast.get("wolwoon", "-") or "-")
+    iw         = str(forecast.get("ilwoon",  "-") or "-")
+
+    SIGN_ICON  = {"pressure": "⚠️", "mixed": "🔀", "positive": "✅"}
+    SIGN_COLOR = {"pressure": "#ef4444", "mixed": "#f59e0b", "positive": "#22c55e"}
+
+    # ── 요약 헤더 카드 ────────────────────────────────────
+    st.markdown(
+        f"<div style='background:{lbg};border:1px solid {lc};"
+        f"border-radius:10px;padding:14px 18px;margin-bottom:10px;'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;"
+        f"margin-bottom:8px;'>"
+        f"<span style='font-size:11px;font-weight:700;color:#b89a6b;letter-spacing:2px;'>"
+        f"오늘의 예보 · 대운·세운·월운·일운 종합</span>"
+        f"<span style='background:{lc};color:#fff;font-size:12px;font-weight:700;"
+        f"padding:3px 10px;border-radius:20px;'>{level}</span>"
+        f"</div>"
+        f"<div style='font-size:14px;color:#e2e8f0;line-height:1.7;margin-bottom:10px;'>"
+        f"{summary}"
+        f"</div>"
+        f"<div style='display:flex;gap:16px;flex-wrap:wrap;'>"
+        f"<span style='font-size:12px;color:#94a3b8;'>"
+        f"압박 지수 <b style='color:{lc};'>{risk:.0f}</b></span>"
+        f"<span style='font-size:12px;color:#94a3b8;'>"
+        f"기회 지수 <b style='color:#22c55e;'>{oppo:.0f}</b></span>"
+        f"<span style='font-size:11px;color:#64748b;margin-left:auto;'>"
+        f"대운 {dw} · 세운 {sw} · 월운 {ww} · 일운 {iw}</span>"
+        f"</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── 신호 카드 (expander) ──────────────────────────────
+    if signals:
+        with st.expander("📡 주요 신호 자세히 보기", expanded=False):
+            st.caption(
+                "오늘의 예보는 대운·세운·월운·일운이 원국을 어떻게 건드리는지 살펴보는 참고용 흐름입니다. "
+                "일운 하나만으로 좋고 나쁨을 단정하지 않고, 원국과 큰 운에서 반복되는 신호가 "
+                "오늘 촉발되는지를 중심으로 봅니다."
+            )
+            for sig in signals:
+                sign  = str(sig.get("sign", "pressure"))
+                icon  = SIGN_ICON.get(sign, "⚠️")
+                sc    = SIGN_COLOR.get(sign, "#ef4444")
+                st.markdown(
+                    f"<div style='background:#111827;border-left:3px solid {sc};"
+                    f"border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:8px;'>"
+                    f"<div style='display:flex;justify-content:space-between;"
+                    f"align-items:center;margin-bottom:4px;'>"
+                    f"<span style='font-size:13px;font-weight:700;color:{sc};'>"
+                    f"{icon} {sig.get('name','')} · {sig.get('branches','')}</span>"
+                    f"<span style='font-size:11px;color:#94a3b8;'>"
+                    f"점수 {sig.get('score',0):.0f}</span>"
+                    f"</div>"
+                    f"<div style='font-size:13px;color:#cbd5e1;line-height:1.6;'>"
+                    f"{sig.get('desc','')}</div>"
+                    f"<div style='font-size:12px;color:#64748b;margin-top:4px;'>"
+                    f"→ {sig.get('tip','')}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.caption("감지된 주요 신호가 없습니다. 평소 루틴대로 움직이기 좋은 날입니다.")
+
+    st.caption("※ 이 예보는 명리학적 참고용 신호입니다. 의료·법률·투자·계약 판단을 대신하지 않습니다.")
+
+
 def share_card_strength_keywords(char: Dict[str, str], result: Dict[str, object]) -> List[str]:
     role = str(char.get("role", "") or "")
     role_keywords = {
@@ -18924,9 +19275,6 @@ def render_battle_result_board(mine: Dict[str, object], friend: Dict[str, object
         st.divider()
         _render_chem_prescription(mine, friend, compatibility)
 
-    elif view == "공유 카드":
-        render_chemistry_share_card(mine, friend, compatibility, chem)
-
     else:
         st.markdown("### 🔎 상세보기")
         expert_view = st.radio(
@@ -19843,12 +20191,12 @@ def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
     """결과 화면을 일반인용 첫 화면과 전문가 상세보기로 분리한다."""
     pages = [
         ("🏥 진단서",   "🏥 사주 진단서"),
+        ("📡 사주예보", "📡 사주 예보"),
         ("🌊 10년 처방", "🌊 10년의 처방"),
         ("🌸 올해 처방", "🌸 올해의 처방"),
         ("🌤 오늘",     "🌤 오늘의 처방"),
         ("🪪 원국",     "🪪 사주 원국"),
         ("📅 캘린더",   "일운캘린더"),
-        ("📸 공유",     "공유 카드"),
         ("🔎 상세",     "전문가 상세보기"),
     ]
     valid_values = {full for _short, full in pages}
@@ -19856,7 +20204,7 @@ def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
     if state_key not in st.session_state or st.session_state.get(state_key) not in valid_values:
         st.session_state[state_key] = default
 
-    row1, row2 = pages[:4], pages[4:]
+    row1, row2 = pages[:5], pages[5:]
     for row_pages in [row1, row2]:
         cols = st.columns(len(row_pages))
         for col, (short, full) in zip(cols, row_pages):
@@ -19871,10 +20219,9 @@ def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
 
 
 def render_chemistry_page_buttons(default: str = " 케미 한눈에") -> str:
-    """모두의 케미 결과 메뉴: 한눈에 / 공유 / 상세만 표시한다."""
+    """모두의 케미 결과 메뉴: 한눈에 / 상세만 표시한다."""
     pages = [
         (" 한눈에", " 케미 한눈에"),
-        ("📸 공유", "공유 카드"),
         ("🔎 상세", "전문가 상세보기"),
     ]
     valid_values = {full for _short, full in pages}
@@ -20109,6 +20456,17 @@ def render_hanuneyo_text_explanation(payload, char, result):
     # 🏥 사주 진단서 렌더링  (개편 — 결과 먼저 · 처방전 추가)
     # ══════════════════════════════════════════════════════════
 
+    # ── 상단 바로가기 버튼 (원국보기 / 사주예보) ─────────────
+    _top_btn_cols = st.columns(2)
+    with _top_btn_cols[0]:
+        if st.button("🪪 원국 보기", key="diag_top_goto_wonkuk", use_container_width=True):
+            st.session_state["single_mri_page_view"] = "🪪 사주 원국"
+            st.rerun()
+    with _top_btn_cols[1]:
+        if st.button("📡 사주예보 보기", key="diag_top_goto_yebo", use_container_width=True):
+            st.session_state["single_mri_page_view"] = "📡 사주 예보"
+            st.rerun()
+
     # ── 0. 할머니 종합 소견 인트로 박스 ─────────────────────
     def _make_grandma_intro() -> str:
         """결과 맨 위 — 체질·강약·오행·용신을 할머니 말투로 3단락으로 통합 설명."""
@@ -20255,11 +20613,50 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 "극단적인 환경보다 적당히 균형 잡힌 환경이 이 사주한테 잘 맞아."
             )
 
+        # 3단락 처방전 힌트 보강 (용신 기운 실생활 처방)
+        _FOOD_HINT = {
+            "木": "신맛 음식(레몬·식초·사과)",
+            "火": "쓴맛 음식(녹차·쑥·커피)",
+            "土": "단맛 음식(고구마·꿀·곡물)",
+            "金": "매운맛 음식(생강·마늘·고추)",
+            "水": "짠맛 음식(된장·미역·해산물)",
+        }
+        _ACT_HINT = {
+            "木": "산책·등산 같은 움직임이나 새 프로젝트 하나 시작해보는 것",
+            "火": "사람들과 어울리거나 하고 싶은 말을 표현하는 것",
+            "土": "매일 같은 시간에 자고 일어나는 규칙적인 루틴 만들기",
+            "金": "하루에 작은 것 하나씩 확실히 끝내는 습관 들이기",
+            "水": "혼자 조용히 앉아 책 읽거나 글 쓰는 시간 갖기",
+        }
+        if _fw_primary_list and p3:
+            _rx_el_g = str(_fw_primary_list[0])
+            _food_g = _FOOD_HINT.get(_rx_el_g, "")
+            _act_g  = _ACT_HINT.get(_rx_el_g, "")
+            if _food_g:
+                p3 += f" 실생활 처방으로는 <b>{_food_g}</b>{', ' + _act_g if _act_g else ''} 같은 게 직접적으로 도움이 돼."
+
+        # 4단락: 신살 한마디
+        _sh_data_g = result.get("shinsal", {}) or {}
+        _sh_hits_g = (_sh_data_g.get("hits") or [])[:3]
+        _SH_GMTXT = {
+            "천을귀인": "이 사주에 천을귀인이 있어 — 힘들 때 뜻밖의 도움이 오는 구조야. 혼자 다 해결하려 하지 말고 도움을 요청할 줄 알아야 진가가 나와.",
+            "문창귀인": "문창귀인도 있어 — 생각을 글이나 말로 표현하는 힘이 있는 사주야. 이 재능을 살리는 일을 하나씩 만들어봐.",
+            "역마":     "역마가 있어 — 이동하고 새 판에 뛰어들 때 기회가 열리는 사주야. 가만히 너무 오래 한 자리에만 있으면 답답해지거든.",
+            "도화":     "도화가 있어 — 분위기를 만들고 사람을 끌어당기는 힘이 있는 사주야. 이걸 잘 쓰면 좋은데, 노출 관리도 함께 신경 써봐.",
+            "화개":     "화개가 있어 — 혼자 깊이 파고드는 집중력이 강한 사주야. 자기 세계에 너무 갇히지 않도록 가끔은 밖으로 나와봐.",
+            "공망":     "공망이 있어 — 직접 밀기보다 우회 전략이 잘 맞는 자리야. 기대한 만큼 바로 오지 않더라도 돌아가는 방식이거든, 조급해하지 마.",
+        }
+        _sh_name_list = [str(_sh.get("신살") or _sh.get("name", "")) for _sh in _sh_hits_g]
+        _sh_txt_list  = [_SH_GMTXT[n] for n in _sh_name_list if n in _SH_GMTXT]
+        p4 = " ".join(_sh_txt_list) if _sh_txt_list else ""
+
         parts = [f"<p style='margin:0 0 10px 0;'>{p1}</p>"]
         if p2:
             parts.append(f"<p style='margin:0 0 10px 0;'>{p2}</p>")
         if p3:
-            parts.append(f"<p style='margin:0;'>{p3}</p>")
+            parts.append(f"<p style='margin:0 0 10px 0;'>{p3}</p>")
+        if p4:
+            parts.append(f"<p style='margin:0;color:#d4c0a8;'>{p4}</p>")
         return "".join(parts)
 
     _grandma_intro_html = _make_grandma_intro()
@@ -20353,14 +20750,15 @@ def render_hanuneyo_text_explanation(payload, char, result):
       <div style='font-size:22px;font-weight:900;color:#fde68a;letter-spacing:-0.03em;line-height:1.2;margin-top:4px;'>
         {diag_line2}
       </div>
-      <div style='font-size:12px;color:#b89a6b;margin-top:4px;'>{diag_line1}</div>
+      <div style='font-size:13px;color:#fcd9a0;margin-top:6px;line-height:1.6;font-weight:500;'>{diag_plain}</div>
+      <div style='font-size:11px;color:#b89a6b;margin-top:5px;'>{diag_line1}</div>
     </div>
 
   </div>
   <div style='padding:4px 16px 16px 16px;'>
     <table style='width:100%;border-collapse:collapse;margin-top:12px;'>
       {_row("일주(日柱)", f"<b style='font-size:17px;'>{day_stem}{day_branch}</b> &nbsp;{stem_name} · {branch_name}")}
-      {_row("사주 체온", f"{_thermo_icon} {_t_key_diag} ({temp:.0f}/100) &nbsp;<span style='font-size:12px;color:#b89a6b;'>— {str(result.get('climate_label','')) or ''}</span>")}
+      {_row("사주 체온", f"{thermometer}<br><span style='font-size:12px;color:#b0b8c0;line-height:1.7;'>{thermo_note}</span>")}
       {_row("주성분 / 결핍", f"<b>{dominant_el}</b> {float(dominant_pct):.1f}% &nbsp;/&nbsp; {'<b>'+weak_el+'</b> '+str(float(weak_pct))[:4]+'%' if weak_el and weak_el not in('-',dominant_el) else '결핍 없음'}")}
       {_row("신강·신약", f"<b>{strength_label}</b> &nbsp;<span style='font-size:12px;color:#b89a6b;'>— {refined_note[:30] if refined_note else ''}</span>")}
       {_row("용신 / 기신", f"<span style='color:#4ade80;font-weight:700;'>↑ {_yongsin_txt}</span> &nbsp;/&nbsp; <span style='color:#f87171;'>↓ {_gisin_txt}</span>")}
@@ -20378,241 +20776,22 @@ def render_hanuneyo_text_explanation(payload, char, result):
   </div>
 </div>
 """
-    st.html(_cert_html)
-
-    # ── 종합 소견 (할머니 말투, 중복 없이) ──────────────────
+    # ── 종합 소견 (할머니 말투) — 진단서보다 먼저 ──────────
     if _grandma_intro_html:
         st.html(
             f"<div style='background:#0f172a;border-left:4px solid #f59e0b;"
-            f"border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:4px;"
+            f"border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:12px;"
             f"font-size:15px;color:#fef3c7;line-height:2.0;'>"
             f"<div style='font-size:11px;font-weight:700;color:#b89a6b;letter-spacing:2px;margin-bottom:10px;'>종 합 소 견</div>"
             f"{_grandma_intro_html}</div>"
         )
 
-    st.divider()
-
-    # ── 3. 🔬 기운의 성분 분석 (결과 배지 먼저) ─────────────
-    st.markdown("#### 🔬 사주 성분분석")
-    dom_kw, dom_desc_text = element_nature.get(dominant_el, ("", ""))
-    # 결과 요약 배지
-    _comp_html = (
-        f"<div style='background:#0d1828;border:1px solid rgba(232,121,160,0.25);border-radius:8px;"
-        f"padding:10px 14px;margin-bottom:10px;'>"
-        f"<span style='background:#3B5BDB;color:#fff;border-radius:4px;padding:2px 8px;"
-        f"font-size:12px;font-weight:700;margin-right:8px;'>주성분</span>"
-        f"<span style='font-size:15px;font-weight:700;color:#93c5fd;'>"
-        f"{dominant_el} {dom_kw} · {float(dominant_pct):.1f}%</span>"
-    )
-    if weak_el and weak_el not in ("-", dominant_el):
-        _wk_kw = element_nature.get(weak_el, ("", ""))[0]
-        _comp_html += (
-            f"&nbsp;&nbsp;<span style='background:#dc2626;color:#fff;border-radius:4px;"
-            f"padding:2px 8px;font-size:12px;font-weight:700;margin-right:8px;'>결핍</span>"
-            f"<span style='font-size:15px;font-weight:700;color:#991b1b;'>"
-            f"{weak_el} {_wk_kw} · {float(weak_pct):.1f}%</span>"
-        )
-    _comp_html += "</div>"
-    st.markdown(_comp_html, unsafe_allow_html=True)
-    if dom_desc_text:
-        st.markdown(
-            f"**주성분 {dominant_el}({dom_kw})이 {float(dominant_pct):.1f}%** — {dom_desc_text}  \n"
-            f"이 기운이 {float(dominant_pct):.1f}%나 되니, 생각하고 움직이는 방식에 이 색깔이 꽤 강하게 나타나."
-        )
-    if weak_el and weak_el not in ("-", dominant_el):
-        wk_note = element_weak_note.get(weak_el, "")
-        st.markdown(
-            f"**결핍 성분 {josa(weak_el, "은/는")} 고작 {float(weak_pct):.1f}%** — {wk_note}"
-        )
+    # ── 진단서 카드 (참고용, 소견 아래) ────────────────────
+    st.html(_cert_html)
 
     st.divider()
 
-    # ── 4. 🌡️ 사주 체온계 (결과 배지 먼저) ──────────────────
-    st.markdown("#### 🌡️ 사주 체온계")
-    _thermo_colors = {
-        "과열성": ("#dc2626", "#200d0d"),
-        "열성":   ("#ea580c", "#0d1525"),
-        "온성":   ("#16a34a", "#0d1e14"),
-        "냉성":   ("#2563eb", "#0d1420"),
-        "한랭성": ("#1d4ed8", "#0d1428"),
-    }
-    _t_key = (
-        "과열성" if temp >= 73 else "열성" if temp >= 62 else
-        "온성"   if temp >= 53 else "냉성" if temp >= 42 else "한랭성"
-    )
-    _tc, _tbg = _thermo_colors.get(_t_key, ("#94a3b8", "#111827"))
-    _thermo_emoji = thermometer.split("  ")[0] if "  " in thermometer else thermometer
-    st.markdown(
-        f"<div style='background:{_tbg};border:2px solid {_tc};border-radius:8px;"
-        f"padding:10px 16px;margin-bottom:8px;display:inline-block;'>"
-        f"<span style='font-size:20px;'>{_thermo_emoji}</span>"
-        f"<span style='font-size:16px;font-weight:700;color:{_tc};margin-left:10px;'>"
-        f"{temp:.0f} / 100 · {_t_key}</span>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(thermo_note)
-    st.caption("옛날 어른들은 사주에도 체온이 있다고 했어. 실제 더위·추위가 아니라, 이 사람이 타고난 기운의 온도야.")
-
-    st.divider()
-
-    # ── 5. ⚡ 기운의 순환 (3축 결과 카드 먼저) ───────────────
-    st.markdown("#### ⚡ 흐름과 연결")
-    order = ["기초체력", "흐름과 연결", "현실작동력"]
-    _axis_icons = {"기초체력": "💪", "흐름과 연결": "🔄", "현실작동력": "⚙️"}
-    # 8단계 등급 라벨 (극강>80>최강>75>강함+>70>강함>65>보통+>60>보통>55>약함+>50>약함)
-    _label_colors = {
-        "극강": ("#fbbf24", "#1a1800"),
-        "최강": ("#f59e0b", "#1a1500"),
-        "강함+": ("#16a34a", "#0d1e14"),
-        "강함": ("#22c55e", "#0d1a10"),
-        "보통+": ("#d97706", "#1a1200"),
-        "보통": ("#94a3b8", "#111827"),
-        "약함+": ("#f87171", "#1e0d0d"),
-        "약함": ("#dc2626", "#200d0d"),
-    }
-    def _pct_to_grade(p):
-        if p > 80:   return "극강"
-        elif p > 75: return "최강"
-        elif p > 70: return "강함+"
-        elif p > 65: return "강함"
-        elif p > 60: return "보통+"
-        elif p > 55: return "보통"
-        elif p > 50: return "약함+"
-        else:        return "약함"
-    # 결과 카드 행
-    _axis_results = []
-    for _an in order:
-        _info = score_map.get(_an, {}) or {}
-        _pct  = float(_info.get("pct", 0.0) or 0.0)
-        _st   = _pct_to_grade(_pct)
-        _axis_results.append((_an, _pct, _st))
-    _bars_html = "<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;'>"
-    for _an, _pct, _st in _axis_results:
-        _sc, _sbg = _label_colors.get(_st, ("#94a3b8", "#111827"))
-        _bars_html += (
-            f"<div style='background:{_sbg};border:1px solid {_sc};border-radius:8px;"
-            f"padding:8px 12px;text-align:center;flex:1;min-width:90px;'>"
-            f"<div style='font-size:20px;'>{_axis_icons.get(_an, '')}</div>"
-            f"<div style='font-size:12px;font-weight:600;color:#b0c4cc;margin:3px 0;'>{_an}</div>"
-            f"<div style='font-size:22px;font-weight:900;color:{_sc};'>{_st}</div>"
-            f"</div>"
-        )
-    _bars_html += "</div>"
-    st.markdown(_bars_html, unsafe_allow_html=True)
-
-    # ── 흐름·발현 데이터 수집 ─────────────────────────────
-    _flows_all       = result.get("flows", []) or []
-    _flow_rows       = _compress_flow_rows_for_display(_flows_all)
-    _active_flows    = {str(f.get("구조", "")) for f in _flow_rows if f.get("강도") in ["중간", "중간~강함", "강함"]}
-    _interactions_all = result.get("interactions", []) or []
-    _gathering_notes  = [_interaction_plain_note(it) for it in _interactions_all if str(it.get("type", "")) in {"삼합", "방합", "반합"}]
-    _tension_notes    = [_interaction_plain_note(it) for it in _interactions_all if str(it.get("type", "")) in {"충", "형"}]
-
-    # ── 3축 카드 + 할머니 연결 설명 ─────────────────────────
-    _axis_story = {
-        "기초체력": {
-            "high": "원국 안에 기운의 재료 자체가 넉넉히 깔려 있어. 씨앗도 있고 땅도 있는 격이야 — 쉽게 지치지 않는 체력이 여기서 나오는 거거든.",
-            "mid":  "재료가 아주 넘치거나 부족하진 않아. 쓸 만큼은 있는데, 상황에 따라 보강이 필요할 때도 있어.",
-            "low":  "재료가 좀 얇아. 자꾸 지친다거나 뭔가 부족하다는 느낌 들었지? 그 이유가 여기 있어. 재료를 채워주는 환경과 사람이 이 사주한테 진짜 약이야.",
-        },
-        "흐름과 연결": {
-            "high": "기운이 막히지 않고 잘 돌아가고 있어.{flow_str} 생각이 행동이 되고, 행동이 결과가 되는 사이클이 살아 있는 거야. 이게 있으면 혼자서도 에너지가 제 방향으로 흘러가거든.",
-            "mid":  "흐름이 부분적으로는 이어지는데 어딘가 끊기는 구간이 있어. 어느 사이클이 약한지 아래에서 확인해봐 — 그 구간만 보완하면 훨씬 잘 돌아가.",
-            "low":  "흐름 구조가 약한 편이야. 잘하는 게 있어도 그게 결과로 연결되는 데 시간이 좀 더 걸릴 수 있어. 흐름을 도와주는 환경과 사람을 곁에 두는 게 중요해.",
-        },
-        "현실작동력": {
-            "high": "가진 기운이 바깥으로 잘 드러나.{gathering_str} 머릿속에만 있는 사람이 아니라 실제로 보여주는 사람이야 — 이게 이 사주의 큰 무기야.",
-            "mid":  "드러나는 힘이 중간 정도야. 내면에 있는 걸 꺼내는 계기가 필요해 — 혼자 고민만 하기보다 작게라도 바깥으로 표현하는 게 중요해.",
-            "low":  "기운이 안으로 머무는 경향이 있어. 능력이 없는 게 아니야 — 발현되는 구조가 약한 거거든. 첫 발을 내딛는 용기가 이 사주한테 제일 중요한 거야.",
-        },
-    }
-
-    for _an, _pct, _st in _axis_results:
-        _grade_key = "high" if _st in ("극강", "최강", "강함+", "강함") else "mid" if _st in ("보통+", "보통") else "low"
-        _sc, _sbg = _label_colors.get(_st, ("#94a3b8", "#111827"))
-        _tmpl = _axis_story.get(_an, {}).get(_grade_key, axis_desc.get(_an, ""))
-        # 흐름과 연결 — 감지된 흐름 이름 삽입
-        if _an == "흐름과 연결":
-            _flow_str_list = [f for f in ["식상생재", "재관인상생", "재생관", "관인상생"] if f in _active_flows]
-            _flow_insert = (" " + "·".join(_flow_str_list) + " 흐름 구조가 확인되거든.") if _flow_str_list else " 아래 흐름 보기에서 통로를 확인할 수 있어."
-            _story = _tmpl.format(flow_str=_flow_insert)
-        # 현실작동력 — 합국·방합 감지 여부 삽입
-        elif _an == "현실작동력":
-            _g_insert = (f" 합국·방합 구조({len(_gathering_notes)}개)가 기운을 한 방향으로 뭉쳐주거든.") if _gathering_notes else " 큰 합국 구조는 약하지만, 일상적인 흐름 속에서 충분히 드러날 수 있어."
-            _story = _tmpl.format(gathering_str=_g_insert)
-        else:
-            _story = _tmpl
-
-        st.markdown(
-            f"<div style='border-left:3px solid {_sc};padding:8px 14px;margin:6px 0;"
-            f"background:rgba(0,0,0,0.25);border-radius:0 6px 6px 0;'>"
-            f"<div style='font-size:13px;font-weight:700;color:{_sc};margin-bottom:4px;'>"
-            f"{_axis_icons.get(_an,'')} {_an} — {_st}</div>"
-            f"<div style='font-size:14px;color:#e2e8f0;line-height:1.75;'>{_story}</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-
-    # ── 자세히 보기 expander 3종 ─────────────────────────
-    if _flow_rows:
-        with st.expander("🌊 흐름 구조 자세히 보기 (식상생재·재생관·관인상생)", expanded=False):
-            st.caption("각 흐름이 원국의 어느 글자에서 나오는지, 얼마나 작동하는지 확인합니다.")
-            for _row in _flow_rows:
-                _render_flow_pipeline_card(chart, result, _row)
-    elif _flows_all:
-        with st.expander("🌊 흐름 구조 보기 (약한 통로 포함)", expanded=False):
-            st.caption("크게 작동하는 흐름은 약하지만, 잠재된 통로를 확인할 수 있습니다.")
-            _weak_rows = _compress_flow_rows_for_display(_flows_all)
-            for _row in (_weak_rows or []):
-                _render_flow_pipeline_card(chart, result, _row)
-
-    if _gathering_notes:
-        with st.expander(f"💥 합국·방합으로 커지는 기운 자세히 보기 ({len(_gathering_notes)}개 구조)", expanded=False):
-            st.caption("여러 지지가 한 방향으로 모여 기운 덩어리를 키우는 구조입니다. 발현과 현실작동력에 직접 영향을 줍니다.")
-            for _note in _gathering_notes:
-                st.markdown(f"- {_note}")
-
-    if _tension_notes:
-        with st.expander(f"⚡ 충·형 신호 보기 ({len(_tension_notes)}개)", expanded=False):
-            st.caption("원국 안에서 서로 부딪히는 기운입니다. 긴장과 변화의 원천이 되기도 해요.")
-            for _note in _tension_notes:
-                st.markdown(f"- {_note}")
-
-    st.divider()
-
-    # ── 6. 🔑 종합 소견 ──────────────────────────────────────
-    st.markdown("#### 🔑 종합 소견")
-    friendly_str = FRIENDLY_STRENGTH_LABELS.get(strength_label, strength_label)
-    plain_str    = strength_plain.get(strength_label, "")
-    st.markdown(f"**일간 강약 — {refined_label}**  \n{friendly_str}")
-    st.markdown(f"💡 {plain_str}")
-    if refined_note:
-        st.caption(refined_note)
-
-    st.markdown(f"**힘 쓰는 방식 — {operation_name}**")
-    op_text = operation_desc or operation_hint
-    if op_text:
-        st.markdown(op_text)
-
-    st.markdown(
-        f"**보완 방향 — {primary}**  \n"
-        f"이 기운이 있으면 사주 균형이 딱 맞아. 거창하게 생각할 필요 없어 — "
-        f"관련된 색깔을 곁에 두거나, 그 기운이 도는 공간에 자주 가거나, "
-        f"그런 성질의 음식을 먹는 것만으로도 도움이 된대."
-    )
-    if logic:
-        st.caption(f"원리: {logic}")
-    if burden and burden != "뚜렷하지 않음":
-        st.markdown(
-            f"**과잉 성분 — {burden}:**  \n"
-            f"이 기운은 이미 넘치도록 있어. 더 쌓이면 오히려 탈이 날 수 있으니, "
-            f"이쪽으로는 너무 집중하지 않는 게 좋아."
-        )
-
-    st.divider()
-
-    # ── 7. 📋 처방전 ─────────────────────────────────────────
+    # ── 처방전 (진단서 바로 아래) ────────────────────────────────
     st.markdown("#### 📋 처방전")
     _ELEMENT_RX = {
         "木": {
@@ -20673,13 +20852,13 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 unsafe_allow_html=True,
             )
     # 체온 처방
-    _t_rx = _TEMP_RX.get(_t_key, "")
+    _t_rx = _TEMP_RX.get(_t_key_diag, "")
     if _t_rx:
         st.markdown(
             f"<div style='background:#0d1525;border-left:4px solid #f59e0b;"
             f"padding:12px 14px;border-radius:6px;margin-bottom:8px;'>"
             f"<div style='font-size:12px;font-weight:700;color:#d97706;margin-bottom:6px;'>"
-            f"🌡️ 체온 처방 — {_t_key} 조절</div>"
+            f"🌡️ 체온 처방 — {_t_key_diag} 조절</div>"
             f"<div style='font-size:13px;color:#e8d5a0;line-height:1.8;'>{_t_rx}</div>"
             f"</div>",
             unsafe_allow_html=True,
@@ -20688,100 +20867,239 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     st.divider()
 
-    # ── 8. ✨ 신살·특수 신호 ─────────────────────────────────
-    st.markdown("#### ✨ 신살·특수 신호")
-    _sh_data   = result.get("shinsal", {}) or {}
-    _sh_hits   = _sh_data.get("hits", []) or []
-    _sh_adj    = float(_sh_data.get("adjustment", 0) or 0)
+    # ── 탐색 버튼 ────────────────────────────────────────────
+    _hanuneyo_tabs = st.columns(3)
+    with _hanuneyo_tabs[0]:
+        if st.button("🔄 흐름과 연결", key="btn_hanuneyo_flow", use_container_width=True):
+            st.session_state["show_flow_tab"] = not st.session_state.get("show_flow_tab", False)
+    with _hanuneyo_tabs[1]:
+        if st.button("✨ 신살·특수신호", key="btn_hanuneyo_shinsal", use_container_width=True):
+            st.session_state["show_shinsal_tab"] = not st.session_state.get("show_shinsal_tab", False)
+    with _hanuneyo_tabs[2]:
+        if st.button("⚖️ 신약신강판단", key="btn_hanuneyo_strength", use_container_width=True):
+            st.session_state["show_strength_tab"] = not st.session_state.get("show_strength_tab", False)
 
-    if _sh_hits:
-        # 점수 영향 안내
-        _sh_sign = "+" if _sh_adj >= 0 else ""
-        st.caption(
-            f"이 신살들이 총점에 {_sh_sign}{_sh_adj:+.1f}점 영향을 줬어. "
-            f"신살은 사주의 중심 판단을 바꾸진 않고, 색깔을 더해주는 보조 신호야."
-        )
-        _SH_TONE = {
-            "천을귀인": ("💛", "길한 신호", "#1a1a08", "#ca8a04"),
-            "문창귀인": ("💙", "길한 신호", "#0d1420", "#2563eb"),
-            "역마":     ("🟠", "중립 신호", "#0d1525", "#ea580c"),
-            "도화":     ("🩷", "중립 신호", "#1a0d18", "#f59e0b"),
-            "화개":     ("🟣", "중립 신호", "#111827", "#7c3aed"),
-            "공망":     ("⚪", "주의 신호", "#111827", "#94a3b8"),
+    # ── 흐름과 연결 (버튼 토글) ────────────────────────────────
+    if st.session_state.get("show_flow_tab", False):
+        # ── 5. ⚡ 기운의 순환 (3축 결과 카드 먼저) ───────────────
+        st.markdown("#### ⚡ 흐름과 연결")
+        order = ["기초체력", "흐름과 연결", "현실작동력"]
+        _axis_icons = {"기초체력": "💪", "흐름과 연결": "🔄", "현실작동력": "⚙️"}
+        # 8단계 등급 라벨 (극강>80>최강>75>강함+>70>강함>65>보통+>60>보통>55>약함+>50>약함)
+        _label_colors = {
+            "극강": ("#fbbf24", "#1a1800"),
+            "최강": ("#f59e0b", "#1a1500"),
+            "강함+": ("#16a34a", "#0d1e14"),
+            "강함": ("#22c55e", "#0d1a10"),
+            "보통+": ("#d97706", "#1a1200"),
+            "보통": ("#94a3b8", "#111827"),
+            "약함+": ("#f87171", "#1e0d0d"),
+            "약함": ("#dc2626", "#200d0d"),
         }
-        # 신살별 의사 텍스트
-        _SH_DOC_TEXT = {
-            "천을귀인": "귀인이 곁에 있는 사주야. 힘들 때 예상 밖의 손길이 오는 구조거든. 너무 혼자 다 해결하려 하지 말고, 도움을 요청해봐 — 이 사주는 그때 진가가 나와.",
-            "문창귀인": "머리로 정리하고 표현하는 힘이 있는 사주야. 글·말·기획처럼 생각을 꺼내는 일에서 빛이 나거든. 이걸 살릴 일을 하나씩 만들어봐.",
-            "역마":     "가만있으면 답답해지는 사주야. 이동하고 바꾸고 새 판에 뛰어들 때 기회가 열리거든. 반대로 너무 한 자리에만 묶여 있으면 탈이 나는 경우가 많아.",
-            "도화":     "시선이 닿는 사주야. 분위기를 만들고 사람을 끌어당기는 힘이 있거든. 이걸 잘 쓰면 사람이 모이고, 과하면 피곤해질 수 있어 — 노출 관리가 처방이야.",
-            "화개":     "혼자 깊이 파고드는 걸 즐기는 사주야. 취향이 깊고 몰입력이 강하거든. 좋은 기운인데 — 자기 세계에 너무 갇히지 않도록 가끔은 밖으로 나와봐.",
-            "공망":     "이 자리는 바로 손에 잡히지 않는 자리야. 기대한 만큼 바로 오지 않는 경우가 있거든. 없는 게 아니야 — 돌아가는 방식이거든. 직접 밀기보다 우회 전략이 훨씬 잘 맞아.",
-        }
-
-        for _hit in _sh_hits:
-            _sn      = str(_hit.get("신살", _hit.get("name", "")) or "")
-            _pos     = str(_hit.get("위치", "-") or "-")
-            _nature  = str(_hit.get("성격", "") or "")
-            _reflect = float(_hit.get("반영", 0) or 0)
-            try:
-                _prof = _shinsal_card_profile(_sn, _hit, chart)
-            except Exception:
-                _prof = {}
-            _summary = str(_prof.get("summary", "") or "")
-            _meaning = str(_prof.get("meaning", "") or "")
-            _how     = str(_prof.get("how", "") or "")
-            _icon    = str(_prof.get("icon", "🎴") or "🎴")
-            _doc_txt = _SH_DOC_TEXT.get(_sn, "")
-            _em, _tag, _bg, _bc = _SH_TONE.get(_sn, ("🎴", "보조 신호", "#f9fafb", "#6b7280"))
-            _rsign   = f"+{_reflect:.1f}" if _reflect > 0 else f"{_reflect:.1f}" if _reflect < 0 else "±0"
-            # 성립 조건 섹션 (how 있을 때만)
-            _how_section = (
-                f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid #94a3b8;"
-                f"margin-top:8px;padding:7px 10px;border-radius:4px;"
-                f"font-size:12px;color:#94a3b8;line-height:1.8;'>"
-                f"\U0001f4cc <b>어떻게 성립하냐면</b> \u2014 {_how}</div>"
-            ) if _how else ""
-            # 의사 텍스트 카드 (있을 때만)
-            _doc_section = (
-                f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid {_bc};"
-                f"margin-top:8px;padding:8px 10px;border-radius:4px;"
-                f"font-size:13px;color:#f0e8ec;line-height:1.8;'>"
-                f"\U0001f4ac {_doc_txt}</div>"
-            ) if _doc_txt else ""
-            st.markdown(
-                f"<div style='background:{_bg};border:1px solid {_bc};border-radius:10px;"
-                f"padding:12px 14px;margin-bottom:8px;'>"
-                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
-                f"<span style='font-size:15px;font-weight:700;color:{_bc};'>"
-                f"{_icon} {_sn}</span>"
-                f"<span style='font-size:13px;background:{_bc};color:#fff;border-radius:4px;"
-                f"padding:2px 7px;font-weight:700;'>{_tag} · {_rsign}점</span>"
+        def _pct_to_grade(p):
+            if p > 80:   return "극강"
+            elif p > 75: return "최강"
+            elif p > 70: return "강함+"
+            elif p > 65: return "강함"
+            elif p > 60: return "보통+"
+            elif p > 55: return "보통"
+            elif p > 50: return "약함+"
+            else:        return "약함"
+        # 결과 카드 행
+        _axis_results = []
+        for _an in order:
+            _info = score_map.get(_an, {}) or {}
+            _pct  = float(_info.get("pct", 0.0) or 0.0)
+            _st   = _pct_to_grade(_pct)
+            _axis_results.append((_an, _pct, _st))
+        _bars_html = "<div style='display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;'>"
+        for _an, _pct, _st in _axis_results:
+            _sc, _sbg = _label_colors.get(_st, ("#94a3b8", "#111827"))
+            _bars_html += (
+                f"<div style='background:{_sbg};border:1px solid {_sc};border-radius:8px;"
+                f"padding:8px 12px;text-align:center;flex:1;min-width:90px;'>"
+                f"<div style='font-size:20px;'>{_axis_icons.get(_an, '')}</div>"
+                f"<div style='font-size:12px;font-weight:600;color:#b0c4cc;margin:3px 0;'>{_an}</div>"
+                f"<div style='font-size:22px;font-weight:900;color:{_sc};'>{_st}</div>"
                 f"</div>"
-                f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:6px;'>"
-                f"📍 {_pos}{(' · ' + _nature) if _nature else ''}</div>"
-                f"<div style='font-size:13px;color:#e8d5a0;line-height:1.7;margin-bottom:4px;'>"
-                f"{_summary}</div>"
-                f"<div style='font-size:12px;color:#a0b4bc;line-height:1.6;'>{_meaning}</div>"
-                f"{_how_section}"
-                f"{_doc_section}"
+            )
+        _bars_html += "</div>"
+        st.markdown(_bars_html, unsafe_allow_html=True)
+
+        # ── 흐름·발현 데이터 수집 ─────────────────────────────
+        _flows_all       = result.get("flows", []) or []
+        _flow_rows       = _compress_flow_rows_for_display(_flows_all)
+        _active_flows    = {str(f.get("구조", "")) for f in _flow_rows if f.get("강도") in ["중간", "중간~강함", "강함"]}
+        _interactions_all = result.get("interactions", []) or []
+        _gathering_notes  = [_interaction_plain_note(it) for it in _interactions_all if str(it.get("type", "")) in {"삼합", "방합", "반합"}]
+        _tension_notes    = [_interaction_plain_note(it) for it in _interactions_all if str(it.get("type", "")) in {"충", "형"}]
+
+        # ── 3축 카드 + 할머니 연결 설명 ─────────────────────────
+        _axis_story = {
+            "기초체력": {
+                "high": "원국 안에 기운의 재료 자체가 넉넉히 깔려 있어. 씨앗도 있고 땅도 있는 격이야 — 쉽게 지치지 않는 체력이 여기서 나오는 거거든.",
+                "mid":  "재료가 아주 넘치거나 부족하진 않아. 쓸 만큼은 있는데, 상황에 따라 보강이 필요할 때도 있어.",
+                "low":  "재료가 좀 얇아. 자꾸 지친다거나 뭔가 부족하다는 느낌 들었지? 그 이유가 여기 있어. 재료를 채워주는 환경과 사람이 이 사주한테 진짜 약이야.",
+            },
+            "흐름과 연결": {
+                "high": "기운이 막히지 않고 잘 돌아가고 있어.{flow_str} 생각이 행동이 되고, 행동이 결과가 되는 사이클이 살아 있는 거야. 이게 있으면 혼자서도 에너지가 제 방향으로 흘러가거든.",
+                "mid":  "흐름이 부분적으로는 이어지는데 어딘가 끊기는 구간이 있어. 어느 사이클이 약한지 아래에서 확인해봐 — 그 구간만 보완하면 훨씬 잘 돌아가.",
+                "low":  "흐름 구조가 약한 편이야. 잘하는 게 있어도 그게 결과로 연결되는 데 시간이 좀 더 걸릴 수 있어. 흐름을 도와주는 환경과 사람을 곁에 두는 게 중요해.",
+            },
+            "현실작동력": {
+                "high": "가진 기운이 바깥으로 잘 드러나.{gathering_str} 머릿속에만 있는 사람이 아니라 실제로 보여주는 사람이야 — 이게 이 사주의 큰 무기야.",
+                "mid":  "드러나는 힘이 중간 정도야. 내면에 있는 걸 꺼내는 계기가 필요해 — 혼자 고민만 하기보다 작게라도 바깥으로 표현하는 게 중요해.",
+                "low":  "기운이 안으로 머무는 경향이 있어. 능력이 없는 게 아니야 — 발현되는 구조가 약한 거거든. 첫 발을 내딛는 용기가 이 사주한테 제일 중요한 거야.",
+            },
+        }
+
+        for _an, _pct, _st in _axis_results:
+            _grade_key = "high" if _st in ("극강", "최강", "강함+", "강함") else "mid" if _st in ("보통+", "보통") else "low"
+            _sc, _sbg = _label_colors.get(_st, ("#94a3b8", "#111827"))
+            _tmpl = _axis_story.get(_an, {}).get(_grade_key, axis_desc.get(_an, ""))
+            # 흐름과 연결 — 감지된 흐름 이름 삽입
+            if _an == "흐름과 연결":
+                _flow_str_list = [f for f in ["식상생재", "재관인상생", "재생관", "관인상생"] if f in _active_flows]
+                _flow_insert = (" " + "·".join(_flow_str_list) + " 흐름 구조가 확인되거든.") if _flow_str_list else " 아래 흐름 보기에서 통로를 확인할 수 있어."
+                _story = _tmpl.format(flow_str=_flow_insert)
+            # 현실작동력 — 합국·방합 감지 여부 삽입
+            elif _an == "현실작동력":
+                _g_insert = (f" 합국·방합 구조({len(_gathering_notes)}개)가 기운을 한 방향으로 뭉쳐주거든.") if _gathering_notes else " 큰 합국 구조는 약하지만, 일상적인 흐름 속에서 충분히 드러날 수 있어."
+                _story = _tmpl.format(gathering_str=_g_insert)
+            else:
+                _story = _tmpl
+
+            st.markdown(
+                f"<div style='border-left:3px solid {_sc};padding:8px 14px;margin:6px 0;"
+                f"background:rgba(0,0,0,0.25);border-radius:0 6px 6px 0;'>"
+                f"<div style='font-size:13px;font-weight:700;color:{_sc};margin-bottom:4px;'>"
+                f"{_axis_icons.get(_an,'')} {_an} — {_st}</div>"
+                f"<div style='font-size:14px;color:#e2e8f0;line-height:1.75;'>{_story}</div>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
-    else:
-        st.markdown(
-            "<div style='background:#111827;border:1px solid #3a2830;border-radius:8px;"
-            "padding:12px 14px;font-size:13px;color:#a0b4bc;'>"
-            "이 사주엔 특기할 신살·공망 신호가 없어. 그것 자체가 나쁜 건 아니야 — "
-            "원국 자체 힘으로 흘러가는 구조거든."
-            "</div>",
-            unsafe_allow_html=True,
-        )
 
-    st.divider()
+        # ── 자세히 보기 expander 3종 ─────────────────────────
+        if _flow_rows:
+            with st.expander("🌊 흐름 구조 자세히 보기 (식상생재·재생관·관인상생)", expanded=False):
+                st.caption("각 흐름이 원국의 어느 글자에서 나오는지, 얼마나 작동하는지 확인합니다.")
+                for _row in _flow_rows:
+                    _render_flow_pipeline_card(chart, result, _row)
+        elif _flows_all:
+            with st.expander("🌊 흐름 구조 보기 (약한 통로 포함)", expanded=False):
+                st.caption("크게 작동하는 흐름은 약하지만, 잠재된 통로를 확인할 수 있습니다.")
+                _weak_rows = _compress_flow_rows_for_display(_flows_all)
+                for _row in (_weak_rows or []):
+                    _render_flow_pipeline_card(chart, result, _row)
 
-    # ── 9. 🔍 기운의 흐름 구조 상세 보기 ────────────────────
-    with st.expander("🔍 기운의 흐름과 순환 구조 상세 보기", expanded=False):
+        if _gathering_notes:
+            with st.expander(f"💥 합국·방합으로 커지는 기운 자세히 보기 ({len(_gathering_notes)}개 구조)", expanded=False):
+                st.caption("여러 지지가 한 방향으로 모여 기운 덩어리를 키우는 구조입니다. 발현과 현실작동력에 직접 영향을 줍니다.")
+                for _note in _gathering_notes:
+                    st.markdown(f"- {_note}")
+
+        if _tension_notes:
+            with st.expander(f"⚡ 충·형 신호 보기 ({len(_tension_notes)}개)", expanded=False):
+                st.caption("원국 안에서 서로 부딪히는 기운입니다. 긴장과 변화의 원천이 되기도 해요.")
+                for _note in _tension_notes:
+                    st.markdown(f"- {_note}")
+
+
+    # ── 신살·특수신호 (버튼 토글) ────────────────────────────
+    if st.session_state.get("show_shinsal_tab", False):
+        # ── 8. ✨ 신살·특수 신호 ─────────────────────────────────
+        st.markdown("#### ✨ 신살·특수 신호")
+        _sh_data   = result.get("shinsal", {}) or {}
+        _sh_hits   = _sh_data.get("hits", []) or []
+        _sh_adj    = float(_sh_data.get("adjustment", 0) or 0)
+
+        if _sh_hits:
+            # 점수 영향 안내
+            _sh_sign = "+" if _sh_adj >= 0 else ""
+            st.caption(
+                f"이 신살들이 총점에 {_sh_sign}{_sh_adj:+.1f}점 영향을 줬어. "
+                f"신살은 사주의 중심 판단을 바꾸진 않고, 색깔을 더해주는 보조 신호야."
+            )
+            _SH_TONE = {
+                "천을귀인": ("💛", "길한 신호", "#1a1a08", "#ca8a04"),
+                "문창귀인": ("💙", "길한 신호", "#0d1420", "#2563eb"),
+                "역마":     ("🟠", "중립 신호", "#0d1525", "#ea580c"),
+                "도화":     ("🩷", "중립 신호", "#1a0d18", "#f59e0b"),
+                "화개":     ("🟣", "중립 신호", "#111827", "#7c3aed"),
+                "공망":     ("⚪", "주의 신호", "#111827", "#94a3b8"),
+            }
+            # 신살별 의사 텍스트
+            _SH_DOC_TEXT = {
+                "천을귀인": "귀인이 곁에 있는 사주야. 힘들 때 예상 밖의 손길이 오는 구조거든. 너무 혼자 다 해결하려 하지 말고, 도움을 요청해봐 — 이 사주는 그때 진가가 나와.",
+                "문창귀인": "머리로 정리하고 표현하는 힘이 있는 사주야. 글·말·기획처럼 생각을 꺼내는 일에서 빛이 나거든. 이걸 살릴 일을 하나씩 만들어봐.",
+                "역마":     "가만있으면 답답해지는 사주야. 이동하고 바꾸고 새 판에 뛰어들 때 기회가 열리거든. 반대로 너무 한 자리에만 묶여 있으면 탈이 나는 경우가 많아.",
+                "도화":     "시선이 닿는 사주야. 분위기를 만들고 사람을 끌어당기는 힘이 있거든. 이걸 잘 쓰면 사람이 모이고, 과하면 피곤해질 수 있어 — 노출 관리가 처방이야.",
+                "화개":     "혼자 깊이 파고드는 걸 즐기는 사주야. 취향이 깊고 몰입력이 강하거든. 좋은 기운인데 — 자기 세계에 너무 갇히지 않도록 가끔은 밖으로 나와봐.",
+                "공망":     "이 자리는 바로 손에 잡히지 않는 자리야. 기대한 만큼 바로 오지 않는 경우가 있거든. 없는 게 아니야 — 돌아가는 방식이거든. 직접 밀기보다 우회 전략이 훨씬 잘 맞아.",
+            }
+
+            for _hit in _sh_hits:
+                _sn      = str(_hit.get("신살", _hit.get("name", "")) or "")
+                _pos     = str(_hit.get("위치", "-") or "-")
+                _nature  = str(_hit.get("성격", "") or "")
+                _reflect = float(_hit.get("반영", 0) or 0)
+                try:
+                    _prof = _shinsal_card_profile(_sn, _hit, chart)
+                except Exception:
+                    _prof = {}
+                _summary = str(_prof.get("summary", "") or "")
+                _meaning = str(_prof.get("meaning", "") or "")
+                _how     = str(_prof.get("how", "") or "")
+                _icon    = str(_prof.get("icon", "🎴") or "🎴")
+                _doc_txt = _SH_DOC_TEXT.get(_sn, "")
+                _em, _tag, _bg, _bc = _SH_TONE.get(_sn, ("🎴", "보조 신호", "#f9fafb", "#6b7280"))
+                _rsign   = f"+{_reflect:.1f}" if _reflect > 0 else f"{_reflect:.1f}" if _reflect < 0 else "±0"
+                # 성립 조건 섹션 (how 있을 때만)
+                _how_section = (
+                    f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid #94a3b8;"
+                    f"margin-top:8px;padding:7px 10px;border-radius:4px;"
+                    f"font-size:12px;color:#94a3b8;line-height:1.8;'>"
+                    f"\U0001f4cc <b>어떻게 성립하냐면</b> \u2014 {_how}</div>"
+                ) if _how else ""
+                # 의사 텍스트 카드 (있을 때만)
+                _doc_section = (
+                    f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid {_bc};"
+                    f"margin-top:8px;padding:8px 10px;border-radius:4px;"
+                    f"font-size:13px;color:#f0e8ec;line-height:1.8;'>"
+                    f"\U0001f4ac {_doc_txt}</div>"
+                ) if _doc_txt else ""
+                st.markdown(
+                    f"<div style='background:{_bg};border:1px solid {_bc};border-radius:10px;"
+                    f"padding:12px 14px;margin-bottom:8px;'>"
+                    f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
+                    f"<span style='font-size:15px;font-weight:700;color:{_bc};'>"
+                    f"{_icon} {_sn}</span>"
+                    f"<span style='font-size:13px;background:{_bc};color:#fff;border-radius:4px;"
+                    f"padding:2px 7px;font-weight:700;'>{_tag} · {_rsign}점</span>"
+                    f"</div>"
+                    f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:6px;'>"
+                    f"📍 {_pos}{(' · ' + _nature) if _nature else ''}</div>"
+                    f"<div style='font-size:13px;color:#e8d5a0;line-height:1.7;margin-bottom:4px;'>"
+                    f"{_summary}</div>"
+                    f"<div style='font-size:12px;color:#a0b4bc;line-height:1.6;'>{_meaning}</div>"
+                    f"{_how_section}"
+                    f"{_doc_section}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.markdown(
+                "<div style='background:#111827;border:1px solid #3a2830;border-radius:8px;"
+                "padding:12px 14px;font-size:13px;color:#a0b4bc;'>"
+                "이 사주엔 특기할 신살·공망 신호가 없어. 그것 자체가 나쁜 건 아니야 — "
+                "원국 자체 힘으로 흘러가는 구조거든."
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+
+    # ── 신약신강판단 (버튼 토글) ─────────────────────────────
+    if st.session_state.get("show_strength_tab", False):
         st.markdown("#### ⚖️ 신약·신강 판단 근거")
         _fw_idx = float(result.get("strength_index", 50) or 50)
         _fw_lbl = str(result.get("strength_label", "중화"))
@@ -21149,13 +21467,144 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
             st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
+
     st.caption("이 진단서는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
+
+
+def render_saju_yebo_page(payload: dict) -> None:
+    """📡 사주예보 — 오늘의 예보 + 4운 카드 + 상세 서브메뉴."""
+    from datetime import date as _date
+    chart      = payload.get("chart")
+    result     = payload.get("result", {}) or {}
+    luck_flow  = payload.get("luck_flow") or {}
+
+    # ── 대운/세운/월운/일운 간지 추출 ─────────────────────────
+    _dw_gz = (luck_flow.get("current_daewun") or {}).get("ganzhi", "")
+
+    _sw_gz = ""
+    _this_yr_label = str(_date.today().year) + "년"
+    for _row in (luck_flow.get("sewun_rows") or []):
+        if str(_row.get("연도", "")) == _this_yr_label:
+            _sw_gz = str(_row.get("세운", ""))
+            break
+
+    try:
+        _compass = today_compass_payload(chart, result) if chart else {}
+    except Exception:
+        _compass = {}
+    _ww_gz = str(_compass.get("month_gz", "") or "")
+    _iw_gz = str(_compass.get("day_gz", "")   or "")
+
+    # ── 오늘의 예보 (맨 위) ──────────────────────────────────
+    st.markdown("### 📡 사주 예보")
+    try:
+        _natal_gz = []
+        if chart:
+            for _pil in [chart.year, chart.month, chart.day, chart.hour]:
+                if _pil and getattr(_pil, "branch", None):
+                    _natal_gz.append(str(_pil.branch))
+        _forecast = make_saju_forecast(
+            natal_branches = _natal_gz,
+            daewoon_branch = _dw_gz,
+            sewoon_branch  = _sw_gz,
+            wolwoon_branch = _ww_gz,
+            ilwoon_branch  = _iw_gz,
+        )
+        render_saju_forecast_box(_forecast)
+    except Exception:
+        pass
+
+    st.divider()
+
+    # ── 4운 카드 (대운 / 세운 / 월운 / 일운) ────────────────
+    st.markdown("#### 🃏 현재 운의 흐름 — 4운 한눈에")
+    st.caption("지금 이 순간 네 사주에 작용하는 네 가지 운의 글자야. 원국 8글자와 이 4운이 서로 어떻게 작용하느냐가 지금 흐름이야.")
+
+    def _split_gz(gz: str):
+        gz = str(gz or "")
+        if len(gz) >= 2:
+            return gz[0], gz[1]
+        elif len(gz) == 1:
+            return gz[0], ""
+        return "?", "?"
+
+    _run_cards = [
+        ("🌊 대운", _dw_gz  or "?", "rgba(59,130,246,0.18)",   "#93c5fd",
+         "10년 큰 흐름이야. 인생의 큰 판이 여기서 설정돼. 이 기운이 내 원국이랑 잘 맞으면 바람을 타고 가는 거고, 안 맞으면 역풍이야 — 그래도 방향은 네가 잡는 거야."),
+        ("🌸 세운", _sw_gz  or "?", "rgba(167,139,250,0.18)",   "#c4b5fd",
+         "올해 1년 파도야. 대운이라는 큰 바다 위에 올해 파도가 얼마나 높은지 보는 거야. 파도가 높아도 서핑을 잘하면 빠르게 가고, 잔잔해도 노 저으면 가는 거야."),
+        ("🌼 월운", _ww_gz  or "?", "rgba(34,197,94,0.18)",     "#86efac",
+         "이번 달 기운이야. 세운이라는 1년 흐름 안에서 이달이 어떤 달인지 보여주는 거야. 좋은 달엔 적극적으로, 긴장 신호가 있는 달엔 방어적으로 움직여봐."),
+        ("☀️ 일운", _iw_gz  or "?", "rgba(251,191,36,0.18)",    "#fde68a",
+         "오늘 하루 기운이야. 제일 짧고 제일 예민한 운이거든. 오늘 이 기운이 내 원국이랑 잘 맞으면 뭘 해도 잘 풀리는 날, 안 맞으면 조금 조심하는 날 — 그게 다야."),
+    ]
+
+    _run_cols = st.columns(4)
+    for _rcol, (_label, _gz, _bg, _color, _desc) in zip(_run_cols, _run_cards):
+        _stem, _branch = _split_gz(_gz)
+        _rcol.markdown(
+            f"<div style='background:{_bg};border:1.5px solid {_color};border-radius:18px;"
+            f"padding:16px 10px 14px 10px;text-align:center;min-height:140px;'>"
+            f"<div style='font-size:11px;color:{_color};font-weight:800;margin-bottom:8px;"
+            f"letter-spacing:.5px;'>{_label}</div>"
+            f"<div style='font-size:36px;font-weight:900;color:{_color};line-height:1.05;'>{_stem}</div>"
+            f"<div style='font-size:30px;font-weight:900;color:{_color};line-height:1.15;'>{_branch}</div>"
+            f"<div style='font-size:12px;color:#d4b896;margin-top:6px;font-weight:700;'>{_gz}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # ── 상세 서브메뉴 ────────────────────────────────────────
+    _yebo_sub = st.radio(
+        "상세 보기",
+        ["대운 상세보기", "세운 상세보기", "월운 상세보기", "일운 상세보기", "캘린더"],
+        index=0,
+        horizontal=True,
+        key="yebo_sub_nav_v5157",
+    )
+
+    if _yebo_sub == "대운 상세보기":
+        render_daewun_text_overview(payload)
+
+    elif _yebo_sub == "세운 상세보기":
+        render_sewun_text_overview(payload)
+
+    elif _yebo_sub == "월운 상세보기":
+        st.markdown("### 🌼 월운 상세보기")
+        _ww_display = _ww_gz or "-"
+        if len(_ww_display) >= 2:
+            _ww_stem_nm   = STEMS.get(_ww_display[0], {}).get("ko", _ww_display[0])
+            _ww_branch_nm = BRANCHES.get(_ww_display[1], {}).get("ko", _ww_display[1])
+            st.markdown(
+                f"<div style='background:#0d1e14;border-left:4px solid #86efac;"
+                f"padding:14px 16px;border-radius:6px;margin-bottom:12px;'>"
+                f"<div style='font-size:13px;font-weight:700;color:#86efac;margin-bottom:6px;'>이번 달 월운 — {_ww_display}</div>"
+                f"<div style='font-size:14px;color:#e8d5a0;line-height:1.9;'>"
+                f"천간 <strong>{_ww_display[0]}({_ww_stem_nm})</strong> + "
+                f"지지 <strong>{_ww_display[1]}({_ww_branch_nm})</strong> 기운이야.<br>"
+                f"이번 달은 {_ww_stem_nm}의 성질과 {_ww_branch_nm}의 성질이 섞여서 흘러가. "
+                f"세운이라는 1년 파도 위에서 이달의 잔물결이야 — 짧게 영향을 주고 지나가는 기운이거든."
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.info("월운 정보를 불러올 수 없어. 생년월일시 자동 산출 모드에서 확인해봐.")
+        st.caption("월운 상세 분석은 대운·세운 흐름과 함께 볼 때 더 정확해.")
+
+    elif _yebo_sub == "일운 상세보기":
+        render_today_quick_entry(payload)
+
+    elif _yebo_sub == "캘린더":
+        render_daily_luck_calendar(payload)
+
 
 
 
 
 def render_single_summary(payload: Dict[str, object]) -> None:
-    """내 사주MRI 결과를 일반인용 한눈에 보기와 전문가 상세보기로 분리한다."""
+    """내 사주 진단 결과를 일반인용 한눈에 보기와 전문가 상세보기로 분리한다."""
     chart = payload["chart"]
     result = payload["result"]
     luck_flow = payload.get("luck_flow")
@@ -21173,7 +21622,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
         for i, p in enumerate(_parts)
     )
     st.markdown(
-        f"<div style='background:#0f172a;border:2px solid #d4b896;border-radius:10px;"
+        f"<div style='background:#0f172a;border:2px solid #d4a0b0;border-radius:10px;"
         f"padding:10px 16px;margin-bottom:8px;'><div style='display:flex;justify-content:space-around;'>"
         f"{_pillar_html_cells}</div>"
         f"<div style='font-size:12px;color:#b0758a;text-align:right;margin-top:4px;'>{APP_VERSION}</div></div>",
@@ -21192,11 +21641,6 @@ def render_single_summary(payload: Dict[str, object]) -> None:
 
     if view == "🏥 사주 진단서":
         render_hanuneyo_text_explanation(payload, char, result)
-        if st.button("📸 이 첫 화면을 바로 공유 이미지로 저장", key="single_inline_share_btn_v591", use_container_width=True):
-            st.session_state["single_inline_share_open_v591"] = not st.session_state.get("single_inline_share_open_v591", False)
-        if st.session_state.get("single_inline_share_open_v591", False):
-            png_bytes = make_simple_first_share_png_bytes(payload, char)
-            render_share_image_tools(png_bytes, "saju_mri_simple_first_share.png", element_key="single_inline_first_share_v591")
         if payload.get("birth_date") and payload.get("calendar_type"):
             try:
                 saved_birth_date = datetime.strptime(str(payload.get("birth_date")), "%Y-%m-%d").date()
@@ -21215,6 +21659,9 @@ def render_single_summary(payload: Dict[str, object]) -> None:
                 )
             except Exception:
                 pass
+
+    elif view == "📡 사주 예보":
+        render_saju_yebo_page(payload)
 
     elif view == "🌊 10년의 처방":
         render_daewun_text_overview(payload)
@@ -21235,9 +21682,6 @@ def render_single_summary(payload: Dict[str, object]) -> None:
 
     elif view == "일운캘린더":
         render_daily_luck_calendar(payload)
-
-    elif view == "공유 카드":
-        render_share_result_card(payload, char)
 
     else:
         st.markdown("### 🔎 상세보기")
@@ -21707,34 +22151,26 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
     total = float(result.get("total", 0.0))
     holistic = float(result.get("holistic", {}).get("adjustment", 0.0))
     shinsal = float(result.get("shinsal", {}).get("adjustment", 0.0))
-    _sz_sc, _sz_mx = _axis_score_lookup(result, "크기")
-    _ex_sc, _ex_mx = _axis_score_lookup(result, "발현")
-    _fl_sc, _fl_mx = _axis_score_lookup(result, "순환")
-    _sz_pct_d = _axis_percent(_sz_sc, _sz_mx) * 100
-    _ex_pct_d = _axis_percent(_ex_sc, _ex_mx) * 100
-    _tot_mx_d = _sz_mx + _fl_mx + _ex_mx
-    _tot_pct_d = (total / _tot_mx_d * 100) if _tot_mx_d > 0 else 0.0
-    _size_grade_d = ("극강" if _sz_pct_d > 80 else "최강" if _sz_pct_d > 75 else "강함+" if _sz_pct_d > 70 else "강함" if _sz_pct_d > 65 else "보통+" if _sz_pct_d > 60 else "보통" if _sz_pct_d > 55 else "약함+" if _sz_pct_d > 50 else "약함")
-    _expr_grade_d = ("극강" if _ex_pct_d > 80 else "최강" if _ex_pct_d > 75 else "강함+" if _ex_pct_d > 70 else "강함" if _ex_pct_d > 65 else "보통+" if _ex_pct_d > 60 else "보통" if _ex_pct_d > 55 else "약함+" if _ex_pct_d > 50 else "약함")
-    _total_grade_d = ("극강" if _tot_pct_d > 80 else "최강" if _tot_pct_d > 75 else "강함+" if _tot_pct_d > 70 else "강함" if _tot_pct_d > 65 else "보통+" if _tot_pct_d > 60 else "보통" if _tot_pct_d > 55 else "약함+" if _tot_pct_d > 50 else "약함")
-    _shinsal_label_d = ("보강" if shinsal > 0.5 else "완화" if shinsal < -0.5 else "중립")
     st.markdown(f"""
     <div style="background:#0f172a;border:1px solid rgba(230,164,184,0.45);border-radius:18px;padding:1rem 1rem 1.1rem 1rem;margin:0.35rem 0 1rem 0;">
-        <div style="font-weight:900;color:#d4b896;font-size:1.04rem;margin-bottom:0.7rem;">기운 3축 한눈에 보기</div>
+        <div style="font-weight:900;color:#d4b896;font-size:1.04rem;margin-bottom:0.7rem;">총점 계산 한눈에 보기</div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.55rem;">
-            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d97706;font-weight:900;">{_size_grade_d}</div><div style="font-size:.88rem;color:#d4b896;">오행·월령·통근·일간</div></div>
-            <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">+</div>
-            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;"></div><div style="font-size:1.35rem;color:#f59e0b;font-weight:900;">{_flow_grade}</div><div style="font-size:.88rem;color:#d4b896;">조후·십성 흐름</div></div>
-            <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">+</div>
-            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d97706;font-weight:900;">{_expr_grade_d}</div><div style="font-size:.88rem;color:#d4b896;">합충·현실 작동</div></div>
-            <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">+</div>
-            <div style="flex:1 1 150px;background:#0f172a;border:1px solid #fde68a;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4b896;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d97706;font-weight:900;">{_shinsal_label_d}</div><div style="font-size:.88rem;color:#d4b896;">체감 보정</div></div>
-            <div style="font-size:1.2rem;font-weight:900;color:#b89a6b;">=</div>
-            <div style="flex:1 1 180px;background:linear-gradient(135deg,#1e2d4a,#0f172a);border:2px solid #f59e0b;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#d4b896;font-weight:800;">종합 등급</div><div style="font-size:1.6rem;color:#f59e0b;font-weight:950;">{_total_grade_d}</div></div>
+            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">기초체력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 크기)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{size_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">오행·월령·통근·일간</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
+            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">흐름과 연결</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;"></div><div style="font-size:1.35rem;color:#f59e0b;font-weight:900;">{_flow_grade}</div><div style="font-size:.88rem;color:#d4b896;">조후·십성 흐름</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
+            <div style="flex:1 1 170px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:1.02rem;color:#d4b896;font-weight:950;">현실작동력</div><div style="font-size:.88rem;color:#d4b896;font-weight:800;">(기운의 발현)</div><div style="font-size:1.35rem;color:#d95b84;font-weight:900;">{expr_score:.1f}</div><div style="font-size:.88rem;color:#d4b896;">합충·현실 작동</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">+</div>
+            <div style="flex:1 1 150px;background:#0f172a;border:1px solid #f2ced8;border-radius:14px;padding:0.8rem;text-align:center;"><div style="font-size:0.94rem;color:#d4b896;font-weight:950;">신살·공망</div><div style="font-size:1.18rem;color:#d95b84;font-weight:900;">{shinsal:+.1f}</div><div style="font-size:.88rem;color:#d4b896;">체감 보정</div></div>
+            <div style="font-size:1.2rem;font-weight:900;color:#b98195;">=</div>
+            <div style="flex:1 1 180px;background:linear-gradient(135deg,#fefce8,#fffafc);border:2px solid #ebb2c4;border-radius:16px;padding:0.85rem;text-align:center;"><div style="font-size:0.92rem;color:#d4b896;font-weight:800;">대표 총점</div><div style="font-size:1.6rem;color:#92400e;font-weight:950;">{total:.1f}점</div></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("기초체력·흐름과 연결·현실작동력 3축과 신살·공망 보정을 종합한 등급이야.")
+    if abs(total - base_total) >= 0.1:
+        st.caption(f"참고: 신살·공망 체감 보정 {shinsal:+.1f}점을 대표 점수에 반영했습니다. 전체 인상 보정 {holistic:+.1f}점은 해설용 참고 신호입니다.")
+    else:
+        st.caption("대표 점수는 기초체력 + 흐름과 연결 + 현실작동력에 신살·공망 체감 보정을 더한 값입니다.")
 
 
 
@@ -21969,7 +22405,7 @@ def _mini_bar_html(label: str, value: float, max_value: float = 100.0, caption: 
         f"<div style='font-weight:900;color:#f59e0b;'>{value_label}</div>"
         f"</div>"
         f"<div style='height:10px;background:#111827;border-radius:99px;overflow:hidden;border:1px solid rgba(230,164,184,.35);'>"
-        f"<div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#fde68a,#bda7ff);border-radius:99px;'></div>"
+        f"<div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);border-radius:99px;'></div>"
         f"</div>"
         f"{caption_html}"
         f"</div>"
@@ -22014,8 +22450,7 @@ def render_ability_triangle(result: Dict[str, object]) -> None:
         legacy = str(info.get("legacy", ""))
         with col:
             st.markdown(f"**{icon} {name}**")
-            _sc_grade = ("극강" if pct > 80 else "최강" if pct > 75 else "강함+" if pct > 70 else "강함" if pct > 65 else "보통+" if pct > 60 else "보통" if pct > 55 else "약함+" if pct > 50 else "약함")
-            safe_metric("등급", _sc_grade)
+            safe_metric("점수", f"{score:.1f}점")
             st.progress(int(round(max(0.0, min(100.0, pct)))))
             if legacy:
                 st.caption(f"보조 설명: {legacy}")
@@ -22160,7 +22595,7 @@ def render_strength_scale(result: Dict[str, object]) -> None:
     st.markdown(f"""
     <div style="background:#0f172a;border:1px solid rgba(230,164,184,.28);border-radius:18px;padding:1rem;margin:.35rem 0;">
         <div style="display:flex;justify-content:space-between;font-weight:900;color:#d4b896;"><span>신약</span><span>중화</span><span>신강</span></div>
-        <div style="position:relative;height:18px;background:linear-gradient(90deg,#c7ddff,#fff4c7,#fef3c7);border-radius:99px;margin:.7rem 0 .45rem 0;border:1px solid rgba(145,115,129,.20);">
+        <div style="position:relative;height:18px;background:linear-gradient(90deg,#c7ddff,#fff4c7,#ffc6d9);border-radius:99px;margin:.7rem 0 .45rem 0;border:1px solid rgba(145,115,129,.20);">
             <div style="position:absolute;left:{pos:.1f}%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#92400e;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.18);"></div>
         </div>
         <div style="font-weight:900;color:#f59e0b;">{label} · 강약 지수 {idx:.1f}</div>
@@ -22292,7 +22727,7 @@ def render_luck_timeline(luck_flow: Dict[str, object] | None) -> None:
         safe_year = html.escape(str(r.get('연도', '-')), quote=True)
         safe_tag = html.escape(str(tag), quote=True)
         safe_sewun = html.escape(str(r.get('세운', '-')), quote=True)
-        cards.append(f"<div style='flex:1 1 120px;background:#0f172a;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4b896;'>{safe_year}</div><div style='font-weight:900;color:#92400e;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#111827;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#fde68a,#bda7ff);'></div></div><div style='font-size:.88rem;color:#d4b896;margin-top:.25rem;'>{safe_sewun}</div></div>")
+        cards.append(f"<div style='flex:1 1 120px;background:#0f172a;border:1px solid rgba(230,164,184,.28);border-radius:16px;padding:.82rem;'><div style='font-weight:950;color:#d4b896;'>{safe_year}</div><div style='font-weight:900;color:#92400e;margin:.25rem 0;'>{safe_tag}</div><div style='height:8px;background:#111827;border-radius:99px;overflow:hidden;'><div style='height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#f8b3ca,#bda7ff);'></div></div><div style='font-size:.88rem;color:#d4b896;margin-top:.25rem;'>{safe_sewun} · {score:.1f}점</div></div>")
     st.markdown("<div style='display:flex;flex-wrap:wrap;gap:.65rem;'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 
@@ -22437,9 +22872,7 @@ def render_luck_wave_section(luck_flow: Dict[str, object] | None) -> None:
         with col_b:
             safe_metric("현재 대운", d.get("ganzhi", "-"))
         with col_c:
-            _dw_mod = float(luck_flow.get("daewun_mod", 0.0))
-            _dw_mod_label = ("흐름 좋음" if _dw_mod > 0.5 else "흐름 약함" if _dw_mod < -0.5 else "흐름 중립")
-            safe_metric("대운 흐름", _dw_mod_label)
+            safe_metric("대운 참고점", f"{luck_flow.get('daewun_score', '-')}점", f"{float(luck_flow.get('daewun_mod', 0.0)):+.1f}점")
         safe_write(f"- 시작 나이: **{d.get('start_age', '-')}세**")
         safe_write(f"- 해석: {luck_flow.get('daewun_note', '-')}")
         if luck_flow.get("sewun_rows"):
@@ -23219,7 +23652,7 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
 
     landing_cols = st.columns(2)
     with landing_cols[0]:
-        if st.button("🌸 내 사주MRI", type="primary", use_container_width=True, key="landing_single"):
+        if st.button("🌸 내 사주 진단", type="primary", use_container_width=True, key="landing_single"):
             st.session_state.selected_main_mode = "혼자 보기"
             st.session_state.show_details = False
             st.rerun()
@@ -23252,7 +23685,7 @@ else:
             reset_navigation_to(None)
             st.rerun()
     with mode_bar_cols[1]:
-        display_input_mode = "내 사주MRI" if input_mode == "혼자 보기" else ("케미 분석" if input_mode == "케미 분석" else input_mode)
+        display_input_mode = "내 사주 진단" if input_mode == "혼자 보기" else ("케미 분석" if input_mode == "케미 분석" else input_mode)
         st.caption(f"현재 선택: **{display_input_mode}**")
 
 single_view_mode = None
@@ -23284,7 +23717,7 @@ multi_payload = None
 meal_payload = None
 
 if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력":
-    quest_title(" 내 사주MRI — 빠른 입력", "", ["빠른 입력", "자동 산출"])
+    quest_title("🌸 내 사주 진단 — 빠른 입력", "", ["빠른 입력", "자동 산출"])
     quick_name = st.text_input("별명", value="나", key="single_quick_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     quick_line = st.text_input("한 줄 입력", value="", placeholder="YYYYMMDD HHMM 남자 양력", key="single_quick_line")
     quick_yaja = st.checkbox("야자시 모드 시도", value=False, key="single_quick_yaja")
@@ -23307,23 +23740,24 @@ if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력"
             st.stop()
 
 if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
-    quest_title("🌸 내 사주MRI — 원국 직접 입력", "", ["원국", "천간", "지지"])
+    quest_title("🌸 내 사주 진단 — 원국 직접 입력", "", ["원국", "천간", "지지"])
     single_direct_name = st.text_input("별명", value="나", key="single_direct_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     st.caption("년주·월주 → 일주·시주 순으로 선택하세요.")
-    _r1 = st.columns(4)
-    with _r1[0]:
+    _r1a = st.columns(2)
+    with _r1a[0]:
         st.markdown("**🌱 년주**")
         ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key="ys")
         yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key="yb")
-    with _r1[1]:
+    with _r1a[1]:
         st.markdown("**🌿 월주**")
         ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key="ms")
         mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key="mb")
-    with _r1[2]:
+    _r1b = st.columns(2)
+    with _r1b[0]:
         st.markdown("**☀️ 일주**")
         ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key="ds")
         db = st.radio("일지", branch_options, index=0, format_func=display_branch, key="db")
-    with _r1[3]:
+    with _r1b[1]:
         st.markdown("**🌙 시주**")
         hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key="hs")
         hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key="hb")
@@ -23361,7 +23795,7 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
         }
 
 elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
-    quest_title("🌸 내 사주MRI", "", ["원국", "오늘", "대운"])
+    quest_title("🌸 내 사주 진단", "", ["원국", "오늘", "대운"])
 
     render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
 
@@ -23487,21 +23921,17 @@ elif input_mode in ["케미 분석", "친구와 배틀"]:
                 })
             else:
                 st.markdown("#### 원국 직접 입력")
-                _fb_a = st.columns(4)
+                _fb_a = st.columns(2)
                 with _fb_a[0]:
-                    st.markdown("**🌱 년주**")
+                    st.markdown("**🌱 년주 / 🌿 월주**")
                     ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ys_{idx}")
                     yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_yb_{idx}")
-                with _fb_a[1]:
-                    st.markdown("**🌿 월주**")
                     ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ms_{idx}")
                     mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_mb_{idx}")
-                with _fb_a[2]:
-                    st.markdown("**☀️ 일주**")
+                with _fb_a[1]:
+                    st.markdown("**☀️ 일주 / 🌙 시주**")
                     ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_ds_{idx}")
                     db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_db_{idx}")
-                with _fb_a[3]:
-                    st.markdown("**🌙 시주**")
                     hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"friend_battle_hs_{idx}")
                     hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"friend_battle_hb_{idx}")
                 gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"friend_battle_gender_{idx}")
@@ -23608,21 +24038,17 @@ elif input_mode == "__legacy_group_disabled__":
                 })
             else:
                 st.markdown("#### 원국 직접 입력")
-                _mu_a = st.columns(4)
+                _mu_a = st.columns(2)
                 with _mu_a[0]:
-                    st.markdown("**🌱 년주**")
+                    st.markdown("**🌱 년주 / 🌿 월주**")
                     ys = st.radio("년간", stem_options, index=0, format_func=display_stem, key=f"multi_ys_{idx}")
                     yb = st.radio("년지", branch_options, index=0, format_func=display_branch, key=f"multi_yb_{idx}")
-                with _mu_a[1]:
-                    st.markdown("**🌿 월주**")
                     ms = st.radio("월간", stem_options, index=0, format_func=display_stem, key=f"multi_ms_{idx}")
                     mb = st.radio("월지", branch_options, index=0, format_func=display_branch, key=f"multi_mb_{idx}")
-                with _mu_a[2]:
-                    st.markdown("**☀️ 일주**")
+                with _mu_a[1]:
+                    st.markdown("**☀️ 일주 / 🌙 시주**")
                     ds = st.radio("일간", stem_options, index=0, format_func=display_stem, key=f"multi_ds_{idx}")
                     db = st.radio("일지", branch_options, index=0, format_func=display_branch, key=f"multi_db_{idx}")
-                with _mu_a[3]:
-                    st.markdown("**🌙 시주**")
                     hs = st.radio("시간", stem_options, index=0, format_func=display_stem, key=f"multi_hs_{idx}")
                     hb = st.radio("시지", branch_options, index=0, format_func=display_branch, key=f"multi_hb_{idx}")
                 gender = st.radio("성별 기준", ["남자", "여자"], horizontal=True, key=f"multi_gender_{idx}")
@@ -23911,7 +24337,7 @@ def empty_state_message_for_mode(mode: str | None) -> str:
     if mode == "케미 분석":
         return "참가자 정보를 입력한 뒤 **케미 분석 시작**을 누르세요."
     if mode == "오늘의 뽑기":
-        return "현재 기본 메뉴에서는 뽑기 기능을 표시하지 않습니다. **내 사주MRI** 또는 **모두의 케미**를 선택해 주세요."
+        return "현재 기본 메뉴에서는 뽑기 기능을 표시하지 않습니다. **내 사주 진단** 또는 **모두의 케미**를 선택해 주세요."
     return "시작할 메뉴를 선택한 뒤 정보를 입력해 주세요."
 
 
@@ -24214,23 +24640,6 @@ elif payload.get("multi_chem"):
 elif not payload.get("battle"):
         render_single_summary(payload)
 
-else:
-    # 2명 모두의 케미 (battle=True)
-    mine = payload["mine"]
-    friend = payload["friend"]
-    battle_summary = make_battle_summary(mine, friend)
-    compatibility = compatibility_analysis(mine, friend, payload.get("relationship_mode", "친구"))
-
-    st.markdown(
-        f"<span class='summary-chip'>모드: 모두의 케미</span>"
-        f"<span class='summary-chip'>태양시 보정: {payload.get('correction_label', '한국 평균 -30분')}</span>"
-        f"<span class='summary-chip'>야자시: {'시도' if payload.get('use_yajashee') else '미시도'}</span>"
-        f"<span class='summary-chip'>나이 기준: {payload.get('age_basis', '만 나이')}</span>",
-        unsafe_allow_html=True,
-    )
-    render_battle_result_board(mine, friend, battle_summary, compatibility)
-    st.caption("비교 결과와 케미 평가는 오락·참고용이야. 사람의 우열이나 관계의 결론을 단정하지 않아.")
-
 
 # ── JS: <head>에 즉시 <style> 주입 → FOUC 완전 차단 ──
 _stcomp.html("""
@@ -24282,15 +24691,15 @@ _stcomp.html("""
         '  background-color:#1e2d4a!important;' +
         '  color:#fde68a!important;' +
         '}' +
-        'li[role="option"]:hover {' +
-        '  background-color:#92400e!important;' +
+        'li[role=\"option\"]:hover {' +
+        '  background-color:#3d1a2b!important;' +
         '}' +
         /* number_input 버튼 */
-        'button[data-testid="stNumberInputStepDown"],' +
-        'button[data-testid="stNumberInputStepUp"] {' +
-        '  background-color:#1e2d4a!important;' +
+        'button[data-testid=\"stNumberInputStepDown\"],' +
+        'button[data-testid=\"stNumberInputStepUp\"] {' +
+        '  background-color:#3d1a2b!important;' +
         '  color:#fde68a!important;' +
-        '  border-color:rgba(245,158,11,0.40)!important;' +
+        '  border-color:rgba(232,121,160,0.30)!important;' +
         '}';
 
     var style = document.createElement('style');
