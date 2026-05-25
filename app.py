@@ -7878,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.173"
+APP_VERSION = "v5.176"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -14182,22 +14182,23 @@ def parse_battle_codes_from_text(text: str, today) -> list:
 
 
 def render_battle_ranking_page() -> None:
-    """⚔️ 사주 맞짱 — 코드 붙여넣기 → 랭킹 산출."""
+    """⚔️ 사주 맞짱 — 코드 붙여넣기 → 결과 링크 생성 → 단톡 공유."""
+    import json as _json
+    import urllib.parse as _up
     from datetime import date as _date
     today = _date.today()
 
     st.markdown("## ⚔️ 사주 맞짱")
-    st.caption("각자 내 사주 진단 후 받은 오늘의 맞짱 코드를 단톡방에 올리고, 아래에 붙여넣으면 랭킹을 산출해줘.")
 
     # ── 사용법 안내 ──────────────────────────────────────────
     st.markdown(
         "<div style='background:#1e0d18;border-left:4px solid #f59e0b;"
         "border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:14px;"
-        "font-size:13px;color:#e8d5a0;line-height:2.0;'>"
-        "1️⃣ 각자 <b>내 사주 진단</b> → 결과 화면에서 <b>오늘의 맞짱 코드</b> 확인<br>"
-        "2️⃣ 단톡방에 <code>홍길동: K7X2MQ</code> 형식으로 공유<br>"
-        "3️⃣ 모든 코드가 모이면 아래에 단톡방 내용 그대로 붙여넣기<br>"
-        "4️⃣ 랭킹 산출 후 결과를 단톡방에 다시 공유!"
+        "font-size:13px;color:#e8d5a0;line-height:2.2;'>"
+        "1️⃣ 각자 내 사주 진단 후 <b>오늘의 맞짱 코드</b>를 단톡에 공유<br>"
+        "2️⃣ 단톡 내용을 아래에 <b>붙여넣기</b><br>"
+        "3️⃣ <b>결과 링크 생성</b> 버튼 → 링크를 단톡에 공유<br>"
+        "4️⃣ 모두가 링크 클릭 → 동시에 순위 확인 🎉"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -14205,95 +14206,73 @@ def render_battle_ranking_page() -> None:
     # ── 붙여넣기 영역 ────────────────────────────────────────
     raw_text = st.text_area(
         "단톡방 내용 붙여넣기 (최대 10명)",
-        placeholder="홍길동: K7X2MQ\n김철수: P3RT9W\n이영희: X8KL4N\n...",
-        height=180,
+        placeholder="홍길동: K7X2MQ\n김철수: P3RT9W\n이영희: X8KL4N",
+        height=160,
         key="battle_paste_area",
+        help="'이름: 코드' 형식이면 자동 인식해. 단톡 내용을 그대로 복사해서 붙여넣어도 돼.",
     )
 
-    if st.button("⚔️ 랭킹 산출하기", type="primary", use_container_width=True, key="battle_rank_btn"):
-        if not raw_text.strip():
-            st.warning("코드를 붙여넣어야 해.")
-        else:
-            entries = parse_battle_codes_from_text(raw_text, today)
-            if not entries:
-                st.error("코드를 찾을 수 없어. '이름: 코드' 형식인지 확인해봐.")
-            else:
-                # 유효한 코드만 정렬
-                valid   = sorted([e for e in entries if e["valid"]], key=lambda x: x["score"], reverse=True)
-                invalid = [e for e in entries if not e["valid"]]
+    # ── 실시간 파싱 결과 표시 ────────────────────────────────
+    entries = []
+    if raw_text.strip():
+        entries = parse_battle_codes_from_text(raw_text, today)
+        valid_e   = [e for e in entries if e["valid"]]
+        invalid_e = [e for e in entries if not e["valid"]]
+        if valid_e:
+            names_str = " · ".join(e["name"] for e in valid_e)
+            st.success(f"✅ {len(valid_e)}명 인식됨: {names_str}")
+        if invalid_e:
+            st.caption(f"⚠️ 만료된 코드 (오늘 생성 코드 아님): "
+                       f"{', '.join(e['name'] for e in invalid_e)}")
+        if not valid_e and entries:
+            st.error("인식된 코드가 모두 만료됐어. 오늘 생성된 코드인지 확인해봐.")
 
-                st.session_state["battle_result"] = {"valid": valid, "invalid": invalid, "date": str(today)}
+    # ── 결과 링크 생성 버튼 ──────────────────────────────────
+    valid_e = [e for e in entries if e.get("valid")]
+    if valid_e:
+        if st.button("🔗 결과 링크 생성", type="primary",
+                     use_container_width=True, key="battle_genlink_btn"):
+            param   = ",".join(f"{e['name']}:{e['code']}" for e in valid_e)
+            encoded = _up.quote(param, safe=":,")
+            st.session_state["battle_link_encoded"] = encoded
+            st.session_state["battle_link_entries"] = valid_e
 
-    # ── 랭킹 결과 표시 ──────────────────────────────────────
-    br = st.session_state.get("battle_result")
-    if br and br.get("date") == str(today):
-        valid   = br["valid"]
-        invalid = br["invalid"]
+    # ── 생성된 링크 공유 영역 ────────────────────────────────
+    if st.session_state.get("battle_link_encoded"):
+        encoded  = st.session_state["battle_link_encoded"]
+        link_e   = st.session_state.get("battle_link_entries", [])
+        sorted_e = sorted(link_e, key=lambda x: x["score"], reverse=True)
+        medal    = ["🥇", "🥈", "🥉"] + [" "] * 7
 
-        if not valid:
-            st.error("유효한 코드가 없어. 오늘 생성된 코드인지 확인해봐.")
-        else:
-            # 랭킹 카드
-            medal = ["🥇", "🥈", "🥉"] + ["  "] * 7
-            RANK_COLORS = ["#fbbf24", "#94a3b8", "#f97316"] + ["#b89a6b"] * 7
-            _rank_html = ""
-            for idx, e in enumerate(valid):
-                pct = e["score"]
-                bar_w = int(pct)
-                col = RANK_COLORS[idx] if idx < len(RANK_COLORS) else "#b89a6b"
-                _rank_html += (
-                    f"<div style='margin-bottom:10px;'>"
-                    f"<div style='display:flex;justify-content:space-between;align-items:center;"
-                    f"font-size:13px;color:#e8d5a0;margin-bottom:4px;'>"
-                    f"<span style='font-weight:700;font-size:15px;'>{medal[idx]} {idx+1}위 &nbsp; {e['name']}</span>"
-                    f"<span style='color:{col};font-weight:800;font-size:16px;'>{pct}점</span>"
-                    f"</div>"
-                    f"<div style='background:#160a12;border-radius:999px;overflow:hidden;height:10px;'>"
-                    f"<div style='width:{bar_w}%;height:100%;background:{col};border-radius:999px;'></div>"
-                    f"</div>"
-                    f"</div>"
-                )
+        # 미리보기
+        preview = " · ".join(
+            f"{medal[i].strip() or str(i+1)+'위'} {e['name']} {e['score']}점"
+            for i, e in enumerate(sorted_e)
+        )
+        st.markdown(
+            f"<div style='background:#1e0d18;border:1px solid #5a2840;"
+            f"border-radius:10px;padding:10px 14px;font-size:13px;"
+            f"color:#e8d5a0;line-height:1.9;'>"
+            f"<b>📋 결과 미리보기</b><br>{preview}</div>",
+            unsafe_allow_html=True,
+        )
 
-            winner = valid[0]
-            st.markdown(
-                f"<div style='background:#22101c;border:2px solid #f59e0b;"
-                f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
-                f"<div style='font-size:13px;color:#f59e0b;font-weight:700;"
-                f"letter-spacing:1px;margin-bottom:12px;'>⚔️ 오늘의 맞짱 랭킹 — {today.strftime('%Y.%m.%d')}</div>"
-                f"{_rank_html}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-
-            if invalid:
-                st.caption(f"⚠️ 코드 인식 실패 또는 만료: {', '.join(e['name'] for e in invalid)}")
-
-            # 결과 텍스트 생성 (공유용)
-            lines = [f"⚔️ 오늘의 사주 맞짱 랭킹 ({today.strftime('%Y.%m.%d')})"]
-            for idx, e in enumerate(valid):
-                lines.append(f"{medal[idx].strip() or str(idx+1)+'위'} {e['name']} {e['score']}점")
-            lines.append(f"\n오늘 기운 최강자: {winner['name']} 👑")
-            lines.append("사주MRI에서 도전! → https://saju-web-app.streamlit.app")
-            share_text = "\n".join(lines)
-
-            # Web Share API 버튼
-            st.components.v1.html(
-                f"""
-                <button onclick="
-                    var txt = {repr(share_text)};
-                    if(navigator.share){{
-                        navigator.share({{title:'사주 맞짱 결과', text:txt}}).catch(()=>{{}});
-                    }} else {{
-                        navigator.clipboard.writeText(txt).then(()=>alert('복사됐어! 단톡방에 붙여넣어봐.'));
-                    }}
-                " style="
-                    width:100%;padding:12px;background:#f59e0b;color:#1c0a00;
-                    border:none;border-radius:10px;font-size:15px;font-weight:800;
-                    cursor:pointer;margin-top:4px;
-                ">📤 단톡방에 결과 공유</button>
-                """,
-                height=60,
-            )
+        encoded_js = _json.dumps(encoded)
+        st.components.v1.html(
+            f"""<button onclick="
+                var base = window.location.origin + window.location.pathname;
+                var url  = base + '?b=' + {encoded_js};
+                if(navigator.share){{
+                    navigator.share({{title:'사주 맞짱 결과', url:url}}).catch(()=>{{}});
+                }} else {{
+                    navigator.clipboard.writeText(url)
+                      .then(()=>alert('결과 링크가 복사됐어!\\n단톡방에 붙여넣어봐.'));
+                }}
+            " style="width:100%;padding:13px;background:#f59e0b;color:#1c0a00;
+                border:none;border-radius:10px;font-size:15px;font-weight:800;
+                cursor:pointer;margin-top:6px;">📤 결과 링크 단톡방에 공유</button>""",
+            height=60,
+        )
 
     # ── 내 코드 확인 버튼 ────────────────────────────────────
     st.divider()
@@ -14303,6 +14282,181 @@ def render_battle_ranking_page() -> None:
         st.rerun()
 
 
+def _render_battle_result_from_url(b_param: str) -> None:
+    """URL ?b= 파라미터로부터 맞짱 결과 화면을 표시한다.
+    누가 링크를 열어도 동일한 순위가 나온다."""
+    import json as _json
+    from datetime import date as _d
+    today = _d.today()
+
+    # ── 긴장감 유발 로딩 오버레이 (1.8초) ────────────────────
+    st.components.v1.html("""
+<script>
+(function() {
+    var doc = (window.parent || window).document;
+    var ov = doc.createElement('div');
+    ov.id = 'battle-reveal-overlay';
+    ov.style.cssText = [
+        'position:fixed','top:0','left:0','right:0','bottom:0',
+        'background:#080308',
+        'z-index:999999',
+        'display:flex','flex-direction:column',
+        'align-items:center','justify-content:center',
+        'transition:opacity 0.7s ease',
+        'opacity:1'
+    ].join(';');
+    ov.innerHTML = [
+        '<div style="font-size:3.2rem;margin-bottom:18px;',
+        'animation:pulse 0.9s infinite alternate;">⚔️</div>',
+        '<div style="font-size:1.45rem;color:#f59e0b;font-weight:800;',
+        'margin-bottom:10px;letter-spacing:1px;">오늘의 승자는...</div>',
+        '<div style="font-size:0.95rem;color:#b89a6b;margin-bottom:28px;">',
+        '사주 기운을 분석하는 중</div>',
+        '<div id="ov-dots" style="font-size:1.6rem;letter-spacing:6px;',
+        'color:#f59e0b;width:60px;text-align:center;">●○○</div>',
+        '<style>',
+        '@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.18)}}',
+        '</style>'
+    ].join('');
+    doc.body.appendChild(ov);
+
+    var frames = ['●○○','○●○','○○●','○●○'];
+    var fi = 0;
+    var dotEl = doc.getElementById('ov-dots');
+    var iv = setInterval(function(){
+        fi = (fi + 1) % frames.length;
+        if(dotEl) dotEl.textContent = frames[fi];
+    }, 220);
+
+    setTimeout(function(){
+        clearInterval(iv);
+        ov.style.opacity = '0';
+        setTimeout(function(){
+            if(ov.parentNode) ov.parentNode.removeChild(ov);
+        }, 700);
+    }, 1800);
+})();
+</script>
+""", height=0)
+
+    # ── 파싱: "홍길동:K7X2MQ,김철수:B3NRPX,..." ──────────────
+    entries = []
+    for part in b_param.split(","):
+        part = part.strip()
+        if ":" not in part:
+            continue
+        name, _, code = part.partition(":")
+        name = name.strip()
+        code = code.strip().upper()
+        if not name or len(code) != 6:
+            continue
+        score = decode_battle_code(code, today)
+        entries.append({"name": name, "code": code,
+                        "score": score, "valid": score is not None})
+
+    valid   = sorted([e for e in entries if e["valid"]],
+                     key=lambda x: x["score"], reverse=True)
+    invalid = [e for e in entries if not e["valid"]]
+
+    st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
+
+    if not valid:
+        st.error("유효한 코드가 없거나 만료된 결과야. 오늘 생성된 코드로 다시 시도해봐.")
+        if invalid:
+            st.caption(f"인식된 참가자: {', '.join(e['name'] for e in invalid)}")
+        if st.button("⚔️ 맞짱 다시 시작", use_container_width=True, key="battle_restart_err"):
+            try:
+                st.query_params.clear()
+            except Exception:
+                pass
+            st.rerun()
+        return
+
+    # ── 랭킹 카드 ────────────────────────────────────────────
+    medal       = ["🥇", "🥈", "🥉"] + ["  "] * 7
+    RANK_COLORS = ["#fbbf24", "#94a3b8", "#f97316"] + ["#b89a6b"] * 7
+    _rank_html  = ""
+    for idx, e in enumerate(valid):
+        pct   = e["score"]
+        bar_w = int(pct)
+        col   = RANK_COLORS[idx] if idx < len(RANK_COLORS) else "#b89a6b"
+        _rank_html += (
+            f"<div style='margin-bottom:10px;'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;"
+            f"font-size:13px;color:#e8d5a0;margin-bottom:4px;'>"
+            f"<span style='font-weight:700;font-size:15px;'>"
+            f"{medal[idx]} {idx+1}위 &nbsp; {e['name']}</span>"
+            f"<span style='color:{col};font-weight:800;font-size:16px;'>{pct}점</span>"
+            f"</div>"
+            f"<div style='background:#160a12;border-radius:999px;"
+            f"overflow:hidden;height:10px;'>"
+            f"<div style='width:{bar_w}%;height:100%;background:{col};"
+            f"border-radius:999px;'></div>"
+            f"</div>"
+            f"</div>"
+        )
+
+    winner = valid[0]
+    st.markdown(
+        f"<div style='background:#22101c;border:2px solid #f59e0b;"
+        f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
+        f"<div style='font-size:13px;color:#f59e0b;font-weight:700;"
+        f"letter-spacing:1px;margin-bottom:12px;'>"
+        f"⚔️ 사주 맞짱 랭킹 — {today.strftime('%Y.%m.%d')}</div>"
+        f"{_rank_html}"
+        f"<div style='margin-top:14px;text-align:center;font-size:16px;"
+        f"color:#fbbf24;font-weight:800;'>👑 오늘의 승자: {winner['name']}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    if invalid:
+        st.caption(f"⚠️ 오늘 코드 아님 또는 오류: {', '.join(e['name'] for e in invalid)}")
+
+    # ── 점수 산정 방식 안내 ───────────────────────────────────
+    st.markdown(
+        "<div style='background:#160a12;border-radius:10px;padding:10px 14px;"
+        "font-size:12px;color:#8a7060;line-height:1.9;margin-bottom:10px;'>"
+        "📌 <b>점수 산정 방식</b><br>"
+        "오늘의 전투력은 타고난 원국(사주팔자)보다 <b>일운 · 월운 · 세운 · 대운</b>에 "
+        "더 높은 가중치를 두어 계산합니다. 원국이 강해도 오늘 운이 나쁘면 질 수 있고, "
+        "원국이 약해도 오늘 운이 좋으면 이길 수 있어요. 점수는 매일 달라집니다."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── 결과 재공유 버튼 (현재 URL 그대로 공유) ──────────────
+    share_lines = [f"⚔️ 사주 맞짱 결과 ({today.strftime('%Y.%m.%d')})"]
+    for idx, e in enumerate(valid):
+        share_lines.append(f"{medal[idx].strip() or str(idx+1)+'위'} {e['name']} {e['score']}점")
+    share_lines.append(f"👑 오늘의 승자: {winner['name']}")
+    share_text_js = _json.dumps("\n".join(share_lines))
+
+    st.components.v1.html(
+        f"""<button onclick="
+            var url = window.location.href;
+            var txt = {share_text_js};
+            if(navigator.share){{
+                navigator.share({{title:'사주 맞짱 결과', text:txt, url:url}}).catch(()=>{{}});
+            }} else {{
+                navigator.clipboard.writeText(url)
+                  .then(()=>alert('결과 링크가 복사됐어!\\n단톡방에 붙여넣어봐.'));
+            }}
+        " style="width:100%;padding:12px;background:#f59e0b;color:#1c0a00;
+            border:none;border-radius:10px;font-size:15px;font-weight:800;
+            cursor:pointer;">📤 이 결과 단톡방에 공유</button>""",
+        height=56,
+    )
+
+    st.divider()
+    st.caption("나도 맞짱에 도전하고 싶다면?")
+    if st.button("⚔️ 내 사주로 맞짱 참가", use_container_width=True, key="battle_join_from_result"):
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
+        reset_navigation_to("맞짱")
+        st.rerun()
 
 
 
@@ -24147,13 +24301,18 @@ def render_roster_reuse_menu(target: str) -> None:
 
 st.markdown("""
 <div class="hero-wrap">
-    <div class="hero-title"><span>사주MRI</span></div>
+    <div class="hero-title"><span>사주 맞짱</span></div>
     <div class="hero-subtitle">
         내 사주 진단 · 사주예보 · 모두의 케미
     </div>
 </div>
 """, unsafe_allow_html=True)
 
+# ── URL ?b= 파라미터 감지: 맞짱 결과 링크를 직접 열었을 때 ──────────────
+_battle_url_b = st.query_params.get("b", "")
+if _battle_url_b:
+    _render_battle_result_from_url(_battle_url_b)
+    st.stop()
 
 if st.session_state.payload is None and st.session_state.selected_main_mode is None:
     # 첫 화면은 순수 Streamlit 레이아웃으로만 구성한다.
