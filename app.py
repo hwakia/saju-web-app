@@ -7878,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.166"
+APP_VERSION = "v5.169"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20703,7 +20703,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         )
 
     # ── 진단서 카드 (참고용, 소견 아래) ────────────────────
-    st.markdown(_cert_html, unsafe_allow_html=True)
+    st.markdown(_cert_html.replace('\n\n', '\n'), unsafe_allow_html=True)
 
     st.divider()
 
@@ -21403,7 +21403,6 @@ def render_saju_yebo_page(payload: dict) -> None:
     # ① 종합예보 — 원국 + 4운 가중치 분석
     # ══════════════════════════════════════════════════════════
     st.markdown("### 📡 종합 예보")
-    st.caption("원국 8글자와 현재 대운·세운·월운·일운의 글자들이 서로 어떻게 맞물려 돌아가는지 종합해서 봐.")
 
     _primary_els = list(useful.get("primary") or [])   # 용신
     _burden_els  = list(useful.get("burden")  or [])   # 기신
@@ -21506,6 +21505,9 @@ def render_saju_yebo_page(payload: dict) -> None:
     _run_cols = st.columns(4)
     for _rcol, (_label, _gz, _bg, _color, _desc) in zip(_run_cols, _run_cards):
         _stem, _branch = _split_gz(_gz)
+        _stem_ko   = STEMS.get(_stem, {}).get("ko", _stem)
+        _branch_ko = BRANCHES.get(_branch, {}).get("ko", _branch)
+        _gz_ko = _stem_ko + _branch_ko  # 예: "신사", "병오"
         _rcol.markdown(
             f"<div style='background:{_bg};border:1.5px solid {_color};border-radius:18px;"
             f"padding:16px 10px 14px 10px;text-align:center;min-height:140px;'>"
@@ -21513,118 +21515,13 @@ def render_saju_yebo_page(payload: dict) -> None:
             f"letter-spacing:.5px;'>{_label}</div>"
             f"<div style='font-size:36px;font-weight:900;color:{_color};line-height:1.05;'>{_stem}</div>"
             f"<div style='font-size:30px;font-weight:900;color:{_color};line-height:1.15;'>{_branch}</div>"
-            f"<div style='font-size:12px;color:#d4b896;margin-top:6px;font-weight:700;'>{_gz}</div>"
+            f"<div style='font-size:12px;color:#d4b896;margin-top:6px;font-weight:700;'>{_gz_ko}</div>"
             f"</div>",
             unsafe_allow_html=True,
         )
 
-    st.divider()
 
-    # ══ ② 4운 × 원국 분석표 ════════════════════════════════════
-    st.markdown("#### 🔍 4운 × 원국 분석")
-    st.caption("각 운이 내 원국의 용신/기신 방향과 어떻게 만나는지, 합충 신호는 없는지 한눈에 봐.")
-
-    _YONG_COLOR = {"용신":"#4ade80","기신":"#f87171","중립":"#b89a6b"}
-    _YONG_BG    = {"용신":"rgba(22,163,74,0.15)","기신":"rgba(239,68,68,0.15)","중립":"rgba(184,154,107,0.08)"}
-
-    for _la in _layer_analysis:
-        _gz_disp = _la.get("gz", "?")
-        if not _la.get("stem") and not _la.get("branch"):
-            continue
-        _ys_tag = _la.get("yong_stem", "중립") or "중립"
-        _yb_tag = _la.get("yong_branch", "중립") or "중립"
-        _es = _la.get("el_stem", "-")
-        _eb = _la.get("el_branch", "-")
-        _inters = _la.get("interactions", [])
-        _inter_strs = []
-        for _it in _inters:
-            _it_type = str(_it.get("type",""))
-            _it_name = str(_it.get("name",""))
-            _ko = _CLASH_KO.get(_it_type, None) or _MERGE_KO.get(_it_type, None) or _it_type
-            if _it_name:
-                _inter_strs.append(f"{_ko} <b>{_it_name}</b>")
-        _inter_text = "  ·  ".join(_inter_strs) if _inter_strs else "원국과 뚜렷한 합충 없음"
-        _ys_color = _YONG_COLOR.get(_ys_tag, "#b89a6b")
-        _yb_color = _YONG_COLOR.get(_yb_tag, "#b89a6b")
-        _score_bar_w = int(min(100, max(0, (_la["score"] / 0.4 + 0.5) * 100)))
-        _bar_color = "#4ade80" if _la["score"] >= 0.05 else "#f87171" if _la["score"] <= -0.05 else "#fbbf24"
-        st.markdown(
-            f"<div style='background:#22101c;border:1px solid {_la['color']}44;"
-            f"border-radius:12px;padding:12px 16px;margin-bottom:10px;'>"
-            f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;'>"
-            f"<span style='font-size:13px;font-weight:800;color:{_la['color']};'>{_la['name']} <b style='font-size:18px;'>{_gz_disp}</b></span>"
-            f"<span style='font-size:11px;color:#b89a6b;'>가중치 {int(_la['weight']*100)}%</span>"
-            f"</div>"
-            f"<div style='margin-top:8px;font-size:13px;color:#e8d5a0;line-height:2.0;'>"
-            f"<b>천간 {_la.get('stem','?')}</b> → {_EL_ICON.get(_es,'')}{_EL_KO.get(_es,_es)} "
-            f"<span style='background:{_YONG_BG.get(_ys_tag,'')};"
-            f"border-radius:6px;padding:1px 8px;color:{_ys_color};font-size:12px;font-weight:700;'>{_ys_tag}</span>"
-            f"&nbsp;&nbsp;"
-            f"<b>지지 {_la.get('branch','?')}</b> → {_EL_ICON.get(_eb,'')}{_EL_KO.get(_eb,_eb)} "
-            f"<span style='background:{_YONG_BG.get(_yb_tag,'')};"
-            f"border-radius:6px;padding:1px 8px;color:{_yb_color};font-size:12px;font-weight:700;'>{_yb_tag}</span>"
-            f"</div>"
-            f"<div style='margin-top:6px;font-size:12px;color:#b89a6b;'>🔗 원국 신호: {_inter_text}</div>"
-            f"<div style='margin-top:6px;background:#160a12;border-radius:999px;overflow:hidden;height:6px;'>"
-            f"<div style='width:{_score_bar_w}%;height:100%;background:{_bar_color};border-radius:999px;'></div>"
-            f"</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-
-    # ══ ③ 오행 흐름 변화 (한글 키 수정 완료) ═══════════════════
-    st.divider()
-    st.markdown("#### 🌀 오행 흐름 변화")
-    st.caption("원국의 오행 구성이 4운 기운이 더해지면 어떻게 달라지는지 봐.")
-
-    _el_origin = {"목":0.0,"화":0.0,"토":0.0,"금":0.0,"수":0.0}
-    if chart:
-        _all_pils = [p for p in [chart.year, chart.month, chart.day, chart.hour] if p]
-        for _p in _all_pils:
-            _se = STEMS.get(_p.stem, {}).get("element", "")
-            _be = BRANCHES.get(_p.branch, {}).get("element", "")
-            if _se in _el_origin: _el_origin[_se] += 1.0
-            if _be in _el_origin: _el_origin[_be] += 1.5  # 지지 비중 높게
-    _el_luck = {"목":0.0,"화":0.0,"토":0.0,"금":0.0,"수":0.0}
-    for _la in _layer_analysis:
-        if not _la.get("stem"): continue
-        _se = _la.get("el_stem", "")
-        _be = _la.get("el_branch", "")
-        _wt = _la["weight"]
-        if _se in _el_luck: _el_luck[_se] += _wt * 0.8
-        if _be in _el_luck: _el_luck[_be] += _wt * 1.2
-
-    _el_total_o = sum(_el_origin.values()) or 1
-    _el_total_l = sum(_el_luck.values()) or 1
-    _el_order = ["목","화","토","금","수"]
-    _el_icon2 = {"목":"🌿","화":"🔥","토":"🪨","금":"⚔️","수":"💧"}
-    _el_name2 = {"목":"나무(木)","화":"불(火)","토":"흙(土)","금":"쇠(金)","수":"물(水)"}
-    _el_bars_html = ""
-    for _el in _el_order:
-        _pct_o = _el_origin[_el] / _el_total_o * 100
-        _pct_l = _el_luck[_el] / _el_total_l * 100
-        _is_primary = _el in _primary_els
-        _is_burden  = _el in _burden_els
-        _tag = ("✅용신" if _is_primary else "🚫기신" if _is_burden else "")
-        _bar_c = ("#4ade80" if _is_primary else "#f87171" if _is_burden else "#94a3b8")
-        _el_bars_html += (
-            f"<div style='margin-bottom:8px;'>"
-            f"<div style='display:flex;justify-content:space-between;font-size:12px;color:#b89a6b;margin-bottom:3px;'>"
-            f"<span>{_el_icon2.get(_el,'')}{_el_name2.get(_el,_el)} {_tag}</span>"
-            f"<span>원국 {_pct_o:.0f}% → 운 {_pct_l:.0f}%</span>"
-            f"</div>"
-            f"<div style='background:#160a12;border-radius:999px;overflow:hidden;height:8px;'>"
-            f"<div style='width:{_pct_l:.0f}%;height:100%;background:{_bar_c};border-radius:999px;'></div>"
-            f"</div>"
-            f"</div>"
-        )
-    st.markdown(
-        f"<div style='background:#22101c;border-radius:12px;padding:14px 16px;'>{_el_bars_html}</div>",
-        unsafe_allow_html=True,
-    )
-
-    # ══ ④ 종합예보 텍스트 — 할머니 말투 10줄+ ═══════════════════
-    st.divider()
+    # ══ 종합예보 — 할머니의 총평 (4운 카드 직하) ══════════════════
     st.markdown("#### 📡 종합예보 — 할머니의 총평")
 
     _PERIOD_DESC = {
@@ -21839,9 +21736,131 @@ def render_saju_yebo_page(payload: dict) -> None:
             unsafe_allow_html=True,
         )
 
+
     st.divider()
 
-    # ── 상세 서브메뉴 ────────────────────────────────────────
+    # ══ ② 4운 × 원국 분석표 ════════════════════════════════════
+    st.markdown("#### 🔍 4운 × 원국 분석")
+    st.caption("각 운이 내 원국의 용신/기신 방향과 어떻게 만나는지, 합충 신호는 없는지 한눈에 봐.")
+
+    _YONG_COLOR = {"용신":"#4ade80","기신":"#f87171","중립":"#b89a6b"}
+    _YONG_BG    = {"용신":"rgba(22,163,74,0.15)","기신":"rgba(239,68,68,0.15)","중립":"rgba(184,154,107,0.08)"}
+
+    for _la in _layer_analysis:
+        _gz_disp = _la.get("gz", "?")
+        if not _la.get("stem") and not _la.get("branch"):
+            continue
+        _ys_tag = _la.get("yong_stem", "중립") or "중립"
+        _yb_tag = _la.get("yong_branch", "중립") or "중립"
+        _es = _la.get("el_stem", "-")
+        _eb = _la.get("el_branch", "-")
+        _inters = _la.get("interactions", [])
+        _inter_strs = []
+        for _it in _inters:
+            _it_type = str(_it.get("type",""))
+            _it_name = str(_it.get("name",""))
+            _ko = _CLASH_KO.get(_it_type, None) or _MERGE_KO.get(_it_type, None) or _it_type
+            if _it_name:
+                _inter_strs.append(f"{_ko} <b>{_it_name}</b>")
+        _inter_text = "  ·  ".join(_inter_strs) if _inter_strs else "원국과 뚜렷한 합충 없음"
+        _ys_color = _YONG_COLOR.get(_ys_tag, "#b89a6b")
+        _yb_color = _YONG_COLOR.get(_yb_tag, "#b89a6b")
+        _score_bar_w = int(min(100, max(0, (_la["score"] / 0.4 + 0.5) * 100)))
+        _bar_color = "#4ade80" if _la["score"] >= 0.05 else "#f87171" if _la["score"] <= -0.05 else "#fbbf24"
+        st.markdown(
+            f"<div style='background:#22101c;border:1px solid {_la['color']}44;"
+            f"border-radius:12px;padding:12px 16px;margin-bottom:10px;'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;'>"
+            f"<span style='font-size:13px;font-weight:800;color:{_la['color']};'>{_la['name']} <b style='font-size:18px;'>{_gz_disp}</b></span>"
+            f"<span style='font-size:11px;color:#b89a6b;'>가중치 {int(_la['weight']*100)}%</span>"
+            f"</div>"
+            f"<div style='margin-top:8px;font-size:13px;color:#e8d5a0;line-height:2.0;'>"
+            f"<b>천간 {_la.get('stem','?')}</b> → {_EL_ICON.get(_es,'')}{_EL_KO.get(_es,_es)} "
+            f"<span style='background:{_YONG_BG.get(_ys_tag,'')};"
+            f"border-radius:6px;padding:1px 8px;color:{_ys_color};font-size:12px;font-weight:700;'>{_ys_tag}</span>"
+            f"&nbsp;&nbsp;"
+            f"<b>지지 {_la.get('branch','?')}</b> → {_EL_ICON.get(_eb,'')}{_EL_KO.get(_eb,_eb)} "
+            f"<span style='background:{_YONG_BG.get(_yb_tag,'')};"
+            f"border-radius:6px;padding:1px 8px;color:{_yb_color};font-size:12px;font-weight:700;'>{_yb_tag}</span>"
+            f"</div>"
+            f"<div style='margin-top:6px;font-size:12px;color:#b89a6b;'>🔗 원국 신호: {_inter_text}</div>"
+            f"<div style='margin-top:6px;background:#160a12;border-radius:999px;overflow:hidden;height:6px;'>"
+            f"<div style='width:{_score_bar_w}%;height:100%;background:{_bar_color};border-radius:999px;'></div>"
+            f"</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    # ══ ③ 기운 지형도 (원국 비중 + 4운 영향) ════════════════════
+    st.divider()
+    st.markdown("#### 🧭 기운 지형도")
+    st.caption(
+        "내 사주 원국의 오행 비중이야 (진단서 수치와 동일). "
+        "4운 영향은 지금 흐르는 대운·세운·월운·일운에서 각 기운이 얼마나 들어오는지 보여줘 — "
+        "용신 기운이 많이 들어오면 ↑, 기신 기운이 많이 들어오면 ↓로 흐름이 바뀌는 거야."
+    )
+
+    # 원국 비중 — snap["elements"] 사용 (진단서와 동일한 수치)
+    _el_snap_pct = snap.get("elements", {}) or {}
+    # 4운 영향 — 각 레이어의 오행 가중치 합산
+    _el_luck = {"목":0.0,"화":0.0,"토":0.0,"금":0.0,"수":0.0}
+    for _la in _layer_analysis:
+        if not _la.get("stem"): continue
+        _se = _la.get("el_stem", "")
+        _be = _la.get("el_branch", "")
+        _wt = _la["weight"]
+        if _se in _el_luck: _el_luck[_se] += _wt * 0.8
+        if _be in _el_luck: _el_luck[_be] += _wt * 1.2
+
+    _el_total_l = sum(_el_luck.values()) or 1
+    _el_order = ["목","화","토","금","수"]
+    _el_icon2 = {"목":"🌿","화":"🔥","토":"🪨","금":"⚔️","수":"💧"}
+    _el_name2 = {"목":"나무(木)","화":"불(火)","토":"흙(土)","금":"쇠(金)","수":"물(水)"}
+    _el_bars_html = ""
+    _avg_luck = 1.0 / 5  # 균등 기준 20%
+    for _el in _el_order:
+        _pct_o = float(_el_snap_pct.get(_el, 0) or 0)  # 원국 비중 (진단서와 동일)
+        _pct_l = _el_luck[_el] / _el_total_l * 100     # 4운에서의 비중
+        _is_primary = _el in _primary_els
+        _is_burden  = _el in _burden_els
+        _tag = ("✅용신" if _is_primary else "🚫기신" if _is_burden else "")
+        _bar_c = ("#4ade80" if _is_primary else "#f87171" if _is_burden else "#94a3b8")
+        # 4운 영향 방향: 균등(20%) 대비 많으면 ↑ 강화, 적으면 ↓ 부족
+        _luck_diff = _pct_l - 20.0
+        if _luck_diff >= 8:
+            _luck_arrow = "▲ 4운에서 많이 들어오는 중"
+            _arrow_color = "#4ade80" if _is_primary else "#f87171" if _is_burden else "#94a3b8"
+        elif _luck_diff >= 3:
+            _luck_arrow = "↑ 4운에서 조금 들어오는 중"
+            _arrow_color = "#86efac" if _is_primary else "#fca5a5" if _is_burden else "#94a3b8"
+        elif _luck_diff <= -8:
+            _luck_arrow = "▽ 4운에서 거의 안 들어옴"
+            _arrow_color = "#94a3b8"
+        elif _luck_diff <= -3:
+            _luck_arrow = "↓ 4운에서 적게 들어옴"
+            _arrow_color = "#94a3b8"
+        else:
+            _luck_arrow = "— 4운 영향 보통"
+            _arrow_color = "#b89a6b"
+        _el_bars_html += (
+            f"<div style='margin-bottom:10px;'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#b89a6b;margin-bottom:4px;'>"
+            f"<span style='font-weight:700;font-size:13px;color:#e8d5a0;'>{_el_icon2.get(_el,'')}&nbsp;{_el_name2.get(_el,_el)}&nbsp;"
+            f"<span style='font-size:11px;font-weight:700;color:{_bar_c};'>{_tag}</span></span>"
+            f"<span>내 원국 <b style='color:#fef3c7;'>{_pct_o:.1f}%</b>"
+            f"&nbsp;&nbsp;<span style='color:{_arrow_color};font-size:11px;'>{_luck_arrow}</span></span>"
+            f"</div>"
+            f"<div style='background:#160a12;border-radius:999px;overflow:hidden;height:8px;'>"
+            f"<div style='width:{min(_pct_o,100):.1f}%;height:100%;background:{_bar_c};opacity:0.85;border-radius:999px;'></div>"
+            f"</div>"
+            f"</div>"
+        )
+    st.markdown(
+        f"<div style='background:#22101c;border-radius:12px;padding:14px 16px;'>{_el_bars_html}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── 상세 서브메뉴    # ── 상세 서브메뉴 ────────────────────────────────────────
     _yebo_sub = st.radio(
         "상세 보기",
         ["대운 상세보기", "세운 상세보기", "월운 상세보기", "일운 상세보기", "캘린더"],
@@ -21901,15 +21920,26 @@ def render_single_summary(payload: Dict[str, object]) -> None:
     _pillars_raw = ganji_text(chart)
     _parts = [p.strip() for p in _pillars_raw.split("/")]
     _labels = ["년주", "월주", "일주", "시주"]
+    def _gz_ko_name(gz: str) -> str:
+        """한자 간지 → 한글 간지명 (예: 乙丑 → 을축)"""
+        if len(gz) >= 2:
+            _s = STEMS.get(gz[0], {}).get("ko", gz[0])
+            _b = BRANCHES.get(gz[1], {}).get("ko", gz[1])
+            return _s + _b
+        return gz
     _pillar_html_cells = "".join(
-        f"<div style='text-align:center;'><div style='font-size:12px;color:#fcd7a0;margin-bottom:2px;'>{_labels[i]}</div>"
-        f"<div style='font-size:24px;font-weight:900;letter-spacing:2px;color:#fde68a;'>{p}</div></div>"
+        f"<div style='text-align:center;'>"
+        f"<div style='font-size:12px;color:#fcd7a0;margin-bottom:2px;'>{_labels[i]}</div>"
+        f"<div style='font-size:24px;font-weight:900;letter-spacing:2px;color:#fde68a;'>{p}</div>"
+        f"<div style='font-size:12px;color:#c4a882;margin-top:3px;letter-spacing:1px;'>{_gz_ko_name(p)}</div>"
+        f"</div>"
         for i, p in enumerate(_parts)
     )
     st.markdown(
         f"<div style='background:#22101c;border:2px solid #d4a0b0;border-radius:10px;"
-        f"padding:10px 16px;margin-bottom:8px;'><div style='display:flex;justify-content:space-around;'>"
-        f"{_pillar_html_cells}</div>"
+        f"padding:10px 16px;margin-bottom:8px;'>"
+        f"<div style='font-size:11px;color:#b0758a;font-weight:700;letter-spacing:1.5px;margin-bottom:8px;'>📋 사주 명식 (四柱命式)</div>"
+        f"<div style='display:flex;justify-content:space-around;'>{_pillar_html_cells}</div>"
         f"<div style='font-size:12px;color:#b0758a;text-align:right;margin-top:4px;'>{APP_VERSION}</div></div>",
         unsafe_allow_html=True,
     )
@@ -23833,9 +23863,9 @@ def render_roster_reuse_menu(target: str) -> None:
 
 st.markdown("""
 <div class="hero-wrap">
-    <div class="hero-title"><span>사주MRI</span></div>
+    <div class="hero-title"><span>사주예보</span></div>
     <div class="hero-subtitle">
-        내 원국의 구조 · 오늘의 기운 · 모두의 케미
+        내 사주 진단 · 사주예보 · 모두의 케미
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -24930,4 +24960,4 @@ _stcomp.html("""
 })();
 </script>
 """, height=0)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
