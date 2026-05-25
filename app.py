@@ -7878,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.164"
+APP_VERSION = "v5.165"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20639,16 +20639,17 @@ def render_hanuneyo_text_explanation(payload, char, result):
 """
     # ── 종합 소견 (할머니 말투) — 진단서보다 먼저 ──────────
     if _grandma_intro_html:
-        st.html(
+        st.markdown(
             f"<div style='background:#22101c;border-left:4px solid #f59e0b;"
             f"border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:12px;"
             f"font-size:15px;color:#fef3c7;line-height:2.0;'>"
             f"<div style='font-size:11px;font-weight:700;color:#b89a6b;letter-spacing:2px;margin-bottom:10px;'>종 합 소 견</div>"
-            f"{_grandma_intro_html}</div>"
+            f"{_grandma_intro_html}</div>",
+            unsafe_allow_html=True,
         )
 
     # ── 진단서 카드 (참고용, 소견 아래) ────────────────────
-    st.html(_cert_html)
+    st.markdown(_cert_html, unsafe_allow_html=True)
 
     st.divider()
 
