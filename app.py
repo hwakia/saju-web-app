@@ -7878,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.161"
+APP_VERSION = "v5.164"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20309,36 +20309,28 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     # ── 진단명 생성 ──────────────────────────────────────────
     def _make_diagnosis(dom_el, wk_el, wk_pct_val, tmp, str_label, s_name, b_name):
-        temp_part = (
-            "과열성(過熱性)" if tmp >= 73 else
-            "열성(熱性)"    if tmp >= 62 else
-            "온성(溫性)"    if tmp >= 53 else
-            "냉성(冷性)"    if tmp >= 42 else
-            "한랭성(寒冷性)"
-        )
-        el_hanja = {
-            "木": "목기(木氣)", "火": "화기(火氣)", "土": "토기(土氣)",
-            "金": "금기(金氣)", "水": "수기(水氣)",
+        """진단명 — 한자·의학 용어 없이 쉬운 한글로."""
+        _EL_KO = {"木":"🌿 나무 기운","火":"🔥 불 기운","土":"🪨 흙 기운","金":"⚔️ 쇠 기운","水":"💧 물 기운"}
+        _TEMP  = {
+            "과열": "🔴 뜨거운 체질", "열성": "🟠 따뜻한 체질",
+            "온성": "🟢 균형 체질",   "냉성": "🔵 서늘한 체질", "한랭": "❄️ 차가운 체질",
         }
-        str_part = {
-            "극신강": "과항(過亢)", "신강": "항진(亢進)", "중화": "균형(均衡)",
-            "신약": "부족(不足)", "극신약": "허약(虛弱)",
-        }.get(str_label, "균형(均衡)")
-        suffix = (
-            "증후군(症候群)" if str_label in ("극신강", "극신약") else
-            "기질형(氣質型)" if str_label in ("신강", "신약") else
-            "체질형(體質型)"
-        )
-        wk_part = ""
+        _t_key = ("과열" if tmp>=73 else "열성" if tmp>=62 else "온성" if tmp>=53 else "냉성" if tmp>=42 else "한랭")
+        _temp_disp = _TEMP[_t_key]
+        _str_disp = {
+            "극신강":"기운 매우 강함", "신강":"기운 강함",
+            "중화":"기운 균형",       "신약":"기운 약함", "극신약":"기운 매우 약함",
+        }.get(str_label, "기운 균형")
+        _dom_ko = _EL_KO.get(dom_el, dom_el)
+        _title = f"{_dom_ko}  ·  {_str_disp}"
+        _wk_part = ""
         if wk_el and wk_el not in ("-", dom_el):
-            wk_name = el_hanja.get(wk_el, wk_el)
-            if float(wk_pct_val) < 8:   wk_part = f" · {wk_name} 고갈(枯渴)"
-            elif float(wk_pct_val) < 16: wk_part = f" · {wk_name} 결핍(缺乏)"
-            elif float(wk_pct_val) < 24: wk_part = f" · {wk_name} 저하(低下)"
-        return (
-            f"{temp_part} · {s_name}({day_stem}) · {b_name}({day_branch})\n"
-            f"{el_hanja.get(dom_el, dom_el)} {str_part}{wk_part} {suffix}"
-        )
+            _wk_ko = _EL_KO.get(wk_el, wk_el)
+            _f = float(wk_pct_val)
+            _wk_part = f"  ·  {_wk_ko} {'거의 없음' if _f<8 else '부족' if _f<16 else '살짝 아쉬움'}"
+        _title += _wk_part
+        _sub = f"{_temp_disp}  ·  {s_name}({day_stem}) · {b_name}({day_branch})"
+        return f"{_sub}\n{_title}"
 
     diagnosis_name = _make_diagnosis(
         dominant_el, weak_el, float(weak_pct),
@@ -21365,8 +21357,8 @@ def render_saju_yebo_page(payload: dict) -> None:
     snap = _single_front_snapshot(payload)
     _dominant_el = str(snap.get("dominant", ("-",0))[0] if isinstance(snap.get("dominant"), tuple) else snap.get("dominant", "-"))
 
-    _EL_KO   = {"木":"나무(木)","火":"불(火)","土":"흙(土)","金":"쇠(金)","水":"물(水)"}
-    _EL_ICON = {"木":"🌿","火":"🔥","土":"🪨","金":"⚔️","水":"💧"}
+    _EL_KO   = {"목":"나무(木)","화":"불(火)","토":"흙(土)","금":"쇠(金)","수":"물(水)"}
+    _EL_ICON = {"목":"🌿","화":"🔥","토":"🪨","금":"⚔️","수":"💧"}
     _CLASH_KO = {"충":"충(衝)","형":"형(刑)","파":"파(破)","해":"해(害)","원진":"원진(怨嗔)"}
     _MERGE_KO = {"육합":"육합(六合)","삼합완성":"삼합(三合)","반합":"반합(半合)","방합":"방합(方合)"}
 
@@ -21429,50 +21421,51 @@ def render_saju_yebo_page(payload: dict) -> None:
     # 종합 점수 합산
     _total_score = sum(la["score"] for la in _layer_analysis)
 
-    # ── 종합예보 헤드라인 ───────────────────────────────────
-    def _headline_text(score: float, strength: str, primary_els: list) -> str:
-        _pri_ko = "·".join(_EL_KO.get(e, e) for e in primary_els[:2]) if primary_els else ""
-        if score >= 0.25:
-            return (
-                f"지금 흐름이 아주 좋아. 운에서 들어오는 기운이 {'용신 방향(' + _pri_ko + ')으로 잘 정렬되어 있어 — ' if _pri_ko else ''}"
-                "적극적으로 움직이기 좋은 시기야. 준비된 것들을 실행에 옮겨봐."
-            )
-        elif score >= 0.10:
-            return (
-                f"전체적으로 흐름이 괜찮아. {'용신 기운(' + _pri_ko + ')이 들어오는 레이어가 있어 — ' if _pri_ko else ''}"
-                "무리하지 않으면서 꾸준히 가면 좋은 결과가 쌓이는 시기야."
-            )
-        elif score >= -0.10:
-            return (
-                "지금은 딱 균형점이야. 운의 기운이 좋지도 나쁘지도 않은 — "
-                "내가 어떻게 움직이냐가 결과를 만드는 시기거든. 기본기를 단단히 해봐."
-            )
-        elif score >= -0.25:
-            return (
-                f"{'기신 방향 기운(' + '·'.join(_EL_KO.get(e,e) for e in _burden_els[:2]) + ')이 좀 강해 — ' if _burden_els else ''}"
-                "무리하게 밀고 나가기보다 지금은 아끼고 지키는 전략이 맞아. 큰 결정은 잠깐 미루는 게 좋아."
-            )
-        else:
-            return (
-                "지금은 조심해야 할 시기야. 운에서 들어오는 기운이 원국에 부담을 주고 있어. "
-                "도전보다는 수비, 확장보다는 안정 — 지금 이 시기를 잘 버티면 다음 흐름이 열려."
-            )
+    # ─────────────────────────────────────────────────────────
+    # 표시 섹션: 4운 카드 → 분석표 → 오행 변화 → 종합 텍스트
+    # ─────────────────────────────────────────────────────────
 
-    _headline = _headline_text(_total_score, _strength_label, _primary_els)
+    # ══ ① 4운 한눈에 (위로 이동) ══════════════════════════════
+    st.markdown("#### 🃏 현재 운의 흐름 — 4운 한눈에")
+    st.caption("지금 이 순간 네 사주에 작용하는 네 가지 운의 글자야. 원국 8글자와 이 4운이 서로 어떻게 작용하느냐가 지금 흐름이야.")
 
-    # 헤드라인 박스
-    _hl_color = ("#4ade80" if _total_score >= 0.10 else "#fbbf24" if _total_score >= -0.10 else "#f87171")
-    _hl_bg    = ("rgba(22,163,74,0.12)" if _total_score >= 0.10 else "rgba(217,119,6,0.12)" if _total_score >= -0.10 else "rgba(239,68,68,0.12)")
-    st.markdown(
-        f"<div style='background:{_hl_bg};border:1.5px solid {_hl_color};"
-        f"border-radius:14px;padding:16px 20px;margin-bottom:16px;'>"
-        f"<div style='font-size:11px;color:{_hl_color};font-weight:800;letter-spacing:2px;margin-bottom:8px;'>종 합 예 보</div>"
-        f"<div style='font-size:15px;color:#fef3c7;font-weight:600;line-height:1.9;'>{_headline}</div>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
+    def _split_gz(gz: str):
+        gz = str(gz or "")
+        if len(gz) >= 2:
+            return gz[0], gz[1]
+        elif len(gz) == 1:
+            return gz[0], ""
+        return "?", "?"
 
-    # ── 4운 × 용신/기신 분석표 ─────────────────────────────
+    _run_cards = [
+        ("🌊 대운", _dw_gz  or "?", "rgba(59,130,246,0.18)",   "#93c5fd",
+         "10년 큰 흐름이야. 인생의 큰 판이 여기서 설정돼. 이 기운이 내 원국이랑 잘 맞으면 바람을 타고 가는 거고, 안 맞으면 역풍이야 — 그래도 방향은 네가 잡는 거야."),
+        ("🌸 세운", _sw_gz  or "?", "rgba(167,139,250,0.18)",   "#c4b5fd",
+         "올해 1년 파도야. 대운이라는 큰 바다 위에 올해 파도가 얼마나 높은지 보는 거야. 파도가 높아도 서핑을 잘하면 빠르게 가고, 잔잔해도 노 저으면 가는 거야."),
+        ("🌼 월운", _ww_gz  or "?", "rgba(34,197,94,0.18)",     "#86efac",
+         "이번 달 기운이야. 세운이라는 1년 흐름 안에서 이달이 어떤 달인지 보여주는 거야. 좋은 달엔 적극적으로, 긴장 신호가 있는 달엔 방어적으로 움직여봐."),
+        ("☀️ 일운", _iw_gz  or "?", "rgba(251,191,36,0.18)",    "#fde68a",
+         "오늘 하루 기운이야. 제일 짧고 제일 예민한 운이거든. 오늘 이 기운이 내 원국이랑 잘 맞으면 뭘 해도 잘 풀리는 날, 안 맞으면 조금 조심하는 날 — 그게 다야."),
+    ]
+
+    _run_cols = st.columns(4)
+    for _rcol, (_label, _gz, _bg, _color, _desc) in zip(_run_cols, _run_cards):
+        _stem, _branch = _split_gz(_gz)
+        _rcol.markdown(
+            f"<div style='background:{_bg};border:1.5px solid {_color};border-radius:18px;"
+            f"padding:16px 10px 14px 10px;text-align:center;min-height:140px;'>"
+            f"<div style='font-size:11px;color:{_color};font-weight:800;margin-bottom:8px;"
+            f"letter-spacing:.5px;'>{_label}</div>"
+            f"<div style='font-size:36px;font-weight:900;color:{_color};line-height:1.05;'>{_stem}</div>"
+            f"<div style='font-size:30px;font-weight:900;color:{_color};line-height:1.15;'>{_branch}</div>"
+            f"<div style='font-size:12px;color:#d4b896;margin-top:6px;font-weight:700;'>{_gz}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # ══ ② 4운 × 원국 분석표 ════════════════════════════════════
     st.markdown("#### 🔍 4운 × 원국 분석")
     st.caption("각 운이 내 원국의 용신/기신 방향과 어떻게 만나는지, 합충 신호는 없는지 한눈에 봐.")
 
@@ -21524,12 +21517,12 @@ def render_saju_yebo_page(payload: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    # ── 오행 변화 분석 ──────────────────────────────────────
+    # ══ ③ 오행 흐름 변화 (한글 키 수정 완료) ═══════════════════
     st.divider()
     st.markdown("#### 🌀 오행 흐름 변화")
     st.caption("원국의 오행 구성이 4운 기운이 더해지면 어떻게 달라지는지 봐.")
 
-    _el_origin = {"木":0.0,"火":0.0,"土":0.0,"金":0.0,"水":0.0}
+    _el_origin = {"목":0.0,"화":0.0,"토":0.0,"금":0.0,"수":0.0}
     if chart:
         _all_pils = [p for p in [chart.year, chart.month, chart.day, chart.hour] if p]
         for _p in _all_pils:
@@ -21537,7 +21530,7 @@ def render_saju_yebo_page(payload: dict) -> None:
             _be = BRANCHES.get(_p.branch, {}).get("element", "")
             if _se in _el_origin: _el_origin[_se] += 1.0
             if _be in _el_origin: _el_origin[_be] += 1.5  # 지지 비중 높게
-    _el_luck = {"木":0.0,"火":0.0,"土":0.0,"金":0.0,"水":0.0}
+    _el_luck = {"목":0.0,"화":0.0,"토":0.0,"금":0.0,"수":0.0}
     for _la in _layer_analysis:
         if not _la.get("stem"): continue
         _se = _la.get("el_stem", "")
@@ -21548,8 +21541,9 @@ def render_saju_yebo_page(payload: dict) -> None:
 
     _el_total_o = sum(_el_origin.values()) or 1
     _el_total_l = sum(_el_luck.values()) or 1
-    _el_order = ["木","火","土","金","水"]
-    _el_icon2 = {"木":"🌿","火":"🔥","土":"🪨","金":"⚔️","水":"💧"}
+    _el_order = ["목","화","토","금","수"]
+    _el_icon2 = {"목":"🌿","화":"🔥","토":"🪨","금":"⚔️","수":"💧"}
+    _el_name2 = {"목":"나무(木)","화":"불(火)","토":"흙(土)","금":"쇠(金)","수":"물(水)"}
     _el_bars_html = ""
     for _el in _el_order:
         _pct_o = _el_origin[_el] / _el_total_o * 100
@@ -21561,7 +21555,7 @@ def render_saju_yebo_page(payload: dict) -> None:
         _el_bars_html += (
             f"<div style='margin-bottom:8px;'>"
             f"<div style='display:flex;justify-content:space-between;font-size:12px;color:#b89a6b;margin-bottom:3px;'>"
-            f"<span>{_el_icon2.get(_el,'')}{_EL_KO.get(_el,_el)} {_tag}</span>"
+            f"<span>{_el_icon2.get(_el,'')}{_el_name2.get(_el,_el)} {_tag}</span>"
             f"<span>원국 {_pct_o:.0f}% → 운 {_pct_l:.0f}%</span>"
             f"</div>"
             f"<div style='background:#160a12;border-radius:999px;overflow:hidden;height:8px;'>"
@@ -21574,13 +21568,9 @@ def render_saju_yebo_page(payload: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    # ── 종합 텍스트 처방 ────────────────────────────────────
+    # ══ ④ 종합예보 텍스트 — 할머니 말투 10줄+ ═══════════════════
     st.divider()
-    st.markdown("#### 📋 지금 이 시기 처방")
-
-    # 용신 기운이 가장 강한 레이어 찾기
-    _best_layer = max(_layer_analysis, key=lambda la: la.get("score", 0), default=None)
-    _worst_layer = min(_layer_analysis, key=lambda la: la.get("score", 0), default=None)
+    st.markdown("#### 📡 종합예보 — 할머니의 총평")
 
     _PERIOD_DESC = {
         "🌊 대운": "10년 큰 흐름 전체에서",
@@ -21589,97 +21579,208 @@ def render_saju_yebo_page(payload: dict) -> None:
         "☀️ 일운": "오늘 하루는",
     }
 
-    _text_parts = []
+    _best_layer  = max(_layer_analysis, key=lambda la: la.get("score", 0), default=None)
+    _worst_layer = min(_layer_analysis, key=lambda la: la.get("score", 0), default=None)
+
+    # ── 원국 기운 소개 ──────────────────────────────────────────
+    _dom_ko   = _EL_KO.get(_dominant_el, _dominant_el)
+    _dom_icon = _EL_ICON.get(_dominant_el, "")
+    _str_ko = {
+        "극신강": "기운이 넘쳐흐를 정도로 강한",
+        "신강":   "기운이 든든하게 강한",
+        "중화":   "기운이 고르게 균형 잡힌",
+        "신약":   "기운이 좀 약해서 받쳐줘야 하는",
+        "극신약": "기운이 많이 약한",
+    }.get(_strength_label, "기운이 나름대로 흘러가는")
+
+    _yebo_parts = []
+
+    _yebo_parts.append(
+        f"할머니가 이 사주를 쭉 들여다봤어.<br>"
+        f"제일 눈에 띄는 건 {_dom_icon}<b>{_dom_ko} 기운</b>이야 — "
+        f"이 사주는 <b>{_str_ko}</b> 구조거든. "
+        f"이걸 먼저 알아야 지금 운이 어떻게 작용하는지 제대로 볼 수 있어."
+    )
+
+    # ── 용신/기신 ───────────────────────────────────────────────
     if _primary_els:
-        _pri_ko2 = "·".join(_EL_ICON.get(e,"") + _EL_KO.get(e,e) for e in _primary_els)
-        _text_parts.append(
-            f"이 사주의 용신 방향은 <b>{_pri_ko2}</b>야. "
-            f"이 기운이 강해지는 시기, 환경, 사람 곁에 있을 때 흐름이 열려."
+        _pri_str = "·".join(_EL_ICON.get(e, "") + _EL_KO.get(e, e) for e in _primary_els)
+        _pri_part = (
+            f"이 사주에서 제일 필요한 기운은 <b>{_pri_str}</b>야. "
+            "이걸 용신이라고 하는데, 쉽게 말하면 이 기운이 들어올 때 사주가 살아나고 흐름이 열려. "
+            "직업, 환경, 사람 — 뭐든 이 방향과 잘 맞으면 잘 풀리는 거야."
         )
-    if _best_layer and _best_layer.get("score", 0) > 0.05:
-        _bl_name = _best_layer["name"]
-        _bl_gz   = _best_layer.get("gz","")
-        _text_parts.append(
-            f"{_PERIOD_DESC.get(_bl_name, _bl_name)} <b>{_bl_gz}</b> 기운이 용신 방향으로 들어오고 있어 — "
-            f"이 레이어에서 기회를 잘 잡아봐."
+        if _burden_els:
+            _brd_str = "·".join(_EL_ICON.get(e, "") + _EL_KO.get(e, e) for e in _burden_els)
+            _pri_part += (
+                f"<br>반대로 <b>{_brd_str}</b> 기운은 이 사주한테 부담이야. "
+                "이 기운이 강해지는 시기엔 뭔가 막히고 힘든 느낌이 드는 거야 — 그렇다고 손 놓는 게 아니고, "
+                "그때일수록 기본에 충실하게 버텨야 해."
+            )
+        _yebo_parts.append(_pri_part)
+
+    # ── 대운 ────────────────────────────────────────────────────
+    _dw_la = next((la for la in _layer_analysis if "대운" in la["name"]), None)
+    if _dw_la and _dw_la.get("stem"):
+        _dw_es = _EL_ICON.get(_dw_la["el_stem"], "") + _EL_KO.get(_dw_la["el_stem"], _dw_la["el_stem"])
+        _dw_eb = _EL_ICON.get(_dw_la["el_branch"], "") + _EL_KO.get(_dw_la["el_branch"], _dw_la["el_branch"])
+        _dw_ys = _dw_la.get("yong_stem", "중립")
+        _dw_yb = _dw_la.get("yong_branch", "중립")
+        _dw_tone = (
+            "아주 좋은 방향으로 흘러가고 있어" if _dw_la["score"] > 0.10
+            else "조심스러운 방향이야" if _dw_la["score"] < -0.10
+            else "어느 쪽으로도 크게 치우치지 않는 방향이야"
         )
-    if _worst_layer and _worst_layer.get("score", 0) < -0.05:
-        _wl_name = _worst_layer["name"]
-        _wl_gz   = _worst_layer.get("gz","")
-        _text_parts.append(
-            f"{_PERIOD_DESC.get(_wl_name, _wl_name)} <b>{_wl_gz}</b> 기운이 원국에 부담을 주고 있어. "
-            f"이 레이어에서는 무리하지 않고 아끼는 게 좋아."
+        _inters_dw = _dw_la.get("interactions", [])
+        _inter_dw_txt = ""
+        if _inters_dw:
+            _it0 = _inters_dw[0]
+            _ko0 = _CLASH_KO.get(_it0.get("type", ""), None) or _MERGE_KO.get(_it0.get("type", ""), None) or _it0.get("type", "")
+            _inter_dw_txt = f" 게다가 원국과 <b>{_ko0}</b> 신호까지 있어."
+        _yebo_parts.append(
+            f"지금 10년 큰 흐름인 <b>대운 {_dw_la['gz']}</b>을 봐. "
+            f"천간은 <b>{_dw_es}({_dw_ys})</b>, 지지는 <b>{_dw_eb}({_dw_yb})</b>으로 들어오고 있어. "
+            f"이 대운은 전체적으로 <b>{_dw_tone}</b>.{_inter_dw_txt} "
+            f"10년 흐름의 큰 판이 여기서 결정되니까, 이 기운 방향이 얼마나 내 원국이랑 맞느냐가 제일 중요해."
         )
-    # 합충 시그널 종합
-    _all_clashes = []
-    _all_merges  = []
+
+    # ── 세운 ────────────────────────────────────────────────────
+    _sw_la = next((la for la in _layer_analysis if "세운" in la["name"]), None)
+    if _sw_la and _sw_la.get("stem"):
+        _sw_es = _EL_ICON.get(_sw_la["el_stem"], "") + _EL_KO.get(_sw_la["el_stem"], _sw_la["el_stem"])
+        _sw_eb = _EL_ICON.get(_sw_la["el_branch"], "") + _EL_KO.get(_sw_la["el_branch"], _sw_la["el_branch"])
+        _sw_ys = _sw_la.get("yong_stem", "중립")
+        _sw_yb = _sw_la.get("yong_branch", "중립")
+        _sw_tone = (
+            "힘을 실어주는 해야" if _sw_la["score"] > 0.05
+            else "조심해야 하는 해야" if _sw_la["score"] < -0.05
+            else "어느 방향으로도 크게 치우치지 않는 해야"
+        )
+        _yebo_parts.append(
+            f"올해 세운 <b>{_sw_la['gz']}</b>는 어때? "
+            f"천간 <b>{_sw_es}({_sw_ys})</b>, 지지 <b>{_sw_eb}({_sw_yb})</b>으로 흘러가. "
+            f"대운이라는 큰 판 위에 올해 파도가 얹히는 건데, 올해는 <b>{_sw_tone}</b>.<br>"
+            f"대운이 좋아도 세운이 삐걱이면 그해가 힘들고, 대운이 좀 빡빡해도 세운이 맞으면 그해는 숨통이 트여 — 그게 운의 묘미야."
+        )
+
+    # ── 월운 + 일운 ─────────────────────────────────────────────
+    _mw_la = next((la for la in _layer_analysis if "월운" in la["name"]), None)
+    _iw_la = next((la for la in _layer_analysis if "일운" in la["name"]), None)
+    if _mw_la and _mw_la.get("stem"):
+        _mw_tone = (
+            "힘이 붙는 달이야" if _mw_la["score"] > 0.02
+            else "조심스러운 달이야" if _mw_la["score"] < -0.02
+            else "조용히 지나가는 달이야"
+        )
+        _iw_txt = ""
+        if _iw_la and _iw_la.get("stem"):
+            _iw_txt = (
+                f" 오늘은 <b>{_iw_la['gz']}</b> 기운 — "
+                + (
+                    "용신 방향이라 뭘 해도 가볍게 풀리는 날이야."
+                    if _iw_la["score"] > 0.01
+                    else "기신 방향이라 오늘은 조금 조심해봐."
+                    if _iw_la["score"] < -0.01
+                    else "크게 튀지 않는 평범한 날이야."
+                )
+            )
+        _yebo_parts.append(
+            f"이번 달 월운 <b>{_mw_la['gz']}</b>는 <b>{_mw_tone}</b>.{_iw_txt} "
+            f"월운과 일운은 짧게 지나가는 기운이라 너무 크게 의미 두진 말되, 흐름 타기엔 충분히 써먹을 수 있어."
+        )
+
+    # ── 합충 종합 ────────────────────────────────────────────────
+    _all_clashes2 = []
+    _all_merges2  = []
     for _la in _layer_analysis:
         for _it in (_la.get("interactions") or []):
-            _it_t = str(_it.get("type",""))
-            _it_n = str(_it.get("name",""))
-            if _it_t in ("충","형"):
-                _all_clashes.append(f"<b>{_la['name']}</b>의 {_la.get('gz','')} — {_CLASH_KO.get(_it_t,_it_t)} {_it_n}")
-            elif _it_t in ("삼합완성","육합","반합","방합"):
-                _all_merges.append(f"<b>{_la['name']}</b>의 {_la.get('gz','')} — {_MERGE_KO.get(_it_t,_it_t)} {_it_n}")
-    if _all_merges:
-        _text_parts.append(
-            f"합 신호: {', '.join(_all_merges[:2])} — 이 흐름이 성사되면 에너지가 커지고 기회가 열려."
+            _it_t = str(_it.get("type", ""))
+            _it_n = str(_it.get("name", ""))
+            _lname_s = _la["name"].replace("🌊 ", "").replace("🌸 ", "").replace("🌼 ", "").replace("☀️ ", "")
+            _ko_c = _CLASH_KO.get(_it_t, None)
+            _ko_m = _MERGE_KO.get(_it_t, None)
+            if _ko_c:
+                _all_clashes2.append(f"{_lname_s} <b>{_la.get('gz','')}</b> — {_ko_c}")
+            elif _ko_m:
+                _all_merges2.append(f"{_lname_s} <b>{_la.get('gz','')}</b> — {_ko_m}")
+
+    if _all_merges2:
+        _merge_txt = ", ".join(_all_merges2[:3])
+        _yebo_parts.append(
+            f"합(合) 신호가 보여 — {_merge_txt}. "
+            "합이 성립되면 기운이 한 곳으로 모이면서 강해져. "
+            "이 흐름이 살아 있는 동안은 협력·결합·계획 성사 쪽으로 에너지가 열려 있어."
         )
-    if _all_clashes:
-        _text_parts.append(
-            f"충·형 신호: {', '.join(_all_clashes[:2])} — 이 레이어에서 변동·이동·마찰이 생길 수 있어. 유연하게 대응해봐."
+    if _all_clashes2:
+        _clash_txt = ", ".join(_all_clashes2[:3])
+        _yebo_parts.append(
+            f"충·형(衝·刑) 신호도 있어 — {_clash_txt}. "
+            "충은 기운이 서로 부딪히는 거야. 변화, 이동, 예상치 못한 일이 생길 수 있어. "
+            "나쁜 게 아니라 흔들리는 신호니까 — 흔들릴 때 버티면 새 길이 열리는 거야."
         )
-    if not _text_parts:
-        _text_parts.append(
-            "지금 운의 흐름과 원국 사이에 뚜렷한 강한 신호는 없어. "
-            "평소 루틴대로 움직이면서 기본기를 단단히 하는 시기야."
+    if not _all_merges2 and not _all_clashes2:
+        _yebo_parts.append(
+            "원국과 운 사이에 뚜렷한 합충 신호는 지금 보이지 않아. "
+            "큰 파동 없이 흘러가는 시기야 — 이럴 때가 오히려 차분하게 준비하기 좋아."
         )
 
-    for _tp in _text_parts:
+    # ── 처방 + 종합 평가 ─────────────────────────────────────────
+    if _best_layer and _best_layer.get("score", 0) > 0.05:
+        _bl_n  = _best_layer["name"]
+        _bl_gz = _best_layer.get("gz", "")
+        _yebo_parts.append(
+            f"{_PERIOD_DESC.get(_bl_n, _bl_n)} <b>{_bl_gz}</b> 기운이 용신 방향으로 들어오고 있어 — "
+            f"지금이 그 기회야 — 잘 잡아봐."
+        )
+    if _worst_layer and _worst_layer.get("score", 0) < -0.05:
+        _wl_n  = _worst_layer["name"]
+        _wl_gz = _worst_layer.get("gz", "")
+        _yebo_parts.append(
+            f"{_PERIOD_DESC.get(_wl_n, _wl_n)} <b>{_wl_gz}</b> 기운이 원국에 부담을 주고 있어. "
+            f"지금은 무리하지 않고 아끼는 게 좋아."
+        )
+
+    if _total_score >= 0.25:
+        _final_yebo = (
+            "종합하면, 지금은 <b>아주 좋은 흐름</b>이야. "
+            "용신 기운이 여러 층에서 들어오고 있고, 원국이 지금 운을 잘 받아내고 있어. "
+            "이럴 때 큰 결정, 새 시작, 도전 — 다 좋아. 준비된 거 있으면 지금 움직여봐."
+        )
+    elif _total_score >= 0.10:
+        _final_yebo = (
+            "종합하면, 지금은 <b>전체적으로 괜찮은 흐름</b>이야. "
+            "완벽하진 않아도 운이 등 뒤에서 밀어주고 있어. "
+            "무리하지 않으면서 꾸준히 가면 좋은 결과가 차곡차곡 쌓이는 시기야."
+        )
+    elif _total_score >= -0.10:
+        _final_yebo = (
+            "종합하면, 지금은 <b>균형점</b>이야. "
+            "운에서 특별히 강한 도움도 없고, 특별한 방해도 없어. "
+            "결국 내가 어떻게 움직이느냐가 결과를 만드는 시기거든 — 기본기를 단단히 하고 꾸준히 해봐."
+        )
+    elif _total_score >= -0.25:
+        _final_yebo = (
+            "종합하면, 지금은 <b>조심해야 할 시기</b>야. "
+            "기신 방향 기운이 좀 강하게 들어오고 있어. "
+            "무리하게 밀고 나가기보다 지키고 아끼는 전략이 맞아. 큰 결정은 잠깐 미루는 게 좋아."
+        )
+    else:
+        _final_yebo = (
+            "종합하면, 지금은 <b>단단히 버텨야 하는 시기</b>야. "
+            "운에서 들어오는 기운이 원국에 적지 않은 부담을 주고 있어. "
+            "도전보다 수비, 확장보다 안정이 맞아. 이 시기를 잘 버티면 다음 흐름이 반드시 열려 — 할머니가 보장해."
+        )
+    _yebo_parts.append(_final_yebo)
+
+    # 색상 테마
+    _hl_color = ("#4ade80" if _total_score >= 0.10 else "#fbbf24" if _total_score >= -0.10 else "#f87171")
+    _hl_bg    = ("rgba(22,163,74,0.10)" if _total_score >= 0.10 else "rgba(217,119,6,0.10)" if _total_score >= -0.10 else "rgba(239,68,68,0.10)")
+
+    for _yp in _yebo_parts:
         st.markdown(
-            f"<div style='background:#22101c;border-left:3px solid #e879a0;"
-            f"border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:8px;"
-            f"font-size:14px;color:#fef3c7;line-height:1.9;'>{_tp}</div>",
-            unsafe_allow_html=True,
-        )
-
-    st.divider()
-
-    # ── 4운 카드 (대운 / 세운 / 월운 / 일운) ────────────────
-    st.markdown("#### 🃏 현재 운의 흐름 — 4운 한눈에")
-    st.caption("지금 이 순간 네 사주에 작용하는 네 가지 운의 글자야. 원국 8글자와 이 4운이 서로 어떻게 작용하느냐가 지금 흐름이야.")
-
-    def _split_gz(gz: str):
-        gz = str(gz or "")
-        if len(gz) >= 2:
-            return gz[0], gz[1]
-        elif len(gz) == 1:
-            return gz[0], ""
-        return "?", "?"
-
-    _run_cards = [
-        ("🌊 대운", _dw_gz  or "?", "rgba(59,130,246,0.18)",   "#93c5fd",
-         "10년 큰 흐름이야. 인생의 큰 판이 여기서 설정돼. 이 기운이 내 원국이랑 잘 맞으면 바람을 타고 가는 거고, 안 맞으면 역풍이야 — 그래도 방향은 네가 잡는 거야."),
-        ("🌸 세운", _sw_gz  or "?", "rgba(167,139,250,0.18)",   "#c4b5fd",
-         "올해 1년 파도야. 대운이라는 큰 바다 위에 올해 파도가 얼마나 높은지 보는 거야. 파도가 높아도 서핑을 잘하면 빠르게 가고, 잔잔해도 노 저으면 가는 거야."),
-        ("🌼 월운", _ww_gz  or "?", "rgba(34,197,94,0.18)",     "#86efac",
-         "이번 달 기운이야. 세운이라는 1년 흐름 안에서 이달이 어떤 달인지 보여주는 거야. 좋은 달엔 적극적으로, 긴장 신호가 있는 달엔 방어적으로 움직여봐."),
-        ("☀️ 일운", _iw_gz  or "?", "rgba(251,191,36,0.18)",    "#fde68a",
-         "오늘 하루 기운이야. 제일 짧고 제일 예민한 운이거든. 오늘 이 기운이 내 원국이랑 잘 맞으면 뭘 해도 잘 풀리는 날, 안 맞으면 조금 조심하는 날 — 그게 다야."),
-    ]
-
-    _run_cols = st.columns(4)
-    for _rcol, (_label, _gz, _bg, _color, _desc) in zip(_run_cols, _run_cards):
-        _stem, _branch = _split_gz(_gz)
-        _rcol.markdown(
-            f"<div style='background:{_bg};border:1.5px solid {_color};border-radius:18px;"
-            f"padding:16px 10px 14px 10px;text-align:center;min-height:140px;'>"
-            f"<div style='font-size:11px;color:{_color};font-weight:800;margin-bottom:8px;"
-            f"letter-spacing:.5px;'>{_label}</div>"
-            f"<div style='font-size:36px;font-weight:900;color:{_color};line-height:1.05;'>{_stem}</div>"
-            f"<div style='font-size:30px;font-weight:900;color:{_color};line-height:1.15;'>{_branch}</div>"
-            f"<div style='font-size:12px;color:#d4b896;margin-top:6px;font-weight:700;'>{_gz}</div>"
-            f"</div>",
+            f"<div style='background:{_hl_bg};border-left:3px solid {_hl_color};"
+            f"border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:10px;"
+            f"font-size:14px;color:#fef3c7;line-height:2.0;'>{_yp}</div>",
             unsafe_allow_html=True,
         )
 
@@ -21801,80 +21902,20 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             render_manse_sewun_cards(luck_flow)
 
     else:
-        st.markdown("### 🔎 상세보기")
-        expert_view = st.radio(
-            "상세 항목",
-            ["기운 정밀 분석", "운의 흐름 상세", "상세 명리 분석", "계산 참고 지표"],
-            index=0,
-            horizontal=True,
-            key="single_expert_detail_view_radio_v590",
-        )
+        st.markdown("### 🔎 기운 정밀 분석")
+        render_strength_operation_spotlight(payload)
+        render_character_axis_cards(payload, char)
 
-        if expert_view == "기운 정밀 분석":
-            render_strength_operation_spotlight(payload)
-            render_character_axis_cards(payload, char)
+        left, right = st.columns([1.08, 0.92])
+        with left:
+            st.markdown("#### 🧱 오행 밸런스")
+            render_radar_chart(result)
+        with right:
+            render_climate_thermometer(result)
 
-            left, right = st.columns([1.08, 0.92])
-            with left:
-                st.markdown("#### 🧱 오행 밸런스")
-                render_radar_chart(result)
-            with right:
-                render_climate_thermometer(result)
-
-            render_visual_analysis_core(payload)
-            with st.expander("🃏 신살·공망 보조 신호 보기", expanded=False):
-                render_shinsal_badge_cards(payload, prefix="single")
-
-        elif expert_view == "운의 흐름 상세":
-            render_daewun_train(payload)
-            if luck_flow and luck_flow.get("sewun_rows"):
-                render_manse_sewun_cards(luck_flow)
-            else:
-                st.info("세운 참고표는 생년월일시 자동 산출 모드에서 표시됩니다.")
-            render_origin_identity_table(chart)
-            render_manse_daewun_cards(payload)
-
-        elif expert_view == "상세 명리 분석":
-            st.markdown("#### 1. 기초체력 / 흐름과 연결 / 현실작동력")
-            render_ability_triangle(result)
-            render_ability_axis_detail(result, "크기")
-            render_ability_axis_detail(result, "순환")
-            render_ability_axis_detail(result, "발현")
-
-            st.markdown("#### 2. 원국 구조")
-            render_element_pentagon(result)
-            render_interaction_signal(result)
-            for note in interaction_compound_role_notes(result):
-                st.caption(note)
-
-            st.markdown("#### 3. 일간 강약과 보완 방향")
-            refined_label, refined_note = refined_strength_interpretation(result)
-            safe_write(f"- 강약: **{refined_label}** / 강약 지수 **{result.get('strength_index', '-')}**")
-            safe_write(f"- {refined_note}")
-            display_dirs = polished_useful_directions(useful, result)
-            safe_write(f"- 보완 방향: **{format_element_list(display_dirs.get('primary', []), '조후·순환 우선')}**")
-            safe_write(f"- 부담 방향: {format_element_list(display_dirs.get('burden', []), '뚜렷하지 않음')}")
-            safe_write(f"- {useful.get('logic', '강약과 조후를 함께 고려한 보완 방향이야.')}")
-
-            st.markdown("#### 4. 신살·전체 인상 보조")
-            safe_write(f"- 신살·공망: {shinsal.get('adjustment', 0):+.1f}점 / 한도 {shinsal.get('limit', '±5점')}")
-            for note in shinsal.get("notes", []):
-                safe_write(f"- {note}")
-            safe_write(f"- 전체 인상 보정: {holistic.get('adjustment', 0):+.1f}점")
-            safe_write(f"- {holistic.get('summary', '세부항목 합산과 전체 인상이 대체로 일치합니다.')}")
-
-        elif expert_view == "계산 참고 지표":
-            score_view = st.radio(
-                "계산 지표 보기",
-                ["닫기", "점수 계산식", "점수·결과분석 로직"],
-                index=0,
-                horizontal=True,
-                key="single_internal_view_radio_v590",
-            )
-            if score_view == "점수 계산식":
-                render_score_formula_diagram(result, prefix="single_formula")
-            elif score_view == "점수·결과분석 로직":
-                render_analysis_logic_panel("single", "single_logic_panel_inner_refactor_v590", show_toggle=False)
+        render_visual_analysis_core(payload)
+        with st.expander("🃏 신살·공망 보조 신호 보기", expanded=False):
+            render_shinsal_badge_cards(payload, prefix="single")
 
 
 FRIENDLY_ORIGIN_TAGS = {
