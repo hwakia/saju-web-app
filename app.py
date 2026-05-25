@@ -7878,7 +7878,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.176"
+APP_VERSION = "v5.177"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -11396,7 +11396,7 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
     """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼."""
-    cols = st.columns(3)
+    cols = st.columns(4)
     with cols[0]:
         if st.button("🏠 메인화면", use_container_width=True, key=f"{prefix}_go_home"):
             log_event("menu_click", "navigation", {"target": "home"})
@@ -11411,6 +11411,11 @@ def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> 
         if st.button(" 모두의 케미", use_container_width=True, key=f"{prefix}_go_battle"):
             log_event("menu_click", "navigation", {"target": "chemistry"})
             reset_navigation_to("케미 분석")
+            st.rerun()
+    with cols[3]:
+        if st.button("⚔️ 사주 맞짱", use_container_width=True, key=f"{prefix}_go_matchjang"):
+            log_event("menu_click", "navigation", {"target": "matchjang"})
+            reset_navigation_to("맞짱")
             st.rerun()
 
 
@@ -24303,7 +24308,7 @@ st.markdown("""
 <div class="hero-wrap">
     <div class="hero-title"><span>사주 맞짱</span></div>
     <div class="hero-subtitle">
-        내 사주 진단 · 사주예보 · 모두의 케미
+        내 사주 진단 · 사주예보 · 모두의 케미 · 사주 맞짱
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -24327,7 +24332,8 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
           <span style='font-size:13px;color:#b89a6b;'>2026년 5월</span>
         </div>
         <div style='font-size:13px;color:#d4b896;line-height:1.9;'>
-          · 모임 케미 기능이 추가되었어
+          · 모임 케미 기능이 추가되었어<br>
+          · 사주 맞짱이 추가되었어 — 단톡방에서 오늘의 운 대결을 즐겨봐
         </div>
         </div>
         """,
