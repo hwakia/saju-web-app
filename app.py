@@ -504,6 +504,14 @@ CLASHES = [
     ("巳", "亥", "巳亥沖"),
 ]
 
+# 천간충(天干沖): 甲庚·乙辛·丙壬·丁癸 (戊己 토 천간은 충 없음)
+STEM_CLASHES = [
+    ("甲", "庚", "갑경충"),
+    ("乙", "辛", "을신충"),
+    ("丙", "壬", "병임충"),
+    ("丁", "癸", "정계충"),
+]
+
 PENALTIES = [
     ("子", "卯", "子卯刑"),
     ("寅", "巳", "寅巳刑"),
@@ -7878,7 +7886,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.177"
+APP_VERSION = "v5.178"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -15690,17 +15698,58 @@ def daily_branch_interactions(chart: Chart, day_branch: str) -> List[Dict[str, s
     return rows[:6]
 
 
+def daily_stem_interactions(chart: "Chart", day_stem: str) -> List[Dict[str, str]]:
+    """오늘 일간(天干)과 원국 천간 사이의 천간충을 감지한다.
+    천간충: 甲庚·乙辛·丙壬·丁癸 (戊己 토 제외).
+    결과 형식은 daily_branch_interactions 와 동일하게 맞춘다."""
+    if not day_stem or day_stem not in STEMS:
+        return []
+
+    rows: List[Dict[str, str]] = []
+    pillars = [
+        (chart.year.stem,  "년간"),
+        (chart.month.stem, "월간"),
+        (chart.day.stem,   "일간"),
+        (chart.hour.stem,  "시간"),
+    ]
+    for s1, s2, clash_name in STEM_CLASHES:
+        if day_stem not in (s1, s2):
+            continue
+        other = s2 if day_stem == s1 else s1
+        for chart_stem, pos_label in pillars:
+            if chart_stem != other:
+                continue
+            # 일간(日干)끼리의 충은 일주 자충 — 특히 강한 신호
+            strength = "강함" if pos_label in ("일간", "월간") else "중간"
+            rows.append({
+                "kind":      "천간충",
+                "name":      clash_name,
+                "pos_label": pos_label,
+                "target":    chart_stem,
+                "strength":  strength,
+                "impact":    f"오늘 일간 {day_stem}이 원국 {pos_label} {chart_stem}을 충합니다. "
+                             f"정신적 긴장·의사결정 압박·말의 충돌로 나타날 수 있습니다. "
+                             f"중요한 약속이나 계약은 한 템포 늦추는 것이 좋습니다.",
+            })
+    return rows
+
+
 def daily_interaction_summary(interactions: List[Dict[str, str]]) -> str:
     if not interactions:
-        return "오늘 일운과 원국 지지 사이에 크게 표시할 합·충·파·형·해 신호는 약합니다."
+        return "오늘 일운과 원국 사이에 크게 표시할 합·충·파·형·해 신호는 약합니다."
     kinds = []
+    has_stem_clash = any(r.get("kind") == "천간충" for r in interactions)
     for row in interactions:
         raw_kinds = str(row.get("kinds", row.get("kind", "")) or "")
-        for k in ["충", "합", "형", "파", "해"]:
+        for k in ["천간충", "충", "합", "형", "파", "해"]:
             if k in raw_kinds and k not in kinds:
                 kinds.append(k)
         if not raw_kinds and row.get("kind") not in kinds:
             kinds.append(row["kind"])
+    if has_stem_clash:
+        names = "·".join(r["name"] for r in interactions if r.get("kind") == "천간충")
+        return (f"오늘은 천간충({names}) 신호가 있습니다. "
+                "정신적 긴장과 말의 충돌이 생기기 쉬우니 중요한 발언·결정·약속은 한 템포 늦추는 것이 좋습니다.")
     if "충" in kinds:
         return "오늘은 변동·자극 신호가 있으니 일정, 말투, 약속 확인을 조금 더 부드럽게 챙기세요."
     if "합" in kinds and not any(k in kinds for k in ["형", "파", "해"]):
@@ -15970,9 +16019,23 @@ def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: 
                 overload = tg_caution
 
     interactions = daily_branch_interactions(chart, branch)
+    # 천간충 감지 후 앞에 삽입 (지지 충보다 우선 표시)
+    stem_clashes = daily_stem_interactions(chart, stem)
+    if stem_clashes:
+        interactions = stem_clashes + interactions
+
     interaction_summary = daily_interaction_summary(interactions)
     interaction_overview = daily_interaction_overview(interactions)
     reactivity = luck_reactivity_profile(chart, result, {stem_el, branch_el})
+
+    # 천간충이 있으면 overload 메시지 강화
+    if stem_clashes:
+        clash_names = "·".join(r["name"] for r in stem_clashes)
+        clash_pos   = "·".join(r["pos_label"] for r in stem_clashes)
+        overload = (
+            f"오늘 {clash_names}({clash_pos}) 신호가 있습니다. "
+            "말의 강도를 낮추고, 중요한 결정·계약·발언은 하루 여유를 두는 것이 좋습니다."
+        )
 
     return {
         "date": today.strftime("%Y-%m-%d"),
