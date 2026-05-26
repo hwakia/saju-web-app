@@ -7886,7 +7886,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.179"
+APP_VERSION = "v5.180"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -20083,6 +20083,9 @@ def _daily_luck_calendar_rows(chart: Chart, result: Dict[str, object], start_dat
             identity = _today_luck_identity(chart, day_gz)
             usage = _daily_ten_god_usage(chart, day_gz)
             interactions = daily_branch_interactions(chart, day_gz[1])
+            stem_clashes = daily_stem_interactions(chart, day_gz[0])
+            if stem_clashes:
+                interactions = stem_clashes + interactions
             overview = daily_interaction_overview(interactions)
             ten_god = str(identity.get("day_tengod_summary", "")).replace("내 일간 기준 ", "")
             use_point = usage.get("short") or usage.get("action") or "리듬 확인"
