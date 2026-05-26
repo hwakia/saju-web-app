@@ -7886,7 +7886,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.178"
+APP_VERSION = "v5.179"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -15702,36 +15702,41 @@ def daily_stem_interactions(chart: "Chart", day_stem: str) -> List[Dict[str, str
     """오늘 일간(天干)과 원국 천간 사이의 천간충을 감지한다.
     천간충: 甲庚·乙辛·丙壬·丁癸 (戊己 토 제외).
     결과 형식은 daily_branch_interactions 와 동일하게 맞춘다."""
-    if not day_stem or day_stem not in STEMS:
-        return []
+    try:
+        if not day_stem or day_stem not in STEMS:
+            return []
 
-    rows: List[Dict[str, str]] = []
-    pillars = [
-        (chart.year.stem,  "년간"),
-        (chart.month.stem, "월간"),
-        (chart.day.stem,   "일간"),
-        (chart.hour.stem,  "시간"),
-    ]
-    for s1, s2, clash_name in STEM_CLASHES:
-        if day_stem not in (s1, s2):
-            continue
-        other = s2 if day_stem == s1 else s1
-        for chart_stem, pos_label in pillars:
-            if chart_stem != other:
+        # chart.hour 가 None 일 수 있으므로 안전하게 구성
+        rows: List[Dict[str, str]] = []
+        pillars = [
+            (chart.year.stem,  "년간"),
+            (chart.month.stem, "월간"),
+            (chart.day.stem,   "일간"),
+        ]
+        if chart.hour is not None:
+            pillars.append((chart.hour.stem, "시간"))
+
+        for s1, s2, clash_name in STEM_CLASHES:
+            if day_stem not in (s1, s2):
                 continue
-            # 일간(日干)끼리의 충은 일주 자충 — 특히 강한 신호
-            strength = "강함" if pos_label in ("일간", "월간") else "중간"
-            rows.append({
-                "kind":      "천간충",
-                "name":      clash_name,
-                "pos_label": pos_label,
-                "target":    chart_stem,
-                "strength":  strength,
-                "impact":    f"오늘 일간 {day_stem}이 원국 {pos_label} {chart_stem}을 충합니다. "
-                             f"정신적 긴장·의사결정 압박·말의 충돌로 나타날 수 있습니다. "
-                             f"중요한 약속이나 계약은 한 템포 늦추는 것이 좋습니다.",
-            })
-    return rows
+            other = s2 if day_stem == s1 else s1
+            for chart_stem, pos_label in pillars:
+                if chart_stem != other:
+                    continue
+                strength = "강함" if pos_label in ("일간", "월간") else "중간"
+                rows.append({
+                    "kind":      "천간충",
+                    "name":      clash_name,
+                    "pos_label": pos_label,
+                    "target":    chart_stem,
+                    "strength":  strength,
+                    "impact":    f"오늘 일간 {day_stem}이 원국 {pos_label} {chart_stem}을 충합니다. "
+                                 f"정신적 긴장·의사결정 압박·말의 충돌로 나타날 수 있습니다. "
+                                 f"중요한 약속이나 계약은 한 템포 늦추는 것이 좋습니다.",
+                })
+        return rows
+    except Exception:
+        return []
 
 
 def daily_interaction_summary(interactions: List[Dict[str, str]]) -> str:
@@ -16074,7 +16079,7 @@ def render_today_compass_card(payload: Dict[str, object]) -> None:
         return
     compass = today_compass_payload(chart, result)
     interactions = compass.get("interactions", []) or []
-    kind_class = {"합": "good", "충": "change", "파": "caution", "형": "caution", "해": "soft"}
+    kind_class = {"합": "good", "충": "change", "천간충": "change", "파": "caution", "형": "caution", "해": "soft"}
     if interactions:
         interaction_rows = []
         for row in interactions[:6]:
@@ -16082,12 +16087,18 @@ def render_today_compass_card(payload: Dict[str, object]) -> None:
             cls = kind_class.get(str(row.get("kind", "")), "soft")
             name = html.escape(str(row.get("name", "-")), quote=True)
             pos = html.escape(str(row.get("pos_label", "-")), quote=True)
-            target = html.escape(_branch_ko(str(row.get("target", ""))), quote=True)
+            is_stem_clash = str(row.get("kind", "")) == "천간충"
+            if is_stem_clash:
+                target = html.escape(str(row.get("target", "")), quote=True)
+                arrow_label = "오늘 일간 ↔ 원국"
+            else:
+                target = html.escape(_branch_ko(str(row.get("target", ""))), quote=True)
+                arrow_label = "오늘 일지 ↔ 원국"
             impact = html.escape(str(row.get("impact", "")), quote=True)
             interaction_rows.append(
                 f"<div class='today-interaction-row'>"
                 f"<div class='today-interaction-kind {cls}'>{kind}</div>"
-                f"<div class='today-interaction-body'><b>{name}</b> · 오늘 일지 ↔ 원국 {pos} {target}<br>{impact}</div>"
+                f"<div class='today-interaction-body'><b>{name}</b> · {arrow_label} {pos} {target}<br>{impact}</div>"
                 f"</div>"
             )
         interaction_html = (
