@@ -7886,7 +7886,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.180"
+APP_VERSION = "v5.181"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24432,19 +24432,13 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.show_details = False
             st.rerun()
         st.caption("두 사람의 오행·조후·케미 분석")
-    landing_cols2 = st.columns(2)
+    landing_cols2 = st.columns(1)
     with landing_cols2[0]:
         if st.button("⚔️ 사주 맞짱", use_container_width=True, key="landing_battle"):
             st.session_state.selected_main_mode = "맞짱"
             st.session_state.show_details = False
             st.rerun()
         st.caption("오늘의 기운으로 최강자 랭킹 결정")
-    with landing_cols2[1]:
-        if st.button("🎲 오늘의 뽑기", use_container_width=True, key="landing_meal"):
-            st.session_state.selected_main_mode = "오늘의 뽑기"
-            st.session_state.show_details = False
-            st.rerun()
-        st.caption("오늘 점심·역할·당번 뽑기")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
@@ -25395,10 +25389,7 @@ elif payload.get("multi"):
                 st.session_state.saved_participants.append(roster_payload_copy(p, p.get("name", "참가자"), keep_birth_data=(multi_storage_mode == "생년월일시까지 보관")))
             st.success("모든 참가자를 보관함에 추가했습니다.")
     with save_cols[2]:
-        if st.button("이 멤버로 오늘의 뽑기", type="primary", use_container_width=True, key="multi_to_today_roulette"):
-            st.session_state.prefill_roulette_participants = normalize_participant_names(list(participants))
-            reset_navigation_to("오늘의 뽑기")
-            st.rerun()
+        pass  # 오늘의 뽑기 버튼 비활성화
 
 
     if safe_toggle("리포트 다운로드", value=False, key="multi_report_toggle"):
