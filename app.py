@@ -5296,7 +5296,7 @@ def build_luck_flow_rows(
 
     rows = []
     this_year = date.today().year
-    for i in range(5):
+    for i in range(10):
         y = this_year + i
         try:
             sw = get_year_ganzhi(y)
@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.200"
+APP_VERSION = "v5.202"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -23741,42 +23741,6 @@ def render_single_summary(payload: Dict[str, object]) -> None:
         unsafe_allow_html=True,
     )
 
-    # ── 오늘의 맞짱 코드 ──────────────────────────────────
-    try:
-        from datetime import date as _bdate
-        _bp_score = calculate_battle_power(payload)
-        _bp_code  = encode_battle_code(_bp_score, _bdate.today())
-        _bp_name  = str(payload.get("name", "나") or "나")
-        _bp_share_text = f"{_bp_name}: {_bp_code}"
-        st.markdown(
-            f"<div style='background:#1c0a0a;border:1.5px solid #f59e0b;border-radius:10px;"
-            f"padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;'>"
-            f"<div>"
-            f"<div style='font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:1px;margin-bottom:3px;'>⚔️ 오늘의 맞짱 코드</div>"
-            f"<div style='font-size:22px;font-weight:900;color:#fde68a;letter-spacing:4px;'>{_bp_code}</div>"
-            f"<div style='font-size:11px;color:#b89a6b;margin-top:2px;'>전투력 {_bp_score}점 · 오늘만 유효</div>"
-            f"</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-        import streamlit.components.v1 as _bcomp
-        _bcomp.html(
-            f"""
-            <button onclick="
-                var t = {repr(_bp_share_text)!s};
-                if(navigator.share){{navigator.share({{title:'사주 맞짱 코드',text:t}}).catch(()=>{{}})}}
-                else{{navigator.clipboard.writeText(t).then(()=>alert('복사됐어! 단톡방에 붙여넣어봐.'));}}
-            " style="
-                width:100%;padding:9px;background:#92400e;color:#fde68a;
-                border:none;border-radius:8px;font-size:14px;font-weight:700;
-                cursor:pointer;
-            ">📤 단톡방에 내 코드 공유</button>
-            """,
-            height=50,
-        )
-    except Exception:
-        pass
-
     if payload.get("unknown_time") or result.get("unknown_time"):
         info = result.get("unknown_time", {})
         st.warning(
@@ -23819,10 +23783,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             daewuns=payload.get("daewuns"),
             result=result,
         )
-        st.markdown("---")
-        render_manse_daewun_cards(payload)
-        if luck_flow and luck_flow.get("sewun_rows"):
-            render_manse_sewun_cards(luck_flow)
+
 
     else:
         st.markdown("### 🔎 기운 정밀 분석")
@@ -24497,6 +24458,17 @@ def render_origin_identity_table(
         el = d.get(ch, {}).get("element", "토")
         return tbl.get(el, "#fde68a")
 
+    def _el_bg(ch: str, is_stem: bool) -> str:
+        tbl = {"목": "rgba(52,211,153,.20)", "화": "rgba(248,113,113,.22)",
+               "토": "rgba(251,191,36,.18)", "금": "rgba(229,231,235,.14)",
+               "수": "rgba(96,165,250,.20)"}
+        d = STEMS if is_stem else BRANCHES
+        el = d.get(ch, {}).get("element", "토")
+        return tbl.get(el, "rgba(253,230,138,.1)")
+
+    _S_4BG = "background:rgba(18,14,32,.55);"   # 4운 컬럼 행 배경 (cool tint)
+    _S_WBG = "background:rgba(26,17,4,.55);"    # 원국 컬럼 행 배경 (warm tint)
+
     # ── inline-style 상수 (CSS class 대신 직접 적용) ─────────────
     _S_WRAP = ("display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1px;"
                "margin-bottom:.6rem;background:#0d0d0d;border-radius:12px;"
@@ -24504,7 +24476,7 @@ def render_origin_identity_table(
     _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
     _S_SIP  = "font-size:7.5px;color:#b89a6b;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
-    _S_JJG  = "font-size:6px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.02em;padding:1px 0;word-break:break-all;overflow:hidden;"
+    _S_JJG  = "font-size:6px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
     _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
     _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
     _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
@@ -24513,33 +24485,35 @@ def render_origin_identity_table(
 
     # ─ 레이블 행 ─
     for lbl4, gz4, col4 in _4un_disp:
-        p.append(f"<div style='{_S_LBL}color:{col4}'>{html.escape(lbl4)}</div>")
+        p.append(f"<div style='{_S_LBL}{_S_4BG}color:{col4}'>{html.escape(lbl4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         lc = "#fde68a" if lbl == "일주" else "#999"
-        p.append(f"<div style='{_S_LBL}{sep_st}color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
+        p.append(f"<div style='{_S_LBL}{sep_st}{_S_WBG}color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
 
     # ─ 천간 십성 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
         ssip = relation_to_day(chart.day_master, s4) if s4 not in ("-", "?", "") else ""
-        p.append(f"<div style='{_S_SIP}'>{html.escape(ssip)}</div>")
+        p.append(f"<div style='{_S_SIP}{_S_4BG}'>{html.escape(ssip)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         role = _role(lbl, pi, True) if pi else "-"
-        p.append(f"<div style='{_S_SIP}{sep_st}'>{html.escape(role)}</div>")
+        p.append(f"<div style='{_S_SIP}{sep_st}{_S_WBG}'>{html.escape(role)}</div>")
 
     # ─ 천간 글자 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
         sc = _el_color(s4, True) if s4 not in ("-", "?", "") else col4
-        p.append(f"<div style='{_S_GZ}color:{sc}'>{html.escape(s4)}</div>")
+        ebg = _el_bg(s4, True) if s4 not in ("-", "?", "") else _S_4BG
+        p.append(f"<div style='{_S_GZ}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};color:{sc}'>{html.escape(s4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
-        day_st = "background:rgba(253,230,138,.12);border-radius:3px;" if lbl == "일주" else ""
         if pi:
             sc = _el_color(pi.stem, True)
-            p.append(f"<div style='{_S_GZ}{sep_st}{day_st}color:{sc}'>{html.escape(pi.stem)}</div>")
+            ebg = _el_bg(pi.stem, True)
+            day_extra = "border:1px solid rgba(253,230,138,.5);" if lbl == "일주" else ""
+            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};{day_extra}color:{sc}'>{html.escape(pi.stem)}</div>")
         else:
             p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
 
@@ -24547,23 +24521,25 @@ def render_origin_identity_table(
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         bsip = relation_to_day(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
-        p.append(f"<div style='{_S_SIP}'>{html.escape(bsip)}</div>")
+        p.append(f"<div style='{_S_SIP}{_S_4BG}'>{html.escape(bsip)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         role = _role(lbl, pi, False) if pi else "-"
-        p.append(f"<div style='{_S_SIP}{sep_st}'>{html.escape(role)}</div>")
+        p.append(f"<div style='{_S_SIP}{sep_st}{_S_WBG}'>{html.escape(role)}</div>")
 
     # ─ 지지 글자 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         bc = _el_color(b4, False) if b4 not in ("-", "?", "") else col4
-        p.append(f"<div style='{_S_GZ}color:{bc}'>{html.escape(b4)}</div>")
+        ebg = _el_bg(b4, False) if b4 not in ("-", "?", "") else _S_4BG
+        p.append(f"<div style='{_S_GZ}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};color:{bc}'>{html.escape(b4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
-        day_st = "background:rgba(253,230,138,.07);border-radius:3px;" if lbl == "일주" else ""
         if pi:
             bc = _el_color(pi.branch, False)
-            p.append(f"<div style='{_S_GZ}{sep_st}{day_st}color:{bc}'>{html.escape(pi.branch)}</div>")
+            ebg = _el_bg(pi.branch, False)
+            day_extra = "border:1px solid rgba(253,230,138,.5);" if lbl == "일주" else ""
+            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};{day_extra}color:{bc}'>{html.escape(pi.branch)}</div>")
         else:
             p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
 
@@ -24571,31 +24547,31 @@ def render_origin_identity_table(
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         jjg4 = "".join(hs for hs, _ in BRANCHES[b4]["hidden"]) if b4 in BRANCHES else ""
-        p.append(f"<div style='{_S_JJG}'>{html.escape(jjg4)}</div>")
+        p.append(f"<div style='{_S_JJG}{_S_4BG}'>{html.escape(jjg4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         jjg = _jjg_compact(pi) if pi else ""
-        p.append(f"<div style='{_S_JJG}{sep_st}'>{html.escape(jjg)}</div>")
+        p.append(f"<div style='{_S_JJG}{sep_st}{_S_WBG}'>{html.escape(jjg)}</div>")
 
     # ─ 12운성 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         stg = get_twelve_stage(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
-        p.append(f"<div style='{_S_UN}'>{html.escape(stg)}</div>")
+        p.append(f"<div style='{_S_UN}{_S_4BG}'>{html.escape(stg)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         stage = get_twelve_stage(chart.day_master, pi.branch) if pi else ""
-        p.append(f"<div style='{_S_UN}{sep_st}'>{html.escape(stage)}</div>")
+        p.append(f"<div style='{_S_UN}{sep_st}{_S_WBG}'>{html.escape(stage)}</div>")
 
     # ─ 신살 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         ss4 = _sinsal_tags(b4)
-        p.append(f"<div style='{_S_SS}'>{html.escape(ss4)}</div>")
+        p.append(f"<div style='{_S_SS}{_S_4BG}'>{html.escape(ss4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         ss = _sinsal_tags(pi.branch) if pi else ""
-        p.append(f"<div style='{_S_SS}{sep_st}'>{html.escape(ss)}</div>")
+        p.append(f"<div style='{_S_SS}{sep_st}{_S_WBG}'>{html.escape(ss)}</div>")
 
     p.append("</div>")  # end 8col grid
 
@@ -26253,22 +26229,19 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     with top_row[1]:
         gender = st.radio("성별", ["남자", "여자"], horizontal=True, key="gender_auto")
 
-    date_row = st.columns([1.15, 1])
-    with date_row[0]:
+    # 생년월일 + 생시 한 행
+    dt_row = st.columns([1.2, 1.0, 0.8])
+    with dt_row[0]:
         b_date = manual_date_input("생년월일", date(1990, 5, 20), key="single_date_text")
-    with date_row[1]:
-        calendar_type = compact_calendar_selector("single")
-
-    time_row = st.columns([1.15, 1])
-    with time_row[0]:
+    with dt_row[1]:
         time_unknown = st.checkbox("시간 모름", value=False, key="single_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
         if time_unknown:
             st.text_input("태어난 시간", value="미상", disabled=True, key="single_time_disabled")
             b_time = None
         else:
             b_time = manual_time_input("태어난 시간", time(12, 0), key="single_time_text")
-    with time_row[1]:
-        use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
+    with dt_row[2]:
+        calendar_type = compact_calendar_selector("single")
 
     age_basis = DEFAULT_AGE_BASIS
     correction_label = KOREA_DEFAULT_CORRECTION_LABEL
@@ -26281,6 +26254,9 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
 
     auto_run_clicked = bool(st.session_state.pop("_my_saju_auto_run_pending_v5140", False))
     analyze_clicked = st.button("분석 시작", type="primary", use_container_width=True, key="auto_start")
+
+    # 부가 옵션 (야자시) — 버튼 아래
+    use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
 
     render_my_saju_save_link_tool(
         single_auto_name or "나",
