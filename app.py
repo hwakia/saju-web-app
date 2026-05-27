@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.186"
+APP_VERSION = "v5.187"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -14621,19 +14621,18 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
     if st.button("🔄 새로고침", use_container_width=True, key=f"room_refresh_{room_id}"):
         st.rerun()
 
-    import json as _j
-    rid_js = _j.dumps(room_id)
+    room_id_safe = str(room_id)
     st.components.v1.html(
         f"""<button onclick="
             var base = window.location.origin + window.location.pathname;
-            var url = base + '?room=' + {rid_js};
+            var url = base + '?room={room_id_safe}';
             if(navigator.share){{
                 navigator.share({{title:'비밀케미 방 참가 링크', url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(url)
                   .then(()=>alert('참가 링크가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
             }}
-        " style="width:100%;padding:12px;background:#7c3aed;color:#fff;
+        " style="width:100%;padding:12px;background:#d4a853;color:#0a0a0a;
             border:none;border-radius:10px;font-size:14px;font-weight:800;
             cursor:pointer;margin-top:4px;">📤 아직 안 온 친구에게 링크 공유</button>""",
         height=56,
@@ -14860,13 +14859,13 @@ def render_battle_ranking_page() -> None:
         else:
             bid = None
 
-        encoded_js = _json.dumps(encoded)
-        bid_js     = _json.dumps(bid or "")
+        encoded_safe = str(encoded)
+        bid_safe     = str(bid) if bid else ""
         st.components.v1.html(
             f"""<button onclick="
                 var base = window.location.origin + window.location.pathname;
-                var bid  = {bid_js};
-                var url  = bid ? (base + '?battle=' + bid) : (base + '?b=' + {encoded_js});
+                var bid  = '{bid_safe}';
+                var url  = bid ? (base + '?battle=' + bid) : (base + '?b=' + '{encoded_safe}');
                 if(navigator.share){{
                     navigator.share({{title:'사주 맞짱 결과', url:url}}).catch(()=>{{}});
                 }} else {{
@@ -15035,12 +15034,12 @@ def _render_battle_result_from_url(b_param: str) -> None:
     for idx, e in enumerate(valid):
         share_lines.append(f"{medal[idx].strip() or str(idx+1)+'위'} {e['name']} {e['score']}점")
     share_lines.append(f"👑 오늘의 승자: {winner['name']}")
-    share_text_js = _json.dumps("\n".join(share_lines))
+    share_text_safe = "\\n".join(share_lines).replace("'", "\\'")
 
     st.components.v1.html(
         f"""<button onclick="
             var url = window.location.href;
-            var txt = {share_text_js};
+            var txt = '{share_text_safe}';
             if(navigator.share){{
                 navigator.share({{title:'사주 맞짱 결과', text:txt, url:url}}).catch(()=>{{}});
             }} else {{
