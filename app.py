@@ -6195,16 +6195,16 @@ def compatibility_near_grade_notice(score: float) -> str:
 def compatibility_grade_summary(score: float) -> Tuple[str, str]:
     """케미 최종 점수에 따른 케미 유형과 요약."""
     if score >= 86:
-        return "찰떡 호흡", "결속성과 보완성이 모두 강해, 오래 봐도 쉽게 끊기지 않는 관계 신호입니다."
+        return "천생연분 케미", "사주에서 서로를 채워주는 신호가 아주 강하게 나와. 오래 봐도 쉽게 끊기지 않는 운명 같은 연결이야."
     if score >= 76:
-        return "든든한 조합", "강한 협력축 신호가 있고, 위기 때 같은 편으로 묶일 가능성이 큽니다."
+        return "쌍방 귀인 케미", "서로가 서로의 힘이 되는 조합이야. 함께 있을 때 각자가 더 잘 빛나는 케미야."
     if score >= 64:
-        return "좋은 합의 케미", "완전히 편한 관계라기보다 서로의 필요와 강점을 맞추면 잘 작동하는 조합입니다."
+        return "상호보완 케미", "부족한 부분을 서로 딱 채워주는 조합이야. 함께하면 혼자보다 훨씬 강해지는 관계야."
     if score >= 52:
-        return "조율 가능한 케미", "협력과 견제가 함께 있습니다. 룰과 거리를 정하면 관계가 더 안정적으로 작동합니다."
+        return "친구로 좋은 케미", "편안하게 오래 갈 수 있는 조합이야. 부담 없이 함께하기 좋은 따뜻한 관계야."
     if score >= 38:
-        return "마찰 관리형 케미", "충돌·견제 신호가 비교적 강합니다. 역할과 기대치를 분명히 해야 소모전을 줄일 수 있습니다."
-    return "속도가 다른 케미", "긴장 신호가 매우 강한 편입니다. 재미 표현일 뿐 실제 관계 단절이나 적대 관계를 단정하지 않습니다."
+        return "배려가 필요한 케미", "서로 조금 더 배려하고 맞춰주면 훨씬 좋아지는 조합이야. 의외로 잘 맞는 면도 있어."
+    return "안 보면 보고 싶은 케미", "만나면 티격태격하지만 헤어지면 생각나는 묘한 케미야. 서로 강한 인상을 주는 관계야."
 
 
 # ============================================================
@@ -7951,7 +7951,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.210"
+APP_VERSION = "v5.212"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -11785,7 +11785,7 @@ def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> 
             reset_navigation_to("케미 분석")
             st.rerun()
     with cols[3]:
-        if st.button("🧑‍🤝‍🧑 초대케미", use_container_width=True, key=f"{prefix}_go_croom"):
+        if st.button("🧑‍🤝‍🧑 모임 케미 초대", use_container_width=True, key=f"{prefix}_go_croom"):
             log_event("menu_click", "navigation", {"target": "chemistry_room"})
             reset_navigation_to("케미방")
             st.rerun()
@@ -14689,6 +14689,9 @@ def _extract_participant_data(payload: Dict, name: str) -> Dict:
         }
         if chart.hour is not None:
             pillars["hour"] = {"stem": chart.hour.stem, "branch": chart.hour.branch}
+    # adjusted_pct 안전 변환 (Supabase JSON 저장용)
+    _apct = result.get("adjusted_pct") or result.get("seasonal_pct") or result.get("base_pct") or {}
+    _apct_safe = {k: float(v) for k, v in _apct.items() if isinstance(v, (int, float))}
     return {
         "name":           name[:10],
         "day_master":     chart.day_master if chart else "",
@@ -14697,6 +14700,8 @@ def _extract_participant_data(payload: Dict, name: str) -> Dict:
         "useful_primary": list(useful.get("primary") or []),
         "useful_burden":  list(useful.get("burden")  or []),
         "total":          float(result.get("total", 50) or 50),
+        "adjusted_pct":   _apct_safe,
+        "strength_label": str(result.get("strength_label", "중화") or "중화"),
         "role":           _infer_saju_role(result),
         "joined_at":      _dtnow.now().isoformat(),
     }
@@ -14806,12 +14811,32 @@ def _reconstruct_payload_from_room_participant(p: Dict) -> Dict:
         hour=_mp(hour_d) if hour_d else None,
         gender=str(p.get("gender", "남")),
     )
+
+    # adjusted_pct 복원: 신 데이터는 저장값 사용, 구 데이터는 차트에서 계산
+    _saved_pct = {k: float(v) for k, v in (p.get("adjusted_pct") or {}).items() if isinstance(v, (int, float))}
+    if not _saved_pct or all(v == 0 for v in _saved_pct.values()):
+        # 차트 기반 폴백: 천간(1) + 지지(1) + 지장간(0.5)으로 오행 분포 계산
+        _counts: Dict[str, float] = {el: 0.0 for el in ELEMENTS}
+        _pillar_list = [chart.year, chart.month, chart.day] + ([chart.hour] if chart.hour else [])
+        for _pl in _pillar_list:
+            _sel = STEMS.get(_pl.stem, {}).get("element", "")
+            if _sel in _counts: _counts[_sel] += 1.0
+            _bel = BRANCHES.get(_pl.branch, {}).get("element", "")
+            if _bel in _counts: _counts[_bel] += 1.0
+            for _hs, _ in (BRANCHES.get(_pl.branch, {}).get("hidden", []) or []):
+                _hel = STEMS.get(_hs, {}).get("element", "")
+                if _hel in _counts: _counts[_hel] += 0.5
+        _total_c = sum(_counts.values()) or 1.0
+        _saved_pct = {el: round(_counts[el] / _total_c * 100.0, 1) for el in ELEMENTS}
+
     result = {
-        "total":  float(p.get("total", 50) or 50),
+        "total":          float(p.get("total", 50) or 50),
         "useful": {
             "primary": list(p.get("useful_primary") or []),
             "burden":  list(p.get("useful_burden")  or []),
         },
+        "adjusted_pct":   _saved_pct,
+        "strength_label": str(p.get("strength_label", "중화") or "중화"),
     }
     return {"name": str(p.get("name", "")), "chart": chart, "result": result}
 
@@ -14842,7 +14867,7 @@ def render_chemistry_room_page() -> None:
     """🔮 비밀케미 방 — Supabase 기반 그룹 케미 분석."""
 
     if _get_supabase() is None:
-        st.error("초대케미는 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_ANON_KEY를 등록해 주세요.")
+        st.error("모임 케미 초대는 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_ANON_KEY를 등록해 주세요.")
         if st.button("메인으로", use_container_width=True, key="room_no_sb_home"):
             reset_navigation_to(None)
             st.rerun()
@@ -14886,7 +14911,7 @@ def render_chemistry_room_page() -> None:
 
 
 def _render_create_room_view() -> None:
-    st.markdown("## 🧑‍🤝‍🧑 초대케미")
+    st.markdown("## 🧑‍🤝‍🧑 모임 케미 초대")
     st.caption("최대 5명이 각자 사주를 입력하면 전원 입장 시 자동으로 케미 매트릭스를 공개합니다.")
     st.markdown(
         "<div style='background:#0d0d0d;border-left:4px solid #a855f7;"
@@ -14917,7 +14942,7 @@ def _render_create_room_view() -> None:
             f"""<button onclick="
                 var url = window.location.origin + window.location.pathname + '?room={room_id_safe}';
                 if(navigator.share){{
-                    navigator.share({{title:'초대케미 참가 링크',url:url}}).catch(function(){{}});
+                    navigator.share({{title:'모임 케미 초대 참가 링크',url:url}}).catch(function(){{}});
                 }} else {{
                     navigator.clipboard.writeText(url).then(function(){{
                         alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
@@ -14938,7 +14963,7 @@ def _render_create_room_view() -> None:
 
 
 def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -> None:
-    st.markdown("## 🧑‍🤝‍🧑 초대케미 참가")
+    st.markdown("## 🧑‍🤝‍🧑 모임 케미 초대 — 참가")
     st.caption(f"방 ID: `{room_id}` · {len(participants)}/{max_p}명 입장 완료")
 
     if participants:
@@ -15009,7 +15034,7 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
 
 
 def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int, my_name: str) -> None:
-    st.markdown("## 🧑‍🤝‍🧑 초대케미 — 대기 중")
+    st.markdown("## 🧑‍🤝‍🧑 모임 케미 초대 — 대기 중")
     remaining = max_p - len(participants)
     st.info(f"✅ **{my_name}** 입장 완료! 아직 **{remaining}명**이 남았습니다. 모두 입장하면 자동으로 공개됩니다.")
 
@@ -15042,7 +15067,7 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
             var base = window.location.origin + window.location.pathname;
             var url = base + '?room={room_id_safe}';
             if(navigator.share){{
-                navigator.share({{title:'초대케미 참가 링크', url:url}}).catch(()=>{{}});
+                navigator.share({{title:'모임 케미 초대 참가 링크', url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(url)
                   .then(()=>alert('참가 링크가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
@@ -15089,7 +15114,7 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     names = [str(p.get("name", f"참가자{i+1}")) for i, p in enumerate(participants)]
     matrix = _compute_room_chemistry_matrix(participants)
 
-    st.markdown("## 🧑‍🤝‍🧑 초대케미 — 케미 공개!")
+    st.markdown("## 🧑‍🤝‍🧑 모임 케미 초대 — 케미 공개!")
     st.caption(f"방 ID: `{room_id}` · {n}명 전원 입장 완료")
 
     # ── 역할 배지 ─────────────────────────────────────────────
@@ -15122,68 +15147,128 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         unsafe_allow_html=True,
     )
 
-    # ── 케미 매트릭스 ──────────────────────────────────────────
+    # ── 케미 등급 색상 ─────────────────────────────────────────
     GRADE_COLOR = {
-        "찰떡 호흡": "#4ade80",
-        "환상 케미":  "#34d399",
-        "좋은 케미":  "#60a5fa",
-        "무난한 케미":"#b89a6b",
-        "마찰 관리형 케미": "#fb923c",
-        "속도가 다른 케미": "#f87171",
+        "천생연분 케미":       "#4ade80",
+        "쌍방 귀인 케미":      "#34d399",
+        "상호보완 케미":       "#60a5fa",
+        "친구로 좋은 케미":    "#b89a6b",
+        "배려가 필요한 케미":  "#fb923c",
+        "안 보면 보고 싶은 케미": "#f87171",
     }
-    head = "<th style='padding:8px;font-size:11px;color:#888;'></th>"
-    for nm in names:
-        head += f"<th style='padding:8px;font-size:12px;color:#d4a853;'>{html.escape(nm)}</th>"
 
-    body = ""
-    for i, row in enumerate(matrix):
-        body += f"<tr><td style='padding:8px;font-size:12px;color:#d4a853;font-weight:700;'>{html.escape(names[i])}</td>"
-        for j, cell in enumerate(row):
-            if i == j:
-                body += "<td style='padding:8px;text-align:center;color:#444;'>—</td>"
-            else:
-                sc = cell.get("score", 50)
-                gd = cell.get("grade", "보통")
-                cl = GRADE_COLOR.get(gd, "#b89a6b")
-                body += (
-                    f"<td style='padding:8px;text-align:center;'>"
-                    f"<div style='background:{cl}22;border:1px solid {cl}55;"
-                    f"border-radius:6px;padding:4px 6px;display:inline-block;min-width:60px;'>"
-                    f"<div style='font-size:13px;font-weight:800;color:{cl};'>{sc}점</div>"
-                    f"<div style='font-size:10px;color:#aaa;'>{html.escape(gd)}</div>"
-                    f"</div></td>"
-                )
-        body += "</tr>"
-
-    st.markdown(
-        "<div style='background:#0a0a0a;border:1px solid #3b1f4e;"
-        "border-radius:10px;padding:14px;margin-bottom:14px;overflow-x:auto;'>"
-        "<div style='font-size:12px;color:#b89a6b;font-weight:700;margin-bottom:10px;'>🔗 케미 매트릭스 (행→열 방향)</div>"
-        f"<table style='border-collapse:collapse;width:100%;'>"
-        f"<tr>{head}</tr>{body}</table>"
-        f"<div style='font-size:11px;color:#666;margin-top:8px;'>"
-        f"행의 사람 기준으로 열의 사람과의 케미 점수입니다.</div>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-    # ── 베스트 케미 ────────────────────────────────────────────
+    # ── 모든 쌍 케미 수집 ─────────────────────────────────────
+    pairs = []
     best_score, best_pair = -1, ("", "")
     for i in range(n):
         for j in range(i + 1, n):
-            s = matrix[i][j].get("score") or 0
-            if s > best_score:
-                best_score = s
-                best_pair = (names[i], names[j])
-    if best_score >= 0:
-        bc = GRADE_COLOR.get(compatibility_grade_summary(best_score)[0], "#4ade80")
+            cell = matrix[i][j]
+            sc   = cell.get("score") or 50
+            gd   = cell.get("grade", "친구로 좋은 케미")
+            summ = cell.get("summary", "")
+            pairs.append((i, j, sc, gd, summ))
+            if sc > best_score:
+                best_score = sc
+                best_pair  = (names[i], names[j])
+
+    # ── 다각형 관계도 SVG ─────────────────────────────────────
+    import math as _math
+    _W, _H = 340, 340
+    _CX, _CY, _R = _W // 2, _H // 2, 120
+
+    # 꼭짓점 좌표 (n=1이면 중앙, n=2면 좌우)
+    if n == 1:
+        _pts = [(_CX, _CY)]
+    elif n == 2:
+        _pts = [(_CX - _R, _CY), (_CX + _R, _CY)]
+    else:
+        _pts = [
+            (_CX + _R * _math.cos(_math.radians(-90 + 360 / n * k)),
+             _CY + _R * _math.sin(_math.radians(-90 + 360 / n * k)))
+            for k in range(n)
+        ]
+
+    _svg_lines = []
+    for i2, j2, sc, gd, summ in pairs:
+        col = GRADE_COLOR.get(gd, "#b89a6b")
+        x1, y1 = _pts[i2]; x2, y2 = _pts[j2]
+        stroke_w = max(1.5, min(5.0, sc / 20.0))
+        opacity  = max(0.35, min(1.0, sc / 100.0))
+        _svg_lines.append(
+            f"<line x1='{x1:.1f}' y1='{y1:.1f}' x2='{x2:.1f}' y2='{y2:.1f}' "
+            f"stroke='{col}' stroke-width='{stroke_w:.1f}' stroke-opacity='{opacity:.2f}' stroke-linecap='round'/>"
+        )
+        # 선 중점에 등급 텍스트
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        _svg_lines.append(
+            f"<text x='{mx:.1f}' y='{my:.1f}' text-anchor='middle' dominant-baseline='middle' "
+            f"font-size='9' fill='{col}' font-weight='700' "
+            f"style='font-family:sans-serif;'>{html.escape(gd)}</text>"
+        )
+
+    _svg_nodes = []
+    for k, (px, py) in enumerate(_pts):
+        _svg_nodes.append(
+            f"<circle cx='{px:.1f}' cy='{py:.1f}' r='28' fill='#1a0a28' "
+            f"stroke='#a855f7' stroke-width='1.5'/>"
+        )
+        # 이름 (두 줄로 나누기)
+        nm_esc = html.escape(names[k])
+        _svg_nodes.append(
+            f"<text x='{px:.1f}' y='{py:.1f}' text-anchor='middle' dominant-baseline='middle' "
+            f"font-size='11' fill='#fde68a' font-weight='800' "
+            f"style='font-family:sans-serif;'>{nm_esc}</text>"
+        )
+
+    _svg_inner = "\n".join(_svg_lines + _svg_nodes)
+    _svg_html = (
+        f"<div style='background:#0a0a0a;border:1px solid #3b1f4e;border-radius:12px;"
+        f"padding:14px;margin-bottom:14px;text-align:center;'>"
+        f"<div style='font-size:12px;color:#b89a6b;font-weight:700;margin-bottom:8px;'>🔮 케미 관계도</div>"
+        f"<svg viewBox='0 0 {_W} {_H}' width='100%' style='max-width:340px;'>{_svg_inner}</svg>"
+        f"</div>"
+    )
+    st.markdown(_svg_html, unsafe_allow_html=True)
+
+    # ── 쌍별 케미 목록 ─────────────────────────────────────────
+    _pair_html = ""
+    for i2, j2, sc, gd, summ in sorted(pairs, key=lambda x: x[2], reverse=True):
+        col = GRADE_COLOR.get(gd, "#b89a6b")
+        _pair_html += (
+            f"<div style='display:flex;align-items:flex-start;gap:10px;"
+            f"padding:8px 12px;border-bottom:1px solid #1a0a28;'>"
+            f"<div style='min-width:90px;'>"
+            f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[i2])}</span>"
+            f"<span style='font-size:11px;color:#888;'> &amp; </span>"
+            f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[j2])}</span>"
+            f"</div>"
+            f"<div style='flex:1;'>"
+            f"<span style='background:{col}22;border:1px solid {col}55;border-radius:12px;"
+            f"padding:2px 8px;font-size:11px;font-weight:700;color:{col};'>{html.escape(gd)}</span>"
+            f"<div style='font-size:11px;color:#888;margin-top:3px;line-height:1.5;'>{html.escape(summ)}</div>"
+            f"</div></div>"
+        )
+    if _pair_html:
+        st.markdown(
+            f"<div style='background:#0a0a0a;border:1px solid #3b1f4e;"
+            f"border-radius:10px;overflow:hidden;margin-bottom:14px;'>"
+            f"<div style='font-size:12px;color:#b89a6b;font-weight:700;padding:10px 14px;border-bottom:1px solid #1a0a28;'>"
+            f"🔗 쌍별 케미</div>"
+            f"{_pair_html}</div>",
+            unsafe_allow_html=True,
+        )
+
+    # ── 베스트 케미 ────────────────────────────────────────────
+    if best_score >= 0 and best_pair[0]:
+        bc      = GRADE_COLOR.get(compatibility_grade_summary(best_score)[0], "#4ade80")
+        bc_grade = compatibility_grade_summary(best_score)[0]
         st.markdown(
             f"<div style='background:#0a0a0a;border:2px solid {bc};"
             f"border-radius:12px;padding:14px 18px;text-align:center;margin-bottom:12px;'>"
             f"<div style='font-size:13px;color:{bc};font-weight:700;margin-bottom:6px;'>💫 이 방 최고 케미</div>"
             f"<div style='font-size:1.3rem;color:#fde68a;font-weight:800;'>"
             f"{html.escape(best_pair[0])} &amp; {html.escape(best_pair[1])}</div>"
-            f"<div style='font-size:13px;color:{bc};margin-top:4px;'>{best_score}점 · {compatibility_grade_summary(best_score)[0]}</div>"
+            f"<div style='font-size:13px;color:{bc};margin-top:4px;'>{html.escape(bc_grade)}</div>"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -15482,6 +15567,88 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
     medal    = ["🥇", "🥈", "🥉"] + ["  "] * 10
     rank_colors = ["#fbbf24", "#94a3b8", "#f97316"] + ["#b89a6b"] * 10
 
+    # 일운 × 원국 : 충·형·십성 기반 직관적 이유 계산
+    def _battle_reason(p: Dict) -> str:
+        try:
+            pillars = p.get("pillars", {}) or {}
+            def _mp2(d):
+                if isinstance(d, dict):
+                    return Pillar(stem=str(d.get("stem","甲")), branch=str(d.get("branch","子")))
+                return Pillar("甲","子")
+            hour_d = pillars.get("hour")
+            _c = Chart(
+                year=_mp2(pillars.get("year")), month=_mp2(pillars.get("month")),
+                day=_mp2(pillars.get("day")),
+                hour=_mp2(hour_d) if hour_d else None,
+                gender=str(p.get("gender","남")),
+            )
+            _tmp_result = {"useful":{"primary":list(p.get("useful_primary") or []),"burden":list(p.get("useful_burden") or [])}}
+            _cp = today_compass_payload(_c, _tmp_result)
+            day_gz = str(_cp.get("day_gz","") or "")
+            if not day_gz or len(day_gz) < 2:
+                return "오늘 일운이 사주 기운을 좌우해"
+
+            day_stem   = day_gz[0]
+            day_branch = day_gz[1]
+
+            # 원국 모든 지지·천간 수집
+            chart_branches = [
+                _c.year.branch, _c.month.branch, _c.day.branch
+            ] + ([_c.hour.branch] if _c.hour else [])
+            chart_stems = [
+                _c.year.stem, _c.month.stem, _c.day.stem
+            ] + ([_c.hour.stem] if _c.hour else [])
+            day_master = str(_c.day_master or _c.day.stem)
+
+            # ① 지지 충(衝) 감지
+            clash_map = {frozenset([a, b]): name for a, b, name in CLASHES}
+            branch_clashes = []
+            for cb in chart_branches:
+                key = frozenset([day_branch, cb])
+                if key in clash_map:
+                    branch_clashes.append((cb, clash_map[key]))
+            if branch_clashes:
+                cb, cname = branch_clashes[0]
+                return f"오늘 일지 {day_branch}이 원국 {cb}랑 충(衝)이야 — 변동 기운이 강해"
+
+            # ② 천간 충(衝) 감지
+            stem_clash_map = {frozenset([a, b]): name for a, b, name in STEM_CLASHES}
+            for cs in chart_stems:
+                key = frozenset([day_stem, cs])
+                if key in stem_clash_map:
+                    return f"오늘 천간 {day_stem}이 원국 {cs}랑 충이야 — 긴장감 있는 날이야"
+
+            # ③ 형(刑) 감지 — 양방향 체크 (자묘형·삼형 모두 커버)
+            penalty_set = {frozenset([a, b]) for a, b, _ in PENALTIES}
+            for cb in chart_branches:
+                if frozenset([day_branch, cb]) in penalty_set and day_branch != cb:
+                    return f"오늘 일지 {day_branch}이 원국 {cb}랑 형(刑)이야 — 마찰 주의"
+
+            # ④ 일간 기준 십성 계산
+            tg_stem   = relation_to_day(day_master, day_stem)   if day_stem in STEMS else ""
+            tg_branch = relation_to_day(day_master, day_branch) if day_branch in BRANCHES else ""
+            # 우선순위: 겁재·편관 등 뾰족한 십성 먼저
+            _TG_MSG = {
+                "겁재":  f"오늘 겁재 기운이야 — 경쟁심이 올라오고 내 몫 챙기는 날이야",
+                "비견":  f"오늘 비견이야 — 내 기준이 또렷해지고 자존감이 강해지는 날이야",
+                "상관":  f"오늘 상관이야 — 말이 앞서고 표현이 강해지는 날이야",
+                "식신":  f"오늘 식신이야 — 꾸준히 만들고 실행하기 좋은 날이야",
+                "편재":  f"오늘 편재야 — 기회 포착과 거래 감각이 살아나는 날이야",
+                "정재":  f"오늘 정재야 — 현실 감각과 관리 능력이 또렷해지는 날이야",
+                "편관":  f"오늘 편관이야 — 긴장감과 압박이 있지만 돌파력이 생기는 날이야",
+                "정관":  f"오늘 정관이야 — 책임감과 신뢰가 빛나는 반듯한 날이야",
+                "편인":  f"오늘 편인이야 — 관찰력과 직감이 살아나는 날이야",
+                "정인":  f"오늘 정인이야 — 배우고 흡수하고 도움받기 좋은 날이야",
+            }
+            priority = ["겁재","편관","상관","편재","비견","식신","정재","정관","편인","정인"]
+            focus = next((tg for tg in priority if tg in (tg_stem, tg_branch) and tg in _TG_MSG), "")
+            if focus:
+                return _TG_MSG[focus]
+
+            return f"오늘 일운 {day_gz} — 크게 튀지 않는 평온한 날이야"
+        except Exception:
+            return "오늘 일운이 사주 기운을 좌우해"
+
     st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
     st.markdown(
         f"<div style='text-align:center;padding:18px 0 10px;'>"
@@ -15489,22 +15656,24 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
         f"<div style='font-size:1.5rem;font-weight:900;color:#fbbf24;margin-top:4px;'>"
         f"{html.escape(str(winner.get('name','?')))} 승!</div>"
         f"<div style='font-size:13px;color:#b89a6b;margin-top:4px;'>"
-        f"오늘의 사주 기운 {winner.get('score', 0)}점</div></div>",
+        f"{html.escape(_battle_reason(winner))}</div></div>",
         unsafe_allow_html=True,
     )
 
     rank_html = ""
     for idx, p in enumerate(sorted_p):
-        pct   = p.get("score", 0)
-        bar_w = int(pct)
+        score = p.get("score", 0)
+        bar_w = int(score)
         color = rank_colors[idx] if idx < len(rank_colors) else "#b89a6b"
         m     = medal[idx] if idx < len(medal) else " "
+        reason = _battle_reason(p)
         rank_html += (
             f"<div style='padding:10px 14px;border-bottom:1px solid #1a1208;'>"
-            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;'>"
+            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;'>"
             f"<span style='font-size:1.1rem;'>{m} "
             f"<span style='color:{color};font-weight:800;'>{html.escape(str(p.get('name','?')))}</span></span>"
-            f"<span style='color:{color};font-weight:700;'>{pct}점</span></div>"
+            f"</div>"
+            f"<div style='font-size:11px;color:#888;margin-bottom:5px;'>{html.escape(reason)}</div>"
             f"<div style='background:#1a1208;border-radius:4px;height:7px;overflow:hidden;'>"
             f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:4px;'></div></div>"
             f"</div>"
@@ -15601,9 +15770,9 @@ def render_battle_ranking_page() -> None:
         sorted_e = sorted(link_e, key=lambda x: x["score"], reverse=True)
         medal    = ["🥇", "🥈", "🥉"] + [" "] * 7
 
-        # 미리보기
+        # 미리보기 (점수 미표시)
         preview = " · ".join(
-            f"{medal[i].strip() or str(i+1)+'위'} {e['name']} {e['score']}점"
+            f"{medal[i].strip() or str(i+1)+'위'} {e['name']}"
             for i, e in enumerate(sorted_e)
         )
         st.markdown(
@@ -15743,17 +15912,17 @@ def _render_battle_result_from_url(b_param: str) -> None:
     RANK_COLORS = ["#fbbf24", "#94a3b8", "#f97316"] + ["#b89a6b"] * 7
     _rank_html  = ""
     for idx, e in enumerate(valid):
-        pct   = e["score"]
-        bar_w = int(pct)
+        score = e["score"]
+        bar_w = int(score)
         col   = RANK_COLORS[idx] if idx < len(RANK_COLORS) else "#b89a6b"
         _rank_html += (
             f"<div style='margin-bottom:10px;'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center;"
-            f"font-size:13px;color:#e8d5a0;margin-bottom:4px;'>"
+            f"font-size:13px;color:#e8d5a0;margin-bottom:2px;'>"
             f"<span style='font-weight:700;font-size:15px;'>"
             f"{medal[idx]} {idx+1}위 &nbsp; {e['name']}</span>"
-            f"<span style='color:{col};font-weight:800;font-size:16px;'>{pct}점</span>"
             f"</div>"
+            f"<div style='font-size:11px;color:#888;margin-bottom:5px;'>오늘 일운·월운 기운이 좌우해</div>"
             f"<div style='background:#0f0f0f;border-radius:999px;"
             f"overflow:hidden;height:10px;'>"
             f"<div style='width:{bar_w}%;height:100%;background:{col};"
@@ -15779,14 +15948,14 @@ def _render_battle_result_from_url(b_param: str) -> None:
     if invalid:
         st.caption(f"⚠️ 오늘 코드 아님 또는 오류: {', '.join(e['name'] for e in invalid)}")
 
-    # ── 점수 산정 방식 안내 ───────────────────────────────────
+    # ── 랭킹 기준 안내 ───────────────────────────────────────
     st.markdown(
         "<div style='background:#0f0f0f;border-radius:10px;padding:10px 14px;"
         "font-size:12px;color:#8a7060;line-height:1.9;margin-bottom:10px;'>"
-        "📌 <b>점수 산정 방식</b><br>"
-        "오늘의 전투력은 타고난 원국(사주팔자)보다 <b>일운 · 월운 · 세운 · 대운</b>에 "
-        "더 높은 가중치를 두어 계산합니다. 원국이 강해도 오늘 운이 나쁘면 질 수 있고, "
-        "원국이 약해도 오늘 운이 좋으면 이길 수 있어요. 점수는 매일 달라집니다."
+        "📌 <b>랭킹 기준</b><br>"
+        "오늘의 순위는 타고난 원국(사주팔자)보다 <b>일운 · 월운 · 세운 · 대운</b>에 "
+        "더 높은 가중치를 두어 결정됩니다. 원국이 강해도 오늘 운이 나쁘면 질 수 있고, "
+        "원국이 약해도 오늘 운이 좋으면 이길 수 있어요. 순위는 매일 달라집니다."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -15794,7 +15963,7 @@ def _render_battle_result_from_url(b_param: str) -> None:
     # ── 결과 재공유 버튼 (현재 URL 그대로 공유) ──────────────
     share_lines = [f"⚔️ 사주 맞짱 결과 ({today.strftime('%Y.%m.%d')})"]
     for idx, e in enumerate(valid):
-        share_lines.append(f"{medal[idx].strip() or str(idx+1)+'위'} {e['name']} {e['score']}점")
+        share_lines.append(f"{medal[idx].strip() or str(idx+1)+'위'} {e['name']}")
     share_lines.append(f"👑 오늘의 승자: {winner['name']}")
     share_text_safe = "\\n".join(share_lines).replace("'", "\\'")
 
@@ -20790,36 +20959,10 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
 
     st.divider()
 
-    # ── 조후(한난조습) 종합 ────────────────────────────────────
-    st.markdown("#### ☯️ 모임 조후(한난조습) 종합")
-    _j = ga.get("johu", {})
-    if _j:
-        _jc   = _j["color"]
-        _jbg  = _j["bg"]
-        _n    = _j["hot"] + _j["warm"] + _j["cold"]
-        _dist_html = ""
-        if _j["hot"]  > 0: _dist_html += f"<span style='background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:13px;margin-right:4px;'>🔴 뜨거운 편 {_j['hot']}명</span>"
-        if _j["warm"] > 0: _dist_html += f"<span style='background:#f2c94c;color:#b0c4cc;border-radius:4px;padding:2px 7px;font-size:13px;margin-right:4px;'>🟡 따뜻한 편 {_j['warm']}명</span>"
-        if _j["cold"] > 0: _dist_html += f"<span style='background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:13px;margin-right:4px;'>🔵 차가운 편 {_j['cold']}명</span>"
-        st.markdown(
-            f"<div style='background:{_jbg};border:2px solid {_jc};border-radius:8px;"
-            f"padding:10px 14px;margin-bottom:8px;'>"
-            f"<div style='font-size:15px;font-weight:700;color:{_jc};margin-bottom:6px;'>"
-            f"☯️ {_j['label']}</div>"
-            f"<div style='margin-bottom:6px;'>{_dist_html}</div>"
-            f"<div style='font-size:13px;color:#e8d5a0;line-height:1.7;'>{_j['note']}</div>"
-            f"<div style='font-size:12px;color:{_jc};margin-top:6px;'>💊 처방: {_j['rx']}</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.caption("조후 분석 데이터가 없습니다.")
-
-    st.divider()
-
-    # ── 체온 진단 ──────────────────────────────────────────────
+    # ── 체온 진단 (조후 포함) ──────────────────────────────────
     st.markdown("#### 🌡️ 모임 체온 진단")
     _t = ga["temp"]
+    _j = ga.get("johu", {})
     _THERMO_COLORS = {
         "과열 집단": ("#dc2626", "#0f0f0f"),
         "열성 집단": ("#ea580c", "#1e1008"),
@@ -20828,21 +20971,37 @@ def render_group_chemistry_diagnosis(ga: dict) -> None:
         "한랭 집단": ("#1d4ed8", "#060c24"),
     }
     tc, tbg = _THERMO_COLORS.get(_t["label"], ("#94a3b8", "#111111"))
+
+    # 조후 분포 배지
+    _johu_dist_html = ""
+    if _j:
+        if _j.get("hot",  0) > 0: _johu_dist_html += f"<span style='background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:12px;margin-right:4px;'>🔴 뜨거운 편 {_j['hot']}명</span>"
+        if _j.get("warm", 0) > 0: _johu_dist_html += f"<span style='background:#f2c94c;color:#333;border-radius:4px;padding:2px 7px;font-size:12px;margin-right:4px;'>🟡 따뜻한 편 {_j['warm']}명</span>"
+        if _j.get("cold", 0) > 0: _johu_dist_html += f"<span style='background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:12px;margin-right:4px;'>🔵 차가운 편 {_j['cold']}명</span>"
+
+    _johu_extra = ""
+    if _j:
+        _johu_extra = (
+            f"<div style='margin-top:8px;font-size:12px;color:#b0c4cc;line-height:1.7;'>"
+            f"한난 분포 — {_j.get('label','')}: {_j.get('note','')}</div>"
+            f"<div style='font-size:12px;color:{_j.get('color','#b89a6b')};margin-top:4px;'>"
+            f"💊 {_j.get('rx','')}</div>"
+        )
+
     st.markdown(
-        f"<div style='background:{tbg};border:2px solid {tc};border-radius:8px;"
-        f"padding:10px 14px;margin-bottom:8px;display:inline-block;'>"
+        f"<div style='background:{tbg};border:2px solid {tc};border-radius:10px;"
+        f"padding:12px 16px;margin-bottom:8px;'>"
+        f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:6px;'>"
         f"<span style='font-size:18px;'>🌡️</span>"
-        f"<span style='font-size:15px;font-weight:700;color:{tc};margin-left:8px;'>"
-        f"평균 {_t['avg']:.0f}점 · {_t['label']}</span>"
-        f"<span style='font-size:13px;color:{tc};margin-left:8px;'>"
-        f"(개인 편차 ±{_t['variance']:.0f})</span>"
+        f"<span style='font-size:15px;font-weight:700;color:{tc};'>"
+        f"{_t['label']}</span>"
+        f"<span style='font-size:12px;color:{tc};'>(개인 편차 ±{_t['variance']:.0f})</span>"
+        f"</div>"
+        f"<div style='margin-bottom:6px;'>{_johu_dist_html}</div>"
+        f"<div style='font-size:13px;color:#e8d5a0;line-height:1.8;'>{_t['note']}</div>"
+        f"<div style='font-size:12px;color:{tc};margin-top:6px;'>💊 처방: {_t['rx']}</div>"
+        f"{_johu_extra}"
         f"</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"<div style='background:#141414;border:1px solid #fde68a;padding:9px 13px;"
-        f"border-radius:6px;font-size:13px;color:#e8d5a0;line-height:1.7;margin-bottom:4px;'>"
-        f"{_t['note']}<br>💊 처방: {_t['rx']}</div>",
         unsafe_allow_html=True,
     )
 
@@ -23334,23 +23493,25 @@ def render_saju_yebo_page(payload: dict) -> None:
          "오늘 하루 기운이야. 제일 짧고 제일 예민한 운이거든. 오늘 이 기운이 내 원국이랑 잘 맞으면 뭘 해도 잘 풀리는 날, 안 맞으면 조금 조심하는 날 — 그게 다야."),
     ]
 
-    _run_cols = st.columns(4)
-    for _rcol, (_label, _gz, _bg, _color, _desc) in zip(_run_cols, _run_cards):
+    # 4운을 가로 한 줄 컴팩트 카드로 표시 (모바일에서 줄바꿈 없음)
+    _run_html = "<div style='display:flex;gap:6px;margin-bottom:4px;'>"
+    for (_label, _gz, _bg, _color, _desc) in _run_cards:
         _stem, _branch = _split_gz(_gz)
         _stem_ko   = STEMS.get(_stem, {}).get("ko", _stem)
         _branch_ko = BRANCHES.get(_branch, {}).get("ko", _branch)
-        _gz_ko = _stem_ko + _branch_ko  # 예: "신사", "병오"
-        _rcol.markdown(
-            f"<div style='background:{_bg};border:1.5px solid {_color};border-radius:18px;"
-            f"padding:16px 10px 14px 10px;text-align:center;min-height:140px;'>"
-            f"<div style='font-size:11px;color:{_color};font-weight:800;margin-bottom:8px;"
-            f"letter-spacing:.5px;'>{_label}</div>"
-            f"<div style='font-size:36px;font-weight:900;color:{_color};line-height:1.05;'>{_stem}</div>"
-            f"<div style='font-size:30px;font-weight:900;color:{_color};line-height:1.15;'>{_branch}</div>"
-            f"<div style='font-size:12px;color:#d4b896;margin-top:6px;font-weight:700;'>{_gz_ko}</div>"
-            f"</div>",
-            unsafe_allow_html=True,
+        _gz_ko = _stem_ko + _branch_ko
+        _lbl_short = _label.split()[-1]  # "대운" "세운" "월운" "일운"
+        _run_html += (
+            f"<div style='flex:1;background:{_bg};border:1.5px solid {_color};"
+            f"border-radius:12px;padding:8px 4px;text-align:center;min-width:0;'>"
+            f"<div style='font-size:10px;color:{_color};font-weight:800;line-height:1.4;'>{_lbl_short}</div>"
+            f"<div style='font-size:22px;font-weight:900;color:{_color};line-height:1.1;'>{html.escape(_stem)}</div>"
+            f"<div style='font-size:20px;font-weight:900;color:{_color};line-height:1.1;'>{html.escape(_branch)}</div>"
+            f"<div style='font-size:10px;color:#d4b896;margin-top:3px;font-weight:700;'>{html.escape(_gz_ko)}</div>"
+            f"</div>"
         )
+    _run_html += "</div>"
+    st.markdown(_run_html, unsafe_allow_html=True)
 
 
     # ══ 종합예보 — 할머니의 총평 (4운 카드 직하) ══════════════════
@@ -23560,13 +23721,14 @@ def render_saju_yebo_page(payload: dict) -> None:
     _hl_color = ("#4ade80" if _total_score >= 0.10 else "#fbbf24" if _total_score >= -0.10 else "#f87171")
     _hl_bg    = ("rgba(22,163,74,0.10)" if _total_score >= 0.10 else "rgba(217,119,6,0.10)" if _total_score >= -0.10 else "rgba(239,68,68,0.10)")
 
-    for _yp in _yebo_parts:
-        st.markdown(
-            f"<div style='background:{_hl_bg};border-left:3px solid {_hl_color};"
-            f"border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:10px;"
-            f"font-size:14px;color:#fef3c7;line-height:2.0;'>{_yp}</div>",
-            unsafe_allow_html=True,
-        )
+    # 모든 파트를 하나의 흐르는 카드로 합쳐 끊기는 느낌 없애기
+    _yebo_joined = "<br><br>".join(_yebo_parts)
+    st.markdown(
+        f"<div style='background:{_hl_bg};border-left:4px solid {_hl_color};"
+        f"border-radius:0 12px 12px 0;padding:16px 18px;margin-bottom:14px;"
+        f"font-size:15px;color:#fef3c7;line-height:2.1;'>{_yebo_joined}</div>",
+        unsafe_allow_html=True,
+    )
 
 
     st.divider()
@@ -25141,12 +25303,23 @@ def render_patch_notes() -> None:
 
     PATCH_NOTES = [
         {
-            "version": "v5.210",
+            "version": "v5.212",
             "date": "2026년 5월",
             "tag": "🆕 현재 버전",
             "tag_color": "#1e3a5f",
             "items": [
-                ("🧑‍🤝‍🧑 초대케미 추가", "방 링크로 그룹을 초대해 케미를 함께 확인하는 '초대케미' 기능이 추가됩니다."),
+                ("🔧 형(刑) 감지 버그 수정", "사주 맞짱 일운 분석에서 자묘형·삼형(寅巳申·丑戌未)의 방향에 따른 누락 버그를 수정했습니다. 이제 양방향 모두 정확하게 감지됩니다."),
+                ("✅ 천간 충·지지 충 로직 검증 완료", "맞짱 일운 이유 표시에서 천간 충(甲庚·乙辛·丙壬·丁癸) 및 지지 충(子午·丑未 등) 감지가 올바르게 동작함을 검증했습니다."),
+            ],
+        },
+        {
+            "version": "v5.211",
+            "date": "2026년 5월",
+            "tag": "이전 버전",
+            "tag_color": "#92400e",
+            "items": [
+                ("🧑‍🤝‍🧑 모임 케미 초대 추가", "방 링크로 그룹을 초대해 케미를 함께 확인하는 '모임 케미 초대' 기능이 추가됩니다."),
+                ("🪪 사주 원국 화면 개편", "만세력 원국표가 모바일에 최적화된 컴팩트 그리드 형태로 새롭게 바뀌었습니다. 지장간도 세로로 정렬되어 더 읽기 쉬워졌어요."),
             ],
         },
         {
@@ -26043,7 +26216,8 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         <div style='font-size:13px;color:#d4b896;line-height:1.9;'>
           · 사주예보가 추가되었어 — 오늘 내 사주 기운을 한눈에 확인해봐<br>
           · 사주 맞짱이 추가되었어 — 단톡방에서 오늘의 운 대결을 즐겨봐<br>
-          · 초대케미가 추가되었어 — 방 링크로 그룹을 초대해 케미를 함께 확인해봐
+          · 모임 케미 초대가 추가되었어 — 방 링크로 그룹을 초대해 케미를 함께 확인해봐<br>
+          · 사주 원국 화면이 새롭게 바뀌었어 — 모바일에서 더 보기 편해졌어
         </div>
         </div>
         """,
@@ -26073,7 +26247,7 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.rerun()
         st.caption("방 링크로 실시간 사주 맞짱")
     with landing_cols2[1]:
-        if st.button("🧑‍🤝‍🧑 초대케미", use_container_width=True, key="landing_croom"):
+        if st.button("🧑‍🤝‍🧑 모임 케미 초대", use_container_width=True, key="landing_croom"):
             st.session_state.selected_main_mode = "케미방"
             st.session_state.show_details = False
             st.rerun()
