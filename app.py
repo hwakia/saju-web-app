@@ -3613,7 +3613,6 @@ def _get_supabase():
     try:
         url = os.environ.get("SUPABASE_URL", "")
         key = os.environ.get("SUPABASE_ANON_KEY", "")
-        # st.secrets fallback (Streamlit Cloud secrets 등록 직후 재시작 없이도 동작)
         if not url:
             try:
                 url = st.secrets.get("SUPABASE_URL", "")
@@ -26157,4 +26156,28 @@ _stcomp.html("""
         '  color:#fde68a!important;' +
         '}' +
         'li[role=\"option\"]:hover {' +
-        '  background-
+        '  background-color:#3d1a2b!important;' +
+        '}' +
+        /* number_input 버튼 */
+        'button[data-testid=\"stNumberInputStepDown\"],' +
+        'button[data-testid=\"stNumberInputStepUp\"] {' +
+        '  background-color:#3d1a2b!important;' +
+        '  color:#fde68a!important;' +
+        '  border-color:rgba(212,168,83,0.30)!important;' +
+        '}';
+
+    var style = document.createElement('style');
+    style.id = 'saju-dark-override';
+    style.textContent = css;
+
+    function inject() {
+        if (!document.getElementById('saju-dark-override')) {
+            (document.head || document.documentElement).appendChild(style.cloneNode(true));
+        }
+    }
+    inject();
+    document.addEventListener('DOMContentLoaded', inject);
+    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:true});
+})();
+</script>
+""", height=0)
