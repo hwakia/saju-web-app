@@ -11785,7 +11785,7 @@ def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> 
             reset_navigation_to("케미 분석")
             st.rerun()
     with cols[3]:
-        if st.button("🔮 케미방", use_container_width=True, key=f"{prefix}_go_croom"):
+        if st.button("🧑‍🤝‍🧑 초대케미", use_container_width=True, key=f"{prefix}_go_croom"):
             log_event("menu_click", "navigation", {"target": "chemistry_room"})
             reset_navigation_to("케미방")
             st.rerun()
@@ -14842,7 +14842,7 @@ def render_chemistry_room_page() -> None:
     """🔮 비밀케미 방 — Supabase 기반 그룹 케미 분석."""
 
     if _get_supabase() is None:
-        st.error("비밀케미 방은 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_ANON_KEY를 등록해 주세요.")
+        st.error("초대케미는 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_ANON_KEY를 등록해 주세요.")
         if st.button("메인으로", use_container_width=True, key="room_no_sb_home"):
             reset_navigation_to(None)
             st.rerun()
@@ -14886,7 +14886,7 @@ def render_chemistry_room_page() -> None:
 
 
 def _render_create_room_view() -> None:
-    st.markdown("## 🔮 비밀케미 방")
+    st.markdown("## 🧑‍🤝‍🧑 초대케미")
     st.caption("최대 5명이 각자 사주를 입력하면 전원 입장 시 자동으로 케미 매트릭스를 공개합니다.")
     st.markdown(
         "<div style='background:#0d0d0d;border-left:4px solid #a855f7;"
@@ -14917,7 +14917,7 @@ def _render_create_room_view() -> None:
             f"""<button onclick="
                 var url = window.location.origin + window.location.pathname + '?room={room_id_safe}';
                 if(navigator.share){{
-                    navigator.share({{title:'비밀케미 방 참가 링크',url:url}}).catch(function(){{}});
+                    navigator.share({{title:'초대케미 참가 링크',url:url}}).catch(function(){{}});
                 }} else {{
                     navigator.clipboard.writeText(url).then(function(){{
                         alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
@@ -14938,7 +14938,7 @@ def _render_create_room_view() -> None:
 
 
 def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -> None:
-    st.markdown("## 🔮 비밀케미 방 참가")
+    st.markdown("## 🧑‍🤝‍🧑 초대케미 참가")
     st.caption(f"방 ID: `{room_id}` · {len(participants)}/{max_p}명 입장 완료")
 
     if participants:
@@ -15009,7 +15009,7 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
 
 
 def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int, my_name: str) -> None:
-    st.markdown("## 🔮 비밀케미 방 — 대기 중")
+    st.markdown("## 🧑‍🤝‍🧑 초대케미 — 대기 중")
     remaining = max_p - len(participants)
     st.info(f"✅ **{my_name}** 입장 완료! 아직 **{remaining}명**이 남았습니다. 모두 입장하면 자동으로 공개됩니다.")
 
@@ -15042,7 +15042,7 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
             var base = window.location.origin + window.location.pathname;
             var url = base + '?room={room_id_safe}';
             if(navigator.share){{
-                navigator.share({{title:'비밀케미 방 참가 링크', url:url}}).catch(()=>{{}});
+                navigator.share({{title:'초대케미 참가 링크', url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(url)
                   .then(()=>alert('참가 링크가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
@@ -15089,7 +15089,7 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     names = [str(p.get("name", f"참가자{i+1}")) for i, p in enumerate(participants)]
     matrix = _compute_room_chemistry_matrix(participants)
 
-    st.markdown("## 🔮 비밀케미 방 — 케미 공개!")
+    st.markdown("## 🧑‍🤝‍🧑 초대케미 — 케미 공개!")
     st.caption(f"방 ID: `{room_id}` · {n}명 전원 입장 완료")
 
     # ── 역할 배지 ─────────────────────────────────────────────
@@ -22292,11 +22292,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
     # 🏥 사주 진단서 렌더링  (개편 — 결과 먼저 · 처방전 추가)
     # ══════════════════════════════════════════════════════════
 
-    # ── 상단 바로가기 버튼 (원국보기) ────────────────────────
-    if st.button("🪪 원국 보기", key="diag_top_goto_wonkuk", use_container_width=True):
-        st.session_state["single_mri_page_view"] = "🪪 사주 원국"
-        st.rerun()
-
     # ── 0. 할머니 종합 소견 인트로 박스 ─────────────────────
     def _make_grandma_intro() -> str:
         """종합소견 — 할머니 말투 상세 텍스트 (체질·주성분·신강약·용신·처방)."""
@@ -26050,32 +26045,32 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.selected_main_mode = "혼자 보기"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("내 원국 분석 · 오늘의 처방 · 대운 흐름")
+        st.caption("내 원국 분석 · 사주예보")
     with landing_cols[1]:
         if st.button(" 모두의 케미", use_container_width=True, key="landing_friend"):
             st.session_state.selected_main_mode = "케미 분석"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("두 사람의 오행·조후·케미 분석")
+        st.caption("그룹케미 직접 입력")
     landing_cols2 = st.columns(2)
     with landing_cols2[0]:
         if st.button("⚔️ 사주 맞짱", use_container_width=True, key="landing_broom"):
             st.session_state.selected_main_mode = "맞짱방"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("방 링크로 실시간 맞짱 대결")
+        st.caption("방 링크로 실시간 사주 맞짱")
     with landing_cols2[1]:
-        if st.button("🔮 비밀케미 방", use_container_width=True, key="landing_croom"):
+        if st.button("🧑‍🤝‍🧑 초대케미", use_container_width=True, key="landing_croom"):
             st.session_state.selected_main_mode = "케미방"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("그룹 케미 매트릭스 공개")
+        st.caption("방 링크로 그룹케미 보기")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
-    if st.button("개인정보 처리방침 열기", use_container_width=True, key="landing_privacy_policy_open_v5116"):
-        st.session_state["landing_privacy_policy_open_v5116"] = True
-    if st.session_state.get("landing_privacy_policy_open_v5116", False):
+    if st.button("개인정보 처리방침 열기", use_container_width=True, key="landing_privacy_policy_btn"):
+        st.session_state["_privacy_policy_open"] = True
+    if st.session_state.get("_privacy_policy_open", False):
         render_privacy_policy()
     st.stop()
 
@@ -27112,4 +27107,4 @@ _stcomp.html("""
         '}' +
         /* number_input 버튼 */
         'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputSte
+        'button[data-testid=\"stNumberInputSte                                                                                                                                                                                                                                                                                                                          
