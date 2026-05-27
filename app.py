@@ -3599,12 +3599,10 @@ try:
     _sb_create_client_available = True
 except Exception:
     _sb_create_client_available = False
-_supabase = None  # _get_supabase() 를 통해 지연 초기화
+_supabase = None
 
 
 def _get_supabase():
-    """Supabase 클라이언트를 지연 초기화해 반환한다.
-    os.environ → st.secrets 순으로 URL/KEY를 읽는다."""
     global _supabase
     if _supabase is not None:
         return _supabase
@@ -7922,7 +7920,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.184"
+APP_VERSION = "v5.185"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -14288,7 +14286,8 @@ def sb_create_room(max_participants: int = 5) -> "str | None":
             "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
         }).execute()
         return rid
-    except Exception:
+    except Exception as _e:
+        st.session_state["_sb_last_error"] = str(_e)
         return None
 
 
@@ -14490,7 +14489,8 @@ def _render_create_room_view() -> None:
             st.session_state["_created_room_id"] = rid
             st.rerun()
         else:
-            st.error("방 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.")
+            err = st.session_state.get("_sb_last_error", "unknown")
+            st.error(f"방 생성 실패: `{err}`")
 
     created = st.session_state.get("_created_room_id", "")
     if created:
