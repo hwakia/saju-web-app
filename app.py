@@ -7130,6 +7130,33 @@ def render_battle_pyramid_overview(participants: List[Dict[str, object]]) -> Non
         render_rank_pyramid("☀️ 당일 일운 배틀", participant_day_rank_rows(participants), "오늘 일운이 각 원국에 주는 보정 흐름입니다.")
 
 
+def _avg_score_to_grade(score: float) -> str:
+    """전체 평균 케미 점수를 A~E 등급으로 변환한다."""
+    if score >= 76: return "A"
+    if score >= 64: return "B"
+    if score >= 52: return "C"
+    if score >= 38: return "D"
+    return "E"
+
+def _least_chem_advice(least: Dict[str, object]) -> str:
+    """가장 조율이 필요한 조합의 보완/주의 안내 문구를 생성한다."""
+    tension   = _safe_float(least.get("긴장도", 0))
+    sync      = _safe_float(least.get("흐름 동조성", 0))
+    complement= _safe_float(least.get("상호 보완성", 0))
+    alliance  = _safe_float(least.get("동맹성", 0))
+    tips = []
+    if tension >= 60:
+        tips.append("서로 직접 맞부딪히는 신호가 있어요. 역할과 기대치를 미리 말로 정해두면 소모전을 줄일 수 있어요.")
+    if sync <= 45:
+        tips.append("두 사람의 운의 방향이 지금 엇갈리는 시기일 수 있어요. 결정보다 대화 먼저가 좋아요.")
+    if complement <= 45:
+        tips.append("서로 채워주는 오행이 약해요. 비슷한 역할보다 다른 역할을 나눠 맡을 때 시너지가 나요.")
+    if alliance <= 45:
+        tips.append("결속 신호가 약한 편이에요. 공통 목표나 취향이 있으면 관계가 훨씬 편해져요.")
+    if not tips:
+        tips.append("큰 충돌 신호는 없지만 서로의 속도와 방식 차이를 인식하면 더 편한 관계가 돼요.")
+    return " ".join(tips[:2])
+
 def render_compact_chemistry_overview(participants: List[Dict[str, object]]) -> None:
     rows = pairwise_compatibility_rows(participants)
     if not rows:
@@ -7139,11 +7166,13 @@ def render_compact_chemistry_overview(participants: List[Dict[str, object]]) -> 
     best = ordered[0]
     least = ordered[-1]
     avg_score = _avg_numeric([r.get("케미 점수") for r in rows])
+    avg_grade = _avg_score_to_grade(float(avg_score))
+    least_advice = _least_chem_advice(least)
     cols = st.columns(3)
     cards = [
-        ("최고 케미", best.get("조합", "-"), f"{best.get('케미 점수', '-')}점 · {best.get('판정', '-')}", "서로 맞물리는 신호가 가장 강한 조합"),
-        ("평균 케미", "전체 조합", f"{avg_score}점", "전체 분위기의 평균 온도"),
-        ("조율 포인트", least.get("조합", "-"), f"{least.get('케미 점수', '-')}점 · {least.get('판정', '-')}", "나쁘다는 뜻이 아니라 맞춰가면 좋은 조합"),
+        ("✨ 최고 케미", best.get("조합", "-"), f"{best.get('케미 점수', '-')}점 · {best.get('판정', '-')}", "서로 맞물리는 신호가 가장 강한 조합"),
+        ("🌡 전체 조화 등급", "전체 조합", avg_grade + "등급", f"전체 분위기 온도 ({avg_score}점 기준)"),
+        ("🔧 보완이 필요한 조합", least.get("조합", "-"), least.get("판정", "-"), least_advice),
     ]
     for col, (title, name, value, body) in zip(cols, cards):
         with col:
@@ -7922,7 +7951,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.206"
+APP_VERSION = "v5.209"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -14553,7 +14582,7 @@ def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
         _get_supabase().table("battles").insert({
             "id": bid,
             "participants": participants,
-            "expires_at": (datetime.now() + timedelta(days=3)).isoformat(),
+            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
         }).execute()
         return bid
     except Exception:
@@ -14584,7 +14613,7 @@ def sb_create_room(max_participants: int = 5) -> "str | None":
             "max_participants": int(max_participants),
             "participants": [],
             "status": "waiting",
-            "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
+            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
         }).execute()
         return rid
     except Exception as _e:
@@ -14684,7 +14713,7 @@ def sb_create_battle_room(max_participants: int = 5) -> "str | None":
             "max_participants": int(max_participants),
             "participants": [],
             "status": "waiting",
-            "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
+            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
         }).execute()
         return rid
     except Exception as _e:
@@ -15158,6 +15187,17 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
             f"</div>",
             unsafe_allow_html=True,
         )
+
+    # ── 그룹 전체 케미 진단 ──────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 🧩 이 모임 전체 케미 진단")
+    st.caption("참가자 전원의 사주를 하나의 집합으로 보고, 모임의 오행 균형·체온·운영 방향을 분석합니다.")
+    try:
+        _payloads = [_reconstruct_payload_from_room_participant(p) for p in participants]
+        _ga = group_chemistry_analysis(_payloads)
+        render_group_chemistry_diagnosis(_ga)
+    except Exception as _ge:
+        st.caption(f"그룹 진단 중 오류가 발생했습니다: {_ge}")
 
     render_mode_jump_buttons(f"room_result_{room_id}")
 
@@ -25969,92 +26009,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── URL ?battle= 파라미터 감지: Supabase 맞짱 결과 ───────────────────
-_battle_url_id = st.query_params.get("battle", "").strip()
-if _battle_url_id:
-    _participants_db = sb_load_battle(_battle_url_id)
-    if _participants_db:
-        from datetime import date as _bd
-        _today_bd = _bd.today()
-        # loading overlay
-        st.components.v1.html("""
-<script>
-(function(){
-    var doc=(window.parent||window).document;
-    var ov=doc.createElement('div');
-    ov.style.cssText=['position:fixed','top:0','left:0','right:0','bottom:0',
-        'background:#080308','z-index:999999','display:flex','flex-direction:column',
-        'align-items:center','justify-content:center',
-        'transition:opacity 0.7s ease','opacity:1'].join(';');
-    ov.innerHTML='<div style="font-size:3rem;margin-bottom:16px;animation:p 0.9s infinite alternate">⚔️</div>'
-        +'<div style="font-size:1.35rem;color:#f59e0b;font-weight:800;margin-bottom:8px;">오늘의 승자는...</div>'
-        +'<div style="font-size:0.9rem;color:#b89a6b;">사주 기운을 분석하는 중</div>'
-        +'<style>@keyframes p{from{transform:scale(1)}to{transform:scale(1.18)}}</style>';
-    doc.body.appendChild(ov);
-    setTimeout(function(){ov.style.opacity='0';setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},700);},1800);
-})();
-</script>""", height=0)
-        medal       = ["🥇", "🥈", "🥉"] + ["  "] * 7
-        RANK_COLORS = ["#fbbf24", "#94a3b8", "#f97316"] + ["#b89a6b"] * 7
-        sorted_ps   = sorted(_participants_db, key=lambda x: float(x.get("score", 0)), reverse=True)
-        _rank_html  = ""
-        for idx, e in enumerate(sorted_ps):
-            pct   = int(e.get("score", 0))
-            col   = RANK_COLORS[idx] if idx < len(RANK_COLORS) else "#b89a6b"
-            _rank_html += (
-                f"<div style='margin-bottom:10px;'>"
-                f"<div style='display:flex;justify-content:space-between;align-items:center;"
-                f"font-size:13px;color:#e8d5a0;margin-bottom:4px;'>"
-                f"<span style='font-weight:700;font-size:15px;'>{medal[idx]} {idx+1}위 &nbsp; {html.escape(str(e.get('name','?')))}</span>"
-                f"<span style='color:{col};font-weight:800;font-size:16px;'>{pct}점</span></div>"
-                f"<div style='background:#0f0f0f;border-radius:999px;overflow:hidden;height:10px;'>"
-                f"<div style='width:{pct}%;height:100%;background:{col};border-radius:999px;'></div>"
-                f"</div></div>"
-            )
-        winner = sorted_ps[0]
-        st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {_today_bd.strftime('%Y년 %m월 %d일')}")
-        st.markdown(
-            f"<div style='background:#141414;border:2px solid #f59e0b;"
-            f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
-            f"<div style='font-size:13px;color:#f59e0b;font-weight:700;letter-spacing:1px;margin-bottom:12px;'>"
-            f"⚔️ 사주 맞짱 랭킹</div>{_rank_html}"
-            f"<div style='margin-top:14px;text-align:center;font-size:16px;color:#fbbf24;font-weight:800;'>"
-            f"👑 오늘의 승자: {html.escape(str(winner.get('name','?')))}</div></div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            "<div style='background:#0f0f0f;border-radius:10px;padding:10px 14px;"
-            "font-size:12px;color:#8a7060;line-height:1.9;margin-bottom:10px;'>"
-            "📌 <b>점수 산정 방식</b><br>"
-            "오늘의 전투력은 타고난 원국(사주팔자)보다 <b>일운 · 월운 · 세운 · 대운</b>에 "
-            "더 높은 가중치를 두어 계산합니다. 점수는 매일 달라집니다."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        if st.button("⚔️ 내 사주로 맞짱 참가", use_container_width=True, key="battle_db_join"):
-            try:
-                st.query_params.clear()
-            except Exception:
-                pass
-            reset_navigation_to("맞짱방")
-            st.rerun()
-    else:
-        st.error("결과를 찾을 수 없거나 링크가 만료되었습니다. (맞짱 결과는 3일 유지)")
-        if st.button("⚔️ 새 맞짱 시작", use_container_width=True, key="battle_db_err"):
-            try:
-                st.query_params.clear()
-            except Exception:
-                pass
-            reset_navigation_to("맞짱방")
-            st.rerun()
-    st.stop()
-
-# ── URL ?b= 파라미터 감지: 맞짱 결과 링크를 직접 열었을 때 ──────────────
-_battle_url_b = st.query_params.get("b", "")
-if _battle_url_b:
-    _render_battle_result_from_url(_battle_url_b)
-    st.stop()
-
 # ── URL ?room= 파라미터 감지: 비밀케미 방 ──────────────────────────────
 _room_url_id = st.query_params.get("room", "").strip()
 if _room_url_id:
@@ -27158,24 +27112,4 @@ _stcomp.html("""
         '}' +
         /* number_input 버튼 */
         'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputStepUp\"] {' +
-        '  background-color:#3d1a2b!important;' +
-        '  color:#fde68a!important;' +
-        '  border-color:rgba(212,168,83,0.30)!important;' +
-        '}';
-
-    var style = document.createElement('style');
-    style.id = 'saju-dark-override';
-    style.textContent = css;
-
-    function inject() {
-        if (!document.getElementById('saju-dark-override')) {
-            (document.head || document.documentElement).appendChild(style.cloneNode(true));
-        }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:true});
-})();
-</script>
-""", height=0)
+        'button[data-testid=\"stNumberInputSte
