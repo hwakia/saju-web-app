@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.187"
+APP_VERSION = "v5.188"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -11440,31 +11440,36 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
     """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼."""
-    cols = st.columns(5)
+    cols = st.columns(6)
     with cols[0]:
-        if st.button("🏠 메인화면", use_container_width=True, key=f"{prefix}_go_home"):
+        if st.button("🏠 메인", use_container_width=True, key=f"{prefix}_go_home"):
             log_event("menu_click", "navigation", {"target": "home"})
             reset_navigation_to(None)
             st.rerun()
     with cols[1]:
-        if st.button("🌸 내 사주 진단", use_container_width=True, key=f"{prefix}_go_single"):
+        if st.button("🌸 진단", use_container_width=True, key=f"{prefix}_go_single"):
             log_event("menu_click", "navigation", {"target": "solo"})
             reset_navigation_to("혼자 보기")
             st.rerun()
     with cols[2]:
-        if st.button(" 모두의 케미", use_container_width=True, key=f"{prefix}_go_battle"):
+        if st.button("💞 케미", use_container_width=True, key=f"{prefix}_go_battle"):
             log_event("menu_click", "navigation", {"target": "chemistry"})
             reset_navigation_to("케미 분석")
             st.rerun()
     with cols[3]:
-        if st.button("⚔️ 사주 맞짱", use_container_width=True, key=f"{prefix}_go_matchjang"):
+        if st.button("⚔️ 맞짱", use_container_width=True, key=f"{prefix}_go_matchjang"):
             log_event("menu_click", "navigation", {"target": "matchjang"})
             reset_navigation_to("맞짱")
             st.rerun()
     with cols[4]:
-        if st.button("🔮 비밀케미 방", use_container_width=True, key=f"{prefix}_go_croom"):
+        if st.button("🔮 케미방", use_container_width=True, key=f"{prefix}_go_croom"):
             log_event("menu_click", "navigation", {"target": "chemistry_room"})
             reset_navigation_to("케미방")
+            st.rerun()
+    with cols[5]:
+        if st.button("⚔️🏠 맞짱방", use_container_width=True, key=f"{prefix}_go_broom"):
+            log_event("menu_click", "navigation", {"target": "battle_room"})
+            reset_navigation_to("맞짱방")
             st.rerun()
 
 
@@ -14374,6 +14379,93 @@ def _extract_participant_data(payload: Dict, name: str) -> Dict:
     }
 
 
+def sb_create_battle_room(max_participants: int = 5) -> "str | None":
+    """빈 맞짱 방을 생성하고 ID를 반환한다."""
+    if _get_supabase() is None:
+        return None
+    rid = _sb_gen_id(6)
+    try:
+        _get_supabase().table("battle_rooms").insert({
+            "id": rid,
+            "max_participants": int(max_participants),
+            "participants": [],
+            "status": "waiting",
+            "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
+        }).execute()
+        return rid
+    except Exception as _e:
+        st.session_state["_sb_last_error"] = str(_e)
+        return None
+
+
+def sb_join_battle_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
+    """참가자를 맞짱 방에 추가한다. 성공 시 업데이트된 방 dict 반환."""
+    if _get_supabase() is None:
+        return None
+    try:
+        res = _get_supabase().table("battle_rooms").select("*").eq("id", room_id).execute()
+        if not res.data:
+            return None
+        room = res.data[0]
+        ps = list(room.get("participants") or [])
+        max_p = int(room.get("max_participants") or 5)
+        existing = {p.get("name", "") for p in ps}
+        name = str(participant.get("name", ""))
+        if name in existing:
+            room["participants"] = ps
+            return room
+        if len(ps) >= max_p:
+            return None
+        ps.append(participant)
+        new_status = "full" if len(ps) >= max_p else "waiting"
+        _get_supabase().table("battle_rooms").update({
+            "participants": ps,
+            "status": new_status,
+        }).eq("id", room_id).execute()
+        room["participants"] = ps
+        room["status"] = new_status
+        return room
+    except Exception:
+        return None
+
+
+def sb_load_battle_room(room_id: str) -> "Dict | None":
+    """맞짱 방 데이터를 조회한다."""
+    if _get_supabase() is None or not room_id:
+        return None
+    try:
+        res = _get_supabase().table("battle_rooms").select("*").eq("id", room_id).execute()
+        if res.data:
+            return res.data[0]
+        return None
+    except Exception:
+        return None
+
+
+def _extract_battle_participant_data(payload: Dict, name: str) -> Dict:
+    """payload에서 맞짱 방 저장용 참가자 데이터를 추출한다.
+    생년월일·생시 원본은 저장하지 않음. 사주 팔자(간지) + 점수만 저장."""
+    from datetime import datetime as _dtnow
+    chart  = payload.get("chart")
+    pillars: Dict[str, Dict] = {}
+    if chart:
+        pillars = {
+            "year":  {"stem": chart.year.stem,  "branch": chart.year.branch},
+            "month": {"stem": chart.month.stem, "branch": chart.month.branch},
+            "day":   {"stem": chart.day.stem,   "branch": chart.day.branch},
+        }
+        if chart.hour is not None:
+            pillars["hour"] = {"stem": chart.hour.stem, "branch": chart.hour.branch}
+    score = calculate_battle_power(payload)
+    return {
+        "name":       name[:10],
+        "score":      score,
+        "day_master": chart.day_master if chart else "",
+        "pillars":    pillars,
+        "joined_at":  _dtnow.now().isoformat(),
+    }
+
+
 def _reconstruct_payload_from_room_participant(p: Dict) -> Dict:
     """방 참가자 데이터에서 compatibility_analysis용 payload를 재구성한다."""
     pillars = p.get("pillars", {}) or {}
@@ -14774,6 +14866,342 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         )
 
     render_mode_jump_buttons(f"room_result_{room_id}")
+
+
+# ============================================================
+# ⚔️ 사주 맞짱 방 — Supabase 기반 그룹 맞짱
+# ============================================================
+
+def render_battle_room_page() -> None:
+    """⚔️ 사주 맞짱 방 — Supabase 기반 그룹 배틀."""
+
+    if _get_supabase() is None:
+        st.error("맞짱 방은 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_SERVICE_KEY를 등록해 주세요.")
+        if st.button("메인으로", use_container_width=True, key="broom_no_sb_home"):
+            reset_navigation_to(None)
+            st.rerun()
+        return
+
+    room_id = st.query_params.get("broom", "").strip()
+
+    if not room_id:
+        _render_create_battle_room_view()
+        return
+
+    room = sb_load_battle_room(room_id)
+    if room is None:
+        st.error("방을 찾을 수 없거나 링크가 만료되었습니다. (맞짱 방은 24시간 유지)")
+        if st.button("새 방 만들기", use_container_width=True, key="broom_notfound_new"):
+            try:
+                st.query_params.clear()
+            except Exception:
+                pass
+            reset_navigation_to("맞짱방")
+            st.rerun()
+        return
+
+    participants = list(room.get("participants") or [])
+    max_p        = int(room.get("max_participants") or 5)
+    status       = str(room.get("status", "waiting"))
+
+    if status == "full":
+        _render_battle_room_result_view(room_id, participants)
+        return
+
+    joined_name = st.session_state.get(f"_broom_{room_id}_name", "")
+    if joined_name:
+        _render_battle_room_waiting_view(room_id, participants, max_p, joined_name)
+    else:
+        _render_battle_room_join_view(room_id, participants, max_p)
+
+
+def _render_create_battle_room_view() -> None:
+    st.markdown("## ⚔️ 사주 맞짱 방")
+    st.markdown(
+        "<div style='background:#0d0d0d;border-left:4px solid #f59e0b;"
+        "border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:14px;"
+        "font-size:13px;color:#e8d5a0;line-height:2.2;'>"
+        "1️⃣ 방장이 방 만들기 → 링크 생성<br>"
+        "2️⃣ 링크를 단톡방에 공유<br>"
+        "3️⃣ 참가자가 각자 링크 클릭 → 별명 + 생년월일 입력<br>"
+        "4️⃣ 전원 입장 완료되면 랭킹 자동 공개 🏆"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    max_p = st.radio("최대 인원", [2, 3, 4, 5], index=2, horizontal=True, key="broom_max_p")
+    if st.button("⚔️ 방 만들기", type="primary", use_container_width=True, key="broom_create_btn"):
+        rid = sb_create_battle_room(int(max_p))
+        if rid:
+            st.session_state["_created_broom_id"] = rid
+            st.rerun()
+        else:
+            err = st.session_state.get("_sb_last_error", "unknown")
+            st.error(f"방 생성 실패: `{err}`")
+
+    created = st.session_state.get("_created_broom_id", "")
+    if created:
+        room_id_safe = str(created)
+        st.success(f"방이 만들어졌습니다! 방 ID: `{room_id_safe}`")
+        st.components.v1.html(
+            f"""<button onclick="
+                var url = window.location.origin + window.location.pathname + '?broom={room_id_safe}';
+                if(navigator.share){{
+                    navigator.share({{title:'사주 맞짱 방 참가 링크',url:url}}).catch(function(){{}});
+                }} else {{
+                    navigator.clipboard.writeText(url).then(function(){{
+                        alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 ⚔️');
+                    }});
+                }}
+            " style="width:100%;padding:13px;background:#f59e0b;color:#1c0a00;
+                border:none;border-radius:10px;font-size:15px;font-weight:800;
+                cursor:pointer;">📤 참가 링크 단톡방에 공유</button>""",
+            height=60,
+        )
+        if st.button("🚪 방에 직접 입장하기", use_container_width=True, key="broom_self_enter"):
+            try:
+                st.query_params["broom"] = created
+            except Exception:
+                pass
+            st.session_state["_created_broom_id"] = ""
+            st.rerun()
+
+
+def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p: int) -> None:
+    st.markdown("## ⚔️ 사주 맞짱 방 참가")
+    st.caption(f"방 ID: `{room_id}` · {len(participants)}/{max_p}명 입장 완료")
+
+    if participants:
+        joined_html = " &nbsp;·&nbsp; ".join(
+            f"<span style='color:#f59e0b;'>{html.escape(str(p.get('name','?')))}</span>"
+            f"<span style='font-size:11px;color:#888;'> {p.get('score',0)}점</span>"
+            for p in participants
+        )
+        st.markdown(
+            f"<div style='background:#0a0a0a;border:1px solid #2a2010;"
+            f"border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;'>"
+            f"✅ 입장 완료: {joined_html}</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("#### 내 정보 입력")
+    st.caption("⚠️ 생년월일은 서버에 저장되지 않습니다. 별명과 사주 팔자(간지) + 점수만 저장됩니다.")
+    nickname = st.text_input("별명 (10자 이내, 실명 사용 금지)", max_chars=10, key=f"broom_nick_{room_id}")
+
+    payload = st.session_state.get("payload")
+    has_payload = payload is not None and isinstance(payload, dict) and payload.get("chart") is not None
+
+    input_method = st.radio(
+        "참가 방식",
+        ["생년월일 직접 입력", "내 사주 진단 결과 사용"] if has_payload else ["생년월일 직접 입력"],
+        horizontal=True,
+        key=f"broom_input_method_{room_id}",
+    )
+
+    birth_str = btime_str = gender_sel = None
+    if input_method == "생년월일 직접 입력":
+        st.caption("생년월일과 생시를 입력하면 서버에는 사주 팔자만 저장됩니다.")
+        birth_str  = st.text_input("생년월일 (YYYY-MM-DD)", key=f"broom_birth_{room_id}",
+                                   placeholder="예: 1990-03-15")
+        btime_str  = st.text_input("태어난 시각 (HH:MM, 모르면 빈칸)", key=f"broom_time_{room_id}",
+                                   placeholder="예: 14:30")
+        gender_sel = st.radio("성별", ["남", "여"], horizontal=True, key=f"broom_gender_{room_id}")
+    else:
+        st.info("현재 세션의 내 사주 진단 결과를 사용합니다. 별명만 입력하면 바로 참가할 수 있습니다.")
+
+    if st.button("⚔️ 입장하기", type="primary", use_container_width=True, key=f"broom_join_{room_id}"):
+        name = str(nickname).strip()
+        if not name:
+            st.error("별명을 입력해 주세요.")
+            st.stop()
+
+        if input_method == "내 사주 진단 결과 사용" and has_payload:
+            p_data = _extract_battle_participant_data(payload, name)
+        else:
+            if Solar is None:
+                st.error("자동 산출을 위해 lunar_python이 필요합니다.")
+                st.stop()
+            try:
+                from datetime import date as _d2, time as _t2
+                bd = _d2.fromisoformat((birth_str or "").strip())
+                try:
+                    bt = _t2.fromisoformat(btime_str.strip()) if (btime_str or "").strip() else _t2(12, 0)
+                except Exception:
+                    bt = _t2(12, 0)
+                _chart, _lf, _res = get_saju_automated(bd, bt, gender_sel or "남")
+                tmp_payload = {"chart": _chart, "result": _res, "luck_flow": _lf}
+                p_data = _extract_battle_participant_data(tmp_payload, name)
+            except Exception as _e:
+                st.error(f"사주 산출 오류: {_e}")
+                st.stop()
+
+        result_room = sb_join_battle_room(room_id, p_data)
+        if result_room is None:
+            st.error("입장에 실패했습니다. 방이 가득 찼거나 링크가 만료되었습니다.")
+            st.stop()
+        st.session_state[f"_broom_{room_id}_name"] = name
+        st.rerun()
+
+
+def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max_p: int, my_name: str) -> None:
+    st.markdown("## ⚔️ 사주 맞짱 방 — 대기 중")
+    remaining = max_p - len(participants)
+    st.info(f"✅ **{my_name}** 입장 완료! 아직 **{remaining}명**이 남았습니다. 모두 입장하면 자동으로 랭킹이 공개됩니다.")
+
+    joined_html = ""
+    for p in participants:
+        joined_html += (
+            f"<div style='padding:6px 10px;border-bottom:1px solid #2a1a10;'>"
+            f"<span style='color:#f59e0b;font-weight:700;'>{html.escape(str(p.get('name','?')))}</span>"
+            f"<span style='font-size:11px;color:#888;margin-left:8px;'>입장 완료</span>"
+            f"</div>"
+        )
+    for _ in range(remaining):
+        joined_html += (
+            "<div style='padding:6px 10px;border-bottom:1px solid #1a1208;'>"
+            "<span style='color:#3a2a10;font-style:italic;'>대기 중...</span></div>"
+        )
+    st.markdown(
+        "<div style='background:#0a0a0a;border:1px solid #2a2010;"
+        "border-radius:10px;overflow:hidden;margin-bottom:14px;'>"
+        f"{joined_html}</div>",
+        unsafe_allow_html=True,
+    )
+
+    if st.button("🔄 새로고침", use_container_width=True, key=f"broom_refresh_{room_id}"):
+        st.rerun()
+
+    room_id_safe = str(room_id)
+    st.components.v1.html(
+        f"""<button onclick="
+            var base = window.location.origin + window.location.pathname;
+            var url = base + '?broom={room_id_safe}';
+            if(navigator.share){{
+                navigator.share({{title:'사주 맞짱 방 참가 링크', url:url}}).catch(()=>{{}});
+            }} else {{
+                navigator.clipboard.writeText(url)
+                  .then(()=>alert('참가 링크가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 ⚔️'));
+            }}
+        " style="width:100%;padding:12px;background:#f59e0b;color:#1c0a00;
+            border:none;border-radius:10px;font-size:14px;font-weight:800;
+            cursor:pointer;margin-top:4px;">📤 아직 안 온 친구에게 링크 공유</button>""",
+        height=56,
+    )
+
+
+def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> None:
+    """전원 입장 완료 — 맞짱 랭킹 공개."""
+    from datetime import date as _date
+    today = _date.today()
+
+    # ── 긴장감 유발 오버레이 (처음 로드 시 1회) ──────────────
+    if not st.session_state.get(f"_broom_{room_id}_revealed"):
+        st.components.v1.html("""
+<script>
+(function(){
+    var doc = (window.parent||window).document;
+    var ov = doc.createElement('div');
+    ov.id = 'broom-reveal-overlay';
+    ov.style.cssText = [
+        'position:fixed','top:0','left:0','right:0','bottom:0',
+        'background:#080300',
+        'z-index:999999',
+        'display:flex','flex-direction:column',
+        'align-items:center','justify-content:center',
+        'transition:opacity 0.7s ease',
+        'opacity:1'
+    ].join(';');
+    ov.innerHTML = [
+        '<div style="font-size:3.2rem;margin-bottom:18px;',
+        'animation:pulse 0.8s infinite alternate;">⚔️</div>',
+        '<div style="font-size:1.5rem;color:#f59e0b;font-weight:800;',
+        'margin-bottom:10px;letter-spacing:1px;">오늘의 승자는...</div>',
+        '<div style="font-size:0.95rem;color:#b89a6b;margin-bottom:28px;">',
+        '사주 기운을 분석하는 중</div>',
+        '<div id="bov-dots" style="font-size:1.6rem;letter-spacing:6px;',
+        'color:#f59e0b;width:60px;text-align:center;">●○○</div>',
+        '<style>',
+        '@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.2)}}',
+        '</style>'
+    ].join('');
+    doc.body.appendChild(ov);
+    var frames=['●○○','○●○','○○●','○●○'];
+    var fi=0;
+    var dotEl=doc.getElementById('bov-dots');
+    var iv=setInterval(function(){
+        fi=(fi+1)%frames.length;
+        if(dotEl) dotEl.textContent=frames[fi];
+    },220);
+    setTimeout(function(){
+        clearInterval(iv);
+        ov.style.opacity='0';
+        setTimeout(function(){
+            if(ov.parentNode) ov.parentNode.removeChild(ov);
+        },700);
+    },2000);
+})();
+</script>
+""", height=0)
+        st.session_state[f"_broom_{room_id}_revealed"] = True
+
+    sorted_p = sorted(participants, key=lambda x: x.get("score", 0), reverse=True)
+    winner   = sorted_p[0] if sorted_p else {}
+    medal    = ["🥇", "🥈", "🥉"] + ["  "] * 10
+    rank_colors = ["#fbbf24", "#94a3b8", "#f97316"] + ["#b89a6b"] * 10
+
+    st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
+    st.markdown(
+        f"<div style='text-align:center;padding:18px 0 10px;'>"
+        f"<div style='font-size:2.8rem;'>🏆</div>"
+        f"<div style='font-size:1.5rem;font-weight:900;color:#fbbf24;margin-top:4px;'>"
+        f"{html.escape(str(winner.get('name','?')))} 승!</div>"
+        f"<div style='font-size:13px;color:#b89a6b;margin-top:4px;'>"
+        f"오늘의 사주 기운 {winner.get('score', 0)}점</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    rank_html = ""
+    for idx, p in enumerate(sorted_p):
+        pct   = p.get("score", 0)
+        bar_w = int(pct)
+        color = rank_colors[idx] if idx < len(rank_colors) else "#b89a6b"
+        m     = medal[idx] if idx < len(medal) else " "
+        rank_html += (
+            f"<div style='padding:10px 14px;border-bottom:1px solid #1a1208;'>"
+            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;'>"
+            f"<span style='font-size:1.1rem;'>{m} "
+            f"<span style='color:{color};font-weight:800;'>{html.escape(str(p.get('name','?')))}</span></span>"
+            f"<span style='color:{color};font-weight:700;'>{pct}점</span></div>"
+            f"<div style='background:#1a1208;border-radius:4px;height:7px;overflow:hidden;'>"
+            f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:4px;'></div></div>"
+            f"</div>"
+        )
+
+    st.markdown(
+        f"<div style='background:#0a0a0a;border:1px solid #2a2010;"
+        f"border-radius:10px;overflow:hidden;margin:12px 0;'>{rank_html}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── 재공유 버튼 ─────────────────────────────────────────
+    room_id_safe = str(room_id)
+    winner_name_safe = str(winner.get("name", "?")).replace("'", "\\'")
+    st.components.v1.html(
+        f"""<button onclick="
+            var url = window.location.origin + window.location.pathname + '?broom={room_id_safe}';
+            var msg = '⚔️ 사주 맞짱 결과\\n🏆 오늘의 승자: {winner_name_safe}\\n' + url;
+            if(navigator.share){{
+                navigator.share({{title:'사주 맞짱 결과', text:msg, url:url}}).catch(()=>{{}});
+            }} else {{
+                navigator.clipboard.writeText(url)
+                  .then(()=>alert('결과 링크가 복사됐어!\\n단톡방에 공유해봐 ⚔️'));
+            }}
+        " style="width:100%;padding:13px;background:#f59e0b;color:#1c0a00;
+            border:none;border-radius:10px;font-size:15px;font-weight:800;
+            cursor:pointer;margin-top:4px;">📤 결과 단톡방에 공유</button>""",
+        height=60,
+    )
+
+    render_mode_jump_buttons(f"broom_result_{room_id}")
 
 
 def render_battle_ranking_page() -> None:
@@ -25073,6 +25501,12 @@ if _room_url_id:
     render_chemistry_room_page()
     st.stop()
 
+# ── URL ?broom= 파라미터 감지: 사주 맞짱 방 ──────────────────────────
+_broom_url_id = st.query_params.get("broom", "").strip()
+if _broom_url_id:
+    render_battle_room_page()
+    st.stop()
+
 if st.session_state.payload is None and st.session_state.selected_main_mode is None:
     # 첫 화면은 순수 Streamlit 레이아웃으로만 구성한다.
     # ── 최신 패치 공지 ──
@@ -25115,13 +25549,22 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.selected_main_mode = "맞짱"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("오늘의 기운으로 최강자 랭킹 결정")
+        st.caption("코드 공유 방식으로 랭킹 결정")
     with landing_cols2[1]:
         if st.button("🔮 비밀케미 방", use_container_width=True, key="landing_croom"):
             st.session_state.selected_main_mode = "케미방"
             st.session_state.show_details = False
             st.rerun()
         st.caption("그룹 케미 매트릭스 공개")
+    landing_cols3 = st.columns(2)
+    with landing_cols3[0]:
+        if st.button("⚔️🏠 맞짱 방", use_container_width=True, key="landing_broom"):
+            st.session_state.selected_main_mode = "맞짱방"
+            st.session_state.show_details = False
+            st.rerun()
+        st.caption("방 링크로 실시간 맞짱 대결")
+    with landing_cols3[1]:
+        st.write("")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
@@ -25576,6 +26019,10 @@ elif input_mode == "맞짱":
 
 elif input_mode == "케미방":
     render_chemistry_room_page()
+    st.stop()
+
+elif input_mode == "맞짱방":
+    render_battle_room_page()
     st.stop()
 
 elif input_mode == "오늘의 뽑기":
