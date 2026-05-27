@@ -5296,7 +5296,7 @@ def build_luck_flow_rows(
 
     rows = []
     this_year = date.today().year
-    for i in range(10):
+    for i in range(-3, 9):
         y = this_year + i
         try:
             sw = get_year_ganzhi(y)
@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.203"
+APP_VERSION = "v5.204"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24459,12 +24459,12 @@ def render_origin_identity_table(
         return tbl.get(el, "#fde68a")
 
     def _el_bg(ch: str, is_stem: bool) -> str:
-        tbl = {"목": "rgba(52,211,153,.20)", "화": "rgba(248,113,113,.22)",
-               "토": "rgba(251,191,36,.18)", "금": "rgba(229,231,235,.14)",
-               "수": "rgba(96,165,250,.20)"}
+        tbl = {"목": "rgba(134,239,172,.55)", "화": "rgba(252,165,165,.52)",
+               "토": "rgba(253,224,71,.45)",  "금": "rgba(226,232,240,.50)",
+               "수": "rgba(147,197,253,.52)"}
         d = STEMS if is_stem else BRANCHES
         el = d.get(ch, {}).get("element", "토")
-        return tbl.get(el, "rgba(253,230,138,.1)")
+        return tbl.get(el, "rgba(253,230,138,.35)")
 
     _S_4BG = "background:rgba(18,14,32,.55);"   # 4운 컬럼 행 배경 (cool tint)
     _S_WBG = "background:rgba(26,17,4,.55);"    # 원국 컬럼 행 배경 (warm tint)
@@ -24476,7 +24476,7 @@ def render_origin_identity_table(
     _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
     _S_SIP  = "font-size:7.5px;color:#b89a6b;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
-    _S_JJG  = "font-size:6px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
+    _S_JJG  = "font-size:5px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
     _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
     _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
     _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
@@ -24614,7 +24614,7 @@ def render_origin_identity_table(
     # ── inline style 상수 (스크롤 섹션) ─────────────────────────
     _SC_TITLE  = ("font-size:.78rem;font-weight:950;color:#f59e0b;"
                   "margin:.55rem 0 .28rem 0;display:block;")
-    _SC_SCROLL = ("display:flex;gap:.3rem;overflow-x:auto;-webkit-overflow-scrolling:touch;"
+    _SC_SCROLL = ("display:flex;flex-wrap:nowrap;gap:.3rem;overflow-x:auto;-webkit-overflow-scrolling:touch;"
                   "padding-bottom:.3rem;margin-bottom:.55rem;scrollbar-width:none;")
     _SC_CHIP   = ("flex:0 0 auto;display:flex;flex-direction:column;align-items:center;"
                   "min-width:60px;background:#141414;border:1px solid rgba(212,168,83,.25);"
