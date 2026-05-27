@@ -3593,14 +3593,42 @@ except Exception:
     Solar = None
     Lunar = None
 
-# ── Supabase 클라이언트 (선택적 — secrets 미설정 시 None) ─────────
+# ── Supabase 클라이언트 (지연 초기화 — secrets 미설정 시 None) ─────────
 try:
     from supabase import create_client as _sb_create_client
-    _sb_url: str = os.environ.get("SUPABASE_URL", "")
-    _sb_key: str = os.environ.get("SUPABASE_ANON_KEY", "")
-    _supabase = _sb_create_client(_sb_url, _sb_key) if (_sb_url and _sb_key) else None
+    _sb_create_client_available = True
 except Exception:
-    _supabase = None
+    _sb_create_client_available = False
+_supabase = None  # _get_supabase() 를 통해 지연 초기화
+
+
+def _get_supabase():
+    """Supabase 클라이언트를 지연 초기화해 반환한다.
+    os.environ → st.secrets 순으로 URL/KEY를 읽는다."""
+    global _supabase
+    if _supabase is not None:
+        return _supabase
+    if not _sb_create_client_available:
+        return None
+    try:
+        url = os.environ.get("SUPABASE_URL", "")
+        key = os.environ.get("SUPABASE_ANON_KEY", "")
+        # st.secrets fallback (Streamlit Cloud secrets 등록 직후 재시작 없이도 동작)
+        if not url:
+            try:
+                url = st.secrets.get("SUPABASE_URL", "")
+            except Exception:
+                pass
+        if not key:
+            try:
+                key = st.secrets.get("SUPABASE_ANON_KEY", "")
+            except Exception:
+                pass
+        if url and key:
+            _supabase = _sb_create_client(url, str(key))
+    except Exception:
+        pass
+    return _supabase
 
 
 # ============================================================
@@ -7895,7 +7923,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.183"
+APP_VERSION = "v5.184"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -14220,11 +14248,11 @@ def _sb_gen_id(length: int = 6) -> str:
 
 def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
     """맞짱 결과 [{name, score}]를 Supabase에 저장하고 6자리 ID를 반환한다."""
-    if _supabase is None:
+    if _get_supabase() is None:
         return None
     bid = _sb_gen_id(6)
     try:
-        _supabase.table("battles").insert({
+        _get_supabase().table("battles").insert({
             "id": bid,
             "participants": participants,
             "expires_at": (datetime.now() + timedelta(days=3)).isoformat(),
@@ -14236,10 +14264,10 @@ def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
 
 def sb_load_battle(battle_id: str) -> "List[Dict] | None":
     """Supabase에서 맞짱 결과를 불러온다."""
-    if _supabase is None or not battle_id:
+    if _get_supabase() is None or not battle_id:
         return None
     try:
-        res = _supabase.table("battles").select("*").eq("id", battle_id).execute()
+        res = _get_supabase().table("battles").select("*").eq("id", battle_id).execute()
         if res.data:
             return list(res.data[0].get("participants") or [])
         return None
@@ -14249,11 +14277,11 @@ def sb_load_battle(battle_id: str) -> "List[Dict] | None":
 
 def sb_create_room(max_participants: int = 5) -> "str | None":
     """빈 비밀케미 방을 생성하고 ID를 반환한다."""
-    if _supabase is None:
+    if _get_supabase() is None:
         return None
     rid = _sb_gen_id(6)
     try:
-        _supabase.table("chemistry_rooms").insert({
+        _get_supabase().table("chemistry_rooms").insert({
             "id": rid,
             "max_participants": int(max_participants),
             "participants": [],
@@ -14267,10 +14295,10 @@ def sb_create_room(max_participants: int = 5) -> "str | None":
 
 def sb_join_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
     """참가자를 방에 추가한다. 성공 시 업데이트된 방 dict 반환."""
-    if _supabase is None:
+    if _get_supabase() is None:
         return None
     try:
-        res = _supabase.table("chemistry_rooms").select("*").eq("id", room_id).execute()
+        res = _get_supabase().table("chemistry_rooms").select("*").eq("id", room_id).execute()
         if not res.data:
             return None
         room = res.data[0]
@@ -14285,7 +14313,7 @@ def sb_join_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
             return None
         ps.append(participant)
         new_status = "full" if len(ps) >= max_p else "waiting"
-        _supabase.table("chemistry_rooms").update({
+        _get_supabase().table("chemistry_rooms").update({
             "participants": ps,
             "status": new_status,
         }).eq("id", room_id).execute()
@@ -14298,10 +14326,10 @@ def sb_join_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
 
 def sb_load_room(room_id: str) -> "Dict | None":
     """방 데이터를 조회한다."""
-    if _supabase is None or not room_id:
+    if _get_supabase() is None or not room_id:
         return None
     try:
-        res = _supabase.table("chemistry_rooms").select("*").eq("id", room_id).execute()
+        res = _get_supabase().table("chemistry_rooms").select("*").eq("id", room_id).execute()
         if res.data:
             return res.data[0]
         return None
@@ -14398,7 +14426,7 @@ def _compute_room_chemistry_matrix(participants: List[Dict]) -> List[List[Dict]]
 def render_chemistry_room_page() -> None:
     """🔮 비밀케미 방 — Supabase 기반 그룹 케미 분석."""
 
-    if _supabase is None:
+    if _get_supabase() is None:
         st.error("비밀케미 방은 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_ANON_KEY를 등록해 주세요.")
         if st.button("메인으로", use_container_width=True, key="room_no_sb_home"):
             reset_navigation_to(None)
@@ -14826,7 +14854,7 @@ def render_battle_ranking_page() -> None:
         )
 
         # Supabase 사용 가능하면 짧은 URL (?battle=ID), 없으면 기존 ?b= 방식
-        if _supabase is not None:
+        if _get_supabase() is not None:
             battle_participants = [{"name": e["name"], "score": e["score"]} for e in valid_e]
             bid = sb_save_battle(battle_participants)
         else:
@@ -26129,28 +26157,4 @@ _stcomp.html("""
         '  color:#fde68a!important;' +
         '}' +
         'li[role=\"option\"]:hover {' +
-        '  background-color:#3d1a2b!important;' +
-        '}' +
-        /* number_input 버튼 */
-        'button[data-testid=\"stNumberInputStepDown\"],' +
-        'button[data-testid=\"stNumberInputStepUp\"] {' +
-        '  background-color:#3d1a2b!important;' +
-        '  color:#fde68a!important;' +
-        '  border-color:rgba(212,168,83,0.30)!important;' +
-        '}';
-
-    var style = document.createElement('style');
-    style.id = 'saju-dark-override';
-    style.textContent = css;
-
-    function inject() {
-        if (!document.getElementById('saju-dark-override')) {
-            (document.head || document.documentElement).appendChild(style.cloneNode(true));
-        }
-    }
-    inject();
-    document.addEventListener('DOMContentLoaded', inject);
-    new MutationObserver(inject).observe(document.documentElement, {childList:true, subtree:true});
-})();
-</script>
-""", height=0)
+        '  background-
