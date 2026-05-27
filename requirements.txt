@@ -1,5 +1,6 @@
-streamlit
+streamlit>=1.31.0
 pandas
 Pillow
 qrcode
 lunar_python
+supabase
