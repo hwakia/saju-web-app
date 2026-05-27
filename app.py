@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.202"
+APP_VERSION = "v5.203"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24505,15 +24505,16 @@ def render_origin_identity_table(
     for lbl4, gz4, col4 in _4un_disp:
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
         sc = _el_color(s4, True) if s4 not in ("-", "?", "") else col4
-        ebg = _el_bg(s4, True) if s4 not in ("-", "?", "") else _S_4BG
-        p.append(f"<div style='{_S_GZ}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};color:{sc}'>{html.escape(s4)}</div>")
+        ebg = _el_bg(s4, True) if s4 not in ("-", "?", "") else ""
+        bg4 = f"background:{ebg};" if ebg else _S_4BG
+        p.append(f"<div style='{_S_GZ}{bg4}color:{sc}'>{html.escape(s4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         if pi:
             sc = _el_color(pi.stem, True)
             ebg = _el_bg(pi.stem, True)
             day_extra = "border:1px solid rgba(253,230,138,.5);" if lbl == "일주" else ""
-            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};{day_extra}color:{sc}'>{html.escape(pi.stem)}</div>")
+            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg};{day_extra}color:{sc}'>{html.escape(pi.stem)}</div>")
         else:
             p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
 
@@ -24531,15 +24532,16 @@ def render_origin_identity_table(
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         bc = _el_color(b4, False) if b4 not in ("-", "?", "") else col4
-        ebg = _el_bg(b4, False) if b4 not in ("-", "?", "") else _S_4BG
-        p.append(f"<div style='{_S_GZ}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};color:{bc}'>{html.escape(b4)}</div>")
+        ebg = _el_bg(b4, False) if b4 not in ("-", "?", "") else ""
+        bg4 = f"background:{ebg};" if ebg else _S_4BG
+        p.append(f"<div style='{_S_GZ}{bg4}color:{bc}'>{html.escape(b4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
         if pi:
             bc = _el_color(pi.branch, False)
             ebg = _el_bg(pi.branch, False)
             day_extra = "border:1px solid rgba(253,230,138,.5);" if lbl == "일주" else ""
-            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg.split(chr(58),1)[1].rstrip(chr(59))};{day_extra}color:{bc}'>{html.escape(pi.branch)}</div>")
+            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg};{day_extra}color:{bc}'>{html.escape(pi.branch)}</div>")
         else:
             p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
 
