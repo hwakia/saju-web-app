@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.188"
+APP_VERSION = "v5.193"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -8826,6 +8826,270 @@ div[data-testid="stRadio"] span {
     -webkit-box-orient:vertical;
     overflow:hidden;
 }
+
+/* v5.190: 원국 compact 테이블 + 4운 행 */
+.mc-4un-row {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:.3rem;
+    margin-bottom:.65rem;
+}
+.mc-4un-chip {
+    background:#141414;
+    border:1px solid rgba(212,168,83,.2);
+    border-radius:10px;
+    padding:.28rem .08rem .32rem .08rem;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:.04rem;
+}
+.mc-4un-label {
+    font-size:.6rem;
+    font-weight:950;
+    letter-spacing:.02em;
+    margin-bottom:.04rem;
+}
+.mc-4un-sip {
+    font-size:.58rem;
+    color:#b89a6b !important;
+    font-weight:900;
+    line-height:1.1;
+    min-height:.75rem;
+}
+.mc-4un-gz {
+    font-size:1.28rem;
+    font-weight:950;
+    line-height:1.05;
+    letter-spacing:-.02em;
+}
+.mc-4un-12un {
+    font-size:.58rem;
+    color:#93c5fd !important;
+    font-weight:900;
+    margin-top:.02rem;
+}
+.mc-grid {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:0;
+    border:1px solid rgba(212,168,83,.30);
+    border-radius:14px;
+    overflow:hidden;
+    margin-bottom:.6rem;
+}
+.mc-head {
+    background:#1e1a08;
+    color:#fde68a !important;
+    text-align:center;
+    padding:.32rem .1rem;
+    font-weight:950;
+    font-size:.82rem;
+    border-right:1px solid rgba(212,168,83,.22);
+    border-bottom:1px solid rgba(212,168,83,.22);
+}
+.mc-head:last-child { border-right:none; }
+.mc-head.mc-day { border-bottom:2px solid rgba(212,168,83,.55); }
+.mc-shinsin {
+    text-align:center;
+    color:#b89a6b !important;
+    font-weight:900;
+    font-size:.78rem;
+    padding:.22rem .06rem .16rem .06rem;
+    border-right:1px solid rgba(212,168,83,.15);
+    border-bottom:1px solid rgba(212,168,83,.12);
+    min-height:1.3rem;
+    background:#141414;
+}
+.mc-shinsin:last-child { border-right:none; }
+.mc-shinsin.mc-day { background:#181610; }
+.mc-12un {
+    font-size:.6rem;
+    color:#93c5fd !important;
+    font-weight:900;
+    margin-top:.08rem;
+    letter-spacing:.01em;
+}
+.mc-box-wrap {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:.2rem .12rem;
+    border-right:1px solid rgba(212,168,83,.15);
+    background:#141414;
+}
+.mc-box-wrap.mc-day { background:#181610; }
+.mc-box-wrap:last-child { border-right:none; }
+.mc-box-wrap.branch-row { border-bottom:1px solid rgba(212,168,83,.12); }
+.mc-box {
+    width:44px;
+    height:44px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.75rem;
+    line-height:1;
+    font-weight:950;
+    color:#1a1200 !important;
+    box-shadow:0 2px 6px rgba(50,40,10,.1);
+}
+.mc-box.el-금 { color:#f0e8c8 !important; }
+.mc-jijanggan {
+    text-align:center;
+    font-size:.72rem;
+    color:#d4b896 !important;
+    font-weight:800;
+    padding:.22rem .06rem .3rem .06rem;
+    border-top:1px dashed rgba(212,168,83,.25);
+    border-right:1px solid rgba(212,168,83,.15);
+    background:#0f0f0f;
+    word-break:break-all;
+    line-height:1.3;
+}
+.mc-jijanggan:last-child { border-right:none; }
+.mc-jijanggan.mc-day { background:#141410; }
+.mc-ohaeng {
+    display:flex;
+    gap:.3rem;
+    flex-wrap:wrap;
+    margin:.5rem 0 .4rem 0;
+    justify-content:center;
+}
+.mc-ohaeng-badge {
+    padding:.2rem .48rem;
+    border-radius:999px;
+    font-size:.82rem;
+    font-weight:950;
+    border:1px solid rgba(212,168,83,.3);
+    color:#141414 !important;
+}
+.mc-ohaeng-목 { background:linear-gradient(135deg,#bcebd9,#8dd8b4); }
+.mc-ohaeng-화 { background:linear-gradient(135deg,#ffb6c9,#ff8ca8); }
+.mc-ohaeng-토 { background:linear-gradient(135deg,#efd07c,#d4a853); }
+.mc-ohaeng-금 { background:linear-gradient(135deg,#c8d8e8,#a0b8c8); }
+.mc-ohaeng-수 { background:linear-gradient(135deg,#b7d7ff,#80b4ff); }
+.mc-meta-row {
+    display:flex;
+    gap:.5rem;
+    font-size:.78rem;
+    color:#b89a6b !important;
+    margin-bottom:.55rem;
+    flex-wrap:wrap;
+    justify-content:center;
+}
+.mc-meta-label { color:#f59e0b !important; font-weight:950; }
+.mc-section-title {
+    font-size:.78rem;
+    font-weight:950;
+    color:#f59e0b !important;
+    margin-bottom:.28rem;
+    letter-spacing:.03em;
+}
+.mc-daewun-scroll {
+    display:flex;
+    gap:.3rem;
+    overflow-x:auto;
+    padding-bottom:.3rem;
+    margin-bottom:.55rem;
+    scrollbar-width:none;
+}
+.mc-daewun-scroll::-webkit-scrollbar { display:none; }
+.mc-dw-chip {
+    flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:42px;
+    background:#141414;
+    border:1px solid rgba(212,168,83,.25);
+    border-radius:10px;
+    padding:.25rem .2rem .3rem .2rem;
+    gap:.04rem;
+}
+.mc-dw-chip.current {
+    background:#1e1a08;
+    border:2px solid rgba(212,168,83,.65);
+    box-shadow:0 0 8px rgba(212,168,83,.18);
+}
+.mc-dw-age {
+    font-size:.65rem;
+    color:#b89a6b !important;
+    font-weight:950;
+    margin-bottom:.02rem;
+}
+.mc-dw-chip.current .mc-dw-age { color:#f59e0b !important; }
+.mc-dw-sip {
+    font-size:.58rem;
+    color:#b89a6b !important;
+    font-weight:900;
+    line-height:1.1;
+    min-height:.7rem;
+}
+.mc-dw-stem, .mc-dw-branch {
+    font-size:1.05rem;
+    font-weight:950;
+    color:#fde68a !important;
+    line-height:1.1;
+}
+.mc-dw-12un {
+    font-size:.58rem;
+    color:#93c5fd !important;
+    font-weight:900;
+    margin-top:.02rem;
+}
+.mc-sewun-scroll {
+    display:flex;
+    gap:.3rem;
+    overflow-x:auto;
+    padding-bottom:.3rem;
+    scrollbar-width:none;
+}
+.mc-sewun-scroll::-webkit-scrollbar { display:none; }
+.mc-sw-chip {
+    flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:44px;
+    background:#141414;
+    border:1px solid rgba(212,168,83,.22);
+    border-radius:10px;
+    padding:.22rem .16rem .28rem .16rem;
+    gap:.04rem;
+}
+.mc-sw-chip.current {
+    background:#1e1a08;
+    border:2px solid rgba(212,168,83,.6);
+}
+.mc-sw-year {
+    font-size:.6rem;
+    color:#b89a6b !important;
+    font-weight:950;
+    margin-bottom:.02rem;
+}
+.mc-sw-chip.current .mc-sw-year { color:#f59e0b !important; }
+.mc-sw-sip {
+    font-size:.58rem;
+    color:#b89a6b !important;
+    font-weight:900;
+    line-height:1.1;
+    min-height:.7rem;
+}
+.mc-sw-gz {
+    font-size:.98rem;
+    font-weight:950;
+    color:#fde68a !important;
+    line-height:1.1;
+}
+.mc-sw-12un {
+    font-size:.58rem;
+    color:#93c5fd !important;
+    font-weight:900;
+    margin-top:.02rem;
+}
+
 @media (max-width: 768px) {
     .manse-wrap { padding:.82rem .58rem; border-radius:20px; }
     .manse-grid { gap:.25rem; }
@@ -8847,6 +9111,31 @@ div[data-testid="stRadio"] span {
     .manse-luck-head { flex-direction:column; gap:.35rem; }
     .manse-luck-grid, .manse-sewun-grid { grid-template-columns:1fr; }
     .manse-luck-card { min-height:118px; }
+}
+/* v5.191: 모바일 compact 테이블 최적화 */
+@media (max-width: 480px) {
+    .mc-4un-row { gap:.2rem; margin-bottom:.55rem; }
+    .mc-4un-chip { padding:.22rem .05rem .25rem .05rem; border-radius:8px; }
+    .mc-4un-label { font-size:.56rem; }
+    .mc-4un-gz { font-size:1.08rem; }
+    .mc-4un-sip { font-size:.52rem; min-height:.66rem; }
+    .mc-4un-12un { font-size:.52rem; }
+    .mc-head { font-size:.74rem; padding:.28rem .06rem; }
+    .mc-shinsin { font-size:.68rem; padding:.18rem .04rem .12rem .04rem; }
+    .mc-12un { font-size:.56rem; }
+    .mc-box-wrap { padding:.15rem .08rem; }
+    .mc-box { width:38px; height:38px; font-size:1.52rem; border-radius:8px; }
+    .mc-jijanggan { font-size:.62rem; padding:.18rem .04rem .24rem .04rem; }
+    .mc-ohaeng { gap:.22rem; }
+    .mc-ohaeng-badge { font-size:.74rem; padding:.16rem .36rem; }
+    .mc-meta-row { font-size:.72rem; gap:.35rem; }
+    .mc-section-title { font-size:.72rem; }
+    .mc-dw-chip { min-width:36px; padding:.2rem .16rem .24rem .16rem; }
+    .mc-dw-age { font-size:.6rem; }
+    .mc-dw-stem, .mc-dw-branch { font-size:.95rem; }
+    .mc-sw-chip { min-width:38px; padding:.18rem .12rem .22rem .12rem; }
+    .mc-sw-year { font-size:.58rem; }
+    .mc-sw-gz { font-size:.88rem; }
 }
 
 
@@ -23519,7 +23808,12 @@ def render_single_summary(payload: Dict[str, object]) -> None:
 
     elif view == "🪪 사주 원국":
         st.markdown("### 🪪 사주 원국")
-        render_origin_identity_table(chart)
+        render_origin_identity_table(
+            chart,
+            luck_flow=luck_flow,
+            daewuns=payload.get("daewuns"),
+            result=result,
+        )
         st.markdown("---")
         render_manse_daewun_cards(payload)
         if luck_flow and luck_flow.get("sewun_rows"):
@@ -24069,104 +24363,257 @@ def render_manse_sewun_cards(luck_flow: Dict[str, object]) -> None:
     st.markdown("".join(html_parts), unsafe_allow_html=True)
 
 
-def render_origin_identity_table(chart: Chart) -> None:
-    """만세력 원국을 모바일 친화적인 4기둥 카드 매트릭스로 표시한다."""
-    def _stem_role(name: str, p: Pillar) -> str:
-        return "일간" if name == "일주" else relation_to_day(chart.day_master, p.stem)
+def render_origin_identity_table(
+    chart: Chart,
+    luck_flow: "Dict | None" = None,
+    daewuns: "list | None" = None,
+    result: "Dict | None" = None,
+) -> None:
+    """만세력 원국 — 참조 이미지 스타일의 compact 테이블 + 오행 분포 + 대운/세운 한 화면 표시."""
 
-    def _branch_role(p: Pillar) -> str:
-        # 지지는 대표 지장간 기준으로 십성을 표시한다. 巳/亥 등 지지 직접 전달 시 KeyError 방지.
+    # ── 헬퍼 ─────────────────────────────────────────────────
+    def _role(label: str, p: Pillar, is_stem: bool) -> str:
+        if is_stem:
+            return "일간" if label == "일주" else relation_to_day(chart.day_master, p.stem)
         return relation_to_day(chart.day_master, p.branch)
 
-    def _hidden_lines(p: Pillar) -> str:
-        lines = []
-        for hs, ratio in BRANCHES[p.branch]["hidden"]:
-            role = relation_to_day(chart.day_master, hs)
-            ko = STEMS[hs]["ko"]
-            pct = int(round(float(ratio) * 100))
-            lines.append(f"{hs} {role}<br><span style='font-size:.66em;color:#d4b896;'>{ko} · {pct}%</span>")
-        return "<br>".join(lines) if lines else "-"
+    def _jjg_compact(p: Pillar) -> str:
+        """지장간을 한자만 이어붙여 반환 (e.g. 戊庚丙)."""
+        return "".join(hs for hs, _ in BRANCHES[p.branch]["hidden"]) if p else "?"
 
-    def _big_cell(char: str, el: str, kind: str) -> str:
-        return f"<div class='manse-big {kind} manse-el-{html.escape(el)}'>{html.escape(char)}</div>"
+    EL_COLOR = {"목": "목", "화": "화", "토": "토", "금": "금", "수": "수"}
 
-    def _pillar_col(label: str, p: Pillar | None, highlight: bool = False) -> str:
-        if p is None:
-            return (
-                "<div class='manse-col'>"
-                f"<div class='manse-head'>{html.escape(label)}<br><span style='font-size:.8em;'>(미상)</span></div>"
-                "<div class='manse-role'>-</div>"
-                "<div class='manse-big stem' style='background:#111111;color:#d4b896!important;'>?</div>"
-                "<div class='manse-ko'>시주 미상</div>"
-                "<div class='manse-role'>-</div>"
-                "<div class='manse-big branch' style='background:#111111;color:#d4b896!important;'>?</div>"
-                "<div class='manse-hidden'><div class='manse-hidden-title'>지장간</div><div class='manse-hidden-line'>출생시간 미상</div></div>"
-                "</div>"
-            )
-
-        stem_el = STEMS[p.stem]["element"]
-        branch_el = BRANCHES[p.branch]["element"]
-        col_class = "manse-col manse-day" if highlight else "manse-col"
-        stem_role = _stem_role(label, p)
-        branch_role = _branch_role(p)
-        stem_ko = STEMS[p.stem]["ko"]
-        branch_ko = BRANCHES[p.branch]["ko"]
+    def _box(char: str, el: str, is_gold: bool = False) -> str:
+        ec = EL_COLOR.get(el, "토")
+        gold_cls = " el-금" if ec == "금" else ""
         return (
-            f"<div class='{col_class}'>"
-            f"<div class='manse-head'>{html.escape(label)}</div>"
-            f"<div class='manse-role'>{html.escape(stem_role)}</div>"
-            f"{_big_cell(p.stem, stem_el, 'stem')}"
-            f"<div class='manse-ko'>{html.escape(stem_ko)} · {html.escape(stem_el)}</div>"
-            f"<div class='manse-role'>{html.escape(branch_role)}</div>"
-            f"{_big_cell(p.branch, branch_el, 'branch')}"
-            f"<div class='manse-ko'>{html.escape(branch_ko)} · {html.escape(branch_el)}</div>"
-            "<div class='manse-hidden'>"
-            "<div class='manse-hidden-title'>지장간</div>"
-            f"<div class='manse-hidden-line'>{_hidden_lines(p)}</div>"
-            "</div>"
-            "</div>"
+            f"<div class='mc-box manse-el-{ec}{gold_cls}'>"
+            f"{html.escape(char)}</div>"
         )
 
+    # ── 오행 분포 카운트 ──────────────────────────────────────
+    def _count_ohaeng() -> Dict[str, int]:
+        cnt: Dict[str, int] = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
+        ps = [chart.year, chart.month, chart.day]
+        if chart.hour:
+            ps.append(chart.hour)
+        for p in ps:
+            se = STEMS.get(p.stem, {}).get("element", "")
+            be = BRANCHES.get(p.branch, {}).get("element", "")
+            if se in cnt: cnt[se] += 1
+            if be in cnt: cnt[be] += 1
+        return cnt
+
+    OHAENG_LABEL = {"목": "木", "화": "火", "토": "土", "금": "金", "수": "水"}
+
+    # ── 기둥 순서: 시주 | 일주 | 월주 | 년주 ─────────────────
     pillars = [
-        ("시주", chart.hour, False),
-        ("일주", chart.day, True),
-        ("월주", chart.month, False),
-        ("년주", chart.year, False),
+        ("시주", chart.hour),
+        ("일주", chart.day),
+        ("월주", chart.month),
+        ("년주", chart.year),
     ]
 
-    gongmang = _gongmang_branches_for_day(chart.day.stem, chart.day.branch)
-    gongmang_text = " · ".join([f"{b}({_branch_ko(b)})" for b in gongmang]) if gongmang else "-"
-    day_master_text = f"{chart.day_master}({STEMS[chart.day_master]['ko']}) · {STEMS[chart.day_master]['element']}"
-    ganji = ganji_text(chart)
+    gongmang      = _gongmang_branches_for_day(chart.day.stem, chart.day.branch)
+    gongmang_text = "·".join(f"{b}({_branch_ko(b)})" for b in gongmang) if gongmang else "없음"
+    ganji         = ganji_text(chart)
+    ohaeng_cnt    = _count_ohaeng()
 
-    # 화면 위 표: 참고 이미지의 배열만 차용하고, 색감은 사주MRI 톤으로 유지한다.
-    html_block = (
-        "<div class='manse-wrap'>"
+    # ── 4운 간지 추출 ─────────────────────────────────────────
+    from datetime import date as _d4
+    _lf      = luck_flow or {}
+    _dw_gz4  = str((_lf.get("current_daewun") or {}).get("ganzhi", "") or "")
+    _sw_gz4  = ""
+    _yr_lbl4 = str(_d4.today().year) + "년"
+    for _r4 in (_lf.get("sewun_rows") or []):
+        if str(_r4.get("연도", "")) == _yr_lbl4:
+            _sw_gz4 = str(_r4.get("세운", "") or "")
+            break
+    _compass4 = {}
+    if chart and result:
+        try:
+            _compass4 = today_compass_payload(chart, result)
+        except Exception:
+            pass
+    _ww_gz4 = str(_compass4.get("month_gz", "") or "")
+    _iw_gz4 = str(_compass4.get("day_gz",   "") or "")
+
+    _4un = [
+        ("대운", _dw_gz4, "#93c5fd"),
+        ("세운", _sw_gz4, "#c4b5fd"),
+        ("월운", _ww_gz4, "#86efac"),
+        ("일운", _iw_gz4, "#fde68a"),
+    ]
+
+    # ── HTML 조립 ─────────────────────────────────────────────
+    p = []  # parts
+
+    # 타이틀
+    p.append("<div class='manse-wrap'>")
+    p.append(
         "<div class='manse-title'>"
-        "<div><b>만세력 원국</b><br><span>시주 · 일주 · 월주 · 년주 순서야. 일주가 내 기준축이라서 테두리를 굵게 해놨어.</span></div>"
+        "<b>만세력 원국</b>"
         f"<span>{html.escape(ganji)}</span>"
-        "</div>"
-        "<div class='manse-grid'>"
-        + "".join(_pillar_col(label, p, highlight) for label, p, highlight in pillars)
-        + "</div>"
-        "<div class='manse-summary'>"
-        "<div class='manse-summary-card'>"
-        "<div class='manse-summary-title'>일간 기준</div>"
-        f"<div class='manse-summary-body'>{html.escape(day_master_text)}</div>"
-        "</div>"
-        "<div class='manse-summary-card'>"
-        "<div class='manse-summary-title'>공망</div>"
-        f"<div class='manse-summary-body'>{html.escape(gongmang_text)}</div>"
-        "</div>"
-        "<div class='manse-summary-card'>"
-        "<div class='manse-summary-title'>읽는 순서</div>"
-        "<div class='manse-summary-body'>천간은 겉으로 드러난 기운, 지지는 바탕 기운, 지장간은 안쪽에 꼭꼭 숨어 있는 재료야. 순서대로 읽어봐.</div>"
-        "</div>"
-        "</div>"
         "</div>"
     )
 
-    st.markdown(html_block, unsafe_allow_html=True)
+    # ── 4운 compact 행 (세로 배치 + 십성/12운성) ─────────────────
+    p.append("<div class='mc-4un-row'>")
+    for _lbl4, _gz4, _col4 in _4un:
+        _s4   = _gz4[0] if len(_gz4) >= 1 else "-"
+        _b4   = _gz4[1] if len(_gz4) >= 2 else "-"
+        _ssip4 = relation_to_day(chart.day_master, _s4) if _s4 not in ("-", "?") else ""
+        _bsip4 = relation_to_day(chart.day_master, _b4) if _b4 not in ("-", "?") else ""
+        _stg4  = get_twelve_stage(chart.day_master, _b4) if _b4 not in ("-", "?") else ""
+        p.append(
+            f"<div class='mc-4un-chip' style='border-color:{_col4}33;'>"
+            f"<div class='mc-4un-label' style='color:{_col4};'>{html.escape(_lbl4)}</div>"
+            f"<div class='mc-4un-sip'>{html.escape(_ssip4)}</div>"
+            f"<div class='mc-4un-gz' style='color:{_col4};'>{html.escape(_s4)}</div>"
+            f"<div class='mc-4un-gz' style='color:{_col4};'>{html.escape(_b4)}</div>"
+            f"<div class='mc-4un-sip'>{html.escape(_bsip4)}</div>"
+            f"<div class='mc-4un-12un'>{html.escape(_stg4)}</div>"
+            f"</div>"
+        )
+    p.append("</div>")
+
+    # 4기둥 compact grid
+    p.append("<div class='mc-grid'>")
+
+    # ── row 1: 헤더 ───────────────────────────────────────────
+    for lbl, _ in pillars:
+        day_cls = " mc-day" if lbl == "일주" else ""
+        p.append(f"<div class='mc-head{day_cls}'>{html.escape(lbl)}</div>")
+
+    # ── row 2: 천간 십성 ──────────────────────────────────────
+    for lbl, pi in pillars:
+        day_cls = " mc-day" if lbl == "일주" else ""
+        role = _role(lbl, pi, True) if pi else "-"
+        p.append(f"<div class='mc-shinsin{day_cls}'>{html.escape(role)}</div>")
+
+    # ── row 3: 천간 박스 ──────────────────────────────────────
+    for lbl, pi in pillars:
+        day_cls = " mc-day" if lbl == "일주" else ""
+        if pi:
+            el = STEMS[pi.stem]["element"]
+            cell = _box(pi.stem, el)
+        else:
+            cell = "<div class='mc-box manse-el-토' style='color:#555!important;'>?</div>"
+        p.append(f"<div class='mc-box-wrap{day_cls}'>{cell}</div>")
+
+    # ── row 4: 지지 박스 ──────────────────────────────────────
+    for lbl, pi in pillars:
+        day_cls = " mc-day" if lbl == "일주" else ""
+        if pi:
+            el = BRANCHES[pi.branch]["element"]
+            cell = _box(pi.branch, el)
+        else:
+            cell = "<div class='mc-box manse-el-토' style='color:#555!important;'>?</div>"
+        p.append(f"<div class='mc-box-wrap{day_cls} branch-row'>{cell}</div>")
+
+    # ── row 5: 지지 십성 + 12운성 ────────────────────────────────
+    for lbl, pi in pillars:
+        day_cls = " mc-day" if lbl == "일주" else ""
+        role  = _role(lbl, pi, False) if pi else "-"
+        stage = get_twelve_stage(chart.day_master, pi.branch) if pi else ""
+        p.append(
+            f"<div class='mc-shinsin{day_cls}'>"
+            f"{html.escape(role)}"
+            f"<div class='mc-12un'>{html.escape(stage)}</div>"
+            f"</div>"
+        )
+
+    # ── row 6: 지장간 ─────────────────────────────────────────
+    for lbl, pi in pillars:
+        day_cls = " mc-day" if lbl == "일주" else ""
+        jjg = _jjg_compact(pi) if pi else "미상"
+        p.append(f"<div class='mc-jijanggan{day_cls}'>{html.escape(jjg)}</div>")
+
+    p.append("</div>")  # end mc-grid
+
+    # ── 오행 분포 ─────────────────────────────────────────────
+    p.append("<div class='mc-ohaeng'>")
+    for el_key in ["목", "화", "토", "금", "수"]:
+        cnt = ohaeng_cnt.get(el_key, 0)
+        label = OHAENG_LABEL[el_key]
+        p.append(f"<div class='mc-ohaeng-badge mc-ohaeng-{el_key}'>{label}({cnt})</div>")
+    p.append("</div>")
+
+    # ── 공망 + 일간 ──────────────────────────────────────────
+    dm = chart.day_master
+    dm_el = STEMS[dm]["element"]
+    dm_ko = STEMS[dm]["ko"]
+    p.append(
+        "<div class='mc-meta-row'>"
+        f"<span><span class='mc-meta-label'>일간</span> {html.escape(dm)}({html.escape(dm_ko)}) · {html.escape(dm_el)}</span>"
+        f"<span><span class='mc-meta-label'>공망</span> {html.escape(gongmang_text)}</span>"
+        "</div>"
+    )
+
+    # ── 대운 스크롤 (luck_flow/daewuns 있을 때) ───────────────
+    if daewuns:
+        lf = luck_flow or {}
+        current_dw = lf.get("current_daewun") if isinstance(lf, dict) else None
+        cur_age    = current_dw.get("start_age") if current_dw else None
+        cur_gz     = current_dw.get("ganzhi")    if current_dw else None
+
+        p.append("<div class='mc-section-title'>〽️ 대운</div>")
+        p.append("<div class='mc-daewun-scroll'>")
+        for item in daewuns:
+            gz  = str(item.get("ganzhi", "-"))
+            age = str(item.get("start_age", "-"))
+            is_cur = bool(cur_age is not None and item.get("start_age") == cur_age and gz == cur_gz)
+            cur_cls   = " current" if is_cur else ""
+            stem_ch   = gz[0] if len(gz) >= 1 else "-"
+            branch_ch = gz[1] if len(gz) >= 2 else "-"
+            dw_ssip   = relation_to_day(chart.day_master, stem_ch)   if stem_ch   not in ("-","?") else ""
+            dw_bsip   = relation_to_day(chart.day_master, branch_ch) if branch_ch not in ("-","?") else ""
+            dw_stg    = get_twelve_stage(chart.day_master, branch_ch) if branch_ch not in ("-","?") else ""
+            p.append(
+                f"<div class='mc-dw-chip{cur_cls}'>"
+                f"<div class='mc-dw-age'>{html.escape(age)}</div>"
+                f"<div class='mc-dw-sip'>{html.escape(dw_ssip)}</div>"
+                f"<div class='mc-dw-stem'>{html.escape(stem_ch)}</div>"
+                f"<div class='mc-dw-branch'>{html.escape(branch_ch)}</div>"
+                f"<div class='mc-dw-sip'>{html.escape(dw_bsip)}</div>"
+                f"<div class='mc-dw-12un'>{html.escape(dw_stg)}</div>"
+                "</div>"
+            )
+        p.append("</div>")
+
+    # ── 세운 스크롤 ───────────────────────────────────────────
+    lf2 = luck_flow or {}
+    sewun_rows = lf2.get("sewun_rows") if isinstance(lf2, dict) else None
+    if sewun_rows:
+        from datetime import date as _d
+        cur_year_str = str(_d.today().year) + "년"
+        p.append("<div class='mc-section-title'>📆 세운</div>")
+        p.append("<div class='mc-sewun-scroll'>")
+        for r in sewun_rows:
+            yr_raw    = str(r.get("연도", "-"))
+            gz        = str(r.get("세운", "-"))
+            is_cur    = yr_raw == cur_year_str
+            cur_cls   = " current" if is_cur else ""
+            yr_disp   = yr_raw.replace("년", "")
+            sw_sc     = gz[0] if len(gz) >= 1 else "-"
+            sw_bc     = gz[1] if len(gz) >= 2 else "-"
+            sw_ssip   = relation_to_day(chart.day_master, sw_sc) if sw_sc not in ("-","?") else ""
+            sw_bsip   = relation_to_day(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
+            sw_stg    = get_twelve_stage(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
+            p.append(
+                f"<div class='mc-sw-chip{cur_cls}'>"
+                f"<div class='mc-sw-year'>{html.escape(yr_disp)}</div>"
+                f"<div class='mc-sw-sip'>{html.escape(sw_ssip)}</div>"
+                f"<div class='mc-sw-gz'>{html.escape(sw_sc)}</div>"
+                f"<div class='mc-sw-gz'>{html.escape(sw_bc)}</div>"
+                f"<div class='mc-sw-sip'>{html.escape(sw_bsip)}</div>"
+                f"<div class='mc-sw-12un'>{html.escape(sw_stg)}</div>"
+                "</div>"
+            )
+        p.append("</div>")
+
+    p.append("</div>")  # end manse-wrap
+    st.markdown("".join(p), unsafe_allow_html=True)
 
 
 
@@ -24748,7 +25195,12 @@ def render_detail_tabs(payload: Dict[str, object], prefix: str | None = None) ->
 
         st.markdown("#### 🪪 만세력 원국")
         st.caption("시주·일주·월주·년주 순서로 원국을 확인합니다.")
-        render_origin_identity_table(chart)
+        render_origin_identity_table(
+            chart,
+            luck_flow=luck_flow,
+            daewuns=payload.get("daewuns"),
+            result=result,
+        )
 
         origin_profile = result.get("origin_profile", {})
         useful = result.get("useful", {})
@@ -26567,7 +27019,6 @@ _stcomp.html("""
         '  padding:6px 16px!important;' +
         '  transition:none!important;' +
         '}' +
-        '[data-testid=\"stRadio\"] label:has(input:checked),' +
         'div[role=\"radiogroup\"] label:has(input:checked) {' +
         '  background-color:#92400e!important;' +
         '  border-color:#f59e0b!important;' +
