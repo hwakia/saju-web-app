@@ -24507,11 +24507,12 @@ def render_origin_identity_table(
     # ── inline-style 상수 (CSS class 대신 직접 적용) ─────────────
     _S_WRAP = ("display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1px;"
                "margin-bottom:.6rem;background:#0d0d0d;border-radius:12px;"
-               "padding:5px 2px 7px;border:1px solid rgba(212,168,83,.2);overflow:hidden;")
+               "padding:5px 2px 7px;border:1px solid rgba(212,168,83,.2);overflow:hidden;"
+               "-webkit-text-size-adjust:none;text-size-adjust:none;")
     _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
     _S_SIP  = "font-size:7.5px;color:#b89a6b;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
-    _S_JJG  = "font-size:4px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
+    _S_JJG  = "font-size:9px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:-.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
     _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
     _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
     _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
@@ -26039,7 +26040,8 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         </div>
         <div style='font-size:13px;color:#d4b896;line-height:1.9;'>
           · 사주예보가 추가되었어 — 오늘 내 사주 기운을 한눈에 확인해봐<br>
-          · 사주 맞짱이 추가되었어 — 단톡방에서 오늘의 운 대결을 즐겨봐
+          · 사주 맞짱이 추가되었어 — 단톡방에서 오늘의 운 대결을 즐겨봐<br>
+          · 초대케미가 추가되었어 — 방 링크로 그룹을 초대해 케미를 함께 확인해봐
         </div>
         </div>
         """,
