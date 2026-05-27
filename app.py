@@ -7951,7 +7951,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.209"
+APP_VERSION = "v5.210"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -25138,9 +25138,18 @@ def render_patch_notes() -> None:
 
     PATCH_NOTES = [
         {
-            "version": "v5.150",
+            "version": "v5.210",
             "date": "2026년 5월",
             "tag": "🆕 현재 버전",
+            "tag_color": "#1e3a5f",
+            "items": [
+                ("🧑‍🤝‍🧑 초대케미 추가", "방 링크로 그룹을 초대해 케미를 함께 확인하는 '초대케미' 기능이 추가됩니다."),
+            ],
+        },
+        {
+            "version": "v5.150",
+            "date": "2026년 5월",
+            "tag": "이전 버전",
             "tag_color": "#92400e",
             "items": [
                 ("🔄 모두의 케미로 통합", "기존 '1:1 케미' 명칭을 '모두의 케미'로 전면 변경하고, 오방성 그래프에 각자의 역할(균형자·드라이버 등)을 함께 표시합니다."),
