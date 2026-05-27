@@ -24379,10 +24379,10 @@ def render_origin_identity_table(
         return relation_to_day(chart.day_master, p.branch)
 
     def _jjg_compact(p: Pillar) -> str:
-        """지장간을 세로로 한 글자씩 반환 (모바일 칸 넘침 방지)."""
+        """지장간을 세로로 한 글자씩 div로 반환 (모바일 칸 넘침 방지)."""
         if not p:
             return "?"
-        return "<br>".join(html.escape(hs) for hs, _ in BRANCHES[p.branch]["hidden"])
+        return "".join(f"<div>{html.escape(hs)}</div>" for hs, _ in BRANCHES[p.branch]["hidden"])
 
     def _sinsal_tags(branch: str) -> str:
         """지지에 해당하는 신살 태그 문자열 반환 (e.g. '천을·역마')."""
@@ -24514,7 +24514,7 @@ def render_origin_identity_table(
     _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
     _S_SIP  = "font-size:7.5px;color:#b89a6b;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
-    _S_JJG  = "font-size:10px;color:#6b7280;font-weight:700;text-align:center;line-height:1.2;padding:1px 0;overflow:hidden;"
+    _S_JJG  = "display:flex;flex-direction:column;align-items:center;font-size:10px;color:#6b7280;font-weight:700;text-align:center;line-height:1.3;padding:1px 0;"
     _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
     _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
     _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
@@ -24586,7 +24586,7 @@ def render_origin_identity_table(
     # ─ 지장간 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
-        jjg4 = "<br>".join(html.escape(hs) for hs, _ in BRANCHES[b4]["hidden"]) if b4 in BRANCHES else ""
+        jjg4 = "".join(f"<div>{html.escape(hs)}</div>" for hs, _ in BRANCHES[b4]["hidden"]) if b4 in BRANCHES else ""
         p.append(f"<div style='{_S_JJG}{_S_4BG}'>{jjg4}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
