@@ -3603,6 +3603,7 @@ _supabase = None
 
 
 def _get_supabase():
+    """service_role 키 우선, 없으면 anon 키로 Supabase 클라이언트 초기화."""
     global _supabase
     if _supabase is not None:
         return _supabase
@@ -3610,17 +3611,18 @@ def _get_supabase():
         return None
     try:
         url = os.environ.get("SUPABASE_URL", "")
-        key = os.environ.get("SUPABASE_ANON_KEY", "")
         if not url:
-            try:
-                url = st.secrets.get("SUPABASE_URL", "")
-            except Exception:
-                pass
+            try: url = st.secrets.get("SUPABASE_URL", "")
+            except Exception: pass
+        key = os.environ.get("SUPABASE_SERVICE_KEY", "")
         if not key:
-            try:
-                key = st.secrets.get("SUPABASE_ANON_KEY", "")
-            except Exception:
-                pass
+            try: key = st.secrets.get("SUPABASE_SERVICE_KEY", "")
+            except Exception: pass
+        if not key:
+            key = os.environ.get("SUPABASE_ANON_KEY", "")
+        if not key:
+            try: key = st.secrets.get("SUPABASE_ANON_KEY", "")
+            except Exception: pass
         if url and key:
             _supabase = _sb_create_client(url, str(key))
     except Exception:
@@ -7920,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.185"
+APP_VERSION = "v5.186"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
