@@ -5296,7 +5296,7 @@ def build_luck_flow_rows(
 
     rows = []
     this_year = date.today().year
-    for i in range(-3, 9):
+    for i in range(-5, 11):
         y = this_year + i
         try:
             sw = get_year_ganzhi(y)
@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.204"
+APP_VERSION = "v5.206"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24476,7 +24476,7 @@ def render_origin_identity_table(
     _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
     _S_SIP  = "font-size:7.5px;color:#b89a6b;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
-    _S_JJG  = "font-size:5px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
+    _S_JJG  = "font-size:4px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.01em;padding:1px 0;white-space:nowrap;overflow:hidden;"
     _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
     _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
     _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
@@ -24629,72 +24629,99 @@ def render_origin_identity_table(
     _SC_GZ     = "font-size:1.55rem;font-weight:950;color:#fde68a;line-height:1.1;"
     _SC_12UN   = "font-size:.68rem;color:#93c5fd;font-weight:900;margin-top:.04rem;"
 
-    # ── 대운 스크롤 ──────────────────────────────────────────
+    p.append("</div>")  # end manse-wrap
+    st.markdown("".join(p), unsafe_allow_html=True)
+
+    import streamlit.components.v1 as _stcomp2
+
+    # ── 공통 chip 스타일 (iframe 내부용) ──────────────────────
+    _IC = ("flex:0 0 auto;display:flex;flex-direction:column;align-items:center;"
+           "min-width:58px;background:#141414;border:1px solid rgba(212,168,83,.25);"
+           "border-radius:12px;padding:.38rem .28rem .42rem;gap:.05rem;")
+    _IC_C = ("flex:0 0 auto;display:flex;flex-direction:column;align-items:center;"
+             "min-width:58px;background:#1e1a08;border:2px solid rgba(212,168,83,.7);"
+             "border-radius:12px;padding:.38rem .28rem .42rem;gap:.05rem;"
+             "box-shadow:0 0 8px rgba(212,168,83,.25);")
+    _IFRAME_BASE = ("body{margin:0;padding:0;background:transparent;font-family:sans-serif;}"
+                    "::-webkit-scrollbar{display:none;}")
+
+    # ── 대운 스크롤 (iframe) ──────────────────────────────────
     if daewuns:
         lf = luck_flow or {}
         current_dw = lf.get("current_daewun") if isinstance(lf, dict) else None
         cur_age    = current_dw.get("start_age") if current_dw else None
         cur_gz     = current_dw.get("ganzhi")    if current_dw else None
 
-        p.append(f"<div style='{_SC_TITLE}'>〽️ 대운</div>")
-        p.append(f"<div style='{_SC_SCROLL}'>")
+        dw_chips = []
         for item in daewuns:
             gz  = str(item.get("ganzhi", "-"))
             age = str(item.get("start_age", "-"))
             is_cur    = bool(cur_age is not None and item.get("start_age") == cur_age and gz == cur_gz)
-            chip_st   = _SC_CHIP_C if is_cur else _SC_CHIP
-            age_st    = _SC_AGE_C  if is_cur else _SC_AGE
+            chip_st   = _IC_C if is_cur else _IC
+            age_col   = "#f59e0b" if is_cur else "#b89a6b"
             stem_ch   = gz[0] if len(gz) >= 1 else "-"
             branch_ch = gz[1] if len(gz) >= 2 else "-"
             dw_ssip   = relation_to_day(chart.day_master, stem_ch)   if stem_ch   not in ("-","?") else ""
             dw_bsip   = relation_to_day(chart.day_master, branch_ch) if branch_ch not in ("-","?") else ""
             dw_stg    = get_twelve_stage(chart.day_master, branch_ch) if branch_ch not in ("-","?") else ""
-            p.append(
+            dw_chips.append(
                 f"<div style='{chip_st}'>"
-                f"<div style='{age_st}'>{html.escape(age)}</div>"
-                f"<div style='{_SC_SIP}'>{html.escape(dw_ssip)}</div>"
-                f"<div style='{_SC_GZ}'>{html.escape(stem_ch)}</div>"
-                f"<div style='{_SC_GZ}'>{html.escape(branch_ch)}</div>"
-                f"<div style='{_SC_SIP}'>{html.escape(dw_bsip)}</div>"
-                f"<div style='{_SC_12UN}'>{html.escape(dw_stg)}</div>"
+                f"<div style='font-size:.7rem;color:{age_col};font-weight:950;margin-bottom:.04rem;'>{html.escape(age)}</div>"
+                f"<div style='font-size:.66rem;color:#b89a6b;font-weight:900;line-height:1.2;min-height:.82rem;'>{html.escape(dw_ssip)}</div>"
+                f"<div style='font-size:1.5rem;font-weight:950;color:#fde68a;line-height:1.05;'>{html.escape(stem_ch)}</div>"
+                f"<div style='font-size:1.5rem;font-weight:950;color:#fde68a;line-height:1.05;'>{html.escape(branch_ch)}</div>"
+                f"<div style='font-size:.66rem;color:#b89a6b;font-weight:900;line-height:1.2;'>{html.escape(dw_bsip)}</div>"
+                f"<div style='font-size:.66rem;color:#93c5fd;font-weight:900;margin-top:.03rem;'>{html.escape(dw_stg)}</div>"
                 "</div>"
             )
-        p.append("</div>")
+        dw_html = (
+            f"<style>{_IFRAME_BASE}</style>"
+            f"<div style='font-size:.76rem;font-weight:950;color:#f59e0b;margin:0 0 .3rem 0;'>〽️ 대운</div>"
+            f"<div style='display:flex;flex-wrap:nowrap;gap:.3rem;overflow-x:auto;"
+            f"-webkit-overflow-scrolling:touch;padding-bottom:.3rem;'>"
+            + "".join(dw_chips) +
+            "</div>"
+        )
+        _stcomp2.html(dw_html, height=210)
 
-    # ── 세운 스크롤 ──────────────────────────────────────────
+    # ── 세운 스크롤 (iframe) ──────────────────────────────────
     lf2 = luck_flow or {}
     sewun_rows = lf2.get("sewun_rows") if isinstance(lf2, dict) else None
     if sewun_rows:
         from datetime import date as _d
         cur_year_str = str(_d.today().year) + "년"
-        p.append(f"<div style='{_SC_TITLE}'>📆 세운</div>")
-        p.append(f"<div style='{_SC_SCROLL}'>")
+        sw_chips = []
         for r in sewun_rows:
             yr_raw  = str(r.get("연도", "-"))
             gz      = str(r.get("세운", "-"))
             is_cur  = yr_raw == cur_year_str
-            chip_st = _SC_CHIP_C if is_cur else _SC_CHIP
-            age_st  = _SC_AGE_C  if is_cur else _SC_AGE
+            chip_st = _IC_C if is_cur else _IC
+            age_col = "#f59e0b" if is_cur else "#b89a6b"
             yr_disp = yr_raw.replace("년", "")
             sw_sc   = gz[0] if len(gz) >= 1 else "-"
             sw_bc   = gz[1] if len(gz) >= 2 else "-"
             sw_ssip = relation_to_day(chart.day_master, sw_sc) if sw_sc not in ("-","?") else ""
             sw_bsip = relation_to_day(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
             sw_stg  = get_twelve_stage(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
-            p.append(
+            sw_chips.append(
                 f"<div style='{chip_st}'>"
-                f"<div style='{age_st}'>{html.escape(yr_disp)}</div>"
-                f"<div style='{_SC_SIP}'>{html.escape(sw_ssip)}</div>"
-                f"<div style='{_SC_GZ}'>{html.escape(sw_sc)}</div>"
-                f"<div style='{_SC_GZ}'>{html.escape(sw_bc)}</div>"
-                f"<div style='{_SC_SIP}'>{html.escape(sw_bsip)}</div>"
-                f"<div style='{_SC_12UN}'>{html.escape(sw_stg)}</div>"
+                f"<div style='font-size:.7rem;color:{age_col};font-weight:950;margin-bottom:.04rem;'>{html.escape(yr_disp)}</div>"
+                f"<div style='font-size:.66rem;color:#b89a6b;font-weight:900;line-height:1.2;min-height:.82rem;'>{html.escape(sw_ssip)}</div>"
+                f"<div style='font-size:1.5rem;font-weight:950;color:#fde68a;line-height:1.05;'>{html.escape(sw_sc)}</div>"
+                f"<div style='font-size:1.5rem;font-weight:950;color:#fde68a;line-height:1.05;'>{html.escape(sw_bc)}</div>"
+                f"<div style='font-size:.66rem;color:#b89a6b;font-weight:900;line-height:1.2;'>{html.escape(sw_bsip)}</div>"
+                f"<div style='font-size:.66rem;color:#93c5fd;font-weight:900;margin-top:.03rem;'>{html.escape(sw_stg)}</div>"
                 "</div>"
             )
-        p.append("</div>")
-
-    p.append("</div>")  # end manse-wrap
-    st.markdown("".join(p), unsafe_allow_html=True)
+        sw_html = (
+            f"<style>{_IFRAME_BASE}</style>"
+            f"<div style='font-size:.76rem;font-weight:950;color:#f59e0b;margin:0 0 .3rem 0;'>📆 세운</div>"
+            f"<div style='display:flex;flex-wrap:nowrap;gap:.3rem;overflow-x:auto;"
+            f"-webkit-overflow-scrolling:touch;padding-bottom:.3rem;'>"
+            + "".join(sw_chips) +
+            "</div>"
+        )
+        _stcomp2.html(sw_html, height=210)
 
 
 
