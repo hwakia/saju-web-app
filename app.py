@@ -3593,7 +3593,7 @@ except Exception:
     Solar = None
     Lunar = None
 
-# ── Supabase 클라이언트 (지연 초기화 — secrets 미설정 시 None) ─────────
+# ── Supabase 클라이언트 (지연 초기화) ─────────
 try:
     from supabase import create_client as _sb_create_client
     _sb_create_client_available = True
@@ -3603,7 +3603,7 @@ _supabase = None
 
 
 def _get_supabase():
-    """service_role 키 우선, 없으면 anon 키로 Supabase 클라이언트 초기화."""
+    """service_role 우선, 없으면 anon으로 초기화."""
     global _supabase
     if _supabase is not None:
         return _supabase
@@ -14496,20 +14496,19 @@ def _render_create_room_view() -> None:
 
     created = st.session_state.get("_created_room_id", "")
     if created:
-        import json as _j
-        rid_js = _j.dumps(created)
-        st.success(f"방이 만들어졌습니다! 방 ID: `{created}`")
+        room_id_safe = str(created)
+        st.success(f"방이 만들어졌습니다! 방 ID: `{room_id_safe}`")
         st.components.v1.html(
             f"""<button onclick="
-                var base = window.location.origin + window.location.pathname;
-                var url = base + '?room=' + {rid_js};
+                var url = window.location.origin + window.location.pathname + '?room={room_id_safe}';
                 if(navigator.share){{
-                    navigator.share({{title:'비밀케미 방 참가 링크', url:url}}).catch(()=>{{}});
+                    navigator.share({{title:'비밀케미 방 참가 링크',url:url}}).catch(function(){{}});
                 }} else {{
-                    navigator.clipboard.writeText(url)
-                      .then(()=>alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 🔮'));
+                    navigator.clipboard.writeText(url).then(function(){{
+                        alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
+                    }});
                 }}
-            " style="width:100%;padding:13px;background:#a855f7;color:#fff;
+            " style="width:100%;padding:13px;background:#d4a853;color:#0a0a0a;
                 border:none;border-radius:10px;font-size:15px;font-weight:800;
                 cursor:pointer;">📤 참가 링크 단톡방에 공유</button>""",
             height=60,
