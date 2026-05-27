@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.197"
+APP_VERSION = "v5.200"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24497,173 +24497,220 @@ def render_origin_identity_table(
         el = d.get(ch, {}).get("element", "토")
         return tbl.get(el, "#fde68a")
 
-    p.append("<div class='mc-8col'>")
+    # ── inline-style 상수 (CSS class 대신 직접 적용) ─────────────
+    _S_WRAP = ("display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1px;"
+               "margin-bottom:.6rem;background:#0d0d0d;border-radius:12px;"
+               "padding:5px 2px 7px;border:1px solid rgba(212,168,83,.2);overflow:hidden;")
+    _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
+    _S_SIP  = "font-size:7.5px;color:#b89a6b;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
+    _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
+    _S_JJG  = "font-size:6px;color:#6b7280;font-weight:700;text-align:center;letter-spacing:.02em;padding:1px 0;word-break:break-all;overflow:hidden;"
+    _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
+    _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
+    _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
+
+    p.append(f"<div style='{_S_WRAP}'>")
 
     # ─ 레이블 행 ─
     for lbl4, gz4, col4 in _4un_disp:
-        p.append(f"<div class='mc-8lbl' style='color:{col4}'>{html.escape(lbl4)}</div>")
+        p.append(f"<div style='{_S_LBL}color:{col4}'>{html.escape(lbl4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         lc = "#fde68a" if lbl == "일주" else "#999"
-        p.append(f"<div class='mc-8lbl{sep}' style='color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
+        p.append(f"<div style='{_S_LBL}{sep_st}color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
 
     # ─ 천간 십성 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
         ssip = relation_to_day(chart.day_master, s4) if s4 not in ("-", "?", "") else ""
-        p.append(f"<div class='mc-8sip'>{html.escape(ssip)}</div>")
+        p.append(f"<div style='{_S_SIP}'>{html.escape(ssip)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         role = _role(lbl, pi, True) if pi else "-"
-        p.append(f"<div class='mc-8sip{sep}'>{html.escape(role)}</div>")
+        p.append(f"<div style='{_S_SIP}{sep_st}'>{html.escape(role)}</div>")
 
     # ─ 천간 글자 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
         sc = _el_color(s4, True) if s4 not in ("-", "?", "") else col4
-        p.append(f"<div class='mc-8gz' style='color:{sc}'>{html.escape(s4)}</div>")
+        p.append(f"<div style='{_S_GZ}color:{sc}'>{html.escape(s4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         day_st = "background:rgba(253,230,138,.12);border-radius:3px;" if lbl == "일주" else ""
         if pi:
             sc = _el_color(pi.stem, True)
-            p.append(f"<div class='mc-8gz{sep}' style='color:{sc};{day_st}'>{html.escape(pi.stem)}</div>")
+            p.append(f"<div style='{_S_GZ}{sep_st}{day_st}color:{sc}'>{html.escape(pi.stem)}</div>")
         else:
-            p.append(f"<div class='mc-8gz{sep}' style='color:#555'>?</div>")
+            p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
 
     # ─ 지지 십성 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         bsip = relation_to_day(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
-        p.append(f"<div class='mc-8sip'>{html.escape(bsip)}</div>")
+        p.append(f"<div style='{_S_SIP}'>{html.escape(bsip)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         role = _role(lbl, pi, False) if pi else "-"
-        p.append(f"<div class='mc-8sip{sep}'>{html.escape(role)}</div>")
+        p.append(f"<div style='{_S_SIP}{sep_st}'>{html.escape(role)}</div>")
 
     # ─ 지지 글자 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         bc = _el_color(b4, False) if b4 not in ("-", "?", "") else col4
-        p.append(f"<div class='mc-8gz' style='color:{bc}'>{html.escape(b4)}</div>")
+        p.append(f"<div style='{_S_GZ}color:{bc}'>{html.escape(b4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         day_st = "background:rgba(253,230,138,.07);border-radius:3px;" if lbl == "일주" else ""
         if pi:
             bc = _el_color(pi.branch, False)
-            p.append(f"<div class='mc-8gz{sep}' style='color:{bc};{day_st}'>{html.escape(pi.branch)}</div>")
+            p.append(f"<div style='{_S_GZ}{sep_st}{day_st}color:{bc}'>{html.escape(pi.branch)}</div>")
         else:
-            p.append(f"<div class='mc-8gz{sep}' style='color:#555'>?</div>")
+            p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
 
     # ─ 지장간 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         jjg4 = "".join(hs for hs, _ in BRANCHES[b4]["hidden"]) if b4 in BRANCHES else ""
-        p.append(f"<div class='mc-8jjg'>{html.escape(jjg4)}</div>")
+        p.append(f"<div style='{_S_JJG}'>{html.escape(jjg4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         jjg = _jjg_compact(pi) if pi else ""
-        p.append(f"<div class='mc-8jjg{sep}'>{html.escape(jjg)}</div>")
+        p.append(f"<div style='{_S_JJG}{sep_st}'>{html.escape(jjg)}</div>")
 
     # ─ 12운성 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         stg = get_twelve_stage(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
-        p.append(f"<div class='mc-812un'>{html.escape(stg)}</div>")
+        p.append(f"<div style='{_S_UN}'>{html.escape(stg)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         stage = get_twelve_stage(chart.day_master, pi.branch) if pi else ""
-        p.append(f"<div class='mc-812un{sep}'>{html.escape(stage)}</div>")
+        p.append(f"<div style='{_S_UN}{sep_st}'>{html.escape(stage)}</div>")
 
     # ─ 신살 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         ss4 = _sinsal_tags(b4)
-        p.append(f"<div class='mc-8sinsal'>{html.escape(ss4)}</div>")
+        p.append(f"<div style='{_S_SS}'>{html.escape(ss4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep = " sep4" if i == 0 else ""
+        sep_st = _S_SEP if i == 0 else ""
         ss = _sinsal_tags(pi.branch) if pi else ""
-        p.append(f"<div class='mc-8sinsal{sep}'>{html.escape(ss)}</div>")
+        p.append(f"<div style='{_S_SS}{sep_st}'>{html.escape(ss)}</div>")
 
-    p.append("</div>")  # end mc-8col
+    p.append("</div>")  # end 8col grid
 
-    # ── 오행 분포 ─────────────────────────────────────────────
-    p.append("<div class='mc-ohaeng'>")
+    # ── 오행 분포 (inline style) ──────────────────────────────
+    _OH_COLORS = {
+        "목": ("linear-gradient(135deg,#bcebd9,#8dd8b4)", "#1a4a35"),
+        "화": ("linear-gradient(135deg,#ffb6c9,#ff8ca8)", "#4a1520"),
+        "토": ("linear-gradient(135deg,#efd07c,#d4a853)", "#3a2800"),
+        "금": ("linear-gradient(135deg,#c8d8e8,#a0b8c8)", "#1a2a38"),
+        "수": ("linear-gradient(135deg,#b7d7ff,#80b4ff)", "#0a2040"),
+    }
+    p.append("<div style='display:flex;gap:.3rem;flex-wrap:wrap;margin:.5rem 0 .4rem 0;justify-content:center;'>")
     for el_key in ["목", "화", "토", "금", "수"]:
-        cnt = ohaeng_cnt.get(el_key, 0)
+        cnt   = ohaeng_cnt.get(el_key, 0)
         label = OHAENG_LABEL[el_key]
-        p.append(f"<div class='mc-ohaeng-badge mc-ohaeng-{el_key}'>{label}({cnt})</div>")
+        bg, tc = _OH_COLORS.get(el_key, ("#888", "#fff"))
+        p.append(
+            f"<div style='padding:.2rem .48rem;border-radius:999px;font-size:.82rem;"
+            f"font-weight:950;background:{bg};color:{tc};border:1px solid rgba(212,168,83,.3);'>"
+            f"{label}({cnt})</div>"
+        )
     p.append("</div>")
 
-    # ── 공망 + 일간 ──────────────────────────────────────────
+    # ── 공망 + 일간 (inline style) ────────────────────────────
     dm = chart.day_master
     dm_el = STEMS[dm]["element"]
     dm_ko = STEMS[dm]["ko"]
     p.append(
-        "<div class='mc-meta-row'>"
-        f"<span><span class='mc-meta-label'>일간</span> {html.escape(dm)}({html.escape(dm_ko)}) · {html.escape(dm_el)}</span>"
-        f"<span><span class='mc-meta-label'>공망</span> {html.escape(gongmang_text)}</span>"
+        "<div style='display:flex;gap:.5rem;font-size:.78rem;color:#b89a6b;"
+        "margin-bottom:.55rem;flex-wrap:wrap;justify-content:center;'>"
+        f"<span><span style='color:#f59e0b;font-weight:950;'>일간</span>"
+        f" {html.escape(dm)}({html.escape(dm_ko)}) · {html.escape(dm_el)}</span>"
+        f"<span><span style='color:#f59e0b;font-weight:950;'>공망</span>"
+        f" {html.escape(gongmang_text)}</span>"
         "</div>"
     )
 
-    # ── 대운 스크롤 (luck_flow/daewuns 있을 때) ───────────────
+    # ── inline style 상수 (스크롤 섹션) ─────────────────────────
+    _SC_TITLE  = ("font-size:.78rem;font-weight:950;color:#f59e0b;"
+                  "margin:.55rem 0 .28rem 0;display:block;")
+    _SC_SCROLL = ("display:flex;gap:.3rem;overflow-x:auto;-webkit-overflow-scrolling:touch;"
+                  "padding-bottom:.3rem;margin-bottom:.55rem;scrollbar-width:none;")
+    _SC_CHIP   = ("flex:0 0 auto;display:flex;flex-direction:column;align-items:center;"
+                  "min-width:60px;background:#141414;border:1px solid rgba(212,168,83,.25);"
+                  "border-radius:12px;padding:.4rem .3rem .45rem .3rem;gap:.06rem;")
+    _SC_CHIP_C = ("flex:0 0 auto;display:flex;flex-direction:column;align-items:center;"
+                  "min-width:60px;background:#1e1a08;border:2px solid rgba(212,168,83,.7);"
+                  "border-radius:12px;padding:.4rem .3rem .45rem .3rem;gap:.06rem;"
+                  "box-shadow:0 0 10px rgba(212,168,83,.2);")
+    _SC_AGE    = "font-size:.72rem;color:#b89a6b;font-weight:950;margin-bottom:.06rem;"
+    _SC_AGE_C  = "font-size:.72rem;color:#f59e0b;font-weight:950;margin-bottom:.06rem;"
+    _SC_SIP    = "font-size:.68rem;color:#b89a6b;font-weight:900;line-height:1.2;min-height:.85rem;"
+    _SC_GZ     = "font-size:1.55rem;font-weight:950;color:#fde68a;line-height:1.1;"
+    _SC_12UN   = "font-size:.68rem;color:#93c5fd;font-weight:900;margin-top:.04rem;"
+
+    # ── 대운 스크롤 ──────────────────────────────────────────
     if daewuns:
         lf = luck_flow or {}
         current_dw = lf.get("current_daewun") if isinstance(lf, dict) else None
         cur_age    = current_dw.get("start_age") if current_dw else None
         cur_gz     = current_dw.get("ganzhi")    if current_dw else None
 
-        p.append("<div class='mc-section-title'>〽️ 대운</div>")
-        p.append("<div class='mc-daewun-scroll'>")
+        p.append(f"<div style='{_SC_TITLE}'>〽️ 대운</div>")
+        p.append(f"<div style='{_SC_SCROLL}'>")
         for item in daewuns:
             gz  = str(item.get("ganzhi", "-"))
             age = str(item.get("start_age", "-"))
-            is_cur = bool(cur_age is not None and item.get("start_age") == cur_age and gz == cur_gz)
-            cur_cls   = " current" if is_cur else ""
+            is_cur    = bool(cur_age is not None and item.get("start_age") == cur_age and gz == cur_gz)
+            chip_st   = _SC_CHIP_C if is_cur else _SC_CHIP
+            age_st    = _SC_AGE_C  if is_cur else _SC_AGE
             stem_ch   = gz[0] if len(gz) >= 1 else "-"
             branch_ch = gz[1] if len(gz) >= 2 else "-"
             dw_ssip   = relation_to_day(chart.day_master, stem_ch)   if stem_ch   not in ("-","?") else ""
             dw_bsip   = relation_to_day(chart.day_master, branch_ch) if branch_ch not in ("-","?") else ""
             dw_stg    = get_twelve_stage(chart.day_master, branch_ch) if branch_ch not in ("-","?") else ""
             p.append(
-                f"<div class='mc-dw-chip{cur_cls}'>"
-                f"<div class='mc-dw-age'>{html.escape(age)}</div>"
-                f"<div class='mc-dw-sip'>{html.escape(dw_ssip)}</div>"
-                f"<div class='mc-dw-stem'>{html.escape(stem_ch)}</div>"
-                f"<div class='mc-dw-branch'>{html.escape(branch_ch)}</div>"
-                f"<div class='mc-dw-sip'>{html.escape(dw_bsip)}</div>"
-                f"<div class='mc-dw-12un'>{html.escape(dw_stg)}</div>"
+                f"<div style='{chip_st}'>"
+                f"<div style='{age_st}'>{html.escape(age)}</div>"
+                f"<div style='{_SC_SIP}'>{html.escape(dw_ssip)}</div>"
+                f"<div style='{_SC_GZ}'>{html.escape(stem_ch)}</div>"
+                f"<div style='{_SC_GZ}'>{html.escape(branch_ch)}</div>"
+                f"<div style='{_SC_SIP}'>{html.escape(dw_bsip)}</div>"
+                f"<div style='{_SC_12UN}'>{html.escape(dw_stg)}</div>"
                 "</div>"
             )
         p.append("</div>")
 
-    # ── 세운 스크롤 ───────────────────────────────────────────
+    # ── 세운 스크롤 ──────────────────────────────────────────
     lf2 = luck_flow or {}
     sewun_rows = lf2.get("sewun_rows") if isinstance(lf2, dict) else None
     if sewun_rows:
         from datetime import date as _d
         cur_year_str = str(_d.today().year) + "년"
-        p.append("<div class='mc-section-title'>📆 세운</div>")
-        p.append("<div class='mc-sewun-scroll'>")
+        p.append(f"<div style='{_SC_TITLE}'>📆 세운</div>")
+        p.append(f"<div style='{_SC_SCROLL}'>")
         for r in sewun_rows:
-            yr_raw    = str(r.get("연도", "-"))
-            gz        = str(r.get("세운", "-"))
-            is_cur    = yr_raw == cur_year_str
-            cur_cls   = " current" if is_cur else ""
-            yr_disp   = yr_raw.replace("년", "")
-            sw_sc     = gz[0] if len(gz) >= 1 else "-"
-            sw_bc     = gz[1] if len(gz) >= 2 else "-"
-            sw_ssip   = relation_to_day(chart.day_master, sw_sc) if sw_sc not in ("-","?") else ""
-            sw_bsip   = relation_to_day(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
-            sw_stg    = get_twelve_stage(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
+            yr_raw  = str(r.get("연도", "-"))
+            gz      = str(r.get("세운", "-"))
+            is_cur  = yr_raw == cur_year_str
+            chip_st = _SC_CHIP_C if is_cur else _SC_CHIP
+            age_st  = _SC_AGE_C  if is_cur else _SC_AGE
+            yr_disp = yr_raw.replace("년", "")
+            sw_sc   = gz[0] if len(gz) >= 1 else "-"
+            sw_bc   = gz[1] if len(gz) >= 2 else "-"
+            sw_ssip = relation_to_day(chart.day_master, sw_sc) if sw_sc not in ("-","?") else ""
+            sw_bsip = relation_to_day(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
+            sw_stg  = get_twelve_stage(chart.day_master, sw_bc) if sw_bc not in ("-","?") else ""
             p.append(
-                f"<div class='mc-sw-chip{cur_cls}'>"
-                f"<div class='mc-sw-year'>{html.escape(yr_disp)}</div>"
-                f"<div class='mc-sw-sip'>{html.escape(sw_ssip)}</div>"
-                f"<div class='mc-sw-gz'>{html.escape(sw_sc)}</div>"
-                f"<div class='mc-sw-gz'>{html.escape(sw_bc)}</div>"
-                f"<div class='mc-sw-sip'>{html.escape(sw_bsip)}</div>"
-                f"<div class='mc-sw-12un'>{html.escape(sw_stg)}</div>"
+                f"<div style='{chip_st}'>"
+                f"<div style='{age_st}'>{html.escape(yr_disp)}</div>"
+                f"<div style='{_SC_SIP}'>{html.escape(sw_ssip)}</div>"
+                f"<div style='{_SC_GZ}'>{html.escape(sw_sc)}</div>"
+                f"<div style='{_SC_GZ}'>{html.escape(sw_bc)}</div>"
+                f"<div style='{_SC_SIP}'>{html.escape(sw_bsip)}</div>"
+                f"<div style='{_SC_12UN}'>{html.escape(sw_stg)}</div>"
                 "</div>"
             )
         p.append("</div>")
