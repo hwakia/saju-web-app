@@ -7922,7 +7922,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.193"
+APP_VERSION = "v5.197"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -8828,64 +8828,77 @@ div[data-testid="stRadio"] span {
 }
 
 /* v5.190: 원국 compact 테이블 + 4운 행 */
-.mc-4un-row {
+/* 8열 통합 그리드 (4운 + 4주) */
+.mc-8col {
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:.3rem;
-    margin-bottom:.65rem;
-}
-.mc-4un-chip {
-    background:#141414;
+    grid-template-columns:repeat(8,1fr);
+    gap:2px;
+    margin-bottom:.6rem;
+    background:#0d0d0d;
+    border-radius:12px;
+    padding:6px 4px 8px;
     border:1px solid rgba(212,168,83,.2);
-    border-radius:10px;
-    padding:.28rem .08rem .32rem .08rem;
+}
+.mc-8lbl {
+    font-size:7.5px;
+    font-weight:700;
     text-align:center;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:.04rem;
+    padding:2px 0 3px;
+    letter-spacing:.01em;
+    color:#888;
 }
-.mc-4un-label {
-    font-size:.6rem;
-    font-weight:950;
-    letter-spacing:.02em;
-    margin-bottom:.04rem;
-}
-.mc-4un-sip {
-    font-size:.58rem;
+.mc-8sip {
+    font-size:8px;
     color:#b89a6b !important;
     font-weight:900;
+    text-align:center;
+    min-height:10px;
     line-height:1.1;
-    min-height:.75rem;
+    padding:1px 0;
 }
-.mc-4un-gz {
-    font-size:1.28rem;
+.mc-8gz {
+    font-size:1.2rem;
     font-weight:950;
+    text-align:center;
     line-height:1.05;
-    letter-spacing:-.02em;
+    padding:1px 0;
 }
-.mc-4un-12un {
-    font-size:.58rem;
+.mc-8jjg {
+    font-size:6.5px;
+    color:#6b7280 !important;
+    font-weight:700;
+    text-align:center;
+    letter-spacing:.03em;
+    padding:1px 0;
+    word-break:break-all;
+}
+.mc-812un {
+    font-size:7px;
     color:#93c5fd !important;
-    font-weight:900;
-    margin-top:.02rem;
+    font-weight:800;
+    text-align:center;
+    padding:1px 0 2px;
 }
-.mc-grid {
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:0;
-    border:1px solid rgba(212,168,83,.30);
-    border-radius:14px;
-    overflow:hidden;
-    margin-bottom:.6rem;
+.mc-8col .sep4 {
+    border-left:1px solid rgba(212,168,83,.3);
+    padding-left:2px;
+}
+.mc-8sinsal {
+    font-size:6.5px;
+    color:#f9a8d4 !important;
+    font-weight:800;
+    text-align:center;
+    padding:1px 0 3px;
+    line-height:1.3;
+    word-break:keep-all;
 }
 .mc-head {
     background:#1e1a08;
     color:#fde68a !important;
     text-align:center;
-    padding:.32rem .1rem;
+    padding:.4rem .1rem;
     font-weight:950;
-    font-size:.82rem;
+    font-size:.9rem;
     border-right:1px solid rgba(212,168,83,.22);
     border-bottom:1px solid rgba(212,168,83,.22);
 }
@@ -8895,27 +8908,29 @@ div[data-testid="stRadio"] span {
     text-align:center;
     color:#b89a6b !important;
     font-weight:900;
-    font-size:.78rem;
-    padding:.22rem .06rem .16rem .06rem;
+    font-size:.82rem;
+    padding:.28rem .06rem .2rem .06rem;
     border-right:1px solid rgba(212,168,83,.15);
     border-bottom:1px solid rgba(212,168,83,.12);
-    min-height:1.3rem;
+    min-height:1.5rem;
     background:#141414;
+    line-height:1.25;
 }
 .mc-shinsin:last-child { border-right:none; }
 .mc-shinsin.mc-day { background:#181610; }
 .mc-12un {
-    font-size:.6rem;
+    font-size:.7rem;
     color:#93c5fd !important;
     font-weight:900;
-    margin-top:.08rem;
+    margin-top:.1rem;
     letter-spacing:.01em;
+    display:block;
 }
 .mc-box-wrap {
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:.2rem .12rem;
+    padding:.35rem .1rem;
     border-right:1px solid rgba(212,168,83,.15);
     background:#141414;
 }
@@ -8923,25 +8938,25 @@ div[data-testid="stRadio"] span {
 .mc-box-wrap:last-child { border-right:none; }
 .mc-box-wrap.branch-row { border-bottom:1px solid rgba(212,168,83,.12); }
 .mc-box {
-    width:44px;
-    height:44px;
-    border-radius:9px;
+    width:62px;
+    height:62px;
+    border-radius:14px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:1.75rem;
+    font-size:2.5rem;
     line-height:1;
     font-weight:950;
     color:#1a1200 !important;
-    box-shadow:0 2px 6px rgba(50,40,10,.1);
+    box-shadow:0 3px 10px rgba(50,40,10,.15);
 }
 .mc-box.el-금 { color:#f0e8c8 !important; }
 .mc-jijanggan {
     text-align:center;
-    font-size:.72rem;
+    font-size:.8rem;
     color:#d4b896 !important;
     font-weight:800;
-    padding:.22rem .06rem .3rem .06rem;
+    padding:.28rem .06rem .35rem .06rem;
     border-top:1px dashed rgba(212,168,83,.25);
     border-right:1px solid rgba(212,168,83,.15);
     background:#0f0f0f;
@@ -9001,43 +9016,43 @@ div[data-testid="stRadio"] span {
     display:flex;
     flex-direction:column;
     align-items:center;
-    min-width:42px;
+    min-width:60px;
     background:#141414;
     border:1px solid rgba(212,168,83,.25);
-    border-radius:10px;
-    padding:.25rem .2rem .3rem .2rem;
-    gap:.04rem;
+    border-radius:12px;
+    padding:.4rem .3rem .45rem .3rem;
+    gap:.06rem;
 }
 .mc-dw-chip.current {
     background:#1e1a08;
-    border:2px solid rgba(212,168,83,.65);
-    box-shadow:0 0 8px rgba(212,168,83,.18);
+    border:2px solid rgba(212,168,83,.7);
+    box-shadow:0 0 10px rgba(212,168,83,.2);
 }
 .mc-dw-age {
-    font-size:.65rem;
+    font-size:.72rem;
     color:#b89a6b !important;
     font-weight:950;
-    margin-bottom:.02rem;
+    margin-bottom:.06rem;
 }
 .mc-dw-chip.current .mc-dw-age { color:#f59e0b !important; }
 .mc-dw-sip {
-    font-size:.58rem;
+    font-size:.68rem;
     color:#b89a6b !important;
     font-weight:900;
-    line-height:1.1;
-    min-height:.7rem;
+    line-height:1.2;
+    min-height:.85rem;
 }
 .mc-dw-stem, .mc-dw-branch {
-    font-size:1.05rem;
+    font-size:1.55rem;
     font-weight:950;
     color:#fde68a !important;
     line-height:1.1;
 }
 .mc-dw-12un {
-    font-size:.58rem;
+    font-size:.68rem;
     color:#93c5fd !important;
     font-weight:900;
-    margin-top:.02rem;
+    margin-top:.04rem;
 }
 .mc-sewun-scroll {
     display:flex;
@@ -9052,42 +9067,43 @@ div[data-testid="stRadio"] span {
     display:flex;
     flex-direction:column;
     align-items:center;
-    min-width:44px;
+    min-width:60px;
     background:#141414;
     border:1px solid rgba(212,168,83,.22);
-    border-radius:10px;
-    padding:.22rem .16rem .28rem .16rem;
-    gap:.04rem;
+    border-radius:12px;
+    padding:.4rem .28rem .45rem .28rem;
+    gap:.06rem;
 }
 .mc-sw-chip.current {
     background:#1e1a08;
-    border:2px solid rgba(212,168,83,.6);
+    border:2px solid rgba(212,168,83,.65);
+    box-shadow:0 0 8px rgba(192,132,252,.2);
 }
 .mc-sw-year {
-    font-size:.6rem;
+    font-size:.72rem;
     color:#b89a6b !important;
     font-weight:950;
-    margin-bottom:.02rem;
+    margin-bottom:.06rem;
 }
 .mc-sw-chip.current .mc-sw-year { color:#f59e0b !important; }
 .mc-sw-sip {
-    font-size:.58rem;
+    font-size:.68rem;
     color:#b89a6b !important;
     font-weight:900;
-    line-height:1.1;
-    min-height:.7rem;
+    line-height:1.2;
+    min-height:.85rem;
 }
 .mc-sw-gz {
-    font-size:.98rem;
+    font-size:1.55rem;
     font-weight:950;
     color:#fde68a !important;
     line-height:1.1;
 }
 .mc-sw-12un {
-    font-size:.58rem;
+    font-size:.68rem;
     color:#93c5fd !important;
     font-weight:900;
-    margin-top:.02rem;
+    margin-top:.04rem;
 }
 
 @media (max-width: 768px) {
@@ -9112,30 +9128,24 @@ div[data-testid="stRadio"] span {
     .manse-luck-grid, .manse-sewun-grid { grid-template-columns:1fr; }
     .manse-luck-card { min-height:118px; }
 }
-/* v5.191: 모바일 compact 테이블 최적화 */
-@media (max-width: 480px) {
-    .mc-4un-row { gap:.2rem; margin-bottom:.55rem; }
-    .mc-4un-chip { padding:.22rem .05rem .25rem .05rem; border-radius:8px; }
-    .mc-4un-label { font-size:.56rem; }
-    .mc-4un-gz { font-size:1.08rem; }
-    .mc-4un-sip { font-size:.52rem; min-height:.66rem; }
-    .mc-4un-12un { font-size:.52rem; }
-    .mc-head { font-size:.74rem; padding:.28rem .06rem; }
-    .mc-shinsin { font-size:.68rem; padding:.18rem .04rem .12rem .04rem; }
-    .mc-12un { font-size:.56rem; }
-    .mc-box-wrap { padding:.15rem .08rem; }
-    .mc-box { width:38px; height:38px; font-size:1.52rem; border-radius:8px; }
-    .mc-jijanggan { font-size:.62rem; padding:.18rem .04rem .24rem .04rem; }
-    .mc-ohaeng { gap:.22rem; }
-    .mc-ohaeng-badge { font-size:.74rem; padding:.16rem .36rem; }
-    .mc-meta-row { font-size:.72rem; gap:.35rem; }
-    .mc-section-title { font-size:.72rem; }
-    .mc-dw-chip { min-width:36px; padding:.2rem .16rem .24rem .16rem; }
-    .mc-dw-age { font-size:.6rem; }
-    .mc-dw-stem, .mc-dw-branch { font-size:.95rem; }
-    .mc-sw-chip { min-width:38px; padding:.18rem .12rem .22rem .12rem; }
-    .mc-sw-year { font-size:.58rem; }
-    .mc-sw-gz { font-size:.88rem; }
+/* v5.195: 모바일 compact 테이블 최적화 */
+@media (max-width: 390px) {
+    .mc-8gz { font-size:1.05rem; }
+    .mc-8lbl { font-size:7px; }
+    .mc-8sip { font-size:7.5px; }
+    .mc-8jjg { font-size:6px; }
+    .mc-812un { font-size:6.5px; }
+    .mc-ohaeng-badge { font-size:.76rem; padding:.16rem .4rem; }
+    .mc-dw-chip { min-width:54px; padding:.35rem .22rem .4rem .22rem; }
+    .mc-dw-age { font-size:.66rem; }
+    .mc-dw-sip { font-size:.62rem; min-height:.78rem; }
+    .mc-dw-stem, .mc-dw-branch { font-size:1.35rem; }
+    .mc-dw-12un { font-size:.62rem; }
+    .mc-sw-chip { min-width:54px; padding:.35rem .2rem .4rem .2rem; }
+    .mc-sw-year { font-size:.66rem; }
+    .mc-sw-sip { font-size:.62rem; min-height:.78rem; }
+    .mc-sw-gz { font-size:1.35rem; }
+    .mc-sw-12un { font-size:.62rem; }
 }
 
 
@@ -11729,7 +11739,7 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
     """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼."""
-    cols = st.columns(6)
+    cols = st.columns(5)
     with cols[0]:
         if st.button("🏠 메인", use_container_width=True, key=f"{prefix}_go_home"):
             log_event("menu_click", "navigation", {"target": "home"})
@@ -11746,17 +11756,12 @@ def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> 
             reset_navigation_to("케미 분석")
             st.rerun()
     with cols[3]:
-        if st.button("⚔️ 맞짱", use_container_width=True, key=f"{prefix}_go_matchjang"):
-            log_event("menu_click", "navigation", {"target": "matchjang"})
-            reset_navigation_to("맞짱")
-            st.rerun()
-    with cols[4]:
         if st.button("🔮 케미방", use_container_width=True, key=f"{prefix}_go_croom"):
             log_event("menu_click", "navigation", {"target": "chemistry_room"})
             reset_navigation_to("케미방")
             st.rerun()
-    with cols[5]:
-        if st.button("⚔️🏠 맞짱방", use_container_width=True, key=f"{prefix}_go_broom"):
+    with cols[4]:
+        if st.button("⚔️ 맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
             log_event("menu_click", "navigation", {"target": "battle_room"})
             reset_navigation_to("맞짱방")
             st.rerun()
@@ -15776,7 +15781,7 @@ def _render_battle_result_from_url(b_param: str) -> None:
             st.query_params.clear()
         except Exception:
             pass
-        reset_navigation_to("맞짱")
+        reset_navigation_to("맞짱방")
         st.rerun()
 
 
@@ -24381,6 +24386,26 @@ def render_origin_identity_table(
         """지장간을 한자만 이어붙여 반환 (e.g. 戊庚丙)."""
         return "".join(hs for hs, _ in BRANCHES[p.branch]["hidden"]) if p else "?"
 
+    def _sinsal_tags(branch: str) -> str:
+        """지지에 해당하는 신살 태그 문자열 반환 (e.g. '천을·역마')."""
+        if not branch or branch in ("-", "?"):
+            return ""
+        tags = []
+        _grp = _day_branch_group(chart.day.branch)
+        if branch in CHEONEUL_BRANCHES.get(chart.day_master, []):
+            tags.append("천을")
+        if branch == MUNCHANG_BRANCH.get(chart.day_master, ""):
+            tags.append("문창")
+        if branch == YEOKMA_BRANCH.get(_grp, ""):
+            tags.append("역마")
+        if branch == DOHWA_BRANCH.get(_grp, ""):
+            tags.append("도화")
+        if branch == HWAGAE_BRANCH.get(_grp, ""):
+            tags.append("화개")
+        if branch in gongmang:
+            tags.append("공망")
+        return "·".join(tags)
+
     EL_COLOR = {"목": "목", "화": "화", "토": "토", "금": "금", "수": "수"}
 
     def _box(char: str, el: str, is_gold: bool = False) -> str:
@@ -24457,79 +24482,110 @@ def render_origin_identity_table(
         "</div>"
     )
 
-    # ── 4운 compact 행 (세로 배치 + 십성/12운성) ─────────────────
-    p.append("<div class='mc-4un-row'>")
-    for _lbl4, _gz4, _col4 in _4un:
-        _s4   = _gz4[0] if len(_gz4) >= 1 else "-"
-        _b4   = _gz4[1] if len(_gz4) >= 2 else "-"
-        _ssip4 = relation_to_day(chart.day_master, _s4) if _s4 not in ("-", "?") else ""
-        _bsip4 = relation_to_day(chart.day_master, _b4) if _b4 not in ("-", "?") else ""
-        _stg4  = get_twelve_stage(chart.day_master, _b4) if _b4 not in ("-", "?") else ""
-        p.append(
-            f"<div class='mc-4un-chip' style='border-color:{_col4}33;'>"
-            f"<div class='mc-4un-label' style='color:{_col4};'>{html.escape(_lbl4)}</div>"
-            f"<div class='mc-4un-sip'>{html.escape(_ssip4)}</div>"
-            f"<div class='mc-4un-gz' style='color:{_col4};'>{html.escape(_s4)}</div>"
-            f"<div class='mc-4un-gz' style='color:{_col4};'>{html.escape(_b4)}</div>"
-            f"<div class='mc-4un-sip'>{html.escape(_bsip4)}</div>"
-            f"<div class='mc-4un-12un'>{html.escape(_stg4)}</div>"
-            f"</div>"
-        )
-    p.append("</div>")
+    # ── 8열 통합 그리드 (일운→월운→세운→대운 | 시→일→월→년) ──────────
+    _4un_disp = [
+        ("일운", _iw_gz4, "#fde68a"),
+        ("월운", _ww_gz4, "#86efac"),
+        ("세운", _sw_gz4, "#c4b5fd"),
+        ("대운", _dw_gz4, "#93c5fd"),
+    ]
+    _short_lbl = {"시주": "시", "일주": "일", "월주": "월", "년주": "년"}
 
-    # 4기둥 compact grid
-    p.append("<div class='mc-grid'>")
+    def _el_color(ch: str, is_stem: bool) -> str:
+        tbl = {"목": "#34d399", "화": "#f87171", "토": "#fbbf24", "금": "#e5e7eb", "수": "#60a5fa"}
+        d = STEMS if is_stem else BRANCHES
+        el = d.get(ch, {}).get("element", "토")
+        return tbl.get(el, "#fde68a")
 
-    # ── row 1: 헤더 ───────────────────────────────────────────
-    for lbl, _ in pillars:
-        day_cls = " mc-day" if lbl == "일주" else ""
-        p.append(f"<div class='mc-head{day_cls}'>{html.escape(lbl)}</div>")
+    p.append("<div class='mc-8col'>")
 
-    # ── row 2: 천간 십성 ──────────────────────────────────────
-    for lbl, pi in pillars:
-        day_cls = " mc-day" if lbl == "일주" else ""
+    # ─ 레이블 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        p.append(f"<div class='mc-8lbl' style='color:{col4}'>{html.escape(lbl4)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
+        lc = "#fde68a" if lbl == "일주" else "#999"
+        p.append(f"<div class='mc-8lbl{sep}' style='color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
+
+    # ─ 천간 십성 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
+        ssip = relation_to_day(chart.day_master, s4) if s4 not in ("-", "?", "") else ""
+        p.append(f"<div class='mc-8sip'>{html.escape(ssip)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
         role = _role(lbl, pi, True) if pi else "-"
-        p.append(f"<div class='mc-shinsin{day_cls}'>{html.escape(role)}</div>")
+        p.append(f"<div class='mc-8sip{sep}'>{html.escape(role)}</div>")
 
-    # ── row 3: 천간 박스 ──────────────────────────────────────
-    for lbl, pi in pillars:
-        day_cls = " mc-day" if lbl == "일주" else ""
+    # ─ 천간 글자 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
+        sc = _el_color(s4, True) if s4 not in ("-", "?", "") else col4
+        p.append(f"<div class='mc-8gz' style='color:{sc}'>{html.escape(s4)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
+        day_st = "background:rgba(253,230,138,.12);border-radius:3px;" if lbl == "일주" else ""
         if pi:
-            el = STEMS[pi.stem]["element"]
-            cell = _box(pi.stem, el)
+            sc = _el_color(pi.stem, True)
+            p.append(f"<div class='mc-8gz{sep}' style='color:{sc};{day_st}'>{html.escape(pi.stem)}</div>")
         else:
-            cell = "<div class='mc-box manse-el-토' style='color:#555!important;'>?</div>"
-        p.append(f"<div class='mc-box-wrap{day_cls}'>{cell}</div>")
+            p.append(f"<div class='mc-8gz{sep}' style='color:#555'>?</div>")
 
-    # ── row 4: 지지 박스 ──────────────────────────────────────
-    for lbl, pi in pillars:
-        day_cls = " mc-day" if lbl == "일주" else ""
+    # ─ 지지 십성 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
+        bsip = relation_to_day(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
+        p.append(f"<div class='mc-8sip'>{html.escape(bsip)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
+        role = _role(lbl, pi, False) if pi else "-"
+        p.append(f"<div class='mc-8sip{sep}'>{html.escape(role)}</div>")
+
+    # ─ 지지 글자 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
+        bc = _el_color(b4, False) if b4 not in ("-", "?", "") else col4
+        p.append(f"<div class='mc-8gz' style='color:{bc}'>{html.escape(b4)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
+        day_st = "background:rgba(253,230,138,.07);border-radius:3px;" if lbl == "일주" else ""
         if pi:
-            el = BRANCHES[pi.branch]["element"]
-            cell = _box(pi.branch, el)
+            bc = _el_color(pi.branch, False)
+            p.append(f"<div class='mc-8gz{sep}' style='color:{bc};{day_st}'>{html.escape(pi.branch)}</div>")
         else:
-            cell = "<div class='mc-box manse-el-토' style='color:#555!important;'>?</div>"
-        p.append(f"<div class='mc-box-wrap{day_cls} branch-row'>{cell}</div>")
+            p.append(f"<div class='mc-8gz{sep}' style='color:#555'>?</div>")
 
-    # ── row 5: 지지 십성 + 12운성 ────────────────────────────────
-    for lbl, pi in pillars:
-        day_cls = " mc-day" if lbl == "일주" else ""
-        role  = _role(lbl, pi, False) if pi else "-"
+    # ─ 지장간 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
+        jjg4 = "".join(hs for hs, _ in BRANCHES[b4]["hidden"]) if b4 in BRANCHES else ""
+        p.append(f"<div class='mc-8jjg'>{html.escape(jjg4)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
+        jjg = _jjg_compact(pi) if pi else ""
+        p.append(f"<div class='mc-8jjg{sep}'>{html.escape(jjg)}</div>")
+
+    # ─ 12운성 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
+        stg = get_twelve_stage(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
+        p.append(f"<div class='mc-812un'>{html.escape(stg)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
         stage = get_twelve_stage(chart.day_master, pi.branch) if pi else ""
-        p.append(
-            f"<div class='mc-shinsin{day_cls}'>"
-            f"{html.escape(role)}"
-            f"<div class='mc-12un'>{html.escape(stage)}</div>"
-            f"</div>"
-        )
+        p.append(f"<div class='mc-812un{sep}'>{html.escape(stage)}</div>")
 
-    # ── row 6: 지장간 ─────────────────────────────────────────
-    for lbl, pi in pillars:
-        day_cls = " mc-day" if lbl == "일주" else ""
-        jjg = _jjg_compact(pi) if pi else "미상"
-        p.append(f"<div class='mc-jijanggan{day_cls}'>{html.escape(jjg)}</div>")
+    # ─ 신살 행 ─
+    for lbl4, gz4, col4 in _4un_disp:
+        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
+        ss4 = _sinsal_tags(b4)
+        p.append(f"<div class='mc-8sinsal'>{html.escape(ss4)}</div>")
+    for i, (lbl, pi) in enumerate(pillars):
+        sep = " sep4" if i == 0 else ""
+        ss = _sinsal_tags(pi.branch) if pi else ""
+        p.append(f"<div class='mc-8sinsal{sep}'>{html.escape(ss)}</div>")
 
-    p.append("</div>")  # end mc-grid
+    p.append("</div>")  # end mc-8col
 
     # ── 오행 분포 ─────────────────────────────────────────────
     p.append("<div class='mc-ohaeng'>")
@@ -25928,7 +25984,7 @@ if _battle_url_id:
                 st.query_params.clear()
             except Exception:
                 pass
-            reset_navigation_to("맞짱")
+            reset_navigation_to("맞짱방")
             st.rerun()
     else:
         st.error("결과를 찾을 수 없거나 링크가 만료되었습니다. (맞짱 결과는 3일 유지)")
@@ -25937,7 +25993,7 @@ if _battle_url_id:
                 st.query_params.clear()
             except Exception:
                 pass
-            reset_navigation_to("맞짱")
+            reset_navigation_to("맞짱방")
             st.rerun()
     st.stop()
 
@@ -25997,26 +26053,17 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         st.caption("두 사람의 오행·조후·케미 분석")
     landing_cols2 = st.columns(2)
     with landing_cols2[0]:
-        if st.button("⚔️ 사주 맞짱", use_container_width=True, key="landing_battle"):
-            st.session_state.selected_main_mode = "맞짱"
+        if st.button("⚔️ 사주 맞짱", use_container_width=True, key="landing_broom"):
+            st.session_state.selected_main_mode = "맞짱방"
             st.session_state.show_details = False
             st.rerun()
-        st.caption("코드 공유 방식으로 랭킹 결정")
+        st.caption("방 링크로 실시간 맞짱 대결")
     with landing_cols2[1]:
         if st.button("🔮 비밀케미 방", use_container_width=True, key="landing_croom"):
             st.session_state.selected_main_mode = "케미방"
             st.session_state.show_details = False
             st.rerun()
         st.caption("그룹 케미 매트릭스 공개")
-    landing_cols3 = st.columns(2)
-    with landing_cols3[0]:
-        if st.button("⚔️🏠 맞짱 방", use_container_width=True, key="landing_broom"):
-            st.session_state.selected_main_mode = "맞짱방"
-            st.session_state.show_details = False
-            st.rerun()
-        st.caption("방 링크로 실시간 맞짱 대결")
-    with landing_cols3[1]:
-        st.write("")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
@@ -26466,7 +26513,8 @@ elif input_mode == "__legacy_group_disabled__":
 
 
 elif input_mode == "맞짱":
-    render_battle_ranking_page()
+    # 구 맞짱 모드 → 방 시스템으로 통합
+    render_battle_room_page()
     st.stop()
 
 elif input_mode == "케미방":
