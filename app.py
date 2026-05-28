@@ -7951,7 +7951,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.212"
+APP_VERSION = "v5.214"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -8473,7 +8473,7 @@ div[data-testid="stRadio"] span {
     opacity: 1 !important;
 }
 
-/* v5.51: 모바일 흐름 파이프 세로형 전환 */
+/* v5.51: 모바일 흐름 파이프 세로형 전환 / v5.212: 화살표 방향 ↓ 수정 */
 @media (max-width: 768px) {
     .pipeline-card {
         overflow-x: hidden !important;
@@ -8482,8 +8482,8 @@ div[data-testid="stRadio"] span {
     .flow-pipeline.pipe-pipeline {
         display: flex !important;
         flex-direction: column !important;
-        align-items: stretch !important;
-        gap: .48rem !important;
+        align-items: center !important;
+        gap: .36rem !important;
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
@@ -8497,36 +8497,111 @@ div[data-testid="stRadio"] span {
         border-radius: 15px !important;
     }
 
+    /* 연결 구간 — 세로 레이아웃 */
     .pipe-wrap {
         width: 100% !important;
         max-width: none !important;
         min-width: 0 !important;
         flex: 0 0 auto !important;
-        align-self: stretch !important;
-        margin: .02rem 0 .06rem 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        margin: .04rem 0 !important;
     }
 
+    /* pipe-main: 세로 방향으로 전환 */
     .pipe-main {
-        width: min(82%, 260px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        width: auto !important;
         min-width: 0 !important;
-        margin: 0 auto !important;
     }
 
+    /* pipe-line: 가로 막대 → 세로 막대 */
     .pipe-line {
+        display: block !important;
+        border-radius: 999px !important;
         min-width: 0 !important;
+        width: 14px !important;
+        height: 36px !important;
+    }
+
+    /* pipe-good: 세로 막대 + 아래쪽 화살표 */
+    .pipe-good .pipe-line {
+        height: 36px !important;
+        background: linear-gradient(180deg, #16a34a, #22c55e) !important;
+        box-shadow: 0 2px 8px rgba(22,163,74,.35) !important;
+    }
+    .pipe-good .pipe-arrow {
+        border-left: 10px solid transparent !important;
+        border-right: 10px solid transparent !important;
+        border-top: 14px solid #22c55e !important;
+        border-bottom: none !important;
+        margin-top: -1px !important;
+        margin-left: 0 !important;
+    }
+
+    /* pipe-mid: 세로 막대 + 아래쪽 화살표 */
+    .pipe-mid .pipe-line {
+        height: 28px !important;
+        background: linear-gradient(180deg, #d97706, #f59e0b) !important;
+        box-shadow: 0 2px 6px rgba(245,158,11,.30) !important;
+    }
+    .pipe-mid .pipe-arrow {
+        border-left: 8px solid transparent !important;
+        border-right: 8px solid transparent !important;
+        border-top: 11px solid #f59e0b !important;
+        border-bottom: none !important;
+        margin-top: -1px !important;
+        margin-left: 0 !important;
+    }
+
+    /* pipe-thin: 세로 점선 + 아래쪽 화살표 */
+    .pipe-thin .pipe-line {
+        height: 24px !important;
+        background: repeating-linear-gradient(
+            180deg, #f97316, #f97316 6px, transparent 6px, transparent 10px
+        ) !important;
+        box-shadow: none !important;
+    }
+    .pipe-thin .pipe-arrow {
+        border-left: 6px solid transparent !important;
+        border-right: 6px solid transparent !important;
+        border-top: 9px solid #f97316 !important;
+        border-bottom: none !important;
+        margin-top: -1px !important;
+        margin-left: 0 !important;
+    }
+
+    /* pipe-broken: 세로 끊김선 + 아래쪽 화살표 */
+    .pipe-broken .pipe-main { transform: none !important; }
+    .pipe-broken .pipe-line {
+        height: 22px !important;
+        background: repeating-linear-gradient(
+            180deg, #dc2626, #dc2626 5px, transparent 5px, transparent 9px
+        ) !important;
+        box-shadow: none !important;
+        opacity: .9 !important;
+        width: 12px !important;
+    }
+    .pipe-broken .pipe-line::after { display: none !important; }
+    .pipe-broken .pipe-arrow {
+        border-left: 5px solid transparent !important;
+        border-right: 5px solid transparent !important;
+        border-top: 8px solid #dc2626 !important;
+        border-bottom: none !important;
+        margin-top: -1px !important;
+        margin-left: 0 !important;
     }
 
     .pipe-label {
         font-size: .72rem !important;
-        margin-top: .05rem !important;
+        margin-top: .18rem !important;
         color: #fde68a !important;
         -webkit-text-fill-color: #fde68a !important;
+        text-align: center !important;
     }
-
-    .pipe-good .pipe-line { height: 14px !important; }
-    .pipe-mid .pipe-line { height: 10px !important; }
-    .pipe-thin .pipe-line { height: 6px !important; }
-    .pipe-broken .pipe-main { transform: none !important; }
 
     .flow-node {
         width: 100% !important;
@@ -14582,7 +14657,7 @@ def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
         _get_supabase().table("battles").insert({
             "id": bid,
             "participants": participants,
-            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
+            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
         }).execute()
         return bid
     except Exception:
@@ -14613,7 +14688,7 @@ def sb_create_room(max_participants: int = 5) -> "str | None":
             "max_participants": int(max_participants),
             "participants": [],
             "status": "waiting",
-            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
+            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
         }).execute()
         return rid
     except Exception as _e:
@@ -14718,7 +14793,7 @@ def sb_create_battle_room(max_participants: int = 5) -> "str | None":
             "max_participants": int(max_participants),
             "participants": [],
             "status": "waiting",
-            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
+            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
         }).execute()
         return rid
     except Exception as _e:
@@ -25303,10 +25378,29 @@ def render_patch_notes() -> None:
 
     PATCH_NOTES = [
         {
-            "version": "v5.212",
+            "version": "v5.214",
             "date": "2026년 5월",
             "tag": "🆕 현재 버전",
             "tag_color": "#1e3a5f",
+            "items": [
+                ("🔒 방 데이터 만료 시간 단축", "초대케미·맞짱 방에 저장되는 참가자 정보(이름·성별·사주 팔자)의 자동 만료 시간을 기존 2시간에서 30분으로 단축했습니다."),
+                ("📱 모바일 흐름 화살표 방향 수정", "진단서 흐름 연결 구간 화살표가 모바일에서 가로(→)로 표시되던 문제를 세로(↓)로 수정했습니다."),
+            ],
+        },
+        {
+            "version": "v5.213",
+            "date": "2026년 5월",
+            "tag": "이전 버전",
+            "tag_color": "#92400e",
+            "items": [
+                ("📱 모바일 흐름 화살표 방향 수정", "진단서 흐름(Flow) 연결 구간의 화살표가 모바일에서 가로(→) 방향으로 나오던 문제를 수정했습니다. 이제 세로 배열에 맞게 아래 방향(↓)으로 올바르게 표시됩니다."),
+            ],
+        },
+        {
+            "version": "v5.212",
+            "date": "2026년 5월",
+            "tag": "이전 버전",
+            "tag_color": "#92400e",
             "items": [
                 ("🔧 형(刑) 감지 버그 수정", "사주 맞짱 일운 분석에서 자묘형·삼형(寅巳申·丑戌未)의 방향에 따른 누락 버그를 수정했습니다. 이제 양방향 모두 정확하게 감지됩니다."),
                 ("✅ 천간 충·지지 충 로직 검증 완료", "맞짱 일운 이유 표시에서 천간 충(甲庚·乙辛·丙壬·丁癸) 및 지지 충(子午·丑未 등) 감지가 올바르게 동작함을 검증했습니다."),
