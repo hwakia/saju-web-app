@@ -7951,7 +7951,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.214"
+APP_VERSION = "v5.215"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -7961,8 +7961,8 @@ APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwa
 import time as _time_module
 
 st.set_page_config(
-    page_title="사주MRI",
-    page_icon="",
+    page_title="사주 맞짱",
+    page_icon="⚔️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
