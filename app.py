@@ -3593,41 +3593,68 @@ except Exception:
     Solar = None
     Lunar = None
 
-# ── Supabase 클라이언트 (지연 초기화) ─────────
+# ── PostgreSQL 클라이언트 (지연 초기화) ────────
 try:
-    from supabase import create_client as _sb_create_client
-    _sb_create_client_available = True
+    import psycopg2 as _psycopg2
+    import psycopg2.extras as _psycopg2_extras
+    _pg_available = True
 except Exception:
-    _sb_create_client_available = False
-_supabase = None
+    _psycopg2 = None  # type: ignore
+    _psycopg2_extras = None  # type: ignore
+    _pg_available = False
+_pg_conn = None
 
 
-def _get_supabase():
-    """service_role 우선, 없으면 anon으로 초기화."""
-    global _supabase
-    if _supabase is not None:
-        return _supabase
-    if not _sb_create_client_available:
+def _get_pg():
+    """PostgreSQL 연결 객체를 반환한다. 연결 불가 시 None."""
+    global _pg_conn
+    if _pg_conn is not None:
+        try:
+            if _pg_conn.closed == 0:
+                return _pg_conn
+        except Exception:
+            pass
+        _pg_conn = None
+    if not _pg_available:
         return None
     try:
-        url = os.environ.get("SUPABASE_URL", "")
-        if not url:
-            try: url = st.secrets.get("SUPABASE_URL", "")
-            except Exception: pass
-        key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-        if not key:
-            try: key = st.secrets.get("SUPABASE_SERVICE_KEY", "")
-            except Exception: pass
-        if not key:
-            key = os.environ.get("SUPABASE_ANON_KEY", "")
-        if not key:
-            try: key = st.secrets.get("SUPABASE_ANON_KEY", "")
-            except Exception: pass
-        if url and key:
-            _supabase = _sb_create_client(url, str(key))
+        dsn = os.environ.get("PG_DATABASE_URL", "")
+        if not dsn:
+            try:
+                dsn = st.secrets.get("PG_DATABASE_URL", "")
+            except Exception:
+                pass
+        if dsn:
+            _pg_conn = _psycopg2.connect(dsn)
+            _pg_conn.autocommit = True
     except Exception:
         pass
-    return _supabase
+    return _pg_conn
+
+
+def _pg_exec(sql: str, params=(), fetch: str = "none"):
+    """psycopg2 쿼리 실행 헬퍼. fetch='one'|'all'|'none'."""
+    global _pg_conn
+    conn = _get_pg()
+    if conn is None:
+        return None
+    try:
+        with conn.cursor(cursor_factory=_psycopg2_extras.RealDictCursor) as cur:
+            cur.execute(sql, params)
+            if fetch == "one":
+                row = cur.fetchone()
+                return dict(row) if row else None
+            if fetch == "all":
+                rows = cur.fetchall()
+                return [dict(r) for r in (rows or [])]
+            return True
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        _pg_conn = None
+        return None
 
 
 # ============================================================
@@ -3777,6 +3804,13 @@ def calc_full_age(birth_date: date, today: date | None = None) -> int:
 def calc_korean_age(birth_date: date, today: date | None = None) -> int:
     today = today or date.today()
     return today.year - birth_date.year + 1
+
+
+def _is_under_14(birth_date: date) -> bool:
+    """만 14세 미만 여부를 반환한다."""
+    return calc_full_age(birth_date) < 14
+
+
 
 
 def _extract_ganzhi(value: str) -> str:
@@ -6754,9 +6788,9 @@ def render_algorithm_disclosure_notice(compact: bool = False) -> None:
 
 
 def render_privacy_policy() -> None:
-    """사주 맞짱 개인정보 처리방침 (v5.217)"""
+    """사주 맞짱 개인정보 처리방침 (v5.222)"""
     st.markdown("### 개인정보 처리방침")
-    st.caption("시행일: 2026-05-04 · 최종 수정: 2026-05-28 · 서비스명: 사주 맞짱")
+    st.caption("시행일: 2026-05-04 · 최종 수정: 2026-05-30 · 서비스명: 사주 맞짱")
     st.markdown("""
 **사주 맞짱**은(는) 정보주체의 자유와 권리 보호를 위해 「개인정보 보호법」 및 관계 법령이 정한 바를 준수하여, 적법하게 개인정보를 처리하고 안전하게 관리하고 있습니다. 이에 「개인정보 보호법」 제30조에 따라 정보주체에게 개인정보 처리에 관한 절차 및 기준을 안내하고, 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
 
@@ -6787,8 +6821,8 @@ def render_privacy_policy() -> None:
 - 사용자가 직접 생성한 내 사주 저장 링크에 포함되는 생년월일시, 성별, 날짜 기준 등 URL 쿼리 정보
 
 **케미 방·맞짱 방 참여 시 클라우드 데이터베이스에 저장되는 항목:**
-별명(최대 10자), 성별, 사주 원국 간지(8글자), 원국에서 산출된 용신·기신·총점·등급 등 분석 지표, 방 입장 시각.
-원본 생년월일시는 서버에 저장되지 않으며, 간지로 변환된 원국 정보만 저장됩니다.
+별명(최대 10자), 원국에서 산출된 총점·강약 등급 등 분석 지표, 방 입장 시각.
+생년월일시, 성별, 사주 원국 간지(8글자) 등 원본 개인정보는 서버에 저장되지 않습니다.
 *(처리 근거: 「개인정보 보호법」 제15조제1항제1호 — 정보주체의 동의)*
 
 실명 입력은 권장하지 않습니다. 별명을 사용하더라도 대화방 맥락, 화면 캡처, 리포트 공유 방식에 따라 특정인이 추정될 수 있으므로 주의해야 합니다.
@@ -6800,7 +6834,7 @@ def render_privacy_policy() -> None:
 - **서버 세션 메모리:** 분석을 위해 입력값은 계산 중 서버 메모리(세션)에 일시적으로 존재하며, 브라우저 탭을 닫거나 서버가 재시작되면 사라집니다.
 - **리포트 파일:** 사용자가 리포트를 다운로드하면 해당 파일은 사용자 기기에 남습니다.
 - **URL 저장 링크:** 내 사주 저장 링크는 서버 데이터베이스 저장 방식이 아니라 URL에 입력값을 담아 다시 불러오는 방식입니다. 링크를 북마크·공유하면 사용자 기기·브라우저·메신저에 해당 URL이 남을 수 있습니다.
-- **접속 로그:** Streamlit Cloud 등 외부 배포 환경에서는 접속 IP, 브라우저 정보, 접속 시각 등 일반 접속 로그가 배포 플랫폼 정책에 따라 보관될 수 있습니다.
+- **접속 로그:** Oracle Cloud 춘천 서버에서 접속 IP, 브라우저 정보, 접속 시각 등 일반 접속 로그가 자체 정책에 따라 보관될 수 있습니다.
 
 #### 4. 개인정보의 제3자 제공
 
@@ -6809,13 +6843,14 @@ def render_privacy_policy() -> None:
 
 #### 5. 개인정보 처리업무의 위탁 및 국외 이전
 
-본 서비스는 케미 방·맞짱 방 데이터 저장을 위해 **Supabase**(미국 소재 클라우드 데이터베이스 서비스)를 이용합니다. 저장되는 항목은 제2조에 기재된 케미 방·맞짱 방 참여 정보이며, 30분 후 자동 삭제됩니다.
-그 외 앱 배포를 위해 **Streamlit Cloud**(미국 소재), **GitHub**(미국 소재)를 이용하며, 이들 서비스 제공자는 인프라 운영 과정에서 접속 로그 등을 처리할 수 있습니다.
-위 업체들은 모두 미국 소재로, 국외로 개인정보가 이전됩니다. 각 업체의 개인정보 처리 정책은 해당 업체의 개인정보 처리방침을 통해 확인하실 수 있습니다.
+본 서비스는 케미 방·맞짱 방 데이터 저장 및 앱 운영을 위해 **Oracle Cloud 춘천 리전**(대한민국 강원도 춘천 소재 클라우드 서비스)을 이용합니다. 저장되는 항목은 제2조에 기재된 케미 방·맞짱 방 참여 정보이며, 30분 후 자동 삭제됩니다.
+그 외 소스 코드 관리를 위해 **GitHub**(미국 소재)를 이용하나, GitHub에는 사용자 개인정보가 저장되지 않습니다.
+데이터베이스 서버가 **대한민국 내(춘천)**에 위치하므로 「개인정보 보호법」 제28조의8에 따른 **국외 이전이 발생하지 않습니다.**
 
-#### 6. 14세 미만 아동의 개인정보 처리
+#### 6. 만 14세 미만 아동의 개인정보 처리
 
-14세 미만 아동의 생년월일시 등 정보를 입력하는 경우 법정대리인의 동의가 필요할 수 있습니다.
+본 서비스는 「개인정보 보호법」 제22조의2에 따라 **만 14세 미만 아동의 개인정보를 처리하지 않습니다.**
+생년월일 입력 시 만 14세 미만으로 확인되는 경우 서비스 이용이 즉시 차단되며, 법정대리인의 동의가 있더라도 이용할 수 없습니다.
 타인의 정보를 입력할 때에는 반드시 해당 정보주체 또는 정당한 권한 있는 사람의 동의를 받은 정보만 입력해야 합니다.
 
 #### 7. 개인정보의 파기 절차 및 방법
@@ -6862,13 +6897,17 @@ def render_privacy_policy() -> None:
 - 오류 메시지에 입력값이 직접 노출되지 않도록 안전 오류 메시지 사용
 - 사용자 입력을 HTML로 표시할 때 이스케이프 처리 적용
 - 화면 캡처와 리포트 공유 시 개인정보 노출 주의 문구 제공
-- 클라우드 데이터베이스(Supabase)에 원본 생년월일시 대신 간지 변환값만 저장
-- 데이터베이스 접근 키는 서버 환경 변수에만 보관하며 코드·저장소에 노출하지 않음
+- 클라우드 데이터베이스에 원본 생년월일시·성별·사주 간지를 저장하지 않으며, 분석 후 산출된 점수와 등급만 저장
+- 데이터베이스 접근 정보(비밀번호, 연결 문자열)는 서버 환경 변수에만 보관하며 코드·저장소에 노출하지 않음
+- 서버는 방화벽(UFW)으로 불필요한 포트를 차단하며, SSH 접근은 공개키 기반 인증만 허용
+- 데이터베이스(PostgreSQL)는 외부 직접 접근을 차단하고 로컬호스트 및 컨테이너 내부 통신만 허용
 
-#### 10. 쿠키 및 행태정보
+#### 10. 쿠키, 행태정보 및 광고
 
-현재 앱은 맞춤형 광고를 위한 행태정보를 수집·이용하지 않습니다.
-다만 Streamlit 및 브라우저가 앱 세션 유지를 위해 기술적 쿠키 또는 세션 정보를 사용할 수 있습니다.
+웹 서비스(브라우저) 환경에서는 맞춤형 광고를 위한 행태정보를 수집·이용하지 않습니다.
+Streamlit 및 브라우저가 앱 세션 유지를 위해 기술적 쿠키 또는 세션 정보를 사용할 수 있습니다.
+
+**모바일 앱(Android) 환경:** Google AdMob을 통해 배너·전면 광고가 표시되며, 이 과정에서 Google LLC(미국 소재)가 광고 식별자(GAID)를 수집·처리할 수 있습니다. 이는 「개인정보 보호법」 제28조의8에 따른 국외 이전에 해당하며, 최초 실행 시 동의 절차를 통해 고지됩니다. Google의 개인정보 처리방침은 [https://policies.google.com/privacy](https://policies.google.com/privacy)에서 확인하실 수 있습니다.
 
 #### 11. 자동화된 결정에 관한 안내
 
@@ -7981,7 +8020,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.215"
+APP_VERSION = "v5.223"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -11610,12 +11649,7 @@ def visitor_session_id() -> str:
 
 
 def analytics_storage_configured() -> bool:
-    return bool(_secret_value("SUPABASE_URL", "").strip() and _secret_value("SUPABASE_ANON_KEY", "").strip())
-
-
-def _supabase_endpoint(path: str) -> str:
-    base = _secret_value("SUPABASE_URL", "").strip().rstrip("/")
-    return f"{base}/rest/v1/{path.lstrip('/')}"
+    return _get_pg() is not None
 
 
 def _analytics_payload(event_name: str, page_name: str, metadata: Dict[str, object] | None = None) -> Dict[str, object]:
@@ -11631,28 +11665,25 @@ def _analytics_payload(event_name: str, page_name: str, metadata: Dict[str, obje
     }
 
 
-def _insert_event_supabase(payload: Dict[str, object]) -> bool:
-    if not analytics_storage_configured():
+def _insert_event_pg(payload: Dict[str, object]) -> bool:
+    """app_events 이벤트를 PostgreSQL에 저장한다."""
+    if _get_pg() is None:
         return False
-    url = _supabase_endpoint("app_events")
-    key = _secret_value("SUPABASE_ANON_KEY", "").strip()
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        method="POST",
-        headers={
-            "apikey": key,
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=2.5) as resp:
-            return 200 <= int(resp.status) < 300
-    except Exception:
-        return False
+    return bool(_pg_exec(
+        "INSERT INTO app_events "
+        "(created_at, session_id, event_name, page_name, source, app_version, is_admin, metadata) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        (
+            str(payload.get("created_at", "")),
+            str(payload.get("session_id", ""))[:64],
+            str(payload.get("event_name", ""))[:64],
+            str(payload.get("page_name", ""))[:64],
+            str(payload.get("source", ""))[:64],
+            str(payload.get("app_version", ""))[:16],
+            bool(payload.get("is_admin", False)),
+            _psycopg2_extras.Json(payload.get("metadata") or {}),
+        )
+    ))
 
 
 def _insert_event_local(payload: Dict[str, object]) -> bool:
@@ -11675,34 +11706,27 @@ def log_event(event_name: str, page_name: str = "app", metadata: Dict[str, objec
         st.session_state[state_key] = True
 
     payload = _analytics_payload(event_name, page_name, metadata)
-    ok = _insert_event_supabase(payload)
+    ok = _insert_event_pg(payload)
     if not ok:
         _insert_event_local(payload)
 
 
 def read_analytics_events(limit: int = 1000) -> List[Dict[str, object]]:
-    """관리자 화면용 이벤트 읽기. Supabase 설정이 있으면 Supabase, 없으면 임시 로컬 로그."""
+    """관리자 화면용 이벤트 읽기. DB가 연결되어 있으면 PostgreSQL, 없으면 임시 로컬 로그."""
     events: List[Dict[str, object]] = []
-    if analytics_storage_configured():
-        key = _secret_value("SUPABASE_ANON_KEY", "").strip()
-        url = _supabase_endpoint(f"app_events?select=created_at,session_id,event_name,page_name,source,app_version,is_admin,metadata&order=created_at.desc&limit={int(limit)}")
-        req = urllib.request.Request(
-            url,
-            method="GET",
-            headers={
-                "apikey": key,
-                "Authorization": f"Bearer {key}",
-                "Accept": "application/json",
-            },
+    if _get_pg() is not None:
+        rows = _pg_exec(
+            "SELECT created_at, session_id, event_name, page_name, source, "
+            "app_version, is_admin, metadata "
+            "FROM app_events ORDER BY created_at DESC LIMIT %s",
+            (int(limit),), fetch="all"
         )
-        try:
-            with urllib.request.urlopen(req, timeout=4.0) as resp:
-                raw = resp.read().decode("utf-8")
-                data = json.loads(raw)
-                if isinstance(data, list):
-                    events = [x for x in data if isinstance(x, dict)]
-        except Exception:
-            events = []
+        for r in (rows or []):
+            row_dict = dict(r)
+            ca = row_dict.get("created_at")
+            if hasattr(ca, "isoformat"):
+                row_dict["created_at"] = ca.isoformat()
+            events.append(row_dict)
     else:
         try:
             with open(EVENT_LOG_LOCAL_PATH, "r", encoding="utf-8") as f:
@@ -11718,34 +11742,17 @@ def read_analytics_events(limit: int = 1000) -> List[Dict[str, object]]:
 
 
 def analytics_setup_sql() -> str:
-    return """create table if not exists public.app_events (
-  id bigint generated by default as identity primary key,
-  created_at timestamptz not null default now(),
+    return """CREATE TABLE IF NOT EXISTS app_events (
+  id bigserial PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
   session_id text,
   event_name text,
   page_name text,
   source text,
   app_version text,
-  is_admin boolean default false,
-  metadata jsonb default '{}'::jsonb
-);
-
-alter table public.app_events enable row level security;
-
-drop policy if exists "insert_events" on public.app_events;
-create policy "insert_events"
-on public.app_events
-for insert
-to anon
-with check (true);
-
-drop policy if exists "select_events" on public.app_events;
-create policy "select_events"
-on public.app_events
-for select
-to anon
-using (true);"""
-
+  is_admin boolean DEFAULT false,
+  metadata jsonb DEFAULT '{}'::jsonb
+);"""
 
 def render_admin_analytics_dashboard() -> None:
     if not is_admin_mode():
@@ -11761,11 +11768,11 @@ def render_admin_analytics_dashboard() -> None:
 
     with st.expander("📊 방문 통계 대시보드", expanded=False):
         if not analytics_storage_configured():
-            st.warning("Supabase 저장소가 아직 설정되지 않았습니다. 현재는 임시 로컬 로그만 표시되며 Streamlit 재배포/재시작 시 사라질 수 있습니다.")
-            st.markdown("**Streamlit Secrets에 필요한 값**")
-            st.text_area("Secrets 예시", value='ADMIN_KEY = "원하는관리자키"\nSUPABASE_URL = "https://xxxx.supabase.co"\nSUPABASE_ANON_KEY = "Supabase anon public key"', height=100, disabled=True)
-            st.markdown("**Supabase SQL Editor에서 1회 실행할 SQL**")
-            st.text_area("Supabase SQL", value=analytics_setup_sql(), height=260, disabled=True)
+            st.warning("PostgreSQL이 아직 설정되지 않았습니다. 현재는 임시 로컬 로그만 표시됩니다.")
+            st.markdown("**환경변수(Secrets)에 필요한 값**")
+            st.text_area("Secrets 예시", value='ADMIN_KEY = "원하는관리자키"\nPG_DATABASE_URL = "postgresql://user:pw@host:5432/db"', height=80, disabled=True)
+            st.markdown("**PostgreSQL에서 1회 실행할 SQL**")
+            st.text_area("PostgreSQL DDL", value=analytics_setup_sql(), height=200, disabled=True)
 
         events = read_analytics_events(limit=1500)
         if not events:
@@ -14679,96 +14686,83 @@ def _sb_gen_id(length: int = 6) -> str:
 
 
 def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
-    """맞짱 결과 [{name, score}]를 Supabase에 저장하고 6자리 ID를 반환한다."""
-    if _get_supabase() is None:
+    """맞짱 결과 [{name, score}]를 DB에 저장하고 6자리 ID를 반환한다."""
+    if _get_pg() is None:
         return None
     bid = _sb_gen_id(6)
-    try:
-        _get_supabase().table("battles").insert({
-            "id": bid,
-            "participants": participants,
-            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
-        }).execute()
-        return bid
-    except Exception:
-        return None
+    result = _pg_exec(
+        "INSERT INTO battles (id, participants, expires_at) VALUES (%s, %s, %s)",
+        (bid, _psycopg2_extras.Json(participants),
+         (datetime.now() + timedelta(minutes=30)).isoformat())
+    )
+    return bid if result else None
 
 
 def sb_load_battle(battle_id: str) -> "List[Dict] | None":
-    """Supabase에서 맞짱 결과를 불러온다."""
-    if _get_supabase() is None or not battle_id:
+    """DB에서 맞짱 결과를 불러온다."""
+    if _get_pg() is None or not battle_id:
         return None
-    try:
-        res = _get_supabase().table("battles").select("*").eq("id", battle_id).execute()
-        if res.data:
-            return list(res.data[0].get("participants") or [])
-        return None
-    except Exception:
-        return None
+    row = _pg_exec(
+        "SELECT participants FROM battles WHERE id = %s",
+        (battle_id,), fetch="one"
+    )
+    return list(row.get("participants") or []) if row else None
 
 
 def sb_create_room(max_participants: int = 5) -> "str | None":
     """빈 비밀케미 방을 생성하고 ID를 반환한다."""
-    if _get_supabase() is None:
+    if _get_pg() is None:
         return None
     rid = _sb_gen_id(6)
-    try:
-        _get_supabase().table("chemistry_rooms").insert({
-            "id": rid,
-            "max_participants": int(max_participants),
-            "participants": [],
-            "status": "waiting",
-            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
-        }).execute()
-        return rid
-    except Exception as _e:
-        st.session_state["_sb_last_error"] = str(_e)
+    result = _pg_exec(
+        "INSERT INTO chemistry_rooms (id, max_participants, participants, status, expires_at)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (rid, int(max_participants), _psycopg2_extras.Json([]), "waiting",
+         (datetime.now() + timedelta(minutes=30)).isoformat())
+    )
+    if not result:
+        st.session_state["_sb_last_error"] = "DB insert failed"
         return None
+    return rid
 
 
 def sb_join_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
     """참가자를 방에 추가한다. 성공 시 업데이트된 방 dict 반환."""
-    if _get_supabase() is None:
+    if _get_pg() is None:
         return None
-    try:
-        res = _get_supabase().table("chemistry_rooms").select("*").eq("id", room_id).execute()
-        if not res.data:
-            return None
-        room = res.data[0]
-        ps = list(room.get("participants") or [])
-        max_p = int(room.get("max_participants") or 5)
-        existing = {p.get("name", "") for p in ps}
-        name = str(participant.get("name", ""))
-        if name in existing:
-            room["participants"] = ps
-            return room
-        if len(ps) >= max_p:
-            return None
-        ps.append(participant)
-        new_status = "full" if len(ps) >= max_p else "waiting"
-        _get_supabase().table("chemistry_rooms").update({
-            "participants": ps,
-            "status": new_status,
-        }).eq("id", room_id).execute()
-        room["participants"] = ps
-        room["status"] = new_status
+    room = _pg_exec(
+        "SELECT * FROM chemistry_rooms WHERE id = %s",
+        (room_id,), fetch="one"
+    )
+    if not room:
+        return None
+    ps = list(room.get("participants") or [])
+    max_p = int(room.get("max_participants") or 5)
+    existing = {p.get("name", "") for p in ps}
+    name = str(participant.get("name", ""))
+    if name in existing:
         return room
-    except Exception:
+    if len(ps) >= max_p:
         return None
+    ps.append(participant)
+    new_status = "full" if len(ps) >= max_p else "waiting"
+    _pg_exec(
+        "UPDATE chemistry_rooms SET participants = %s, status = %s WHERE id = %s",
+        (_psycopg2_extras.Json(ps), new_status, room_id)
+    )
+    room["participants"] = ps
+    room["status"] = new_status
+    return room
 
 
 def sb_load_room(room_id: str) -> "Dict | None":
     """방 데이터를 조회한다."""
-    if _get_supabase() is None or not room_id:
+    if _get_pg() is None or not room_id:
         return None
-    try:
-        res = _get_supabase().table("chemistry_rooms").select("*").eq("id", room_id).execute()
-        if res.data:
-            return res.data[0]
-        return None
-    except Exception:
-        return None
-
+    return _pg_exec(
+        "SELECT * FROM chemistry_rooms WHERE id = %s",
+        (room_id,), fetch="one"
+    )
 
 def _infer_saju_role(result: Dict[str, object]) -> str:
     """result에서 대표 역할 유형을 추론한다 (오행 기반)."""
@@ -14778,34 +14772,64 @@ def _infer_saju_role(result: Dict[str, object]) -> str:
     return role_map.get(primary[0], "균형형") if primary else "균형형"
 
 
+def _encode_pillars_to_token(chart, result=None) -> str:
+    """Chart 원국 + 분석 결과 핵심값을 URL-safe base64 토큰으로 인코딩한다.
+    Supabase 비저장 방식에서 공유 링크(&t=)에 원국·용신을 담는 용도."""
+    import base64 as _b64, json as _json
+    d = {
+        "y": [chart.year.stem,  chart.year.branch],
+        "m": [chart.month.stem, chart.month.branch],
+        "d": [chart.day.stem,   chart.day.branch],
+        "g": chart.gender,
+    }
+    if chart.hour:
+        d["h"] = [chart.hour.stem, chart.hour.branch]
+    if result:
+        useful = result.get("useful", {}) or {}
+        d["p"] = list(useful.get("primary") or [])
+        d["b"] = list(useful.get("burden")  or [])
+        d["s"] = float(result.get("total", 50) or 50)
+        d["l"] = str(result.get("strength_label", "중화") or "중화")
+    raw = _json.dumps(d, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return _b64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _decode_token_to_payload(token: str, name: str = "") -> "Dict | None":
+    """URL-safe base64 토큰에서 compatibility_analysis용 payload를 복원한다."""
+    import base64 as _b64, json as _json
+    try:
+        pad = token + "=" * (4 - len(token) % 4)
+        d = _json.loads(_b64.urlsafe_b64decode(pad.encode("ascii")).decode("utf-8"))
+        hour_data = d.get("h")
+        chart = Chart(
+            year=Pillar(stem=str(d["y"][0]), branch=str(d["y"][1])),
+            month=Pillar(stem=str(d["m"][0]), branch=str(d["m"][1])),
+            day=Pillar(stem=str(d["d"][0]), branch=str(d["d"][1])),
+            hour=Pillar(stem=str(hour_data[0]), branch=str(hour_data[1])) if hour_data else None,
+            gender=str(d.get("g", "남")),
+        )
+        result = {
+            "total":          float(d.get("s", 50) or 50),
+            "strength_label": str(d.get("l", "중화") or "중화"),
+            "useful": {
+                "primary": list(d.get("p") or []),
+                "burden":  list(d.get("b") or []),
+            },
+        }
+        return {"name": name, "chart": chart, "result": result}
+    except Exception:
+        return None
+
+
 def _extract_participant_data(payload: Dict, name: str) -> Dict:
     """payload에서 Supabase 저장용 참가자 데이터를 추출한다.
-    생년월일·생시 원본은 저장하지 않음. 사주 팔자(간지) + 분석 요약만 저장."""
+    생년월일·생시·원국(팔자)은 저장하지 않음. 표시용 정보(이름·역할·기운 수치)만 저장."""
     from datetime import datetime as _dtnow
     chart  = payload.get("chart")
     result = payload.get("result", {}) or {}
-    useful = result.get("useful", {}) or {}
-    pillars: Dict[str, Dict] = {}
-    if chart:
-        pillars = {
-            "year":  {"stem": chart.year.stem,  "branch": chart.year.branch},
-            "month": {"stem": chart.month.stem, "branch": chart.month.branch},
-            "day":   {"stem": chart.day.stem,   "branch": chart.day.branch},
-        }
-        if chart.hour is not None:
-            pillars["hour"] = {"stem": chart.hour.stem, "branch": chart.hour.branch}
-    # adjusted_pct 안전 변환 (Supabase JSON 저장용)
-    _apct = result.get("adjusted_pct") or result.get("seasonal_pct") or result.get("base_pct") or {}
-    _apct_safe = {k: float(v) for k, v in _apct.items() if isinstance(v, (int, float))}
     return {
         "name":           name[:10],
-        "day_master":     chart.day_master if chart else "",
-        "gender":         chart.gender    if chart else "남",
-        "pillars":        pillars,
-        "useful_primary": list(useful.get("primary") or []),
-        "useful_burden":  list(useful.get("burden")  or []),
         "total":          float(result.get("total", 50) or 50),
-        "adjusted_pct":   _apct_safe,
         "strength_label": str(result.get("strength_label", "중화") or "중화"),
         "role":           _infer_saju_role(result),
         "joined_at":      _dtnow.now().isoformat(),
@@ -14814,142 +14838,124 @@ def _extract_participant_data(payload: Dict, name: str) -> Dict:
 
 def sb_create_battle_room(max_participants: int = 5) -> "str | None":
     """빈 맞짱 방을 생성하고 ID를 반환한다."""
-    if _get_supabase() is None:
+    if _get_pg() is None:
         return None
     rid = _sb_gen_id(6)
-    try:
-        _get_supabase().table("battle_rooms").insert({
-            "id": rid,
-            "max_participants": int(max_participants),
-            "participants": [],
-            "status": "waiting",
-            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
-        }).execute()
-        return rid
-    except Exception as _e:
-        st.session_state["_sb_last_error"] = str(_e)
+    result = _pg_exec(
+        "INSERT INTO battle_rooms (id, max_participants, participants, status, expires_at)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (rid, int(max_participants), _psycopg2_extras.Json([]), "waiting",
+         (datetime.now() + timedelta(minutes=30)).isoformat())
+    )
+    if not result:
+        st.session_state["_sb_last_error"] = "DB insert failed"
         return None
+    return rid
 
 
 def sb_join_battle_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
     """참가자를 맞짱 방에 추가한다. 성공 시 업데이트된 방 dict 반환."""
-    if _get_supabase() is None:
+    if _get_pg() is None:
         return None
-    try:
-        res = _get_supabase().table("battle_rooms").select("*").eq("id", room_id).execute()
-        if not res.data:
-            return None
-        room = res.data[0]
-        ps = list(room.get("participants") or [])
-        max_p = int(room.get("max_participants") or 5)
-        existing = {p.get("name", "") for p in ps}
-        name = str(participant.get("name", ""))
-        if name in existing:
-            room["participants"] = ps
-            return room
-        if len(ps) >= max_p:
-            return None
-        ps.append(participant)
-        new_status = "full" if len(ps) >= max_p else "waiting"
-        _get_supabase().table("battle_rooms").update({
-            "participants": ps,
-            "status": new_status,
-        }).eq("id", room_id).execute()
-        room["participants"] = ps
-        room["status"] = new_status
+    room = _pg_exec(
+        "SELECT * FROM battle_rooms WHERE id = %s",
+        (room_id,), fetch="one"
+    )
+    if not room:
+        return None
+    ps = list(room.get("participants") or [])
+    max_p = int(room.get("max_participants") or 5)
+    existing = {p.get("name", "") for p in ps}
+    name = str(participant.get("name", ""))
+    if name in existing:
         return room
-    except Exception:
+    if len(ps) >= max_p:
         return None
+    ps.append(participant)
+    new_status = "full" if len(ps) >= max_p else "waiting"
+    _pg_exec(
+        "UPDATE battle_rooms SET participants = %s, status = %s WHERE id = %s",
+        (_psycopg2_extras.Json(ps), new_status, room_id)
+    )
+    room["participants"] = ps
+    room["status"] = new_status
+    return room
 
 
 def sb_load_battle_room(room_id: str) -> "Dict | None":
     """맞짱 방 데이터를 조회한다."""
-    if _get_supabase() is None or not room_id:
+    if _get_pg() is None or not room_id:
         return None
+    return _pg_exec(
+        "SELECT * FROM battle_rooms WHERE id = %s",
+        (room_id,), fetch="one"
+    )
+
+
+def sb_update_room_chemistry_result(room_id: str, chemistry_result: Dict) -> bool:
+    """케미 방에 pre-computed 분석 결과를 저장한다. 원국은 포함되지 않음."""
+    if _get_pg() is None or not room_id:
+        return False
+    return bool(_pg_exec(
+        "UPDATE chemistry_rooms SET chemistry_result = %s WHERE id = %s",
+        (_psycopg2_extras.Json(chemistry_result), room_id)
+    ))
+
+
+def _compute_and_store_room_chemistry(room_id: str, participants: List[Dict], my_payload: Dict) -> None:
+    """방이 꽉 찼을 때 URL 토큰으로 다른 참가자 원국을 복원하고 케미 매트릭스를 계산해
+    Supabase에 결과만 저장한다. 원국 자체는 Supabase에 저장하지 않는다."""
     try:
-        res = _get_supabase().table("battle_rooms").select("*").eq("id", room_id).execute()
-        if res.data:
-            return res.data[0]
-        return None
+        raw_t = st.query_params.get("t", "").strip()
+        other_tokens = [tok for tok in raw_t.split(",") if tok] if raw_t else []
+        my_name = str(my_payload.get("name", ""))
+        p_names_others = [
+            str(p.get("name", f"참가자{i+1}"))
+            for i, p in enumerate(participants)
+            if str(p.get("name", "")) != my_name
+        ]
+        payloads: List[Dict] = []
+        for i, tok in enumerate(other_tokens):
+            pname = p_names_others[i] if i < len(p_names_others) else f"참가자{i+1}"
+            decoded = _decode_token_to_payload(tok, pname)
+            if decoded is not None:
+                payloads.append(decoded)
+        payloads.append(my_payload)
+        if len(payloads) < 2:
+            return
+        matrix = _compute_room_chemistry_matrix(payloads)
+        names = [str(p.get("name", "")) for p in payloads]
+        roles = [_infer_saju_role(p.get("result", {}) or {}) for p in payloads]
+        matrix_serializable = [
+            [{"score": cell.get("score"), "grade": cell.get("grade", ""), "summary": cell.get("summary", "")}
+             for cell in row]
+            for row in matrix
+        ]
+        sb_update_room_chemistry_result(room_id, {
+            "names":  names,
+            "roles":  roles,
+            "matrix": matrix_serializable,
+        })
     except Exception:
-        return None
+        pass
 
 
 def _extract_battle_participant_data(payload: Dict, name: str) -> Dict:
     """payload에서 맞짱 방 저장용 참가자 데이터를 추출한다.
-    생년월일·생시 원본은 저장하지 않음. 사주 팔자(간지) + 점수만 저장."""
+    생년월일·생시·원국(팔자)은 저장하지 않음. 이름과 점수만 저장."""
     from datetime import datetime as _dtnow
-    chart  = payload.get("chart")
-    pillars: Dict[str, Dict] = {}
-    if chart:
-        pillars = {
-            "year":  {"stem": chart.year.stem,  "branch": chart.year.branch},
-            "month": {"stem": chart.month.stem, "branch": chart.month.branch},
-            "day":   {"stem": chart.day.stem,   "branch": chart.day.branch},
-        }
-        if chart.hour is not None:
-            pillars["hour"] = {"stem": chart.hour.stem, "branch": chart.hour.branch}
     score = calculate_battle_power(payload)
     return {
-        "name":       name[:10],
-        "score":      score,
-        "day_master": chart.day_master if chart else "",
-        "pillars":    pillars,
-        "joined_at":  _dtnow.now().isoformat(),
+        "name":      name[:10],
+        "score":     score,
+        "joined_at": _dtnow.now().isoformat(),
     }
 
 
-def _reconstruct_payload_from_room_participant(p: Dict) -> Dict:
-    """방 참가자 데이터에서 compatibility_analysis용 payload를 재구성한다."""
-    pillars = p.get("pillars", {}) or {}
-
-    def _mp(d: "Dict | None") -> Pillar:
-        if isinstance(d, dict):
-            return Pillar(stem=str(d.get("stem", "甲")), branch=str(d.get("branch", "子")))
-        return Pillar("甲", "子")
-
-    hour_d = pillars.get("hour")
-    chart = Chart(
-        year=_mp(pillars.get("year")),
-        month=_mp(pillars.get("month")),
-        day=_mp(pillars.get("day")),
-        hour=_mp(hour_d) if hour_d else None,
-        gender=str(p.get("gender", "남")),
-    )
-
-    # adjusted_pct 복원: 신 데이터는 저장값 사용, 구 데이터는 차트에서 계산
-    _saved_pct = {k: float(v) for k, v in (p.get("adjusted_pct") or {}).items() if isinstance(v, (int, float))}
-    if not _saved_pct or all(v == 0 for v in _saved_pct.values()):
-        # 차트 기반 폴백: 천간(1) + 지지(1) + 지장간(0.5)으로 오행 분포 계산
-        _counts: Dict[str, float] = {el: 0.0 for el in ELEMENTS}
-        _pillar_list = [chart.year, chart.month, chart.day] + ([chart.hour] if chart.hour else [])
-        for _pl in _pillar_list:
-            _sel = STEMS.get(_pl.stem, {}).get("element", "")
-            if _sel in _counts: _counts[_sel] += 1.0
-            _bel = BRANCHES.get(_pl.branch, {}).get("element", "")
-            if _bel in _counts: _counts[_bel] += 1.0
-            for _hs, _ in (BRANCHES.get(_pl.branch, {}).get("hidden", []) or []):
-                _hel = STEMS.get(_hs, {}).get("element", "")
-                if _hel in _counts: _counts[_hel] += 0.5
-        _total_c = sum(_counts.values()) or 1.0
-        _saved_pct = {el: round(_counts[el] / _total_c * 100.0, 1) for el in ELEMENTS}
-
-    result = {
-        "total":          float(p.get("total", 50) or 50),
-        "useful": {
-            "primary": list(p.get("useful_primary") or []),
-            "burden":  list(p.get("useful_burden")  or []),
-        },
-        "adjusted_pct":   _saved_pct,
-        "strength_label": str(p.get("strength_label", "중화") or "중화"),
-    }
-    return {"name": str(p.get("name", "")), "chart": chart, "result": result}
-
-
-def _compute_room_chemistry_matrix(participants: List[Dict]) -> List[List[Dict]]:
-    """모든 쌍의 케미를 계산한다. 자기 자신 셀은 None."""
-    n = len(participants)
-    payloads = [_reconstruct_payload_from_room_participant(p) for p in participants]
+def _compute_room_chemistry_matrix(payloads: List[Dict]) -> List[List[Dict]]:
+    """payloads 리스트로 모든 쌍의 케미를 계산한다. 자기 자신 셀은 None.
+    각 payload는 {"name": str, "chart": Chart, "result": dict} 형태."""
+    n = len(payloads)
     matrix: List[List[Dict]] = []
     for i in range(n):
         row: List[Dict] = []
@@ -14971,8 +14977,8 @@ def _compute_room_chemistry_matrix(participants: List[Dict]) -> List[List[Dict]]
 def render_chemistry_room_page() -> None:
     """🔮 비밀케미 방 — Supabase 기반 그룹 케미 분석."""
 
-    if _get_supabase() is None:
-        st.error("모임 케미 초대는 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_ANON_KEY를 등록해 주세요.")
+    if _get_pg() is None:
+        st.error("모임 케미 초대는 데이터베이스 연동이 필요합니다. 환경변수에 PG_DATABASE_URL을 설정해 주세요.")
         if st.button("메인으로", use_container_width=True, key="room_no_sb_home"):
             reset_navigation_to(None)
             st.rerun()
@@ -15085,7 +15091,13 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
         )
 
     st.markdown("#### 내 정보 입력")
-    st.caption("⚠️ 생년월일은 서버에 저장되지 않습니다. 별명과 사주 팔자(간지)만 저장됩니다.")
+    st.info(
+        "**개인정보 수집 안내:** 별명과 분석 점수·등급만 서버(국내 춘천)에 저장되며, "
+        "방 생성·입장 시각으로부터 **30분 후 자동 삭제**됩니다. "
+        "생년월일·사주 원국·성별은 서버에 저장되지 않습니다. "
+        "실명 대신 별명을 사용해 주세요.",
+        icon="🔒",
+    )
     nickname = st.text_input("별명 (10자 이내, 실명 사용 금지)", max_chars=10, key=f"room_nick_{room_id}")
 
     # 기존 세션 payload 활용 가능 여부
@@ -15096,7 +15108,7 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
         st.info("내 사주 진단 결과가 있습니다. 별명만 입력하면 바로 참가할 수 있습니다.")
         use_existing = True
     else:
-        st.caption("사주 자동 산출: 생년월일과 생시를 입력하면 서버에는 사주 팔자만 저장됩니다.")
+        st.caption("사주 자동 산출: 생년월일과 생시를 입력해 주세요.")
         use_existing = False
         birth_str  = st.text_input("생년월일 (YYYY-MM-DD)", key=f"room_birth_{room_id}",
                                    placeholder="예: 1990-03-15")
@@ -15111,7 +15123,9 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
             st.stop()
 
         if use_existing:
-            p_data = _extract_participant_data(payload, name)
+            my_chart  = payload["chart"]
+            my_result = payload.get("result", {}) or {}
+            my_lf     = payload.get("luck_flow")
         else:
             if Solar is None:
                 st.error("자동 산출을 위해 lunar_python이 필요합니다.")
@@ -15119,22 +15133,38 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
             try:
                 from datetime import date as _d2, time as _t2
                 bd = _d2.fromisoformat(birth_str.strip())
+                if _is_under_14(bd):
+                    st.error("이 서비스는 만 14세 이상만 이용하실 수 있습니다.")
+                    st.stop()
                 try:
                     bt = _t2.fromisoformat(btime_str.strip()) if btime_str.strip() else _t2(12, 0)
                 except Exception:
                     bt = _t2(12, 0)
-                _chart, _lf, _res = get_saju_automated(bd, bt, gender_sel)
-                tmp_payload = {"chart": _chart, "result": _res, "luck_flow": _lf}
-                p_data = _extract_participant_data(tmp_payload, name)
+                my_chart, my_lf, my_result = get_saju_automated(bd, bt, gender_sel)
             except Exception as _e:
                 st.error(f"사주 산출 오류: {_e}")
                 st.stop()
+
+        my_payload = {"name": name, "chart": my_chart, "result": my_result, "luck_flow": my_lf}
+        p_data = _extract_participant_data(my_payload, name)
+
+        try:
+            st.session_state[f"_croom_{room_id}_mytoken"] = _encode_pillars_to_token(my_chart, my_result)
+        except Exception:
+            pass
 
         result_room = sb_join_room(room_id, p_data)
         if result_room is None:
             st.error("입장에 실패했습니다. 방이 가득 찼거나 링크가 만료되었습니다.")
             st.stop()
+
         st.session_state[f"_croom_{room_id}_name"] = name
+        st.session_state[f"_croom_{room_id}_mypayload"] = my_payload
+
+        updated_participants = list(result_room.get("participants") or [])
+        if result_room.get("status") == "full":
+            _compute_and_store_room_chemistry(room_id, updated_participants, my_payload)
+
         st.rerun()
 
 
@@ -15166,11 +15196,17 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
     if st.button("🔄 새로고침", use_container_width=True, key=f"room_refresh_{room_id}"):
         st.rerun()
 
+    # 공유 링크: 이전 참가자 토큰 + 내 토큰을 &t= 파라미터에 연결
     room_id_safe = str(room_id)
+    _prev_t  = st.query_params.get("t", "").strip()
+    _my_t    = st.session_state.get(f"_croom_{room_id}_mytoken", "")
+    _all_t   = ",".join(t for t in [_prev_t, _my_t] if t)
+    _t_param = f"&t={_all_t}" if _all_t else ""
+
     st.components.v1.html(
         f"""<button onclick="
             var base = window.location.origin + window.location.pathname;
-            var url = base + '?room={room_id_safe}';
+            var url = base + '?room={room_id_safe}{_t_param}';
             if(navigator.share){{
                 navigator.share({{title:'모임 케미 초대 참가 링크', url:url}}).catch(()=>{{}});
             }} else {{
@@ -15215,9 +15251,23 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
 </script>""", height=0)
         st.session_state[f"_croom_{room_id}_revealed"] = True
 
-    n = len(participants)
-    names = [str(p.get("name", f"참가자{i+1}")) for i, p in enumerate(participants)]
-    matrix = _compute_room_chemistry_matrix(participants)
+    room_data   = sb_load_room(room_id)
+    chem_result = (room_data or {}).get("chemistry_result") or {}
+    stored_names  = list(chem_result.get("names",  []) or [])
+    stored_roles  = list(chem_result.get("roles",  []) or [])
+    stored_matrix = list(chem_result.get("matrix", []) or [])
+
+    if stored_names and stored_matrix:
+        names  = stored_names
+        roles  = stored_roles
+        matrix = stored_matrix
+    else:
+        st.warning("케미 결과를 불러오는 중입니다. 잠시 후 새로고침해 주세요.")
+        names  = [str(p.get("name", f"참가자{i+1}")) for i, p in enumerate(participants)]
+        roles  = [str(p.get("role", "균형형")) for p in participants]
+        matrix = [[{"score": None, "grade": "-", "summary": ""}] * len(names)] * len(names)
+
+    n = len(names)
 
     st.markdown("## 🧑‍🤝‍🧑 모임 케미 초대 — 케미 공개!")
     st.caption(f"방 ID: `{room_id}` · {n}명 전원 입장 완료")
@@ -15234,13 +15284,13 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         "균형형": "다양한 역할을 유연하게 맡는 유형",
     }
     badges = ""
-    for p in participants:
-        role  = str(p.get("role", "균형형"))
+    for idx, nm in enumerate(names):
+        role  = roles[idx] if idx < len(roles) else "균형형"
         color = ROLE_COLOR.get(role, "#b89a6b")
         badges += (
             f"<div style='display:inline-block;margin:4px;padding:6px 12px;"
             f"background:{color}22;border:1px solid {color}55;border-radius:20px;'>"
-            f"<span style='font-weight:800;color:{color};'>{html.escape(str(p.get('name','?')))}</span>"
+            f"<span style='font-weight:800;color:{color};'>{html.escape(nm)}</span>"
             f"<span style='font-size:11px;color:#aaa;margin-left:6px;'>{html.escape(role)}</span>"
             f"</div>"
         )
@@ -15399,8 +15449,8 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
 def render_battle_room_page() -> None:
     """⚔️ 사주 맞짱 방 — Supabase 기반 그룹 배틀."""
 
-    if _get_supabase() is None:
-        st.error("맞짱 방은 Supabase 연동이 필요합니다. Streamlit Cloud secrets에 SUPABASE_URL과 SUPABASE_SERVICE_KEY를 등록해 주세요.")
+    if _get_pg() is None:
+        st.error("맞짱 방은 데이터베이스 연동이 필요합니다. 환경변수에 PG_DATABASE_URL을 설정해 주세요.")
         if st.button("메인으로", use_container_width=True, key="broom_no_sb_home"):
             reset_navigation_to(None)
             st.rerun()
@@ -15508,7 +15558,13 @@ def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p:
         )
 
     st.markdown("#### 내 정보 입력")
-    st.caption("⚠️ 생년월일은 서버에 저장되지 않습니다. 별명과 사주 팔자(간지) + 점수만 저장됩니다.")
+    st.info(
+        "**개인정보 수집 안내:** 별명과 분석 점수만 서버(국내 춘천)에 저장되며, "
+        "방 생성·입장 시각으로부터 **30분 후 자동 삭제**됩니다. "
+        "생년월일·사주 팔자(간지)·성별은 서버에 저장되지 않습니다. "
+        "실명 대신 별명을 사용해 주세요.",
+        icon="🔒",
+    )
     nickname = st.text_input("별명 (10자 이내, 실명 사용 금지)", max_chars=10, key=f"broom_nick_{room_id}")
 
     payload = st.session_state.get("payload")
@@ -15523,7 +15579,7 @@ def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p:
 
     birth_str = btime_str = gender_sel = None
     if input_method == "생년월일 직접 입력":
-        st.caption("생년월일과 생시를 입력하면 서버에는 사주 팔자만 저장됩니다.")
+        st.caption("생년월일과 생시를 입력하면 서버에는 점수·등급만 저장됩니다.")
         birth_str  = st.text_input("생년월일 (YYYY-MM-DD)", key=f"broom_birth_{room_id}",
                                    placeholder="예: 1990-03-15")
         btime_str  = st.text_input("태어난 시각 (HH:MM, 모르면 빈칸)", key=f"broom_time_{room_id}",
@@ -15547,6 +15603,9 @@ def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p:
             try:
                 from datetime import date as _d2, time as _t2
                 bd = _d2.fromisoformat((birth_str or "").strip())
+                if _is_under_14(bd):
+                    st.error("이 서비스는 만 14세 이상만 이용하실 수 있습니다.")
+                    st.stop()
                 try:
                     bt = _t2.fromisoformat(btime_str.strip()) if (btime_str or "").strip() else _t2(12, 0)
                 except Exception:
@@ -15889,7 +15948,7 @@ def render_battle_ranking_page() -> None:
         )
 
         # Supabase 사용 가능하면 짧은 URL (?battle=ID), 없으면 기존 ?b= 방식
-        if _get_supabase() is not None:
+        if _get_pg() is not None:
             battle_participants = [{"name": e["name"], "score": e["score"]} for e in valid_e]
             bid = sb_save_battle(battle_participants)
         else:
@@ -25926,6 +25985,8 @@ def build_three_pillar_auto_payload(
     내부적으로 정오를 기준으로 년주·월주·일주만 산출한 뒤, 시주는 버리고 가능한 12개 시주를 평균화한다.
     화면과 결과에는 정오 시주를 표시하거나 사용하지 않는다.
     """
+    if _is_under_14(birth_date):
+        raise ValueError("이 서비스는 만 14세 이상만 이용하실 수 있습니다.")
     input_birth_date = birth_date
     solar_birth_date = resolve_birth_date_to_solar(birth_date, calendar_type)
 
@@ -26023,6 +26084,8 @@ def build_direct_payload(name: str, direct_values: List[str]) -> Dict[str, objec
 def build_auto_payload(name: str, birth_date: date, birth_time: time | None, gender: str, correction_minutes: int, use_yajashee: bool, age_basis: str, calendar_type: str = "양력") -> Dict[str, object]:
     if birth_time is None:
         raise ValueError("출생시간 미상: 자동 산출은 진행하지 않습니다.")
+    if _is_under_14(birth_date):
+        raise ValueError("이 서비스는 만 14세 이상만 이용하실 수 있습니다.")
     input_birth_date = birth_date
     solar_birth_date = resolve_birth_date_to_solar(birth_date, calendar_type)
     chart, daewuns, auto_meta = get_saju_automated(
@@ -26303,6 +26366,45 @@ def render_roster_reuse_menu(target: str) -> None:
                     st.session_state.show_details = False
                     st.rerun()
 
+
+# ── 개인정보 동의 게이트 (세션 최초 1회) ─────────────────────────────────
+# app_ok=1: Flutter 앱에서 이미 동의한 경우 게이트 자동 통과
+if st.query_params.get("app_ok") == "1":
+    st.session_state["_privacy_consent_v1"] = True
+if not st.session_state.get("_privacy_consent_v1", False):
+    st.markdown("""
+<div class="hero-wrap">
+    <div class="hero-title"><span>사주 맞짱</span></div>
+    <div class="hero-subtitle">서비스 이용 전 개인정보 처리방침을 확인해 주세요</div>
+</div>
+""", unsafe_allow_html=True)
+    st.markdown("#### 📋 개인정보 수집 이용 동의")
+    st.markdown("""
+본 서비스는 「개인정보 보호법」에 따라 아래와 같이 개인정보를 처리합니다.
+
+- **수집·저장 항목:** 별명(최대 10자), 분석 점수·등급 *(케미 방·맞짱 방 이용 시)*
+- **저장 위치:** 국내 서버 (Oracle Cloud 춘천 리전) — 국외 이전 없음
+- **보유 기간:** 방 생성·입장 시각으로부터 **30분 후 자동 삭제**
+- **비저장 항목:** 생년월일, 사주 팔자(간지), 성별 — 서버에 저장되지 않음
+- **이용 제한:** 만 14세 미만은 서비스를 이용할 수 없습니다
+""")
+    with st.expander("개인정보 처리방침 전문 보기"):
+        render_privacy_policy()
+    _consent_agreed = st.checkbox(
+        "위 내용을 확인하였으며, 개인정보 처리방침에 동의합니다.",
+        key="_consent_checkbox_v1",
+    )
+    if st.button(
+        "동의하고 시작하기",
+        type="primary",
+        use_container_width=True,
+        disabled=not _consent_agreed,
+        key="_consent_start_btn",
+    ):
+        st.session_state["_privacy_consent_v1"] = True
+        st.rerun()
+    st.stop()
+# ── END 동의 게이트 ──────────────────────────────────────────────────────
 
 st.markdown("""
 <div class="hero-wrap">
