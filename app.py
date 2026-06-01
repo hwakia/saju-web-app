@@ -26367,10 +26367,28 @@ def render_roster_reuse_menu(target: str) -> None:
                     st.rerun()
 
 
-# ── 개인정보 동의 게이트 (세션 최초 1회) ─────────────────────────────────
-# app_ok=1: Flutter 앱에서 이미 동의한 경우 게이트 자동 통과
-if st.query_params.get("app_ok") == "1":
+# ── 개인정보 동의 게이트 (기기 최초 1회) ─────────────────────────────────
+import streamlit.components.v1 as _stc
+
+# 1) localStorage 동의 기록 확인 → _c=1 로 리다이렉트
+if not st.session_state.get("_privacy_consent_v1", False):
+    if st.query_params.get("app_ok") != "1" and st.query_params.get("_c") != "1":
+        _stc.html("""
+        <script>
+        (function(){
+            if(localStorage.getItem('saju_consent_v1')==='yes'){
+                var u=new URL(window.parent.location.href);
+                u.searchParams.set('_c','1');
+                window.parent.location.replace(u.toString());
+            }
+        })();
+        </script>
+        """, height=0)
+
+# 2) app_ok=1 (Flutter) 또는 _c=1 (localStorage 기록) → 자동 통과
+if st.query_params.get("app_ok") == "1" or st.query_params.get("_c") == "1":
     st.session_state["_privacy_consent_v1"] = True
+
 if not st.session_state.get("_privacy_consent_v1", False):
     st.markdown("""
 <div class="hero-wrap">
@@ -26383,7 +26401,7 @@ if not st.session_state.get("_privacy_consent_v1", False):
 본 서비스는 「개인정보 보호법」에 따라 아래와 같이 개인정보를 처리합니다.
 
 - **수집·저장 항목:** 별명(최대 10자), 분석 점수·등급 *(케미 방·맞짱 방 이용 시)*
-- **저장 위치:** 국내 서버 (Oracle Cloud 춘천 리전) — 국외 이전 없음
+- **저장 위치:** 해외 서버 운영 중 (「개인정보 보호법」 제28조의8에 따라 동의 후 이용)
 - **보유 기간:** 방 생성·입장 시각으로부터 **30분 후 자동 삭제**
 - **비저장 항목:** 생년월일, 사주 팔자(간지), 성별 — 서버에 저장되지 않음
 - **이용 제한:** 만 14세 미만은 서비스를 이용할 수 없습니다
@@ -26402,6 +26420,12 @@ if not st.session_state.get("_privacy_consent_v1", False):
         key="_consent_start_btn",
     ):
         st.session_state["_privacy_consent_v1"] = True
+        # localStorage에 동의 기록 저장 (브라우저 재방문 시 자동 통과)
+        _stc.html("""
+        <script>
+        localStorage.setItem('saju_consent_v1','yes');
+        </script>
+        """, height=0)
         st.rerun()
     st.stop()
 # ── END 동의 게이트 ──────────────────────────────────────────────────────
