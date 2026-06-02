@@ -26417,11 +26417,7 @@ if not st.session_state.get("_privacy_consent_v1", False):
           </div>
         </div>
         <div id="saju-btn-area" style="display:none;margin-top:14px;border-top:1px solid #2A2A4A;padding-top:14px;">
-          <label style="display:flex;align-items:center;gap:8px;color:#CCCCCC;font-size:13px;cursor:pointer;margin-bottom:12px;">
-            <input type="checkbox" id="saju-chk" onchange="window._cc()" style="width:16px;height:16px;accent-color:#3B5BDB;">
-            위 내용을 확인하였으며 동의합니다.
-          </label>
-          <button id="saju-btn" disabled onclick="window._ag()" style="width:100%;padding:14px;background:#2A2A4A;color:#555577;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:not-allowed;transition:all 0.2s;">확인했어요, 시작하기!</button>
+          <button onclick="window._ag()" style="width:100%;padding:14px;background:#3B5BDB;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">확인했어요, 시작하기!</button>
         </div>
       </div>
     `;
@@ -26431,14 +26427,6 @@ if not st.session_state.get("_privacy_consent_v1", False):
       var el = d.getElementById('saju-scroll');
       if(el.scrollTop + el.clientHeight >= el.scrollHeight - 30)
         d.getElementById('saju-btn-area').style.display = 'block';
-    };
-    window._cc = function(){
-      var btn = d.getElementById('saju-btn');
-      var chk = d.getElementById('saju-chk');
-      btn.disabled = !chk.checked;
-      btn.style.background = chk.checked ? '#3B5BDB' : '#2A2A4A';
-      btn.style.color = chk.checked ? 'white' : '#555577';
-      btn.style.cursor = chk.checked ? 'pointer' : 'not-allowed';
     };
     window._ag = function(){
       localStorage.setItem('saju_consent_v1','yes');

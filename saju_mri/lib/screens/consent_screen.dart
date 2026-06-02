@@ -10,8 +10,6 @@ class ConsentScreen extends StatefulWidget {
 }
 
 class _ConsentScreenState extends State<ConsentScreen> {
-  bool _agreed = false;
-
   Future<void> _acceptAndProceed() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('privacy_consent_v1', true);
@@ -141,43 +139,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
               const Spacer(),
 
-              // 동의 체크박스
-              GestureDetector(
-                onTap: () => setState(() => _agreed = !_agreed),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Checkbox(
-                      value: _agreed,
-                      onChanged: (v) => setState(() => _agreed = v ?? false),
-                      checkColor: Colors.white,
-                      fillColor: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.selected)
-                            ? const Color(0xFF3B5BDB)
-                            : const Color(0xFF2A2A4A),
-                      ),
-                      side: const BorderSide(color: Color(0xFF3B5BDB)),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        '위 내용을 확인하였으며, 개인정보 처리방침에 동의합니다.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
               // 동의 버튼
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _agreed ? _acceptAndProceed : null,
+                  onPressed: _acceptAndProceed,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B5BDB),
                     disabledBackgroundColor: const Color(0xFF2A2A4A),
