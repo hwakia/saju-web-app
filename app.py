@@ -26390,43 +26390,66 @@ if st.query_params.get("app_ok") == "1" or st.query_params.get("_c") == "1":
     st.session_state["_privacy_consent_v1"] = True
 
 if not st.session_state.get("_privacy_consent_v1", False):
-    st.markdown("""
-<div class="hero-wrap">
-    <div class="hero-title"><span>사주 맞짱</span></div>
-    <div class="hero-subtitle">서비스 이용 전 개인정보 처리방침을 확인해 주세요</div>
-</div>
-""", unsafe_allow_html=True)
-    st.markdown("#### 📋 개인정보 수집 이용 동의")
-    st.markdown("""
-본 서비스는 「개인정보 보호법」에 따라 아래와 같이 개인정보를 처리합니다.
+    _stc.html("""
+<script>
+(function(){
+  try {
+    var d = window.parent.document;
+    if (d.getElementById('saju-modal-overlay')) return;
 
-- **수집·저장 항목:** 별명(최대 10자), 분석 점수·등급 *(케미 방·맞짱 방 이용 시)*
-- **저장 위치:** 해외 서버 운영 중 (「개인정보 보호법」 제28조의8에 따라 동의 후 이용)
-- **보유 기간:** 방 생성·입장 시각으로부터 **30분 후 자동 삭제**
-- **비저장 항목:** 생년월일, 사주 팔자(간지), 성별 — 서버에 저장되지 않음
-- **이용 제한:** 만 14세 미만은 서비스를 이용할 수 없습니다
-""")
-    with st.expander("개인정보 처리방침 전문 보기"):
-        render_privacy_policy()
-    _consent_agreed = st.checkbox(
-        "위 내용을 확인하였으며, 개인정보 처리방침에 동의합니다.",
-        key="_consent_checkbox_v1",
-    )
-    if st.button(
-        "동의하고 시작하기",
-        type="primary",
-        use_container_width=True,
-        disabled=not _consent_agreed,
-        key="_consent_start_btn",
-    ):
-        st.session_state["_privacy_consent_v1"] = True
-        # localStorage에 동의 기록 저장 (브라우저 재방문 시 자동 통과)
-        _stc.html("""
-        <script>
-        localStorage.setItem('saju_consent_v1','yes');
-        </script>
-        """, height=0)
-        st.rerun()
+    var ov = d.createElement('div');
+    ov.id = 'saju-modal-overlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,5,20,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;';
+    ov.innerHTML = `
+      <div style="background:#1A1A2E;border:1px solid #3B5BDB;border-radius:16px;padding:24px;max-width:440px;width:90%;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <h3 style="color:white;margin:0 0 4px;font-size:17px;">🔒 서비스 이용 안내</h3>
+        <p style="color:#93B4FF;font-size:12px;margin:0 0 10px;">아래로 스크롤해 주세요 ↓</p>
+        <div id="saju-scroll" onscroll="window._sc()" style="overflow-y:auto;flex:1;padding-right:6px;min-height:180px;">
+          <div style="color:#CCCCCC;font-size:13px;line-height:1.85;">
+            <p><b style="color:#93B4FF;">수집 항목</b><br>케미·맞짱 방 이용 시 별명(최대 10자)만 저장됩니다.</p>
+            <p><b style="color:#93B4FF;">보유 기간</b><br>방 입장 시각으로부터 <b>30분 후 자동 삭제</b>됩니다.</p>
+            <p><b style="color:#93B4FF;">비저장 항목</b><br>생년월일, 사주 데이터, 성별은 서버에 저장되지 않습니다.</p>
+            <p><b style="color:#93B4FF;">서버 위치</b><br>현재 해외 서버 운영 중이며, 「개인정보 보호법」 제28조의8에 따라 동의 후 이용이 가능합니다.</p>
+            <p><b style="color:#93B4FF;">광고</b><br>Google AdMob 광고가 표시되며, Google 광고 식별자(GAID)가 처리될 수 있습니다.</p>
+            <p><b style="color:#93B4FF;">이용 제한</b><br>만 14세 미만은 서비스를 이용할 수 없습니다.</p>
+            <p style="font-size:11px;color:#666688;"><a href="https://hwakia.github.io/saju-web-app/privacy_policy" target="_blank" style="color:#93B4FF;">개인정보 처리방침 전문 보기 →</a></p>
+            <div style="height:16px;"></div>
+          </div>
+        </div>
+        <div id="saju-btn-area" style="display:none;margin-top:14px;border-top:1px solid #2A2A4A;padding-top:14px;">
+          <label style="display:flex;align-items:center;gap:8px;color:#CCCCCC;font-size:13px;cursor:pointer;margin-bottom:12px;">
+            <input type="checkbox" id="saju-chk" onchange="window._cc()" style="width:16px;height:16px;accent-color:#3B5BDB;">
+            위 내용을 확인하였으며 동의합니다.
+          </label>
+          <button id="saju-btn" disabled onclick="window._ag()" style="width:100%;padding:14px;background:#2A2A4A;color:#555577;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:not-allowed;transition:all 0.2s;">확인했어요, 시작하기!</button>
+        </div>
+      </div>
+    `;
+    d.body.appendChild(ov);
+
+    window._sc = function(){
+      var el = d.getElementById('saju-scroll');
+      if(el.scrollTop + el.clientHeight >= el.scrollHeight - 30)
+        d.getElementById('saju-btn-area').style.display = 'block';
+    };
+    window._cc = function(){
+      var btn = d.getElementById('saju-btn');
+      var chk = d.getElementById('saju-chk');
+      btn.disabled = !chk.checked;
+      btn.style.background = chk.checked ? '#3B5BDB' : '#2A2A4A';
+      btn.style.color = chk.checked ? 'white' : '#555577';
+      btn.style.cursor = chk.checked ? 'pointer' : 'not-allowed';
+    };
+    window._ag = function(){
+      localStorage.setItem('saju_consent_v1','yes');
+      var u = new URL(window.parent.location.href);
+      u.searchParams.set('_c','1');
+      window.parent.location.replace(u.toString());
+    };
+  } catch(e) { console.log('modal err', e); }
+})();
+</script>
+""", height=0)
     st.stop()
 # ── END 동의 게이트 ──────────────────────────────────────────────────────
 
