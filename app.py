@@ -26391,88 +26391,86 @@ if st.query_params.get("app_ok") == "1" or st.query_params.get("_c") == "1":
 
 if not st.session_state.get("_privacy_consent_v1", False):
     _stc.html("""
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0A0A1E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:16px;}
+h3{color:#fff;font-size:18px;margin-bottom:6px;}
+.sub{color:#93B4FF;font-size:13px;margin-bottom:18px;}
+.sec{background:#12122A;border:1px solid #2A2A4A;border-radius:12px;padding:14px;margin-bottom:14px;}
+.sec-title{color:#fff;font-size:13px;font-weight:700;margin-bottom:10px;line-height:1.6;}
+.badge{background:#3B5BDB;color:#fff;font-size:10px;padding:2px 8px;border-radius:20px;margin-left:5px;vertical-align:middle;}
+.badge-opt{background:#2A6A3A;}
+.row{display:grid;grid-template-columns:58px 1fr;gap:6px;margin-bottom:6px;}
+.lbl{color:#888;font-size:11px;padding-top:1px;}
+.val{color:#CCC;font-size:11px;line-height:1.6;word-break:break-word;}
+.chk-row{display:flex;align-items:center;gap:8px;margin-top:12px;}
+.chk-row input{width:16px;height:16px;flex-shrink:0;accent-color:#3B5BDB;}
+.chk-row label{color:#CCC;font-size:13px;cursor:pointer;}
+.footer{font-size:11px;color:#555577;margin:6px 0 18px;line-height:1.7;}
+.footer a{color:#93B4FF;}
+.divider{border-top:1px solid #2A2A4A;margin-bottom:14px;}
+#btn{width:100%;padding:16px;background:#2A2A4A;color:#555577;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:not-allowed;transition:background 0.2s,color 0.2s;}
+#btn.on{background:#3B5BDB;color:#fff;cursor:pointer;}
+</style>
+
+<h3>🔒 개인정보 수집·이용 동의</h3>
+<p class="sub">아래 내용을 확인하고 동의해 주세요.</p>
+
+<div class="sec">
+  <p class="sec-title">① <span class="badge">필수</span> 사주 분석 — 개인정보 수집·이용 및 국외 이전</p>
+  <div class="row"><span class="lbl">수집 항목</span><span class="val">생년월일, 출생시간, 성별</span></div>
+  <div class="row"><span class="lbl">수집 목적</span><span class="val">사주 팔자 계산 및 분석 결과 제공</span></div>
+  <div class="row"><span class="lbl">보유 기간</span><span class="val">계산 완료 즉시 삭제 (서버 미저장)</span></div>
+  <div class="row"><span class="lbl">국외 이전</span><span class="val">미국 Streamlit Cloud — 사주 계산 처리</span></div>
+  <div class="row"><span class="lbl">거부 시</span><span class="val">서비스 이용 불가</span></div>
+  <div class="chk-row"><input type="checkbox" id="c1" onchange="chk()"><label for="c1">위 내용에 동의합니다.</label></div>
+</div>
+
+<div class="sec">
+  <p class="sec-title">② <span class="badge">필수</span> 케미·맞짱 방 — 개인정보 수집·이용 및 국외 이전</p>
+  <div class="row"><span class="lbl">수집 항목</span><span class="val">별명(최대 10자), 분석 점수·등급</span></div>
+  <div class="row"><span class="lbl">수집 목적</span><span class="val">케미·맞짱 방 기능 제공</span></div>
+  <div class="row"><span class="lbl">보유 기간</span><span class="val">방 입장 시각으로부터 30분 후 자동 삭제</span></div>
+  <div class="row"><span class="lbl">국외 이전</span><span class="val">미국 Supabase Inc. — 임시 저장</span></div>
+  <div class="row"><span class="lbl">거부 시</span><span class="val">케미·맞짱 방 기능 이용 불가 (사주 분석은 이용 가능)</span></div>
+  <div class="chk-row"><input type="checkbox" id="c2" onchange="chk()"><label for="c2">위 내용에 동의합니다.</label></div>
+</div>
+
+<div class="sec">
+  <p class="sec-title">③ <span class="badge badge-opt">선택</span> Google AdMob 광고 식별자 수집·이용</p>
+  <div class="row"><span class="lbl">수집 항목</span><span class="val">광고 식별자(GAID)</span></div>
+  <div class="row"><span class="lbl">수집 목적</span><span class="val">맞춤형 광고 제공</span></div>
+  <div class="row"><span class="lbl">처리자</span><span class="val">Google LLC (미국)</span></div>
+  <div class="row"><span class="lbl">미동의 시</span><span class="val">비맞춤형 광고 제공 (서비스 이용 가능)</span></div>
+  <div class="chk-row"><input type="checkbox" id="c3"><label for="c3">위 내용에 동의합니다. (선택)</label></div>
+</div>
+
+<p class="footer">
+  만 14세 미만은 서비스를 이용할 수 없습니다.<br>
+  동의를 거부할 권리가 있으며, ①② 거부 시 서비스 이용이 제한됩니다.<br>
+  <a href="https://hwakia.github.io/saju-web-app/privacy_policy" target="_blank">개인정보 처리방침 전문 보기 →</a>
+</p>
+<div class="divider"></div>
+<button id="btn" disabled onclick="agree()">① ② 필수 동의 후 활성화</button>
+
 <script>
-(function(){
-  try {
-    var d = window.parent.document;
-    if (d.getElementById('saju-modal-overlay')) return;
-
-    var ov = d.createElement('div');
-    ov.id = 'saju-modal-overlay';
-    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,5,20,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;';
-
-    var row = function(label, value) {
-      return '<tr><td style="color:#888;font-size:11px;padding:3px 8px 3px 0;white-space:normal;word-break:keep-all;vertical-align:top;width:58px;">'+label+'</td><td style="color:#CCC;font-size:11px;padding:3px 0;line-height:1.5;word-break:break-word;overflow-wrap:break-word;">'+value+'</td></tr>';
-    };
-    var section = function(num, badge, title, rows, chkId) {
-      return '<div style="background:#12122A;border:1px solid #2A2A4A;border-radius:10px;padding:14px;margin-bottom:12px;">'
-        +'<p style="margin:0 0 8px;font-size:12px;font-weight:700;color:white;word-break:keep-all;line-height:1.5;">'+num+' <span style="background:#3B5BDB;color:white;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:4px;">'+badge+'</span> '+title+'</p>'
-        +'<table style="width:100%;border-collapse:collapse;table-layout:fixed;">'+rows+'</table>'
-        +'<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;color:#CCC;font-size:12px;">'
-        +'<input type="checkbox" id="'+chkId+'" onchange="window._chk()" style="width:15px;height:15px;flex-shrink:0;accent-color:#3B5BDB;"> 위 내용에 동의합니다.</label>'
-        +'</div>';
-    };
-
-    ov.innerHTML = '<div style="background:#1A1A2E;border:1px solid #3B5BDB;border-radius:16px;padding:22px;max-width:460px;width:min(460px,92vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);">'
-      +'<h3 style="color:white;margin:0 0 4px;font-size:16px;">🔒 개인정보 수집·이용 동의</h3>'
-      +'<p style="color:#93B4FF;font-size:11px;margin:0 0 12px;">동의 후 서비스를 이용하실 수 있습니다. ↓ 스크롤</p>'
-      +'<div id="saju-scroll" style="overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding-right:4px;">'
-
-      + section('①', '필수', '사주 분석 — 개인정보 수집·이용 및 국외 이전',
-          row('수집 항목','생년월일, 출생시간, 성별')
-          +row('수집 목적','사주 팔자 계산 및 분석 결과 제공')
-          +row('보유 기간','계산 완료 즉시 삭제 (서버 미저장)')
-          +row('국외 이전','미국 Streamlit Cloud (Snowflake Inc.) — 사주 계산 처리')
-          +row('거부 시','서비스 이용 불가'),
-          'chk1')
-
-      + section('②', '필수', '케미·맞짱 방 — 개인정보 수집·이용 및 국외 이전',
-          row('수집 항목','별명(최대 10자), 분석 점수·등급')
-          +row('수집 목적','케미·맞짱 방 기능 제공')
-          +row('보유 기간','방 입장 시각으로부터 30분 후 자동 삭제')
-          +row('국외 이전','미국 Supabase Inc. — 임시 저장')
-          +row('거부 시','케미·맞짱 방 기능 이용 불가'),
-          'chk2')
-
-      + section('③', '선택', 'Google AdMob 광고 식별자 수집·이용',
-          row('수집 항목','광고 식별자(GAID)')
-          +row('수집 목적','맞춤형 광고 제공')
-          +row('처리자','Google LLC (미국)')
-          +row('미동의 시','비맞춤형 광고 제공 (서비스 이용 가능)'),
-          'chk3')
-
-      +'<p style="font-size:11px;color:#555577;margin:4px 0 12px;">만 14세 미만은 서비스를 이용할 수 없습니다. 동의를 거부할 권리가 있으며, ①② 거부 시 서비스 이용이 제한됩니다.<br>'
-      +'<a href="https://hwakia.github.io/saju-web-app/privacy_policy" target="_blank" style="color:#93B4FF;">개인정보 처리방침 전문 보기 →</a></p>'
-      +'</div>'
-      +'<div style="margin-top:14px;border-top:1px solid #2A2A4A;padding-top:14px;">'
-      +'<button id="saju-btn" disabled onclick="window._ag()" style="width:100%;padding:14px;background:#2A2A4A;color:#555577;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:not-allowed;transition:all 0.2s;">시작하기 (①② 필수 동의 후 활성화)</button>'
-      +'</div>'
-      +'</div>';
-
-    d.body.appendChild(ov);
-
-    window._chk = function(){
-      var c1 = d.getElementById('chk1'), c2 = d.getElementById('chk2');
-      var btn = d.getElementById('saju-btn');
-      var ok = c1 && c2 && c1.checked && c2.checked;
-      btn.disabled = !ok;
-      btn.style.background = ok ? '#3B5BDB' : '#2A2A4A';
-      btn.style.color = ok ? 'white' : '#555577';
-      btn.style.cursor = ok ? 'pointer' : 'not-allowed';
-      btn.textContent = ok ? '확인했어요, 시작하기!' : '시작하기 (①② 필수 동의 후 활성화)';
-    };
-    window._ag = function(){
-      var c3 = d.getElementById('chk3');
-      localStorage.setItem('saju_consent_v1','yes');
-      localStorage.setItem('saju_admob_consent', c3 && c3.checked ? 'yes' : 'no');
-      var u = new URL(window.parent.location.href);
-      u.searchParams.set('_c','1');
-      window.parent.location.replace(u.toString());
-    };
-  } catch(e) { console.log('modal err', e); }
-})();
+function chk(){
+  var ok=document.getElementById('c1').checked&&document.getElementById('c2').checked;
+  var b=document.getElementById('btn');
+  b.disabled=!ok;
+  b.className=ok?'on':'';
+  b.textContent=ok?'확인했어요, 시작하기!':'① ② 필수 동의 후 활성화';
+}
+function agree(){
+  var c3=document.getElementById('c3');
+  localStorage.setItem('saju_consent_v1','yes');
+  localStorage.setItem('saju_admob_consent',c3&&c3.checked?'yes':'no');
+  var u=new URL(window.parent.location.href);
+  u.searchParams.set('_c','1');
+  window.parent.location.replace(u.toString());
+}
 </script>
-""", height=0)
+""", height=920)
     st.stop()
 # ── END 동의 게이트 ──────────────────────────────────────────────────────
 
