@@ -11892,7 +11892,7 @@ function gn(t){{
   }}
 }}
 </script>
-""", height=60, scrolling=False)
+""", height=78, scrolling=False)
 
 
 BG_IMAGE_B64 = load_background_image_base64()
@@ -22433,7 +22433,7 @@ function setTab(k,v){{
   }}
 }}
 </script>
-""", height=60, scrolling=False)
+""", height=78, scrolling=False)
 
     return str(st.session_state.get(state_key, default))
 
