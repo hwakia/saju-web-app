@@ -11857,29 +11857,30 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
-    """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼."""
-    cols = st.columns(5)
-    with cols[0]:
+    """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼 — 모바일 2줄 그리드."""
+    r1 = st.columns(3)
+    r2 = st.columns(2)
+    with r1[0]:
         if st.button("🏠 메인", use_container_width=True, key=f"{prefix}_go_home"):
             log_event("menu_click", "navigation", {"target": "home"})
             reset_navigation_to(None)
             st.rerun()
-    with cols[1]:
+    with r1[1]:
         if st.button("🌸 진단", use_container_width=True, key=f"{prefix}_go_single"):
             log_event("menu_click", "navigation", {"target": "solo"})
             reset_navigation_to("혼자 보기")
             st.rerun()
-    with cols[2]:
+    with r1[2]:
         if st.button("💞 케미", use_container_width=True, key=f"{prefix}_go_battle"):
             log_event("menu_click", "navigation", {"target": "chemistry"})
             reset_navigation_to("케미 분석")
             st.rerun()
-    with cols[3]:
-        if st.button("🧑‍🤝‍🧑 모임 케미 초대", use_container_width=True, key=f"{prefix}_go_croom"):
+    with r2[0]:
+        if st.button("🧑‍🤝‍🧑 모임 케미", use_container_width=True, key=f"{prefix}_go_croom"):
             log_event("menu_click", "navigation", {"target": "chemistry_room"})
             reset_navigation_to("케미방")
             st.rerun()
-    with cols[4]:
+    with r2[1]:
         if st.button("⚔️ 맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
             log_event("menu_click", "navigation", {"target": "battle_room"})
             reset_navigation_to("맞짱방")
