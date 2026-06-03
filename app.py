@@ -8304,15 +8304,17 @@ var css=`
     .pipeline-card { padding: 0.65rem 0.5rem !important; }
     .summary-chip { font-size: 0.78rem !important; padding: 0.18rem 0.5rem !important; }
 }
-@media (max-width: 360px) {
-    [data-testid="stHorizontalBlock"]:has(>[data-testid="column"]:nth-child(3)) > [data-testid="column"] {
-        min-width: 100% !important;
-        flex: 1 1 100% !important;
-    }
-    [data-testid="stHorizontalBlock"] [data-testid="stButton"] button {
-        font-size: 0.65rem !important;
-        padding: 0.25rem 0.15rem !important;
-    }
+/* 컬럼 절대 스택 금지 — st.columns()가 어떤 화면 폭에서도 가로 유지 */
+[data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"] button {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: clamp(9px, 2.5vw, 14px) !important;
+    padding: 5px 2px !important;
 }
 `;
 var p=window.parent?window.parent.document:document;
@@ -8739,7 +8741,7 @@ div[data-testid="stRadio"] span {
 .manse-el-목 { background:linear-gradient(135deg,#e7fff6,#bcebd9); }
 .manse-el-화 { background:linear-gradient(135deg,#fff0f4,#ffb6c9); }
 .manse-el-토 { background:linear-gradient(135deg,#fff7db,#efd07c); }
-.manse-el-금 { background:linear-gradient(135deg,#181810,#1e2438); }
+.manse-el-금 { background:linear-gradient(135deg,#3a3c50,#252840); }
 .manse-el-수 { background:linear-gradient(135deg,#eef6ff,#b7d7ff); }
 .manse-ko {
     text-align:center;
@@ -11702,7 +11704,7 @@ def render_admin_analytics_dashboard() -> None:
         if not analytics_storage_configured():
             st.warning("PostgreSQL이 아직 설정되지 않았습니다. 현재는 임시 로컬 로그만 표시됩니다.")
             st.markdown("**환경변수(Secrets)에 필요한 값**")
-            st.text_area("Secrets 예시", value='ADMIN_KEY = "원하는관리자키"\nPG_DATABASE_URL = "postgresql://user:pw@host:5432/db"', height=80, disabled=True)
+            st.text_area("Secrets 예시", value='ADMIN_KEY = "원하는관리자키"\nSUPABASE_URL = "https://xxx.supabase.co"\nSUPABASE_SERVICE_KEY = "eyJ..."', height=80, disabled=True)
             st.markdown("**PostgreSQL에서 1회 실행할 SQL**")
             st.text_area("PostgreSQL DDL", value=analytics_setup_sql(), height=200, disabled=True)
 
@@ -11811,34 +11813,28 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
-    """결과 화면에서 메인/각 모드로 회귀하는 공통 버튼 — 모바일 2줄 그리드."""
-    r1 = st.columns(3)
-    r2 = st.columns(2)
-    with r1[0]:
-        if st.button("🏠 메인", use_container_width=True, key=f"{prefix}_go_home"):
+    """결과 화면 네비게이션 — 이모지 5열 1줄 바."""
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        if st.button("🏠\n메인", use_container_width=True, key=f"{prefix}_go_home"):
             log_event("menu_click", "navigation", {"target": "home"})
-            reset_navigation_to(None)
-            st.rerun()
-    with r1[1]:
-        if st.button("🌸 진단", use_container_width=True, key=f"{prefix}_go_single"):
+            reset_navigation_to(None); st.rerun()
+    with c2:
+        if st.button("🌸\n진단", use_container_width=True, key=f"{prefix}_go_single"):
             log_event("menu_click", "navigation", {"target": "solo"})
-            reset_navigation_to("혼자 보기")
-            st.rerun()
-    with r1[2]:
-        if st.button("💞 케미", use_container_width=True, key=f"{prefix}_go_battle"):
+            reset_navigation_to("혼자 보기"); st.rerun()
+    with c3:
+        if st.button("💞\n케미", use_container_width=True, key=f"{prefix}_go_battle"):
             log_event("menu_click", "navigation", {"target": "chemistry"})
-            reset_navigation_to("케미 분석")
-            st.rerun()
-    with r2[0]:
-        if st.button("🧑‍🤝‍🧑 모임 케미", use_container_width=True, key=f"{prefix}_go_croom"):
+            reset_navigation_to("케미 분석"); st.rerun()
+    with c4:
+        if st.button("👫\n모임", use_container_width=True, key=f"{prefix}_go_croom"):
             log_event("menu_click", "navigation", {"target": "chemistry_room"})
-            reset_navigation_to("케미방")
-            st.rerun()
-    with r2[1]:
-        if st.button("⚔️ 맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
+            reset_navigation_to("케미방"); st.rerun()
+    with c5:
+        if st.button("⚔️\n맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
             log_event("menu_click", "navigation", {"target": "battle_room"})
-            reset_navigation_to("맞짱방")
-            st.rerun()
+            reset_navigation_to("맞짱방"); st.rerun()
 
 
 BG_IMAGE_B64 = load_background_image_base64()
@@ -14938,7 +14934,7 @@ def render_chemistry_room_page() -> None:
     """🔮 비밀케미 방 — Supabase 기반 그룹 케미 분석."""
 
     if _get_pg() is None:
-        st.error("모임 케미 초대는 데이터베이스 연동이 필요합니다. 환경변수에 PG_DATABASE_URL을 설정해 주세요.")
+        st.error("모임 케미 초대는 데이터베이스 연동이 필요합니다. Streamlit Secrets에 SUPABASE_URL과 SUPABASE_SERVICE_KEY를 설정해 주세요.")
         if st.button("메인으로", use_container_width=True, key="room_no_sb_home"):
             reset_navigation_to(None)
             st.rerun()
@@ -15410,7 +15406,7 @@ def render_battle_room_page() -> None:
     """⚔️ 사주 맞짱 방 — Supabase 기반 그룹 배틀."""
 
     if _get_pg() is None:
-        st.error("맞짱 방은 데이터베이스 연동이 필요합니다. 환경변수에 PG_DATABASE_URL을 설정해 주세요.")
+        st.error("맞짱 방은 데이터베이스 연동이 필요합니다. Streamlit Secrets에 SUPABASE_URL과 SUPABASE_SERVICE_KEY를 설정해 주세요.")
         if st.button("메인으로", use_container_width=True, key="broom_no_sb_home"):
             reset_navigation_to(None)
             st.rerun()
@@ -24917,20 +24913,21 @@ def render_origin_identity_table(
 
     # ── 오행 분포 (inline style) ──────────────────────────────
     _OH_COLORS = {
-        "목": ("linear-gradient(135deg,#bcebd9,#8dd8b4)", "#1a4a35"),
-        "화": ("linear-gradient(135deg,#ffb6c9,#ff8ca8)", "#4a1520"),
-        "토": ("linear-gradient(135deg,#efd07c,#d4a853)", "#3a2800"),
-        "금": ("linear-gradient(135deg,#c8d8e8,#a0b8c8)", "#1a2a38"),
-        "수": ("linear-gradient(135deg,#b7d7ff,#80b4ff)", "#0a2040"),
+        "목": "#7ee8b8",   # 초록
+        "화": "#ffaac0",   # 분홍
+        "토": "#f0c96a",   # 황금
+        "금": "#b8cfe0",   # 연청
+        "수": "#90c4ff",   # 하늘
     }
-    p.append("<div style='display:flex;gap:.3rem;flex-wrap:wrap;margin:.5rem 0 .4rem 0;justify-content:center;'>")
+    p.append("<div style='display:flex;gap:.45rem;flex-wrap:wrap;margin:.6rem 0 .5rem 0;justify-content:center;'>")
     for el_key in ["목", "화", "토", "금", "수"]:
         cnt   = ohaeng_cnt.get(el_key, 0)
         label = OHAENG_LABEL[el_key]
-        bg, tc = _OH_COLORS.get(el_key, ("#888", "#fff"))
+        bg    = _OH_COLORS.get(el_key, "#ccc")
         p.append(
-            f"<div style='padding:.2rem .48rem;border-radius:999px;font-size:.82rem;"
-            f"font-weight:950;background:{bg};color:{tc};border:1px solid rgba(212,168,83,.3);'>"
+            f"<div style='padding:.32rem .7rem;border-radius:999px;font-size:.9rem;"
+            f"font-weight:900;background:{bg};color:#111111;"
+            f"box-shadow:0 1px 4px rgba(0,0,0,.25);'>"
             f"{label}({cnt})</div>"
         )
     p.append("</div>")
