@@ -26370,112 +26370,45 @@ def render_roster_reuse_menu(target: str) -> None:
 # ── 개인정보 동의 게이트 (기기 최초 1회) ─────────────────────────────────
 import streamlit.components.v1 as _stc
 
-# 1) localStorage 동의 기록 확인 → _c=1 로 리다이렉트
-if not st.session_state.get("_privacy_consent_v1", False):
-    if st.query_params.get("app_ok") != "1" and st.query_params.get("_c") != "1":
-        _stc.html("""
-        <script>
-        (function(){
-            try {
-                var ls = window.top.localStorage;
-                if(ls.getItem('saju_consent_v1')==='yes'){
-                    var u=new URL(window.top.location.href);
-                    u.searchParams.set('_c','1');
-                    window.top.location.replace(u.toString());
-                }
-            } catch(e){}
-        })();
-        </script>
-        """, height=0)
-
-# 2) app_ok=1 (Flutter) 또는 _c=1 (localStorage 기록) → 자동 통과
+# app_ok=1 (Flutter) 또는 _c=1 (이전 동의) → 자동 통과
 if st.query_params.get("app_ok") == "1" or st.query_params.get("_c") == "1":
     st.session_state["_privacy_consent_v1"] = True
 
 if not st.session_state.get("_privacy_consent_v1", False):
-    _stc.html("""
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{width:100%;background:#0A0A1E;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:16px 16px 24px;}
-h3{color:#fff;font-size:18px;margin-bottom:6px;}
-.sub{color:#93B4FF;font-size:13px;margin-bottom:18px;}
-.sec{background:#12122A;border:1px solid #2A2A4A;border-radius:12px;padding:14px;margin-bottom:14px;}
-.sec-title{color:#fff;font-size:13px;font-weight:700;margin-bottom:10px;line-height:1.6;}
-.badge{background:#3B5BDB;color:#fff;font-size:10px;padding:2px 8px;border-radius:20px;margin-left:5px;vertical-align:middle;}
-.badge-opt{background:#2A6A3A;}
-.row{display:grid;grid-template-columns:58px 1fr;gap:6px;margin-bottom:6px;}
-.lbl{color:#888;font-size:11px;padding-top:1px;}
-.val{color:#CCC;font-size:11px;line-height:1.6;word-break:break-word;}
-.chk-row{display:flex;align-items:center;gap:10px;margin-top:12px;}
-.chk-row input{width:18px;height:18px;flex-shrink:0;accent-color:#3B5BDB;}
-.chk-row label{color:#CCC;font-size:13px;cursor:pointer;line-height:1.4;}
-.footer{font-size:11px;color:#555577;margin:6px 0 18px;line-height:1.7;}
-.footer a{color:#93B4FF;}
-.divider{border-top:1px solid #2A2A4A;margin-bottom:16px;}
-#btn{width:100%;padding:16px;background:#2A2A4A;color:#555577;border:none;border-radius:12px;font-size:16px;font-weight:700;transition:background 0.2s,color 0.2s;-webkit-appearance:none;}
-#btn.on{background:#3B5BDB;color:#fff;}
-</style>
-
-<h3>🔒 개인정보 수집·이용 동의</h3>
-<p class="sub">아래 내용을 확인하고 동의해 주세요.</p>
-
-<div class="sec">
-  <p class="sec-title">① <span class="badge">필수</span> 사주 분석 — 개인정보 수집·이용 및 국외 이전</p>
-  <div class="row"><span class="lbl">수집 항목</span><span class="val">생년월일, 출생시간, 성별</span></div>
-  <div class="row"><span class="lbl">수집 목적</span><span class="val">사주 팔자 계산 및 분석 결과 제공</span></div>
-  <div class="row"><span class="lbl">보유 기간</span><span class="val">계산 완료 즉시 삭제 (서버 미저장)</span></div>
-  <div class="row"><span class="lbl">국외 이전</span><span class="val">미국 Streamlit Cloud — 사주 계산 처리</span></div>
-  <div class="row"><span class="lbl">거부 시</span><span class="val">서비스 이용 불가</span></div>
-  <div class="chk-row"><input type="checkbox" id="c1" onchange="chk()"><label for="c1">위 내용에 동의합니다.</label></div>
+    st.markdown("""
+<div style="background:#12122A;border:1px solid #2A2A4A;border-radius:12px;padding:16px;margin-bottom:14px;">
+<p style="color:#fff;font-size:14px;font-weight:700;margin:0 0 10px;">① 필수 — 사주 분석 개인정보 수집·이용 및 국외 이전</p>
+<table style="width:100%;font-size:12px;border-collapse:collapse;">
+<tr><td style="color:#888;width:62px;vertical-align:top;padding:3px 0;">수집 항목</td><td style="color:#CCC;padding:3px 0;">생년월일, 출생시간, 성별</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">수집 목적</td><td style="color:#CCC;padding:3px 0;">사주 팔자 계산 및 분석 결과 제공</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">보유 기간</td><td style="color:#CCC;padding:3px 0;">계산 완료 즉시 삭제 (서버 미저장)</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">국외 이전</td><td style="color:#CCC;padding:3px 0;">미국 Streamlit Cloud — 사주 계산 처리</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">거부 시</td><td style="color:#CCC;padding:3px 0;">서비스 이용 불가</td></tr>
+</table>
 </div>
+""", unsafe_allow_html=True)
+    c1 = st.checkbox("① 위 내용에 동의합니다. (필수)", key="_consent_c1")
 
-<div class="sec">
-  <p class="sec-title">② <span class="badge badge-opt">선택</span> Google AdMob 광고 식별자 수집·이용</p>
-  <div class="row"><span class="lbl">수집 항목</span><span class="val">광고 식별자(GAID)</span></div>
-  <div class="row"><span class="lbl">수집 목적</span><span class="val">맞춤형 광고 제공</span></div>
-  <div class="row"><span class="lbl">처리자</span><span class="val">Google LLC (미국)</span></div>
-  <div class="row"><span class="lbl">미동의 시</span><span class="val">비맞춤형 광고 제공 (서비스 이용 가능)</span></div>
-  <div class="chk-row"><input type="checkbox" id="c2"><label for="c2">위 내용에 동의합니다. (선택)</label></div>
+    st.markdown("""
+<div style="background:#12122A;border:1px solid #2A2A4A;border-radius:12px;padding:16px;margin-bottom:14px;margin-top:8px;">
+<p style="color:#fff;font-size:14px;font-weight:700;margin:0 0 10px;">② 선택 — Google AdMob 광고 식별자 수집·이용</p>
+<table style="width:100%;font-size:12px;border-collapse:collapse;">
+<tr><td style="color:#888;width:62px;vertical-align:top;padding:3px 0;">수집 항목</td><td style="color:#CCC;padding:3px 0;">광고 식별자(GAID)</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">수집 목적</td><td style="color:#CCC;padding:3px 0;">맞춤형 광고 제공</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">처리자</td><td style="color:#CCC;padding:3px 0;">Google LLC (미국)</td></tr>
+<tr><td style="color:#888;vertical-align:top;padding:3px 0;">미동의 시</td><td style="color:#CCC;padding:3px 0;">비맞춤형 광고 제공 (이용 가능)</td></tr>
+</table>
 </div>
+""", unsafe_allow_html=True)
+    c2 = st.checkbox("② 위 내용에 동의합니다. (선택)", key="_consent_c2")
 
-<p class="footer">
-  만 14세 미만은 서비스를 이용할 수 없습니다.<br>
-  동의를 거부할 권리가 있으며, ① 거부 시 서비스 이용이 제한됩니다.<br>
-  케미·맞짱 방 이용 시 별도 동의를 받습니다.<br>
-  <a href="https://hwakia.github.io/saju-web-app/privacy_policy" target="_blank">개인정보 처리방침 전문 보기 →</a>
-</p>
-<div class="divider"></div>
-<button id="btn" disabled onclick="agree()">① 필수 동의 후 활성화</button>
+    st.caption("만 14세 미만은 이용할 수 없습니다. ① 거부 시 서비스 이용이 제한됩니다. 케미·맞짱 방 이용 시 별도 동의를 받습니다.")
+    st.markdown("[개인정보 처리방침 전문 보기](https://hwakia.github.io/saju-web-app/privacy_policy)")
 
-<script>
-function chk(){
-  var ok=document.getElementById('c1').checked;
-  var b=document.getElementById('btn');
-  b.disabled=!ok;
-  b.className=ok?'on':'';
-  b.textContent=ok?'확인했어요, 시작하기!':'① 필수 동의 후 활성화';
-}
-function agree(){
-  var c2=document.getElementById('c2');
-  try{
-    window.top.localStorage.setItem('saju_consent_v1','yes');
-    window.top.localStorage.setItem('saju_admob_consent',c2&&c2.checked?'yes':'no');
-  }catch(e){}
-  try{
-    var u=new URL(window.top.location.href);
-    u.searchParams.set('_c','1');
-    window.top.location.replace(u.toString());
-  }catch(e){
-    try{
-      var u2=new URL(window.parent.location.href);
-      u2.searchParams.set('_c','1');
-      window.parent.location.replace(u2.toString());
-    }catch(e2){}
-  }
-}
-</script>
-""", height=760)
+    if st.button("확인했어요, 시작하기!", disabled=not c1, type="primary", use_container_width=True, key="_consent_btn"):
+        st.session_state["_privacy_consent_v1"] = True
+        st.session_state["_admob_consent_v1"] = c2
+        st.rerun()
     st.stop()
 # ── END 동의 게이트 ──────────────────────────────────────────────────────
 
