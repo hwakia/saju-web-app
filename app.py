@@ -26399,23 +26399,23 @@ if not st.session_state.get("_privacy_consent_v1", False):
 
     var ov = d.createElement('div');
     ov.id = 'saju-modal-overlay';
-    ov.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100%;background:rgba(5,5,20,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;box-sizing:border-box;padding:12px;overflow:hidden;';
+    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,5,20,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;';
 
     var row = function(label, value) {
-      return '<tr><td style="color:#888;font-size:11px;padding:3px 8px 3px 0;white-space:normal;word-break:keep-all;vertical-align:top;width:60px;">'+label+'</td><td style="color:#CCC;font-size:11px;padding:3px 0;line-height:1.5;word-break:break-word;">'+value+'</td></tr>';
+      return '<tr><td style="color:#888;font-size:11px;padding:3px 8px 3px 0;white-space:normal;word-break:keep-all;vertical-align:top;width:58px;">'+label+'</td><td style="color:#CCC;font-size:11px;padding:3px 0;line-height:1.5;word-break:break-word;overflow-wrap:break-word;">'+value+'</td></tr>';
     };
     var section = function(num, badge, title, rows, chkId) {
-      return '<div style="background:#12122A;border:1px solid #2A2A4A;border-radius:10px;padding:12px;margin-bottom:10px;box-sizing:border-box;">'
-        +'<p style="margin:0 0 8px;font-size:11px;font-weight:700;color:white;word-break:break-all;line-height:1.5;">'+num+' <span style="background:#3B5BDB;color:white;font-size:10px;padding:2px 6px;border-radius:20px;margin-left:3px;">'+badge+'</span> '+title+'</p>'
+      return '<div style="background:#12122A;border:1px solid #2A2A4A;border-radius:10px;padding:14px;margin-bottom:12px;">'
+        +'<p style="margin:0 0 8px;font-size:12px;font-weight:700;color:white;word-break:keep-all;line-height:1.5;">'+num+' <span style="background:#3B5BDB;color:white;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:4px;">'+badge+'</span> '+title+'</p>'
         +'<table style="width:100%;border-collapse:collapse;table-layout:fixed;">'+rows+'</table>'
         +'<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;color:#CCC;font-size:12px;">'
         +'<input type="checkbox" id="'+chkId+'" onchange="window._chk()" style="width:15px;height:15px;flex-shrink:0;accent-color:#3B5BDB;"> 위 내용에 동의합니다.</label>'
         +'</div>';
     };
 
-    ov.innerHTML = '<div style="background:#1A1A2E;border:1px solid #3B5BDB;border-radius:16px;padding:18px;width:100%;max-width:460px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);box-sizing:border-box;overflow:hidden;">'
-      +'<h3 style="color:white;margin:0 0 4px;font-size:15px;flex-shrink:0;">🔒 개인정보 수집·이용 동의</h3>'
-      +'<p style="color:#93B4FF;font-size:11px;margin:0 0 10px;flex-shrink:0;">동의 후 서비스를 이용하실 수 있습니다. ↓ 스크롤</p>'
+    ov.innerHTML = '<div style="background:#1A1A2E;border:1px solid #3B5BDB;border-radius:16px;padding:22px;max-width:460px;width:calc(100vw - 32px);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);box-sizing:border-box;overflow:hidden;">'
+      +'<h3 style="color:white;margin:0 0 4px;font-size:16px;flex-shrink:0;">🔒 개인정보 수집·이용 동의</h3>'
+      +'<p style="color:#93B4FF;font-size:11px;margin:0 0 12px;flex-shrink:0;">동의 후 서비스를 이용하실 수 있습니다. ↓ 스크롤</p>'
       +'<div id="saju-scroll" style="overflow-y:auto;overflow-x:hidden;flex:1;padding-right:4px;">'
 
       + section('①', '필수', '사주 분석 — 개인정보 수집·이용 및 국외 이전',
