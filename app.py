@@ -11839,29 +11839,39 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
     st.session_state.saved_participants = saved
 
 
+# 네비 대상: 라벨 → (이동 모드, 이벤트명)
+_MODE_JUMP_TARGETS = {
+    "🏠 메인": (None, "home"),
+    "🌸 진단": ("혼자 보기", "solo"),
+    "💞 케미": ("케미 분석", "chemistry"),
+    "👫 모임": ("케미방", "chemistry_room"),
+    "⚔️ 맞짱": ("맞짱방", "battle_room"),
+}
+
+
+def _mode_jump_on_change(state_key: str) -> None:
+    """네비 선택 콜백 — 선택 즉시 해제해 재클릭/무한 rerun을 방지하고 이동한다."""
+    sel = st.session_state.get(state_key)
+    if not sel or sel not in _MODE_JUMP_TARGETS:
+        return
+    st.session_state[state_key] = None  # 콜백 안에서는 위젯 상태 수정 가능
+    dest, evt = _MODE_JUMP_TARGETS[sel]
+    log_event("menu_click", "navigation", {"target": evt})
+    reset_navigation_to(dest)
+
+
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
-    """결과 화면 네비게이션 — st.button() 기반."""
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        if st.button("🏠\n메인", use_container_width=True, key=f"{prefix}_go_home"):
-            log_event("menu_click", "navigation", {"target": "home"})
-            reset_navigation_to(None); st.rerun()
-    with c2:
-        if st.button("🌸\n진단", use_container_width=True, key=f"{prefix}_go_single"):
-            log_event("menu_click", "navigation", {"target": "solo"})
-            reset_navigation_to("혼자 보기"); st.rerun()
-    with c3:
-        if st.button("💞\n케미", use_container_width=True, key=f"{prefix}_go_battle"):
-            log_event("menu_click", "navigation", {"target": "chemistry"})
-            reset_navigation_to("케미 분석"); st.rerun()
-    with c4:
-        if st.button("👫\n모임", use_container_width=True, key=f"{prefix}_go_croom"):
-            log_event("menu_click", "navigation", {"target": "chemistry_room"})
-            reset_navigation_to("케미방"); st.rerun()
-    with c5:
-        if st.button("⚔️\n맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
-            log_event("menu_click", "navigation", {"target": "battle_room"})
-            reset_navigation_to("맞짱방"); st.rerun()
+    """결과 화면 네비게이션 — st.segmented_control 기반(WebView에서도 가로 유지)."""
+    state_key = f"{prefix}_nav_seg"
+    st.segmented_control(
+        "페이지 이동",
+        options=list(_MODE_JUMP_TARGETS),
+        default=None,
+        key=state_key,
+        label_visibility="collapsed",
+        on_change=_mode_jump_on_change,
+        args=(state_key,),
+    )
 
 
 BG_IMAGE_B64 = load_background_image_base64()
@@ -22340,24 +22350,29 @@ def render_sewun_text_overview(payload: dict) -> None:
 
 
 def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
-    """결과 화면 탭 메뉴 — st.button() 기반."""
-    pages = [
-        ("🏥 진단서",   "🏥 사주 진단서"),
-        ("📡 사주예보", "📡 사주 예보"),
-        ("🪪 원국",     "🪪 사주 원국"),
-        ("🔎 상세",     "전문가 상세보기"),
-    ]
-    # 이전 버전 값들도 유효값에 포함해 세션 충돌 방지
+    """결과 화면 탭 메뉴 — st.segmented_control 기반(WebView에서도 가로 유지)."""
+    pages = {
+        "🏥 진단서":   "🏥 사주 진단서",
+        "📡 사주예보": "📡 사주 예보",
+        "🪪 원국":     "🪪 사주 원국",
+        "🔎 상세":     "전문가 상세보기",
+    }
     state_key = "single_mri_page_view"
     current = st.session_state.get(state_key, default)
-    if current not in {full for _short, full in pages}:
+    if current not in set(pages.values()):
+        current = default
         st.session_state[state_key] = default
-    cols = st.columns(len(pages))
-    for col, (short, full) in zip(cols, pages):
-        active = st.session_state.get(state_key, default) == full
-        label = ("● " if active else "○ ") + short
-        if col.button(label, key=f"single_page_btn_{full}", use_container_width=True):
-            st.session_state[state_key] = full
+    current_short = next((s for s, f in pages.items() if f == current), list(pages)[0])
+    sel = st.segmented_control(
+        "결과 보기",
+        options=list(pages),
+        default=current_short,
+        key="single_page_seg",
+        label_visibility="collapsed",
+    )
+    if sel in pages:
+        st.session_state[state_key] = pages[sel]
+    # sel이 None(선택 해제)이면 마지막 선택을 유지한다
     return str(st.session_state.get(state_key, default))
 
 
@@ -22365,23 +22380,26 @@ def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
 
 
 def render_chemistry_page_buttons(default: str = " 케미 한눈에") -> str:
-    """모두의 케미 결과 메뉴: 한눈에 / 상세만 표시한다."""
-    pages = [
-        (" 한눈에", " 케미 한눈에"),
-        ("🔎 상세", "전문가 상세보기"),
-    ]
-    valid_values = {full for _short, full in pages}
+    """모두의 케미 결과 메뉴 — st.segmented_control 기반(WebView에서도 가로 유지)."""
+    pages = {
+        "👀 한눈에": " 케미 한눈에",
+        "🔎 상세":   "전문가 상세보기",
+    }
     state_key = "chemistry_page_view_v5104"
-    if state_key not in st.session_state or st.session_state.get(state_key) not in valid_values:
+    current = st.session_state.get(state_key, default)
+    if current not in set(pages.values()):
+        current = default
         st.session_state[state_key] = default
-
-    for row_start in range(0, len(pages), 3):
-        cols = st.columns(len(pages[row_start:row_start + 3]))
-        for col, (short, full) in zip(cols, pages[row_start:row_start + 3]):
-            active = st.session_state.get(state_key, default) == full
-            label = ("● " if active else "○ ") + short
-            if col.button(label, key=f"chem_page_btn_v5104_{row_start}_{short}", use_container_width=True):
-                st.session_state[state_key] = full
+    current_short = next((s for s, f in pages.items() if f == current), list(pages)[0])
+    sel = st.segmented_control(
+        "케미 보기",
+        options=list(pages),
+        default=current_short,
+        key="chem_page_seg",
+        label_visibility="collapsed",
+    )
+    if sel in pages:
+        st.session_state[state_key] = pages[sel]
     return str(st.session_state.get(state_key, default))
 
 
