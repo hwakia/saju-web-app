@@ -8016,6 +8016,27 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ── 최우선 CSS: st.columns() 강제 가로 배열 ──────────────────────────────
+# st.set_page_config 직후 가장 먼저 실행 → Streamlit 기본 CSS 보다 늦게 적용되어 !important로 덮어씀
+st.markdown("""<style>
+section[data-testid="stMain"] [data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+}
+section[data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    width: auto !important;
+}
+section[data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="column"] button {
+    font-size: clamp(9px, 2.5vw, 13px) !important;
+    padding: 6px 1px !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    min-height: 44px !important;
+}
+</style>""", unsafe_allow_html=True)
+
 # ── 제로베이스 디자인 시스템 (components.html → parent head 주입) ──
 import streamlit.components.v1 as _stcomp
 _stcomp.html("""
@@ -24103,9 +24124,10 @@ def render_single_summary(payload: Dict[str, object]) -> None:
         )
 
     char = get_mbti_character(chart, result)
-    view = render_single_page_buttons(default="🏥 사주 진단서")
 
-    if view == "🏥 사주 진단서":
+    _tab1, _tab2, _tab3, _tab4 = st.tabs(["🏥 진단서", "📡 사주예보", "🪪 원국", "🔎 상세"])
+
+    with _tab1:
         render_hanuneyo_text_explanation(payload, char, result)
         if payload.get("birth_date") and payload.get("calendar_type"):
             try:
@@ -24126,10 +24148,10 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             except Exception:
                 pass
 
-    elif view == "📡 사주 예보":
+    with _tab2:
         render_saju_yebo_page(payload)
 
-    elif view == "🪪 사주 원국":
+    with _tab3:
         st.markdown("### 🪪 사주 원국")
         render_origin_identity_table(
             chart,
@@ -24138,8 +24160,7 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             result=result,
         )
 
-
-    else:
+    with _tab4:
         st.markdown("### 🔎 기운 정밀 분석")
         render_strength_operation_spotlight(payload)
         render_character_axis_cards(payload, char)
