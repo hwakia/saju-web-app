@@ -11442,46 +11442,73 @@ def build_my_saju_save_url(
 def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saju_browser_store") -> None:
     """내 사주 자동저장·자동불러오기 위젯.
 
-    - save_url 있을 때: 결과 화면 → localStorage에 자동 저장 (버튼 불필요)
+    - save_url 있을 때: 결과 화면 → localStorage에 자동 저장
     - save_url 없을 때: 입력 화면 → 저장된 내용 있으면 [바로 불러오기] 버튼 표시
     """
     safe_save_url = json.dumps(str(save_url or ""), ensure_ascii=False)
     component_html = f"""
-    <div id="wrap" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"></div>
-    <script>
-    (function(){{
-      const KEY = "saju_mri_my_saju_url_v1";
-      const saveUrl = {safe_save_url};
-      const wrap = document.getElementById("wrap");
+<div id="wrap" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;"></div>
+<script>
+(function(){{
+  var KEY = "saju_mri_my_saju_url_v1";
+  var saveUrl = {safe_save_url};
+  var wrap = document.getElementById("wrap");
 
-      const saved = window.localStorage.getItem(KEY);
+  // localStorage 접근 (iframe 내부에서도 동일 origin이면 접근 가능)
+  var saved = null;
+  try {{ saved = window.localStorage.getItem(KEY); }} catch(e) {{}}
 
-      if (saveUrl) {{
-        // ── 결과 화면: 자동 저장 ──────────────────────────
-        window.localStorage.setItem(KEY, saveUrl);
-        wrap.innerHTML =
-          '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d1a0d;border:1px solid #1a3a1a;border-radius:10px;font-size:12px;color:#6db86d;">'
-          + '✅ 내 사주가 이 브라우저에 자동 저장되었습니다. 다음 방문 시 자동으로 불러옵니다.'
-          + '<button onclick="window.localStorage.removeItem(\''+KEY+'\');this.parentElement.parentElement.innerHTML=\'<span style=color:#888;font-size:11px>저장 삭제됨</span>\';" '
-          + 'style="margin-left:auto;border:none;background:transparent;color:#888;font-size:11px;cursor:pointer;flex-shrink:0;">삭제</button>'
-          + '</div>';
-      }} else if (saved) {{
-        // ── 입력 화면: 저장된 내 사주 있으면 불러오기 버튼 ──
-        wrap.innerHTML =
-          '<div style="padding:12px;background:#1a1408;border:1px solid rgba(212,168,83,0.4);border-radius:12px;">'
-          + '<div style="font-size:13px;font-weight:700;color:#fde68a;margin-bottom:8px;">⭐ 저장된 내 사주가 있습니다</div>'
-          + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-          + '<a href="'+saved+'" target="_parent" style="text-decoration:none;background:#92400e;color:white;border-radius:999px;padding:10px 16px;font-weight:700;font-size:13px;">바로 불러오기</a>'
-          + '<button onclick="window.localStorage.removeItem(\''+KEY+'\');this.parentElement.parentElement.remove();" '
-          + 'style="border:1px solid #555;background:transparent;color:#888;border-radius:999px;padding:10px 14px;font-size:12px;cursor:pointer;">저장 삭제</button>'
-          + '</div>'
-          + '</div>';
-      }}
-      // saved 없고 saveUrl도 없으면 아무것도 표시 안 함
-    }})();
-    </script>
-    """
-    components.html(component_html, height=70)
+  function goParent(url) {{
+    // Flutter WebView / 일반 브라우저 모두 호환
+    try {{ window.parent.location.href = url; }} catch(e) {{
+      try {{ window.location.href = url; }} catch(e2) {{}}
+    }}
+  }}
+
+  if (saveUrl) {{
+    // ── 결과 화면: localStorage에 자동 저장 ────────────────
+    try {{ window.localStorage.setItem(KEY, saveUrl); }} catch(e) {{}}
+    wrap.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;'
+      + 'background:#0d1a0d;border:1px solid #1a3a1a;border-radius:10px;'
+      + 'font-size:12px;color:#6db86d;">'
+      + '<span>✅ 내 사주가 이 기기에 저장됐어. 다음 방문 시 자동으로 불러와.</span>'
+      + '<button id="del1" style="margin-left:auto;border:none;background:transparent;'
+      + 'color:#888;font-size:11px;cursor:pointer;flex-shrink:0;">삭제</button>'
+      + '</div>';
+    document.getElementById("del1").addEventListener("click", function(){{
+      try {{ window.localStorage.removeItem(KEY); }} catch(e) {{}}
+      wrap.innerHTML = '<span style="color:#888;font-size:11px;">저장 삭제됨</span>';
+    }});
+
+  }} else if (saved) {{
+    // ── 입력 화면: 불러오기 버튼 표시 ─────────────────────
+    wrap.innerHTML =
+      '<div style="padding:12px 14px;background:#1a1408;'
+      + 'border:1.5px solid rgba(212,168,83,0.6);border-radius:12px;">'
+      + '<div style="font-size:13px;font-weight:800;color:#fde68a;margin-bottom:10px;">'
+      + '⭐ 저장된 내 사주가 있어</div>'
+      + '<div style="display:flex;gap:8px;">'
+      + '<button id="load_btn" style="flex:1;background:#92400e;color:white;'
+      + 'border:none;border-radius:10px;padding:11px 0;font-weight:800;'
+      + 'font-size:14px;cursor:pointer;">📥 바로 불러오기</button>'
+      + '<button id="del2" style="border:1px solid #555;background:transparent;'
+      + 'color:#888;border-radius:10px;padding:11px 14px;font-size:12px;'
+      + 'cursor:pointer;">삭제</button>'
+      + '</div></div>';
+    document.getElementById("load_btn").addEventListener("click", function(){{
+      goParent(saved);
+    }});
+    document.getElementById("del2").addEventListener("click", function(){{
+      try {{ window.localStorage.removeItem(KEY); }} catch(e) {{}}
+      wrap.remove();
+    }});
+  }}
+}})();
+</script>
+"""
+    h = 60 if save_url else 95  # 저장 메시지는 작게, 불러오기 카드는 크게
+    components.html(component_html, height=h)
 
 
 def _apply_my_saju_params_to_current_url(params: Dict[str, str]) -> bool:
