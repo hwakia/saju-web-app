@@ -22344,28 +22344,70 @@ def render_sewun_text_overview(payload: dict) -> None:
 
 
 def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
-    """결과 화면 탭 메뉴 — 진단서·사주예보·원국·상세 4개."""
+    """결과 화면 탭 메뉴 — 순수 HTML flexbox (WebView 호환)."""
+    import streamlit.components.v1 as _tab_html
+
     pages = [
         ("🏥 진단서",   "🏥 사주 진단서"),
         ("📡 사주예보", "📡 사주 예보"),
         ("🪪 원국",     "🪪 사주 원국"),
         ("🔎 상세",     "전문가 상세보기"),
     ]
-    # 이전 버전 값들도 유효값에 포함해 세션 충돌 방지
-    valid_values = {full for _short, full in pages} | {
-        "🌊 10년의 처방", "🌸 올해의 처방", "🌤 오늘의 처방", "일운캘린더"
-    }
     state_key = "single_mri_page_view"
+
+    # ── query_params로 탭 선택 감지 ────────────────────────────
+    _tab_val = st.query_params.get("_tab", "")
+    if _tab_val:
+        try:
+            st.query_params.pop("_tab")
+        except Exception:
+            pass
+        for _short, _full in pages:
+            if _tab_val == _short or _tab_val == _full:
+                st.session_state[state_key] = _full
+                break
+        st.rerun()
+
     # 구버전 탭값이면 기본값으로 초기화
     current = st.session_state.get(state_key, default)
     if current not in {full for _short, full in pages}:
         st.session_state[state_key] = default
-    cols = st.columns(len(pages))
-    for col, (short, full) in zip(cols, pages):
-        active = st.session_state.get(state_key, default) == full
-        label = ("● " if active else "○ ") + short
-        if col.button(label, key=f"single_page_btn_{full}", use_container_width=True):
-            st.session_state[state_key] = full
+        current = default
+
+    # ── 순수 HTML 탭 바 ────────────────────────────────────────
+    _ACT = ("flex:1;min-width:0;background:#3a2800;color:#fde68a;"
+            "border:2px solid rgba(212,168,83,.8);border-radius:10px;"
+            "padding:8px 2px;font-size:11px;font-weight:900;cursor:pointer;"
+            "display:flex;flex-direction:column;align-items:center;gap:1px;")
+    _DEF = ("flex:1;min-width:0;background:#1e1a08;color:#b89a6b;"
+            "border:1px solid rgba(212,168,83,.3);border-radius:10px;"
+            "padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer;"
+            "display:flex;flex-direction:column;align-items:center;gap:1px;")
+
+    btns = ""
+    for short, full in pages:
+        style = _ACT if current == full else _DEF
+        dot = "●" if current == full else "○"
+        btns += (f'<button style="{style}" onclick="setTab(\'_tab\',\'{short}\')">'
+                 f'<span>{dot}</span><span>{short}</span></button>')
+
+    _tab_html.html(f"""
+<div style="display:flex;gap:5px;width:100%;box-sizing:border-box;padding:3px 0;">
+  {btns}
+</div>
+<script>
+function setTab(k,v){{
+  try{{
+    var u=new URL(window.parent.location.href);
+    u.searchParams.set(k,v);window.parent.location.href=u.toString();
+  }}catch(e){{
+    var u2=new URL(window.location.href);
+    u2.searchParams.set(k,v);window.location.href=u2.toString();
+  }}
+}}
+</script>
+""", height=60, scrolling=False)
+
     return str(st.session_state.get(state_key, default))
 
 
