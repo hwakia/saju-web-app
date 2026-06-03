@@ -11458,70 +11458,48 @@ def build_my_saju_save_url(
 
 
 def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saju_browser_store") -> None:
-    """같은 브라우저에서 내 사주 링크를 보관·불러오기 위한 로컬 저장 위젯.
+    """내 사주 자동저장·자동불러오기 위젯.
 
-    Python/Streamlit session_state는 앱을 닫으면 사라지므로, 기기 재방문 편의성은
-    브라우저 localStorage에 '바로가기 URL'을 저장하는 방식으로 처리한다.
+    - save_url 있을 때: 결과 화면 → localStorage에 자동 저장 (버튼 불필요)
+    - save_url 없을 때: 입력 화면 → 저장된 내용 있으면 [바로 불러오기] 버튼 표시
     """
     safe_save_url = json.dumps(str(save_url or ""), ensure_ascii=False)
     component_html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; border:1px solid rgba(212,168,83,0.30); background:#141414; border-radius:16px; padding:12px; color:#fde68a;">
-      <div style="font-weight:800; margin-bottom:6px;">내 사주 기기 저장</div>
-      <div style="font-size:13px; line-height:1.45; color:#b89a6b; margin-bottom:10px;">
-        같은 브라우저에서 다시 열 때 입력을 줄이기 위해, 이 기기에 개인용 바로가기 URL을 저장합니다.
-        생년월일시가 URL에 포함되므로 공용기기에서는 사용하지 마세요.
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button id="saveBtn" style="display:none; border:1px solid #92400e; background:#92400e; color:white; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">이 기기에 저장</button>
-        <a id="loadLink" target="_parent" style="display:none; text-decoration:none; border:1px solid #f59e0b; background:#1e1a08; color:#f59e0b; border-radius:999px; padding:8px 12px; font-weight:800;">저장된 내 사주 불러오기</a>
-        <button id="clearBtn" style="display:none; border:1px solid rgba(212,168,83,0.30); background:#1e1a08; color:#b89a6b; border-radius:999px; padding:8px 12px; font-weight:800; cursor:pointer;">저장 삭제</button>
-      </div>
-      <div id="msg" style="margin-top:8px; font-size:13px; color:#d4b896;"></div>
-    </div>
+    <div id="wrap" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"></div>
     <script>
-      (function() {{
-        const KEY = "saju_mri_my_saju_url_v1";
-        const saveUrl = {safe_save_url};
-        const saveBtn = document.getElementById("saveBtn");
-        const loadLink = document.getElementById("loadLink");
-        const clearBtn = document.getElementById("clearBtn");
-        const msg = document.getElementById("msg");
+    (function(){{
+      const KEY = "saju_mri_my_saju_url_v1";
+      const saveUrl = {safe_save_url};
+      const wrap = document.getElementById("wrap");
 
-        function refresh() {{
-          const saved = window.localStorage.getItem(KEY);
-          if (saveUrl) {{
-            saveBtn.style.display = "inline-block";
-          }}
-          if (saved) {{
-            loadLink.href = saved;
-            loadLink.style.display = "inline-block";
-            clearBtn.style.display = "inline-block";
-            msg.textContent = "이 브라우저에 저장된 내 사주 바로가기가 있습니다.";
-          }} else {{
-            loadLink.style.display = "none";
-            clearBtn.style.display = "none";
-            msg.textContent = saveUrl ? "아직 이 기기에 저장하지 않았습니다." : "이 브라우저에 저장된 내 사주 바로가기가 아직 없습니다.";
-          }}
-        }}
+      const saved = window.localStorage.getItem(KEY);
 
-        saveBtn.addEventListener("click", function() {{
-          if (!saveUrl) return;
-          window.localStorage.setItem(KEY, saveUrl);
-          refresh();
-          msg.textContent = "저장했습니다. 다음에는 '저장된 내 사주 불러오기'로 바로 열 수 있습니다.";
-        }});
-
-        clearBtn.addEventListener("click", function() {{
-          window.localStorage.removeItem(KEY);
-          refresh();
-          msg.textContent = "저장된 내 사주 바로가기를 삭제했습니다.";
-        }});
-
-        refresh();
-      }})();
+      if (saveUrl) {{
+        // ── 결과 화면: 자동 저장 ──────────────────────────
+        window.localStorage.setItem(KEY, saveUrl);
+        wrap.innerHTML =
+          '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d1a0d;border:1px solid #1a3a1a;border-radius:10px;font-size:12px;color:#6db86d;">'
+          + '✅ 내 사주가 이 브라우저에 자동 저장되었습니다. 다음 방문 시 자동으로 불러옵니다.'
+          + '<button onclick="window.localStorage.removeItem(\''+KEY+'\');this.parentElement.parentElement.innerHTML=\'<span style=color:#888;font-size:11px>저장 삭제됨</span>\';" '
+          + 'style="margin-left:auto;border:none;background:transparent;color:#888;font-size:11px;cursor:pointer;flex-shrink:0;">삭제</button>'
+          + '</div>';
+      }} else if (saved) {{
+        // ── 입력 화면: 저장된 내 사주 있으면 불러오기 버튼 ──
+        wrap.innerHTML =
+          '<div style="padding:12px;background:#1a1408;border:1px solid rgba(212,168,83,0.4);border-radius:12px;">'
+          + '<div style="font-size:13px;font-weight:700;color:#fde68a;margin-bottom:8px;">⭐ 저장된 내 사주가 있습니다</div>'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+          + '<a href="'+saved+'" target="_parent" style="text-decoration:none;background:#92400e;color:white;border-radius:999px;padding:10px 16px;font-weight:700;font-size:13px;">바로 불러오기</a>'
+          + '<button onclick="window.localStorage.removeItem(\''+KEY+'\');this.parentElement.parentElement.remove();" '
+          + 'style="border:1px solid #555;background:transparent;color:#888;border-radius:999px;padding:10px 14px;font-size:12px;cursor:pointer;">저장 삭제</button>'
+          + '</div>'
+          + '</div>';
+      }}
+      // saved 없고 saveUrl도 없으면 아무것도 표시 안 함
+    }})();
     </script>
     """
-    components.html(component_html, height=178)
+    components.html(component_html, height=70)
 
 
 def _apply_my_saju_params_to_current_url(params: Dict[str, str]) -> bool:
@@ -23555,6 +23533,26 @@ def render_saju_yebo_page(payload: dict) -> None:
     _iw_gz = str(_compass.get("day_gz", "")   or "")
 
     # ══════════════════════════════════════════════════════════
+    # ── 상단 탭 메뉴 (오늘의 처방·캘린더를 종합예보 위로 노출)
+    # ══════════════════════════════════════════════════════════
+    _yebo_top = st.radio(
+        "예보 보기",
+        ["📡 종합 예보", "🌤 오늘의 처방", "📅 캘린더"],
+        index=0,
+        horizontal=True,
+        key="yebo_top_nav_v5158",
+        label_visibility="collapsed",
+    )
+
+    if _yebo_top == "🌤 오늘의 처방":
+        render_today_quick_entry(payload)
+        return
+
+    if _yebo_top == "📅 캘린더":
+        render_daily_luck_calendar(payload)
+        return
+
+    # ══════════════════════════════════════════════════════════
     # ① 종합예보 — 원국 + 4운 가중치 분석
     # ══════════════════════════════════════════════════════════
     st.markdown("### 📡 종합 예보")
@@ -24018,10 +24016,10 @@ def render_saju_yebo_page(payload: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    # ── 상세 서브메뉴    # ── 상세 서브메뉴 ────────────────────────────────────────
+    # ── 상세 서브메뉴 (대운·세운·월운 상세) ──────────────────────
     _yebo_sub = st.radio(
         "상세 보기",
-        ["대운 상세보기", "세운 상세보기", "월운 상세보기", "일운 상세보기", "캘린더"],
+        ["대운 상세보기", "세운 상세보기", "월운 상세보기"],
         index=0,
         horizontal=True,
         key="yebo_sub_nav_v5157",
@@ -24054,12 +24052,6 @@ def render_saju_yebo_page(payload: dict) -> None:
         else:
             st.info("월운 정보를 불러올 수 없어. 생년월일시 자동 산출 모드에서 확인해봐.")
         st.caption("월운 상세 분석은 대운·세운 흐름과 함께 볼 때 더 정확해.")
-
-    elif _yebo_sub == "일운 상세보기":
-        render_today_quick_entry(payload)
-
-    elif _yebo_sub == "캘린더":
-        render_daily_luck_calendar(payload)
 
 
 
