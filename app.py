@@ -11813,28 +11813,59 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
-    """결과 화면 네비게이션 — 이모지 5열 1줄 바."""
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        if st.button("🏠\n메인", use_container_width=True, key=f"{prefix}_go_home"):
-            log_event("menu_click", "navigation", {"target": "home"})
-            reset_navigation_to(None); st.rerun()
-    with c2:
-        if st.button("🌸\n진단", use_container_width=True, key=f"{prefix}_go_single"):
-            log_event("menu_click", "navigation", {"target": "solo"})
-            reset_navigation_to("혼자 보기"); st.rerun()
-    with c3:
-        if st.button("💞\n케미", use_container_width=True, key=f"{prefix}_go_battle"):
-            log_event("menu_click", "navigation", {"target": "chemistry"})
-            reset_navigation_to("케미 분석"); st.rerun()
-    with c4:
-        if st.button("👫\n모임", use_container_width=True, key=f"{prefix}_go_croom"):
-            log_event("menu_click", "navigation", {"target": "chemistry_room"})
-            reset_navigation_to("케미방"); st.rerun()
-    with c5:
-        if st.button("⚔️\n맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
-            log_event("menu_click", "navigation", {"target": "battle_room"})
-            reset_navigation_to("맞짱방"); st.rerun()
+    """결과 화면 네비게이션 — 순수 HTML flexbox (st.columns 미사용, WebView 호환)."""
+    import streamlit.components.v1 as _nav_html
+
+    # ── query_params로 네비 의도 감지 (HTML 버튼 → URL 변경 → rerun) ──
+    _nav = st.query_params.get("_nav", "")
+    if _nav:
+        try:
+            st.query_params.pop("_nav")
+        except Exception:
+            pass
+        _map = {
+            "home":  (None,          "home"),
+            "solo":  ("혼자 보기",    "solo"),
+            "chemi": ("케미 분석",    "chemistry"),
+            "croom": ("케미방",       "chemistry_room"),
+            "broom": ("맞짱방",       "battle_room"),
+        }
+        if _nav in _map:
+            _dest, _evt = _map[_nav]
+            log_event("menu_click", "navigation", {"target": _evt})
+            reset_navigation_to(_dest)
+            st.rerun()
+
+    # ── 순수 HTML 1줄 네비바 — st.columns() 미사용 ────────────────
+    _BTN = (
+        "flex:1;min-width:0;background:#1e1a08;color:#fde68a;"
+        "border:1px solid rgba(212,168,83,.5);border-radius:10px;"
+        "padding:7px 2px 5px;font-size:11px;font-weight:900;"
+        "cursor:pointer;display:flex;flex-direction:column;"
+        "align-items:center;gap:2px;line-height:1.1;"
+    )
+    _nav_html.html(f"""
+<div style="display:flex;gap:5px;width:100%;box-sizing:border-box;padding:3px 0 2px;">
+  <button style="{_BTN}" onclick="gn('home')">🏠<span>메인</span></button>
+  <button style="{_BTN}" onclick="gn('solo')">🌸<span>진단</span></button>
+  <button style="{_BTN}" onclick="gn('chemi')">💞<span>케미</span></button>
+  <button style="{_BTN}" onclick="gn('croom')">👫<span>모임</span></button>
+  <button style="{_BTN}" onclick="gn('broom')">⚔️<span>맞짱</span></button>
+</div>
+<script>
+function gn(t){{
+  try{{
+    var u=new URL(window.parent.location.href);
+    u.searchParams.set('_nav',t);
+    window.parent.location.href=u.toString();
+  }}catch(e){{
+    var u2=new URL(window.location.href);
+    u2.searchParams.set('_nav',t);
+    window.location.href=u2.toString();
+  }}
+}}
+</script>
+""", height=60, scrolling=False)
 
 
 BG_IMAGE_B64 = load_background_image_base64()
