@@ -11529,40 +11529,13 @@ def render_my_saju_save_link_tool(
     use_yajashee: bool,
     key_prefix: str = "my_saju_save",
 ) -> None:
-    """내 사주 저장 링크 생성 UI.
-
-    서버에 저장하지 않고, URL에 입력값을 담아 같은 기기에서 다시 열 수 있게 한다.
-    """
-    with st.expander("내 사주 저장하기"):
-        st.caption("서버에 별도 저장하지 않고, 생년월일시 입력값이 들어간 개인용 바로가기 링크를 만듭니다. 이 링크를 북마크하거나 홈 화면에 추가하면 다음에 다시 입력하지 않아도 됩니다.")
-        st.caption("주의: 링크 안에 생년월일시·성별 등 입력값이 포함됩니다. 카톡방이나 타인에게 공유하지 마세요.")
-
-        if birth_date is None:
-            st.info("생년월일을 올바르게 입력하면 저장 링크를 만들 수 있습니다.")
-            return
-        if not time_unknown and birth_time is None:
-            st.info("태어난 시간을 올바르게 입력하거나 '시간 모름'을 선택하면 저장 링크를 만들 수 있습니다.")
-            return
-
-        params = build_my_saju_save_params(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=True)
-        link = build_my_saju_save_url(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=True)
-        st.text_input("내 사주 바로가기 링크", value=link, key=f"{key_prefix}_link", help="이 링크는 개인 정보가 포함된 개인용 링크입니다.")
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("현재 주소를 내 사주 바로가기로 바꾸기", key=f"{key_prefix}_apply_url", use_container_width=True):
-                if _apply_my_saju_params_to_current_url(params):
-                    st.success("현재 주소창이 내 사주 바로가기 주소로 바뀌었습니다. 이 주소를 북마크하거나 홈 화면에 추가하세요.")
-                else:
-                    st.warning("주소창 자동 변경이 제한되었습니다. 아래 링크를 복사해 북마크하거나 다시 여세요.")
-        with c2:
-            if hasattr(st, "link_button"):
-                st.link_button("내 사주 바로 열기", link, use_container_width=True)
-            else:
-                st.markdown(f"[내 사주 바로 열기]({link})")
-
-        render_my_saju_browser_storage_widget(link, key=f"{key_prefix}_browser_store")
-        st.caption("저장 링크로 접속하면 입력값을 불러온 뒤 결과 화면까지 바로 이동합니다. 앱 설치가 아니라 개인용 URL 바로가기 방식입니다.")
+    """내 사주 브라우저 자동저장 — 체크박스가 켜진 경우 localStorage에 자동 저장."""
+    if not st.session_state.get("save_to_browser_v1"):
+        return
+    if birth_date is None:
+        return
+    link = build_my_saju_save_url(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=True)
+    render_my_saju_browser_storage_widget(link, key=f"{key_prefix}_browser_store")
 
 
 apply_my_saju_query_prefill_once()
@@ -26645,8 +26618,12 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     auto_run_clicked = bool(st.session_state.pop("_my_saju_auto_run_pending_v5140", False))
     analyze_clicked = st.button("분석 시작", type="primary", use_container_width=True, key="auto_start")
 
-    # 부가 옵션 (야자시) — 버튼 아래
-    use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
+    # 부가 옵션 — 버튼 아래
+    col_a, col_b = st.columns(2)
+    with col_a:
+        use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
+    with col_b:
+        st.checkbox("내 사주 브라우저에 저장", value=st.session_state.get("save_to_browser_v1", False), key="save_to_browser_v1")
 
     render_my_saju_save_link_tool(
         single_auto_name or "나",
