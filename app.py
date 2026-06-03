@@ -11482,23 +11482,20 @@ def render_my_saju_browser_storage_widget(save_url: str = "", key: str = "my_saj
     }});
 
   }} else if (saved) {{
-    // ── 입력 화면: 불러오기 버튼 표시 ─────────────────────
+    // ── 입력 화면: 불러오기 버튼 표시 (a 태그로 WebView 호환) ──
     wrap.innerHTML =
       '<div style="padding:12px 14px;background:#1a1408;'
       + 'border:1.5px solid rgba(212,168,83,0.6);border-radius:12px;">'
       + '<div style="font-size:13px;font-weight:800;color:#fde68a;margin-bottom:10px;">'
       + '⭐ 저장된 내 사주가 있어</div>'
-      + '<div style="display:flex;gap:8px;">'
-      + '<button id="load_btn" style="flex:1;background:#92400e;color:white;'
-      + 'border:none;border-radius:10px;padding:11px 0;font-weight:800;'
-      + 'font-size:14px;cursor:pointer;">📥 바로 불러오기</button>'
+      + '<div style="display:flex;gap:8px;align-items:center;">'
+      + '<a href="' + saved + '" target="_parent" style="flex:1;background:#92400e;color:white;'
+      + 'text-decoration:none;border-radius:10px;padding:11px 0;font-weight:800;'
+      + 'font-size:14px;cursor:pointer;text-align:center;display:block;">📥 바로 불러오기</a>'
       + '<button id="del2" style="border:1px solid #555;background:transparent;'
       + 'color:#888;border-radius:10px;padding:11px 14px;font-size:12px;'
       + 'cursor:pointer;">삭제</button>'
       + '</div></div>';
-    document.getElementById("load_btn").addEventListener("click", function(){{
-      goParent(saved);
-    }});
     document.getElementById("del2").addEventListener("click", function(){{
       try {{ window.localStorage.removeItem(KEY); }} catch(e) {{}}
       wrap.remove();
@@ -11840,59 +11837,28 @@ def reset_navigation_to(mode: str | None = None, keep_roster: bool = True) -> No
 
 
 def render_mode_jump_buttons(prefix: str, include_result_reset: bool = True) -> None:
-    """결과 화면 네비게이션 — 순수 HTML flexbox (st.columns 미사용, WebView 호환)."""
-    import streamlit.components.v1 as _nav_html
-
-    # ── query_params로 네비 의도 감지 (HTML 버튼 → URL 변경 → rerun) ──
-    _nav = st.query_params.get("_nav", "")
-    if _nav:
-        try:
-            st.query_params.pop("_nav")
-        except Exception:
-            pass
-        _map = {
-            "home":  (None,          "home"),
-            "solo":  ("혼자 보기",    "solo"),
-            "chemi": ("케미 분석",    "chemistry"),
-            "croom": ("케미방",       "chemistry_room"),
-            "broom": ("맞짱방",       "battle_room"),
-        }
-        if _nav in _map:
-            _dest, _evt = _map[_nav]
-            log_event("menu_click", "navigation", {"target": _evt})
-            reset_navigation_to(_dest)
-            st.rerun()
-
-    # ── 순수 HTML 1줄 네비바 — st.columns() 미사용 ────────────────
-    _BTN = (
-        "flex:1;min-width:0;background:#1e1a08;color:#fde68a;"
-        "border:1px solid rgba(212,168,83,.5);border-radius:10px;"
-        "padding:7px 2px 5px;font-size:11px;font-weight:900;"
-        "cursor:pointer;display:flex;flex-direction:column;"
-        "align-items:center;gap:2px;line-height:1.1;"
-    )
-    _nav_html.html(f"""
-<div style="display:flex;gap:5px;width:100%;box-sizing:border-box;padding:3px 0 2px;">
-  <button style="{_BTN}" onclick="gn('home')">🏠<span>메인</span></button>
-  <button style="{_BTN}" onclick="gn('solo')">🌸<span>진단</span></button>
-  <button style="{_BTN}" onclick="gn('chemi')">💞<span>케미</span></button>
-  <button style="{_BTN}" onclick="gn('croom')">👫<span>모임</span></button>
-  <button style="{_BTN}" onclick="gn('broom')">⚔️<span>맞짱</span></button>
-</div>
-<script>
-function gn(t){{
-  try{{
-    var u=new URL(window.parent.location.href);
-    u.searchParams.set('_nav',t);
-    window.parent.location.href=u.toString();
-  }}catch(e){{
-    var u2=new URL(window.location.href);
-    u2.searchParams.set('_nav',t);
-    window.location.href=u2.toString();
-  }}
-}}
-</script>
-""", height=78, scrolling=False)
+    """결과 화면 네비게이션 — st.button() 기반."""
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        if st.button("🏠\n메인", use_container_width=True, key=f"{prefix}_go_home"):
+            log_event("menu_click", "navigation", {"target": "home"})
+            reset_navigation_to(None); st.rerun()
+    with c2:
+        if st.button("🌸\n진단", use_container_width=True, key=f"{prefix}_go_single"):
+            log_event("menu_click", "navigation", {"target": "solo"})
+            reset_navigation_to("혼자 보기"); st.rerun()
+    with c3:
+        if st.button("💞\n케미", use_container_width=True, key=f"{prefix}_go_battle"):
+            log_event("menu_click", "navigation", {"target": "chemistry"})
+            reset_navigation_to("케미 분석"); st.rerun()
+    with c4:
+        if st.button("👫\n모임", use_container_width=True, key=f"{prefix}_go_croom"):
+            log_event("menu_click", "navigation", {"target": "chemistry_room"})
+            reset_navigation_to("케미방"); st.rerun()
+    with c5:
+        if st.button("⚔️\n맞짱", use_container_width=True, key=f"{prefix}_go_broom"):
+            log_event("menu_click", "navigation", {"target": "battle_room"})
+            reset_navigation_to("맞짱방"); st.rerun()
 
 
 BG_IMAGE_B64 = load_background_image_base64()
@@ -22371,70 +22337,24 @@ def render_sewun_text_overview(payload: dict) -> None:
 
 
 def render_single_page_buttons(default: str = "🏥 사주 진단서") -> str:
-    """결과 화면 탭 메뉴 — 순수 HTML flexbox (WebView 호환)."""
-    import streamlit.components.v1 as _tab_html
-
+    """결과 화면 탭 메뉴 — st.button() 기반."""
     pages = [
         ("🏥 진단서",   "🏥 사주 진단서"),
         ("📡 사주예보", "📡 사주 예보"),
         ("🪪 원국",     "🪪 사주 원국"),
         ("🔎 상세",     "전문가 상세보기"),
     ]
+    # 이전 버전 값들도 유효값에 포함해 세션 충돌 방지
     state_key = "single_mri_page_view"
-
-    # ── query_params로 탭 선택 감지 ────────────────────────────
-    _tab_val = st.query_params.get("_tab", "")
-    if _tab_val:
-        try:
-            st.query_params.pop("_tab")
-        except Exception:
-            pass
-        for _short, _full in pages:
-            if _tab_val == _short or _tab_val == _full:
-                st.session_state[state_key] = _full
-                break
-        st.rerun()
-
-    # 구버전 탭값이면 기본값으로 초기화
     current = st.session_state.get(state_key, default)
     if current not in {full for _short, full in pages}:
         st.session_state[state_key] = default
-        current = default
-
-    # ── 순수 HTML 탭 바 ────────────────────────────────────────
-    _ACT = ("flex:1;min-width:0;background:#3a2800;color:#fde68a;"
-            "border:2px solid rgba(212,168,83,.8);border-radius:10px;"
-            "padding:8px 2px;font-size:11px;font-weight:900;cursor:pointer;"
-            "display:flex;flex-direction:column;align-items:center;gap:1px;")
-    _DEF = ("flex:1;min-width:0;background:#1e1a08;color:#b89a6b;"
-            "border:1px solid rgba(212,168,83,.3);border-radius:10px;"
-            "padding:8px 2px;font-size:11px;font-weight:700;cursor:pointer;"
-            "display:flex;flex-direction:column;align-items:center;gap:1px;")
-
-    btns = ""
-    for short, full in pages:
-        style = _ACT if current == full else _DEF
-        dot = "●" if current == full else "○"
-        btns += (f'<button style="{style}" onclick="setTab(\'_tab\',\'{short}\')">'
-                 f'<span>{dot}</span><span>{short}</span></button>')
-
-    _tab_html.html(f"""
-<div style="display:flex;gap:5px;width:100%;box-sizing:border-box;padding:3px 0;">
-  {btns}
-</div>
-<script>
-function setTab(k,v){{
-  try{{
-    var u=new URL(window.parent.location.href);
-    u.searchParams.set(k,v);window.parent.location.href=u.toString();
-  }}catch(e){{
-    var u2=new URL(window.location.href);
-    u2.searchParams.set(k,v);window.location.href=u2.toString();
-  }}
-}}
-</script>
-""", height=78, scrolling=False)
-
+    cols = st.columns(len(pages))
+    for col, (short, full) in zip(cols, pages):
+        active = st.session_state.get(state_key, default) == full
+        label = ("● " if active else "○ ") + short
+        if col.button(label, key=f"single_page_btn_{full}", use_container_width=True):
+            st.session_state[state_key] = full
     return str(st.session_state.get(state_key, default))
 
 
