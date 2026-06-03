@@ -26358,6 +26358,25 @@ def render_roster_reuse_menu(target: str) -> None:
                     st.rerun()
 
 
+# ── 전역 CSS: st.columns() 가로 배열 강제 (Flutter WebView 포함) ──────────
+# st.markdown()은 main 페이지에 직접 렌더링 → iframe CSS 우회 문제 없음
+st.markdown("""
+<style>
+[data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    overflow: hidden !important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"] button {
+    font-size: clamp(9px, 2.8vw, 14px) !important;
+    padding: 6px 2px !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    line-height: 1.2 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── 개인정보 동의 게이트 (기기 최초 1회) ─────────────────────────────────
 import streamlit.components.v1 as _stc
 
