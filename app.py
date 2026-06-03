@@ -26376,11 +26376,14 @@ if not st.session_state.get("_privacy_consent_v1", False):
         _stc.html("""
         <script>
         (function(){
-            if(localStorage.getItem('saju_consent_v1')==='yes'){
-                var u=new URL(window.parent.location.href);
-                u.searchParams.set('_c','1');
-                window.parent.location.replace(u.toString());
-            }
+            try {
+                var ls = window.top.localStorage;
+                if(ls.getItem('saju_consent_v1')==='yes'){
+                    var u=new URL(window.top.location.href);
+                    u.searchParams.set('_c','1');
+                    window.top.location.replace(u.toString());
+                }
+            } catch(e){}
         })();
         </script>
         """, height=0)
@@ -26393,7 +26396,8 @@ if not st.session_state.get("_privacy_consent_v1", False):
     _stc.html("""
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:#0A0A1E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:16px;}
+html,body{width:100%;background:#0A0A1E;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:16px 16px 24px;}
 h3{color:#fff;font-size:18px;margin-bottom:6px;}
 .sub{color:#93B4FF;font-size:13px;margin-bottom:18px;}
 .sec{background:#12122A;border:1px solid #2A2A4A;border-radius:12px;padding:14px;margin-bottom:14px;}
@@ -26403,14 +26407,14 @@ h3{color:#fff;font-size:18px;margin-bottom:6px;}
 .row{display:grid;grid-template-columns:58px 1fr;gap:6px;margin-bottom:6px;}
 .lbl{color:#888;font-size:11px;padding-top:1px;}
 .val{color:#CCC;font-size:11px;line-height:1.6;word-break:break-word;}
-.chk-row{display:flex;align-items:center;gap:8px;margin-top:12px;}
-.chk-row input{width:16px;height:16px;flex-shrink:0;accent-color:#3B5BDB;}
-.chk-row label{color:#CCC;font-size:13px;cursor:pointer;}
+.chk-row{display:flex;align-items:center;gap:10px;margin-top:12px;}
+.chk-row input{width:18px;height:18px;flex-shrink:0;accent-color:#3B5BDB;}
+.chk-row label{color:#CCC;font-size:13px;cursor:pointer;line-height:1.4;}
 .footer{font-size:11px;color:#555577;margin:6px 0 18px;line-height:1.7;}
 .footer a{color:#93B4FF;}
-.divider{border-top:1px solid #2A2A4A;margin-bottom:14px;}
-#btn{width:100%;padding:16px;background:#2A2A4A;color:#555577;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:not-allowed;transition:background 0.2s,color 0.2s;}
-#btn.on{background:#3B5BDB;color:#fff;cursor:pointer;}
+.divider{border-top:1px solid #2A2A4A;margin-bottom:16px;}
+#btn{width:100%;padding:16px;background:#2A2A4A;color:#555577;border:none;border-radius:12px;font-size:16px;font-weight:700;transition:background 0.2s,color 0.2s;-webkit-appearance:none;}
+#btn.on{background:#3B5BDB;color:#fff;}
 </style>
 
 <h3>🔒 개인정보 수집·이용 동의</h3>
@@ -26427,50 +26431,51 @@ h3{color:#fff;font-size:18px;margin-bottom:6px;}
 </div>
 
 <div class="sec">
-  <p class="sec-title">② <span class="badge">필수</span> 케미·맞짱 방 — 개인정보 수집·이용 및 국외 이전</p>
-  <div class="row"><span class="lbl">수집 항목</span><span class="val">별명(최대 10자), 분석 점수·등급</span></div>
-  <div class="row"><span class="lbl">수집 목적</span><span class="val">케미·맞짱 방 기능 제공</span></div>
-  <div class="row"><span class="lbl">보유 기간</span><span class="val">방 입장 시각으로부터 30분 후 자동 삭제</span></div>
-  <div class="row"><span class="lbl">국외 이전</span><span class="val">미국 Supabase Inc. — 임시 저장</span></div>
-  <div class="row"><span class="lbl">거부 시</span><span class="val">케미·맞짱 방 기능 이용 불가 (사주 분석은 이용 가능)</span></div>
-  <div class="chk-row"><input type="checkbox" id="c2" onchange="chk()"><label for="c2">위 내용에 동의합니다.</label></div>
-</div>
-
-<div class="sec">
-  <p class="sec-title">③ <span class="badge badge-opt">선택</span> Google AdMob 광고 식별자 수집·이용</p>
+  <p class="sec-title">② <span class="badge badge-opt">선택</span> Google AdMob 광고 식별자 수집·이용</p>
   <div class="row"><span class="lbl">수집 항목</span><span class="val">광고 식별자(GAID)</span></div>
   <div class="row"><span class="lbl">수집 목적</span><span class="val">맞춤형 광고 제공</span></div>
   <div class="row"><span class="lbl">처리자</span><span class="val">Google LLC (미국)</span></div>
   <div class="row"><span class="lbl">미동의 시</span><span class="val">비맞춤형 광고 제공 (서비스 이용 가능)</span></div>
-  <div class="chk-row"><input type="checkbox" id="c3"><label for="c3">위 내용에 동의합니다. (선택)</label></div>
+  <div class="chk-row"><input type="checkbox" id="c2"><label for="c2">위 내용에 동의합니다. (선택)</label></div>
 </div>
 
 <p class="footer">
   만 14세 미만은 서비스를 이용할 수 없습니다.<br>
-  동의를 거부할 권리가 있으며, ①② 거부 시 서비스 이용이 제한됩니다.<br>
+  동의를 거부할 권리가 있으며, ① 거부 시 서비스 이용이 제한됩니다.<br>
+  케미·맞짱 방 이용 시 별도 동의를 받습니다.<br>
   <a href="https://hwakia.github.io/saju-web-app/privacy_policy" target="_blank">개인정보 처리방침 전문 보기 →</a>
 </p>
 <div class="divider"></div>
-<button id="btn" disabled onclick="agree()">① ② 필수 동의 후 활성화</button>
+<button id="btn" disabled onclick="agree()">① 필수 동의 후 활성화</button>
 
 <script>
 function chk(){
-  var ok=document.getElementById('c1').checked&&document.getElementById('c2').checked;
+  var ok=document.getElementById('c1').checked;
   var b=document.getElementById('btn');
   b.disabled=!ok;
   b.className=ok?'on':'';
-  b.textContent=ok?'확인했어요, 시작하기!':'① ② 필수 동의 후 활성화';
+  b.textContent=ok?'확인했어요, 시작하기!':'① 필수 동의 후 활성화';
 }
 function agree(){
-  var c3=document.getElementById('c3');
-  localStorage.setItem('saju_consent_v1','yes');
-  localStorage.setItem('saju_admob_consent',c3&&c3.checked?'yes':'no');
-  var u=new URL(window.parent.location.href);
-  u.searchParams.set('_c','1');
-  window.parent.location.replace(u.toString());
+  var c2=document.getElementById('c2');
+  try{
+    window.top.localStorage.setItem('saju_consent_v1','yes');
+    window.top.localStorage.setItem('saju_admob_consent',c2&&c2.checked?'yes':'no');
+  }catch(e){}
+  try{
+    var u=new URL(window.top.location.href);
+    u.searchParams.set('_c','1');
+    window.top.location.replace(u.toString());
+  }catch(e){
+    try{
+      var u2=new URL(window.parent.location.href);
+      u2.searchParams.set('_c','1');
+      window.parent.location.replace(u2.toString());
+    }catch(e2){}
+  }
 }
 </script>
-""", height=920)
+""", height=760)
     st.stop()
 # ── END 동의 게이트 ──────────────────────────────────────────────────────
 
