@@ -26413,10 +26413,10 @@ if not st.session_state.get("_privacy_consent_v1", False):
         +'</div>';
     };
 
-    ov.innerHTML = '<div style="background:#1A1A2E;border:1px solid #3B5BDB;border-radius:16px;padding:22px;max-width:460px;width:calc(100vw - 32px);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);box-sizing:border-box;overflow:hidden;">'
-      +'<h3 style="color:white;margin:0 0 4px;font-size:16px;flex-shrink:0;">🔒 개인정보 수집·이용 동의</h3>'
-      +'<p style="color:#93B4FF;font-size:11px;margin:0 0 12px;flex-shrink:0;">동의 후 서비스를 이용하실 수 있습니다. ↓ 스크롤</p>'
-      +'<div id="saju-scroll" style="overflow-y:auto;overflow-x:hidden;flex:1;padding-right:4px;">'
+    ov.innerHTML = '<div style="background:#1A1A2E;border:1px solid #3B5BDB;border-radius:16px;padding:22px;max-width:460px;width:min(460px,92vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);">'
+      +'<h3 style="color:white;margin:0 0 4px;font-size:16px;">🔒 개인정보 수집·이용 동의</h3>'
+      +'<p style="color:#93B4FF;font-size:11px;margin:0 0 12px;">동의 후 서비스를 이용하실 수 있습니다. ↓ 스크롤</p>'
+      +'<div id="saju-scroll" style="overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding-right:4px;">'
 
       + section('①', '필수', '사주 분석 — 개인정보 수집·이용 및 국외 이전',
           row('수집 항목','생년월일, 출생시간, 성별')
