@@ -11535,12 +11535,15 @@ def render_my_saju_save_link_tool(
     use_yajashee: bool,
     key_prefix: str = "my_saju_save",
 ) -> None:
-    """내 사주 브라우저 자동저장 — 체크박스가 켜진 경우 localStorage에 자동 저장."""
+    """내 사주 브라우저 자동저장 — 체크박스가 켜진 경우 저장."""
     if not st.session_state.get("save_to_browser_v1"):
         return
     if birth_date is None:
         return
     link = build_my_saju_save_url(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=True)
+    # session_state에 저장 (Flutter WebView에서 확실하게 불러올 수 있도록)
+    st.session_state["_my_saju_saved_url_v1"] = link
+    # localStorage에도 저장 (브라우저 간 영속성)
     render_my_saju_browser_storage_widget(link, key=f"{key_prefix}_browser_store")
 
 
@@ -26628,7 +26631,24 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
 elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
     quest_title("🌸 내 사주 진단", "")
 
-    render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
+    # ── 내 사주 불러오기 (session_state 기반 — Flutter WebView 확실히 작동) ──
+    _saved_url = st.session_state.get("_my_saju_saved_url_v1", "")
+    if _saved_url:
+        if st.button("⭐ 저장된 내 사주 바로 불러오기", type="primary", use_container_width=True,
+                     key="load_my_saju_session_btn"):
+            # URL 파라미터 파싱 → query_params 적용 → 자동 분석
+            try:
+                import urllib.parse as _up
+                _p = dict(_up.parse_qsl(_up.urlparse(_saved_url).query))
+                st.query_params.clear()
+                for _k, _v in _p.items():
+                    st.query_params[_k] = _v
+            except Exception:
+                pass
+            st.rerun()
+    else:
+        # localStorage 기반 (일반 브라우저용 폴백)
+        render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
 
     top_row = st.columns([1.1, 1])
     with top_row[0]:
