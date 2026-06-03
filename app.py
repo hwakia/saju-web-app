@@ -26529,7 +26529,7 @@ multi_payload = None
 meal_payload = None
 
 if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력":
-    quest_title("🌸 내 사주 진단 — 빠른 입력", "", ["빠른 입력", "자동 산출"])
+    quest_title("🌸 내 사주 진단 — 빠른 입력", "")
     quick_name = st.text_input("별명", value="나", key="single_quick_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     quick_line = st.text_input("한 줄 입력", value="", placeholder="YYYYMMDD HHMM 남자 양력", key="single_quick_line")
     quick_yaja = st.checkbox("야자시 모드 시도", value=False, key="single_quick_yaja")
@@ -26552,7 +26552,7 @@ if input_mode == "혼자 보기" and single_view_mode == "빠른 한 줄 입력"
             st.stop()
 
 if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
-    quest_title("🌸 내 사주 진단 — 원국 직접 입력", "", ["원국", "천간", "지지"])
+    quest_title("🌸 내 사주 진단 — 원국 직접 입력", "")
     single_direct_name = st.text_input("별명", value="나", key="single_direct_name", max_chars=10, help="실명 대신 10글자 이내 별명을 권장합니다.")
     st.caption("년주·월주 → 일주·시주 순으로 선택하세요.")
     _r1a = st.columns(2)
@@ -26607,7 +26607,7 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
         }
 
 elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
-    quest_title("🌸 내 사주 진단", "", ["원국", "오늘", "대운"])
+    quest_title("🌸 내 사주 진단", "")
 
     render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
 
