@@ -3593,68 +3593,48 @@ except Exception:
     Solar = None
     Lunar = None
 
-# ── PostgreSQL 클라이언트 (지연 초기화) ────────
+# ── Supabase 클라이언트 (지연 초기화) ────────
 try:
-    import psycopg2 as _psycopg2
-    import psycopg2.extras as _psycopg2_extras
-    _pg_available = True
+    from supabase import create_client as _sb_factory
+    _sb_module_ok = True
 except Exception:
-    _psycopg2 = None  # type: ignore
-    _psycopg2_extras = None  # type: ignore
-    _pg_available = False
-_pg_conn = None
+    _sb_factory = None  # type: ignore
+    _sb_module_ok = False
+
+_sb_client = None
 
 
 def _get_pg():
-    """PostgreSQL 연결 객체를 반환한다. 연결 불가 시 None."""
-    global _pg_conn
-    if _pg_conn is not None:
-        try:
-            if _pg_conn.closed == 0:
-                return _pg_conn
-        except Exception:
-            pass
-        _pg_conn = None
-    if not _pg_available:
+    """Supabase 클라이언트를 반환한다. 연결 불가 시 None. (기존 이름 유지)"""
+    global _sb_client
+    if _sb_client is not None:
+        return _sb_client
+    if not _sb_module_ok:
         return None
     try:
-        dsn = os.environ.get("PG_DATABASE_URL", "")
-        if not dsn:
-            try:
-                dsn = st.secrets.get("PG_DATABASE_URL", "")
-            except Exception:
-                pass
-        if dsn:
-            _pg_conn = _psycopg2.connect(dsn)
-            _pg_conn.autocommit = True
+        url = ""
+        key = ""
+        try:
+            url = st.secrets.get("SUPABASE_URL", "")
+            key = (st.secrets.get("SUPABASE_SERVICE_KEY", "")
+                   or st.secrets.get("SUPABASE_ANON_KEY", ""))
+        except Exception:
+            pass
+        if not url:
+            url = os.environ.get("SUPABASE_URL", "")
+        if not key:
+            key = os.environ.get("SUPABASE_SERVICE_KEY",
+                                 os.environ.get("SUPABASE_ANON_KEY", ""))
+        if url and key:
+            _sb_client = _sb_factory(url, key)
     except Exception:
         pass
-    return _pg_conn
+    return _sb_client
 
 
 def _pg_exec(sql: str, params=(), fetch: str = "none"):
-    """psycopg2 쿼리 실행 헬퍼. fetch='one'|'all'|'none'."""
-    global _pg_conn
-    conn = _get_pg()
-    if conn is None:
-        return None
-    try:
-        with conn.cursor(cursor_factory=_psycopg2_extras.RealDictCursor) as cur:
-            cur.execute(sql, params)
-            if fetch == "one":
-                row = cur.fetchone()
-                return dict(row) if row else None
-            if fetch == "all":
-                rows = cur.fetchall()
-                return [dict(r) for r in (rows or [])]
-            return True
-    except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        _pg_conn = None
-        return None
+    """하위 호환용 — 실제 DB 작업은 개별 sb_* 함수에서 supabase-py 직접 호출."""
+    return None
 
 
 # ============================================================
@@ -11617,24 +11597,24 @@ def _analytics_payload(event_name: str, page_name: str, metadata: Dict[str, obje
 
 
 def _insert_event_pg(payload: Dict[str, object]) -> bool:
-    """app_events 이벤트를 PostgreSQL에 저장한다."""
-    if _get_pg() is None:
+    """app_events 이벤트를 Supabase에 저장한다."""
+    sb = _get_pg()
+    if sb is None:
         return False
-    return bool(_pg_exec(
-        "INSERT INTO app_events "
-        "(created_at, session_id, event_name, page_name, source, app_version, is_admin, metadata) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-        (
-            str(payload.get("created_at", "")),
-            str(payload.get("session_id", ""))[:64],
-            str(payload.get("event_name", ""))[:64],
-            str(payload.get("page_name", ""))[:64],
-            str(payload.get("source", ""))[:64],
-            str(payload.get("app_version", ""))[:16],
-            bool(payload.get("is_admin", False)),
-            _psycopg2_extras.Json(payload.get("metadata") or {}),
-        )
-    ))
+    try:
+        sb.table("app_events").insert({
+            "created_at": str(payload.get("created_at", "")),
+            "session_id": str(payload.get("session_id", ""))[:64],
+            "event_name": str(payload.get("event_name", ""))[:64],
+            "page_name": str(payload.get("page_name", ""))[:64],
+            "source": str(payload.get("source", ""))[:64],
+            "app_version": str(payload.get("app_version", ""))[:16],
+            "is_admin": bool(payload.get("is_admin", False)),
+            "metadata": payload.get("metadata") or {},
+        }).execute()
+        return True
+    except Exception:
+        return False
 
 
 def _insert_event_local(payload: Dict[str, object]) -> bool:
@@ -11665,19 +11645,20 @@ def log_event(event_name: str, page_name: str = "app", metadata: Dict[str, objec
 def read_analytics_events(limit: int = 1000) -> List[Dict[str, object]]:
     """관리자 화면용 이벤트 읽기. DB가 연결되어 있으면 PostgreSQL, 없으면 임시 로컬 로그."""
     events: List[Dict[str, object]] = []
-    if _get_pg() is not None:
-        rows = _pg_exec(
-            "SELECT created_at, session_id, event_name, page_name, source, "
-            "app_version, is_admin, metadata "
-            "FROM app_events ORDER BY created_at DESC LIMIT %s",
-            (int(limit),), fetch="all"
-        )
-        for r in (rows or []):
-            row_dict = dict(r)
-            ca = row_dict.get("created_at")
-            if hasattr(ca, "isoformat"):
-                row_dict["created_at"] = ca.isoformat()
-            events.append(row_dict)
+    sb = _get_pg()
+    if sb is not None:
+        try:
+            r = sb.table("app_events").select(
+                "created_at, session_id, event_name, page_name, source, app_version, is_admin, metadata"
+            ).order("created_at", desc=True).limit(int(limit)).execute()
+            for row in (r.data or []):
+                row_dict = dict(row)
+                ca = row_dict.get("created_at")
+                if hasattr(ca, "isoformat"):
+                    row_dict["created_at"] = ca.isoformat()
+                events.append(row_dict)
+        except Exception:
+            pass
     else:
         try:
             with open(EVENT_LOG_LOCAL_PATH, "r", encoding="utf-8") as f:
@@ -14639,82 +14620,97 @@ def _sb_gen_id(length: int = 6) -> str:
 
 def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
     """맞짱 결과 [{name, score}]를 DB에 저장하고 6자리 ID를 반환한다."""
-    if _get_pg() is None:
+    sb = _get_pg()
+    if sb is None:
         return None
     bid = _sb_gen_id(6)
-    result = _pg_exec(
-        "INSERT INTO battles (id, participants, expires_at) VALUES (%s, %s, %s)",
-        (bid, _psycopg2_extras.Json(participants),
-         (datetime.now() + timedelta(minutes=30)).isoformat())
-    )
-    return bid if result else None
+    try:
+        sb.table("battles").insert({
+            "id": bid,
+            "participants": participants,
+            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
+        }).execute()
+        return bid
+    except Exception:
+        st.session_state["_sb_last_error"] = "DB insert failed"
+        return None
 
 
 def sb_load_battle(battle_id: str) -> "List[Dict] | None":
     """DB에서 맞짱 결과를 불러온다."""
-    if _get_pg() is None or not battle_id:
+    sb = _get_pg()
+    if sb is None or not battle_id:
         return None
-    row = _pg_exec(
-        "SELECT participants FROM battles WHERE id = %s",
-        (battle_id,), fetch="one"
-    )
-    return list(row.get("participants") or []) if row else None
+    try:
+        r = sb.table("battles").select("participants").eq("id", battle_id).execute()
+        if r.data:
+            return list(r.data[0].get("participants") or [])
+        return None
+    except Exception:
+        return None
 
 
 def sb_create_room(max_participants: int = 5) -> "str | None":
     """빈 비밀케미 방을 생성하고 ID를 반환한다."""
-    if _get_pg() is None:
+    sb = _get_pg()
+    if sb is None:
         return None
     rid = _sb_gen_id(6)
-    result = _pg_exec(
-        "INSERT INTO chemistry_rooms (id, max_participants, participants, status, expires_at)"
-        " VALUES (%s, %s, %s, %s, %s)",
-        (rid, int(max_participants), _psycopg2_extras.Json([]), "waiting",
-         (datetime.now() + timedelta(minutes=30)).isoformat())
-    )
-    if not result:
+    try:
+        sb.table("chemistry_rooms").insert({
+            "id": rid,
+            "max_participants": int(max_participants),
+            "participants": [],
+            "status": "waiting",
+            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
+        }).execute()
+        return rid
+    except Exception:
         st.session_state["_sb_last_error"] = "DB insert failed"
         return None
-    return rid
 
 
 def sb_join_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
     """참가자를 방에 추가한다. 성공 시 업데이트된 방 dict 반환."""
-    if _get_pg() is None:
+    sb = _get_pg()
+    if sb is None:
         return None
-    room = _pg_exec(
-        "SELECT * FROM chemistry_rooms WHERE id = %s",
-        (room_id,), fetch="one"
-    )
-    if not room:
-        return None
-    ps = list(room.get("participants") or [])
-    max_p = int(room.get("max_participants") or 5)
-    existing = {p.get("name", "") for p in ps}
-    name = str(participant.get("name", ""))
-    if name in existing:
+    try:
+        r = sb.table("chemistry_rooms").select("*").eq("id", room_id).execute()
+        if not r.data:
+            return None
+        room = dict(r.data[0])
+        ps = list(room.get("participants") or [])
+        max_p = int(room.get("max_participants") or 5)
+        existing = {p.get("name", "") for p in ps}
+        name = str(participant.get("name", ""))
+        if name in existing:
+            return room
+        if len(ps) >= max_p:
+            return None
+        ps.append(participant)
+        new_status = "full" if len(ps) >= max_p else "waiting"
+        sb.table("chemistry_rooms").update({
+            "participants": ps,
+            "status": new_status,
+        }).eq("id", room_id).execute()
+        room["participants"] = ps
+        room["status"] = new_status
         return room
-    if len(ps) >= max_p:
+    except Exception:
         return None
-    ps.append(participant)
-    new_status = "full" if len(ps) >= max_p else "waiting"
-    _pg_exec(
-        "UPDATE chemistry_rooms SET participants = %s, status = %s WHERE id = %s",
-        (_psycopg2_extras.Json(ps), new_status, room_id)
-    )
-    room["participants"] = ps
-    room["status"] = new_status
-    return room
 
 
 def sb_load_room(room_id: str) -> "Dict | None":
     """방 데이터를 조회한다."""
-    if _get_pg() is None or not room_id:
+    sb = _get_pg()
+    if sb is None or not room_id:
         return None
-    return _pg_exec(
-        "SELECT * FROM chemistry_rooms WHERE id = %s",
-        (room_id,), fetch="one"
-    )
+    try:
+        r = sb.table("chemistry_rooms").select("*").eq("id", room_id).execute()
+        return dict(r.data[0]) if r.data else None
+    except Exception:
+        return None
 
 def _infer_saju_role(result: Dict[str, object]) -> str:
     """result에서 대표 역할 유형을 추론한다 (오행 기반)."""
@@ -14790,16 +14786,20 @@ def _extract_participant_data(payload: Dict, name: str) -> Dict:
 
 def sb_create_battle_room(max_participants: int = 5) -> "str | None":
     """빈 맞짱 방을 생성하고 ID를 반환한다."""
-    if _get_pg() is None:
+    sb = _get_pg()
+    if sb is None:
         return None
     rid = _sb_gen_id(6)
-    result = _pg_exec(
-        "INSERT INTO battle_rooms (id, max_participants, participants, status, expires_at)"
-        " VALUES (%s, %s, %s, %s, %s)",
-        (rid, int(max_participants), _psycopg2_extras.Json([]), "waiting",
-         (datetime.now() + timedelta(minutes=30)).isoformat())
-    )
-    if not result:
+    try:
+        sb.table("battle_rooms").insert({
+            "id": rid,
+            "max_participants": int(max_participants),
+            "participants": [],
+            "status": "waiting",
+            "expires_at": (datetime.now() + timedelta(minutes=30)).isoformat(),
+        }).execute()
+        return rid
+    except Exception:
         st.session_state["_sb_last_error"] = "DB insert failed"
         return None
     return rid
@@ -14807,51 +14807,59 @@ def sb_create_battle_room(max_participants: int = 5) -> "str | None":
 
 def sb_join_battle_room(room_id: str, participant: Dict[str, object]) -> "Dict | None":
     """참가자를 맞짱 방에 추가한다. 성공 시 업데이트된 방 dict 반환."""
-    if _get_pg() is None:
+    sb = _get_pg()
+    if sb is None:
         return None
-    room = _pg_exec(
-        "SELECT * FROM battle_rooms WHERE id = %s",
-        (room_id,), fetch="one"
-    )
-    if not room:
-        return None
-    ps = list(room.get("participants") or [])
-    max_p = int(room.get("max_participants") or 5)
-    existing = {p.get("name", "") for p in ps}
-    name = str(participant.get("name", ""))
-    if name in existing:
+    try:
+        r = sb.table("battle_rooms").select("*").eq("id", room_id).execute()
+        if not r.data:
+            return None
+        room = dict(r.data[0])
+        ps = list(room.get("participants") or [])
+        max_p = int(room.get("max_participants") or 5)
+        existing = {p.get("name", "") for p in ps}
+        name = str(participant.get("name", ""))
+        if name in existing:
+            return room
+        if len(ps) >= max_p:
+            return None
+        ps.append(participant)
+        new_status = "full" if len(ps) >= max_p else "waiting"
+        sb.table("battle_rooms").update({
+            "participants": ps,
+            "status": new_status,
+        }).eq("id", room_id).execute()
+        room["participants"] = ps
+        room["status"] = new_status
         return room
-    if len(ps) >= max_p:
+    except Exception:
         return None
-    ps.append(participant)
-    new_status = "full" if len(ps) >= max_p else "waiting"
-    _pg_exec(
-        "UPDATE battle_rooms SET participants = %s, status = %s WHERE id = %s",
-        (_psycopg2_extras.Json(ps), new_status, room_id)
-    )
-    room["participants"] = ps
-    room["status"] = new_status
-    return room
 
 
 def sb_load_battle_room(room_id: str) -> "Dict | None":
     """맞짱 방 데이터를 조회한다."""
-    if _get_pg() is None or not room_id:
+    sb = _get_pg()
+    if sb is None or not room_id:
         return None
-    return _pg_exec(
-        "SELECT * FROM battle_rooms WHERE id = %s",
-        (room_id,), fetch="one"
-    )
+    try:
+        r = sb.table("battle_rooms").select("*").eq("id", room_id).execute()
+        return dict(r.data[0]) if r.data else None
+    except Exception:
+        return None
 
 
 def sb_update_room_chemistry_result(room_id: str, chemistry_result: Dict) -> bool:
     """케미 방에 pre-computed 분석 결과를 저장한다. 원국은 포함되지 않음."""
-    if _get_pg() is None or not room_id:
+    sb = _get_pg()
+    if sb is None or not room_id:
         return False
-    return bool(_pg_exec(
-        "UPDATE chemistry_rooms SET chemistry_result = %s WHERE id = %s",
-        (_psycopg2_extras.Json(chemistry_result), room_id)
-    ))
+    try:
+        sb.table("chemistry_rooms").update({
+            "chemistry_result": chemistry_result,
+        }).eq("id", room_id).execute()
+        return True
+    except Exception:
+        return False
 
 
 def _compute_and_store_room_chemistry(room_id: str, participants: List[Dict], my_payload: Dict) -> None:
