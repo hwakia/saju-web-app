@@ -24984,14 +24984,16 @@ def render_origin_identity_table(
         "금": ("#1a222b", "#b8cfe0"),   # 연청
         "수": ("#0d1a2e", "#7ab8ff"),   # 하늘
     }
-    p.append("<div style='display:flex;gap:.45rem;flex-wrap:wrap;margin:.6rem 0 .5rem 0;justify-content:center;'>")
+    p.append("<div style='display:flex;gap:.3rem;flex-wrap:nowrap;margin:.6rem 0 .5rem 0;"
+             "justify-content:center;max-width:420px;margin-left:auto;margin-right:auto;'>")
     for el_key in ["목", "화", "토", "금", "수"]:
         cnt   = ohaeng_cnt.get(el_key, 0)
         label = OHAENG_LABEL[el_key]
         bg, fg = _OH_COLORS.get(el_key, ("#222", "#eee"))
         p.append(
-            f"<div style='padding:.32rem .7rem;border-radius:999px;font-size:.9rem;"
-            f"font-weight:900;background:{bg};border:1.5px solid {fg};"
+            f"<div style='flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;"
+            f"padding:.28rem .2rem;border-radius:999px;font-size:.78rem;"
+            f"font-weight:900;background:{bg};border:1px solid {fg};"
             f"color:{fg} !important;-webkit-text-fill-color:{fg} !important;"
             f"box-shadow:0 1px 4px rgba(0,0,0,.35);'>"
             f"{label}({cnt})</div>"
