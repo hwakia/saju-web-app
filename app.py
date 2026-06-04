@@ -2750,6 +2750,58 @@ def detect_luck_branch_interactions(chart: Chart, luck_branch: str) -> List[Dict
                     "important": important,
                 })
 
+    # 형 (이형 — 삼형의 부분 성립 포함: 丑戌, 戌未, 寅巳, 巳申 등)
+    _seen_pen = set()
+    for a, b, name in PENALTIES:
+        if luck_branch in (a, b):
+            other = b if luck_branch == a else a
+            if other in original_set and name not in _seen_pen:
+                _seen_pen.add(name)
+                important = chart.month.branch == other or chart.day.branch == other
+                result.append({
+                    "type": "형",
+                    "name": name,
+                    "element": None,
+                    "strength": "중간" if important else "약함",
+                    "description": "운 지지가 원국 지지와 형(刑)을 이룹니다. 마찰·절차 문제·관계 조정에 주의가 필요합니다.",
+                    "target": other,
+                    "important": important,
+                })
+
+    # 해 (六害)
+    for a, b, name in [("子","未","자미해"),("丑","午","축오해"),("寅","巳","인사해"),
+                       ("卯","辰","묘진해"),("申","亥","신해해"),("酉","戌","유술해")]:
+        if luck_branch in (a, b):
+            other = b if luck_branch == a else a
+            if other in original_set:
+                important = chart.month.branch == other or chart.day.branch == other
+                result.append({
+                    "type": "해",
+                    "name": name,
+                    "element": None,
+                    "strength": "약함",
+                    "description": "운 지지가 원국 지지와 해(害)를 이룹니다. 일·관계에서 은근한 방해 신호로 작용할 수 있습니다.",
+                    "target": other,
+                    "important": important,
+                })
+
+    # 파 (破)
+    for a, b, name in [("子","酉","자유파"),("丑","辰","축진파"),("寅","亥","인해파"),
+                       ("卯","午","묘오파"),("未","戌","미술파")]:
+        if luck_branch in (a, b):
+            other = b if luck_branch == a else a
+            if other in original_set:
+                important = chart.month.branch == other or chart.day.branch == other
+                result.append({
+                    "type": "파",
+                    "name": name,
+                    "element": None,
+                    "strength": "약함",
+                    "description": "운 지지가 원국 지지와 파(破)를 이룹니다. 계획·약속이 어그러지기 쉬운 신호입니다.",
+                    "target": other,
+                    "important": important,
+                })
+
     # 육합
     for a, b, el, name in SIX_HARMONIES:
         if luck_branch in (a, b):
@@ -23682,6 +23734,8 @@ def render_saju_yebo_page(payload: dict) -> None:
                 _raw_score += 0.05 * _wt
             elif _it_type in ("충","형"):
                 _raw_score -= 0.08 * _wt
+            elif _it_type in ("해","파"):
+                _raw_score -= 0.04 * _wt
         _layer_analysis.append({
             "name": _lname, "gz": _gz, "weight": _wt, "color": _lcol,
             "stem": _stem_c, "branch": _branch_c,
@@ -23836,7 +23890,7 @@ def render_saju_yebo_page(payload: dict) -> None:
             f"대운이 좋아도 세운이 삐걱이면 그해가 힘들고, 대운이 좀 빡빡해도 세운이 맞으면 그해는 숨통이 트여 — 그게 운의 묘미야."
         )
 
-    # ── 월운 + 일운 ─────────────────────────────────────────────
+    # ── 월운 ────────────────────────────────────────────────────
     _mw_la = next((la for la in _layer_analysis if "월운" in la["name"]), None)
     _iw_la = next((la for la in _layer_analysis if "일운" in la["name"]), None)
     if _mw_la and _mw_la.get("stem"):
@@ -23845,21 +23899,39 @@ def render_saju_yebo_page(payload: dict) -> None:
             else "조심스러운 달이야" if _mw_la["score"] < -0.02
             else "조용히 지나가는 달이야"
         )
-        _iw_txt = ""
-        if _iw_la and _iw_la.get("stem"):
-            _iw_txt = (
-                f" 오늘은 <b>{_iw_la['gz']}</b> 기운 — "
-                + (
-                    "용신 방향이라 뭘 해도 가볍게 풀리는 날이야."
-                    if _iw_la["score"] > 0.01
-                    else "기신 방향이라 오늘은 조금 조심해봐."
-                    if _iw_la["score"] < -0.01
-                    else "크게 튀지 않는 평범한 날이야."
-                )
+        _yebo_parts.append(
+            f"이번 달 월운 <b>{_mw_la['gz']}</b>는 <b>{_mw_tone}</b>. "
+            f"세운이라는 1년 흐름 안에서 이달의 페이스를 정해주는 기운이야."
+        )
+
+    # ── 일운 (오늘) ──────────────────────────────────────────────
+    if _iw_la and _iw_la.get("stem"):
+        _iw_es = _EL_ICON.get(_iw_la.get("el_stem", "-"), "") + _EL_KO.get(_iw_la.get("el_stem", "-"), _iw_la.get("el_stem", "-"))
+        _iw_eb = _EL_ICON.get(_iw_la.get("el_branch", "-"), "") + _EL_KO.get(_iw_la.get("el_branch", "-"), _iw_la.get("el_branch", "-"))
+        _iw_tone = (
+            "용신 방향이라 뭘 해도 가볍게 풀리는 날이야"
+            if _iw_la["score"] > 0.01
+            else "기신 방향이라 오늘은 무리하지 말고 한 템포 쉬어가는 게 좋아"
+            if _iw_la["score"] < -0.01
+            else "크게 튀지 않는 평범한 날이야"
+        )
+        _inters_iw = _iw_la.get("interactions") or []
+        _iw_inter_txt = ""
+        if _inters_iw:
+            _iw_sig_strs = []
+            for _it in _inters_iw[:2]:
+                _t0 = str(_it.get("type", ""))
+                _n0 = str(_it.get("name", ""))
+                _ko0 = _CLASH_KO.get(_t0, None) or _MERGE_KO.get(_t0, None) or _t0
+                _iw_sig_strs.append(f"<b>{_n0}</b> {_ko0}" if _n0 else _ko0)
+            _iw_inter_txt = (
+                " 게다가 오늘 지지가 원국과 " + "·".join(_iw_sig_strs) + " 신호를 만들고 있어 — "
+                "하루짜리 기운이지만 오늘 일정·말투·관계에서는 체감될 수 있으니 참고해."
             )
         _yebo_parts.append(
-            f"이번 달 월운 <b>{_mw_la['gz']}</b>는 <b>{_mw_tone}</b>.{_iw_txt} "
-            f"월운과 일운은 짧게 지나가는 기운이라 너무 크게 의미 두진 말되, 흐름 타기엔 충분히 써먹을 수 있어."
+            f"오늘 일운은 <b>{_iw_la['gz']}</b>야. 천간 <b>{_iw_es}({_iw_la.get('yong_stem') or '중립'})</b>, "
+            f"지지 <b>{_iw_eb}({_iw_la.get('yong_branch') or '중립'})</b>으로 들어와 — <b>{_iw_tone}</b>.{_iw_inter_txt} "
+            f"일운은 제일 짧은 운이니 크게 의미 두진 말고, 오늘 하루 흐름 타는 정도로 써먹어."
         )
 
     # ── 합충 종합 ────────────────────────────────────────────────
