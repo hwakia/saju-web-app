@@ -14675,11 +14675,32 @@ def _sb_gen_id(length: int = 6) -> str:
     return "".join(_rand.choices(_string_mod.ascii_lowercase + _string_mod.digits, k=length))
 
 
+def sb_cleanup_expired_rooms() -> None:
+    """만료(expires_at) 후 1시간이 지난 케미방/맞짱방/맞짱결과 row를 삭제한다.
+
+    진행 중 화면이 깨지지 않도록 1시간의 유예를 두고, DB 호출을 아끼기 위해
+    세션당 1회만 실행한다. 저장된 데이터는 별명·수치뿐이지만 DB를 깨끗하게 유지한다.
+    """
+    if st.session_state.get("_sb_rooms_cleaned_v1"):
+        return
+    st.session_state["_sb_rooms_cleaned_v1"] = True
+    sb = _get_pg()
+    if sb is None:
+        return
+    cutoff = (datetime.now() - timedelta(hours=1)).isoformat()
+    for _table in ("chemistry_rooms", "battle_rooms", "battles"):
+        try:
+            sb.table(_table).delete().lt("expires_at", cutoff).execute()
+        except Exception:
+            pass
+
+
 def sb_save_battle(participants: List[Dict[str, object]]) -> "str | None":
     """맞짱 결과 [{name, score}]를 DB에 저장하고 6자리 ID를 반환한다."""
     sb = _get_pg()
     if sb is None:
         return None
+    sb_cleanup_expired_rooms()
     bid = _sb_gen_id(6)
     try:
         sb.table("battles").insert({
@@ -14712,6 +14733,7 @@ def sb_create_room(max_participants: int = 5) -> "str | None":
     sb = _get_pg()
     if sb is None:
         return None
+    sb_cleanup_expired_rooms()
     rid = _sb_gen_id(6)
     try:
         sb.table("chemistry_rooms").insert({
@@ -14846,6 +14868,7 @@ def sb_create_battle_room(max_participants: int = 5) -> "str | None":
     sb = _get_pg()
     if sb is None:
         return None
+    sb_cleanup_expired_rooms()
     rid = _sb_gen_id(6)
     try:
         sb.table("battle_rooms").insert({
