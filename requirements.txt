@@ -4,3 +4,4 @@ Pillow
 qrcode
 lunar_python
 supabase
+streamlit_js_eval

@@ -11525,6 +11525,30 @@ def _apply_my_saju_params_to_current_url(params: Dict[str, str]) -> bool:
             return False
 
 
+try:
+    from streamlit_js_eval import streamlit_js_eval as _js_eval
+except Exception:
+    _js_eval = None
+
+
+def read_my_saju_from_browser() -> str:
+    """localStorage에 저장된 내 사주 URL을 파이썬으로 읽어온다.
+
+    브라우저(또는 WebView)를 완전히 종료했다 다시 켜도 유지된다.
+    첫 렌더링에서는 None이 올 수 있고, 컴포넌트 값이 도착하면 자동 rerun된다.
+    """
+    if _js_eval is None:
+        return ""
+    try:
+        val = _js_eval(
+            js_expressions="localStorage.getItem('saju_mri_my_saju_url_v1')",
+            key="ls_read_my_saju_v1",
+        )
+        return str(val) if val else ""
+    except Exception:
+        return ""
+
+
 def render_my_saju_save_link_tool(
     name: str,
     birth_date: date | None,
@@ -26649,11 +26673,31 @@ if input_mode == "혼자 보기" and single_view_mode == "원국 직접 입력":
 elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자동 산출":
     quest_title("🌸 내 사주 진단", "")
 
-    # ── 내 사주 불러오기 (session_state 기반 — Flutter WebView 확실히 작동) ──
-    _saved_url = st.session_state.get("_my_saju_saved_url_v1", "")
+    # ── 내 사주 불러오기 ──────────────────────────────────────
+    # 1순위: session_state (같은 세션) / 2순위: localStorage (브라우저 재시작 후에도 유지)
+    if st.session_state.pop("_my_saju_ls_delete_v1", False):
+        components.html(
+            "<script>try{localStorage.removeItem('saju_mri_my_saju_url_v1');}catch(e){}</script>",
+            height=0,
+        )
+        st.session_state["_my_saju_saved_url_v1"] = ""
+        st.session_state["_my_saju_ls_deleted_once_v1"] = True
+        st.caption("저장된 내 사주를 이 기기에서 삭제했습니다.")
+
+    _saved_url = ""
+    if not st.session_state.get("_my_saju_ls_deleted_once_v1"):
+        _saved_url = st.session_state.get("_my_saju_saved_url_v1", "") or read_my_saju_from_browser()
     if _saved_url:
-        if st.button("⭐ 저장된 내 사주 바로 불러오기", type="primary", use_container_width=True,
-                     key="load_my_saju_session_btn"):
+        _load_col, _del_col = st.columns([5, 1])
+        with _load_col:
+            _load_clicked = st.button("⭐ 저장된 내 사주 바로 불러오기", type="primary",
+                                      use_container_width=True, key="load_my_saju_session_btn")
+        with _del_col:
+            if st.button("🗑️", help="이 기기에 저장된 내 사주 삭제", use_container_width=True,
+                         key="del_my_saju_ls_btn"):
+                st.session_state["_my_saju_ls_delete_v1"] = True
+                st.rerun()
+        if _load_clicked:
             # URL 파라미터 파싱 → query_params 적용 → 자동 분석
             try:
                 import urllib.parse as _up
@@ -26661,12 +26705,10 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
                 st.query_params.clear()
                 for _k, _v in _p.items():
                     st.query_params[_k] = _v
+                st.session_state.pop("_my_saju_query_prefilled_v5138", None)
             except Exception:
                 pass
             st.rerun()
-    else:
-        # localStorage 기반 (일반 브라우저용 폴백)
-        render_my_saju_browser_storage_widget("", key="single_auto_browser_recall_v5141")
 
     top_row = st.columns([1.1, 1])
     with top_row[0]:
