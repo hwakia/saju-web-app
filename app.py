@@ -24966,7 +24966,8 @@ def render_origin_identity_table(
         bg    = _OH_COLORS.get(el_key, "#ccc")
         p.append(
             f"<div style='padding:.32rem .7rem;border-radius:999px;font-size:.9rem;"
-            f"font-weight:900;background:{bg};color:#111111;"
+            f"font-weight:900;background:{bg};color:#111111 !important;"
+            f"-webkit-text-fill-color:#111111 !important;"
             f"box-shadow:0 1px 4px rgba(0,0,0,.25);'>"
             f"{label}({cnt})</div>"
         )
