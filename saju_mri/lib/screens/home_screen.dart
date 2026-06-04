@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -181,10 +182,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (canGoBack) {
           await _webViewController.goBack();
         } else {
-          // 루트 도달 시 전면광고 후 종료 다이얼로그
-          if (_isInterstitialReady) {
-            _showInterstitialAd();
-          }
+          // 루트 도달 시 종료 확인만 표시
+          // (뒤로가기 종료 시 전면광고는 AdMob 방해 광고 정책 위반 소지가 있어 제거)
           if (mounted) {
             _showExitDialog();
           }
@@ -299,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('앱 종료'),
-        content: const Text('사주MRI를 종료하시겠습니까?'),
+        content: const Text('사주맞짱을 종료하시겠습니까?'),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -311,9 +310,14 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // 앱 종료
-              // SystemNavigator.pop() 또는 exit(0) 사용
+              _webViewController.loadRequest(Uri.parse(_sajuUrl));
+            },
+            child: const Text('처음 화면으로'),
+          ),
+          TextButton(
+            onPressed: () {
               Navigator.of(context).pop();
+              SystemNavigator.pop();
             },
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF3B5BDB),

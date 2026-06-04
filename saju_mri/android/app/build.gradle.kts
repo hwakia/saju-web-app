@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.hwakia.saju_mri"
+        applicationId = "com.hwakia.saju"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

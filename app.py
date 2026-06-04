@@ -15143,7 +15143,7 @@ def _render_create_room_view() -> None:
         st.success(f"방이 만들어졌습니다! 방 ID: `{room_id_safe}`")
         st.components.v1.html(
             f"""<button onclick="
-                var url = window.location.origin + window.location.pathname + '?room={room_id_safe}';
+                var url = '{APP_PUBLIC_URL}?room={room_id_safe}';
                 if(navigator.share){{
                     navigator.share({{title:'모임 케미 초대 참가 링크',url:url}}).catch(function(){{}});
                 }} else {{
@@ -15297,7 +15297,7 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
 
     st.components.v1.html(
         f"""<button onclick="
-            var base = window.location.origin + window.location.pathname;
+            var base = '{APP_PUBLIC_URL}';
             var url = base + '?room={room_id_safe}{_t_param}';
             if(navigator.share){{
                 navigator.share({{title:'모임 케미 초대 참가 링크', url:url}}).catch(()=>{{}});
@@ -15610,7 +15610,7 @@ def _render_create_battle_room_view() -> None:
         st.success(f"방이 만들어졌습니다! 방 ID: `{room_id_safe}`")
         st.components.v1.html(
             f"""<button onclick="
-                var url = window.location.origin + window.location.pathname + '?broom={room_id_safe}';
+                var url = '{APP_PUBLIC_URL}?broom={room_id_safe}';
                 if(navigator.share){{
                     navigator.share({{title:'사주 맞짱 방 참가 링크',url:url}}).catch(function(){{}});
                 }} else {{
@@ -15748,7 +15748,7 @@ def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max
     room_id_safe = str(room_id)
     st.components.v1.html(
         f"""<button onclick="
-            var base = window.location.origin + window.location.pathname;
+            var base = '{APP_PUBLIC_URL}';
             var url = base + '?broom={room_id_safe}';
             if(navigator.share){{
                 navigator.share({{title:'사주 맞짱 방 참가 링크', url:url}}).catch(()=>{{}});
@@ -15946,7 +15946,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
     winner_name_safe = str(winner.get("name", "?")).replace("'", "\\'")
     st.components.v1.html(
         f"""<button onclick="
-            var url = window.location.origin + window.location.pathname + '?broom={room_id_safe}';
+            var url = '{APP_PUBLIC_URL}?broom={room_id_safe}';
             var msg = '⚔️ 사주 맞짱 결과\\n🏆 오늘의 승자: {winner_name_safe}\\n' + url;
             if(navigator.share){{
                 navigator.share({{title:'사주 맞짱 결과', text:msg, url:url}}).catch(()=>{{}});
@@ -16050,7 +16050,7 @@ def render_battle_ranking_page() -> None:
         bid_safe     = str(bid) if bid else ""
         st.components.v1.html(
             f"""<button onclick="
-                var base = window.location.origin + window.location.pathname;
+                var base = '{APP_PUBLIC_URL}';
                 var bid  = '{bid_safe}';
                 var url  = bid ? (base + '?battle=' + bid) : (base + '?b=' + '{encoded_safe}');
                 if(navigator.share){{
@@ -16223,9 +16223,16 @@ def _render_battle_result_from_url(b_param: str) -> None:
     share_lines.append(f"👑 오늘의 승자: {winner['name']}")
     share_text_safe = "\\n".join(share_lines).replace("'", "\\'")
 
+    # iframe 안에서는 window.location이 srcdoc이 되므로 서버 쪽에서 실제 URL을 만든다
+    try:
+        _qpd_share = dict(st.query_params)
+        _cur_share_url = APP_PUBLIC_URL + ("?" + urllib.parse.urlencode(_qpd_share, doseq=False) if _qpd_share else "")
+    except Exception:
+        _cur_share_url = APP_PUBLIC_URL
+
     st.components.v1.html(
         f"""<button onclick="
-            var url = window.location.href;
+            var url = '{_cur_share_url}';
             var txt = '{share_text_safe}';
             if(navigator.share){{
                 navigator.share({{title:'사주 맞짱 결과', text:txt, url:url}}).catch(()=>{{}});

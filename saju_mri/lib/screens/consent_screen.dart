@@ -26,10 +26,15 @@ class _ConsentScreenState extends State<ConsentScreen> {
       backgroundColor: const Color(0xFF1A1A2E),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
               // 헤더
               Center(
                 child: Column(
@@ -137,9 +142,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 ),
               ),
 
-              const Spacer(),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
-              // 동의 버튼
+              // 동의 버튼 (하단 고정 — 내용은 위에서 스크롤)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

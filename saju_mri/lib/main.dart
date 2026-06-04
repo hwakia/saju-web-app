@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'screens/splash_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'screens/home_screen.dart';
+import 'screens/consent_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MobileAds.instance.initialize();
-  runApp(const SajuMajjangApp());
+  // 스플래시 화면 없이 동의 여부에 따라 바로 분기
+  final prefs = await SharedPreferences.getInstance();
+  final consented = prefs.getBool('privacy_consent_v1') ?? false;
+  runApp(SajuMajjangApp(consented: consented));
 }
 
 class SajuMajjangApp extends StatelessWidget {
-  const SajuMajjangApp({super.key});
+  final bool consented;
+  const SajuMajjangApp({super.key, required this.consented});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +28,7 @@ class SajuMajjangApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      home: consented ? const HomeScreen() : const ConsentScreen(),
     );
   }
 }
