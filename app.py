@@ -1470,6 +1470,10 @@ def useful_elements(chart: Chart, strength_index: float, season: str, adjusted_s
     else:
         logic_addition = ""
 
+    # 조후·통관으로 용신(unique)에 포함된 오행은 기신 목록에서 제외한다.
+    # (같은 오행이 용신·기신에 동시에 표시되는 모순 방지 — 조후 우선)
+    burden = [e for e in burden if e not in unique]
+
     return {
         "primary": unique,
         "conditional": [e for e in conditional if e not in unique],
