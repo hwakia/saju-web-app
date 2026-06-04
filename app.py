@@ -1446,7 +1446,12 @@ def useful_elements(chart: Chart, strength_index: float, season: str, adjusted_s
         burden = []
         logic = "중화권이므로 조후와 순환 구조를 우선 봅니다."
 
+    # 조후 보완: 겨울·여름생(한랭·조열)은 조후가 급하므로 억부 기신과 겹쳐도 용신으로 올린다.
+    # 봄·가을생은 조후가 급하지 않으므로 억부 우선 — 기신과 겹치는 조후 후보는 올리지 않는다.
+    _urgent_climate = ("겨울" in season) or ("여름" in season)
     for el in climate_needed_elements(season, chart.day_master):
+        if el in burden and not _urgent_climate:
+            continue
         if el not in primary:
             primary.append(el)
 
