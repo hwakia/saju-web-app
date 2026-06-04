@@ -26568,10 +26568,20 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
-    if st.button("개인정보 처리방침 열기", use_container_width=True, key="landing_privacy_policy_btn"):
-        st.session_state["_privacy_policy_open"] = True
     if st.session_state.get("_privacy_policy_open", False):
+        if st.button("✖ 개인정보 처리방침 닫기", use_container_width=True, type="primary",
+                     key="landing_privacy_policy_close_top"):
+            st.session_state["_privacy_policy_open"] = False
+            st.rerun()
         render_privacy_policy()
+        if st.button("✖ 닫고 메인으로 돌아가기", use_container_width=True, type="primary",
+                     key="landing_privacy_policy_close_bottom"):
+            st.session_state["_privacy_policy_open"] = False
+            st.rerun()
+    else:
+        if st.button("개인정보 처리방침 열기", use_container_width=True, key="landing_privacy_policy_btn"):
+            st.session_state["_privacy_policy_open"] = True
+            st.rerun()
     st.stop()
 
 input_mode = st.session_state.selected_main_mode or "혼자 보기"
