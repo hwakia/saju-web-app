@@ -24976,23 +24976,24 @@ def render_origin_identity_table(
     p.append("</div>")  # end 8col grid
 
     # ── 오행 분포 (inline style) ──────────────────────────────
+    # 어두운 배경 + 밝은 오행색 글씨/테두리 — 전역 CSS가 글자색을 덮어써도 가독성 유지
     _OH_COLORS = {
-        "목": "#7ee8b8",   # 초록
-        "화": "#ffaac0",   # 분홍
-        "토": "#f0c96a",   # 황금
-        "금": "#b8cfe0",   # 연청
-        "수": "#90c4ff",   # 하늘
+        "목": ("#0d2818", "#6dd8a8"),   # 초록
+        "화": ("#2b0f16", "#ff9ab5"),   # 분홍
+        "토": ("#2a2008", "#e8c46a"),   # 황금
+        "금": ("#1a222b", "#b8cfe0"),   # 연청
+        "수": ("#0d1a2e", "#7ab8ff"),   # 하늘
     }
     p.append("<div style='display:flex;gap:.45rem;flex-wrap:wrap;margin:.6rem 0 .5rem 0;justify-content:center;'>")
     for el_key in ["목", "화", "토", "금", "수"]:
         cnt   = ohaeng_cnt.get(el_key, 0)
         label = OHAENG_LABEL[el_key]
-        bg    = _OH_COLORS.get(el_key, "#ccc")
+        bg, fg = _OH_COLORS.get(el_key, ("#222", "#eee"))
         p.append(
             f"<div style='padding:.32rem .7rem;border-radius:999px;font-size:.9rem;"
-            f"font-weight:900;background:{bg};color:#111111 !important;"
-            f"-webkit-text-fill-color:#111111 !important;"
-            f"box-shadow:0 1px 4px rgba(0,0,0,.25);'>"
+            f"font-weight:900;background:{bg};border:1.5px solid {fg};"
+            f"color:{fg} !important;-webkit-text-fill-color:{fg} !important;"
+            f"box-shadow:0 1px 4px rgba(0,0,0,.35);'>"
             f"{label}({cnt})</div>"
         )
     p.append("</div>")
