@@ -22830,7 +22830,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
         # ⑥ 신살
         _sh_data_g = result.get("shinsal", {}) or {}
-        _sh_hits_g = (_sh_data_g.get("hits") or [])[:2]
+        _sh_hits_g = (_sh_data_g.get("hits") or [])[:6]
         _sh_names = [str(_sh.get("신살") or _sh.get("name","")) for _sh in _sh_hits_g if _sh.get("신살") or _sh.get("name","")]
 
         # ── 문장 조립 ──
@@ -22871,11 +22871,19 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 _yong_sent += f"<br><b>처방:</b> {_rx}"
             parts.append(_yong_sent)
 
-        # 5. 신살
+        # 5. 신살 (전체 표시 + 짧은 키워드)
         if _sh_names:
-            _sh_txt = " · ".join(_sh_names)
+            _SH_KEYWORD = {
+                "천을귀인": "도움 인연", "문창귀인": "글·표현", "역마": "이동·변화",
+                "도화": "매력·시선", "화개": "몰입·깊이", "공망": "우회 자리",
+                "현침": "예리한 감각", "양인": "강한 추진", "괴강": "카리스마", "백호": "강렬한 기운",
+            }
+            _sh_txt = " · ".join(
+                f"<b>{_n}</b>({_SH_KEYWORD[_n]})" if _n in _SH_KEYWORD else f"<b>{_n}</b>"
+                for _n in _sh_names
+            )
             parts.append(
-                f"보조 신호로 <b>{_sh_txt}</b>도 보여. "
+                f"보조 신호로 {_sh_txt}도 보여. "
                 "신살은 원국의 성격을 보완해주는 신호야 — 좋은 쪽으로 살려가면 돼."
             )
 
