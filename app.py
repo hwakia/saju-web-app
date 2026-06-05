@@ -1073,6 +1073,15 @@ YEOKMA_BRANCH = {"寅午戌": "申", "申子辰": "寅", "巳酉丑": "亥", "�
 DOHWA_BRANCH = {"寅午戌": "卯", "申子辰": "酉", "巳酉丑": "午", "亥卯未": "子"}
 HWAGAE_BRANCH = {"寅午戌": "戌", "申子辰": "辰", "巳酉丑": "丑", "亥卯未": "未"}
 
+# 현침살: 침처럼 뾰족한 글자 (예리함·기술·의술·언변)
+HYEONCHIM_CHARS = {"甲", "辛", "卯", "午", "申"}
+# 양인살: 양간 일간 기준 (강한 추진·결단)
+YANGIN_MAP = {"甲": "卯", "丙": "午", "戊": "午", "庚": "酉", "壬": "子"}
+# 괴강살: 기둥(간지) 단위 (극단·카리스마)
+GOEGANG_SET = {("庚", "辰"), ("庚", "戌"), ("壬", "辰"), ("壬", "戌"), ("戊", "戌")}
+# 백호대살: 기둥(간지) 단위 (강렬한 기운)
+BAEKHO_SET = {("甲", "辰"), ("乙", "未"), ("丙", "戌"), ("丁", "丑"), ("戊", "辰"), ("壬", "戌"), ("癸", "丑")}
+
 GONGMANG_BY_XUN_INDEX = [
     ("戌", "亥"),  # 甲子旬
     ("申", "酉"),  # 甲戌旬
@@ -1132,41 +1141,74 @@ def evaluate_shinsal_support(chart: Chart) -> Dict[str, object]:
         hits.append({"신살": "문창귀인", "위치": munchang_target, "성격": "문서·표현", "반영": 0.9})
         notes.append("문창귀인은 학습·문서·표현 능력의 체감 신호로 반영")
 
-    yeokma = YEOKMA_BRANCH[group]
-    yeokma_count = branches.count(yeokma)
+    # 삼합 신살(역마·도화·화개)은 일지 기준 + 년지 기준을 함께 본다 (전통 이중 기준)
+    year_group = _day_branch_group(chart.year.branch)
+    _ss_groups = [group] + ([year_group] if year_group != group else [])
+
+    yeokma_targets = {YEOKMA_BRANCH[g] for g in _ss_groups}
+    yeokma_found = [b for b in branches if b in yeokma_targets]
+    yeokma_count = len(yeokma_found)
     if yeokma_count == 1:
         adjustment += 0.6
-        hits.append({"신살": "역마", "위치": yeokma, "성격": "활동성", "반영": 0.6})
+        hits.append({"신살": "역마", "위치": yeokma_found[0], "성격": "활동성", "반영": 0.6})
         notes.append("역마가 한 곳에 있어 이동성·활동 반경 확장의 체감 신호")
     elif yeokma_count >= 2:
         penalty = min(1.2, 0.55 + 0.25 * (yeokma_count - 2))
         adjustment -= penalty
-        hits.append({"신살": "역마", "위치": f"{yeokma}×{yeokma_count}", "성격": "변동성", "반영": round(-penalty, 1)})
+        hits.append({"신살": "역마", "위치": "·".join(sorted(set(yeokma_found))) + f"×{yeokma_count}", "성격": "변동성", "반영": round(-penalty, 1)})
         notes.append("역마 중복은 활동성보다 변동성·분산감이 커질 수 있어 감점 반영")
 
-    dohwa = DOHWA_BRANCH[group]
-    dohwa_count = branches.count(dohwa)
+    dohwa_targets = {DOHWA_BRANCH[g] for g in _ss_groups}
+    dohwa_found = [b for b in branches if b in dohwa_targets]
+    dohwa_count = len(dohwa_found)
     if dohwa_count == 1:
         adjustment += 0.6
-        hits.append({"신살": "도화", "위치": dohwa, "성격": "매력·노출", "반영": 0.6})
+        hits.append({"신살": "도화", "위치": dohwa_found[0], "성격": "매력·노출", "반영": 0.6})
         notes.append("도화는 매력·노출·분위기 형성의 체감 신호")
     elif dohwa_count >= 2:
         penalty = min(1.3, 0.65 + 0.25 * (dohwa_count - 2))
         adjustment -= penalty
-        hits.append({"신살": "도화", "위치": f"{dohwa}×{dohwa_count}", "성격": "과노출", "반영": round(-penalty, 1)})
+        hits.append({"신살": "도화", "위치": "·".join(sorted(set(dohwa_found))) + f"×{dohwa_count}", "성격": "과노출", "반영": round(-penalty, 1)})
         notes.append("도화 중복은 관계 피로·과노출로 체감될 수 있어 감점 반영")
 
-    hwagae = HWAGAE_BRANCH[group]
-    hwagae_count = branches.count(hwagae)
+    hwagae_targets = {HWAGAE_BRANCH[g] for g in _ss_groups}
+    hwagae_found = [b for b in branches if b in hwagae_targets]
+    hwagae_count = len(hwagae_found)
     if hwagae_count == 1:
         adjustment += 0.5
-        hits.append({"신살": "화개", "위치": hwagae, "성격": "몰입·축적", "반영": 0.5})
+        hits.append({"신살": "화개", "위치": hwagae_found[0], "성격": "몰입·축적", "반영": 0.5})
         notes.append("화개는 몰입·축적·취향의 깊이를 체감 신호로 반영")
     elif hwagae_count >= 2:
         penalty = min(1.0, 0.5 + 0.2 * (hwagae_count - 2))
         adjustment -= penalty
-        hits.append({"신살": "화개", "위치": f"{hwagae}×{hwagae_count}", "성격": "고립성", "반영": round(-penalty, 1)})
+        hits.append({"신살": "화개", "위치": "·".join(sorted(set(hwagae_found))) + f"×{hwagae_count}", "성격": "고립성", "반영": round(-penalty, 1)})
         notes.append("화개 중복은 몰입과 함께 고립감이 강해질 수 있어 감점 반영")
+
+    # ── 표시용 신살 (점수 미반영): 현침·양인·괴강·백호 ──────────
+    _ss_pillars = [("년주", chart.year), ("월주", chart.month), ("일주", chart.day)]
+    if chart.hour:
+        _ss_pillars.append(("시주", chart.hour))
+
+    _hc_pos = ([f"{_lb} {_p.stem}" for _lb, _p in _ss_pillars if _p.stem in HYEONCHIM_CHARS]
+               + [f"{_lb} {_p.branch}" for _lb, _p in _ss_pillars if _p.branch in HYEONCHIM_CHARS])
+    if _hc_pos:
+        hits.append({"신살": "현침", "위치": ", ".join(_hc_pos), "성격": "예리함·기술", "반영": 0.0})
+        notes.append("현침은 예리한 감각·기술·의술·언변의 보조 신호로 표시(점수 미반영)")
+
+    _yangin_b = YANGIN_MAP.get(day_stem, "")
+    if _yangin_b and _yangin_b in branches:
+        hits.append({"신살": "양인", "위치": _yangin_b, "성격": "강한 추진·결단", "반영": 0.0})
+        notes.append("양인은 강한 추진력·결단의 보조 신호로 표시(점수 미반영)")
+
+    _gg_pos = [f"{_lb} {_p.stem}{_p.branch}" for _lb, _p in _ss_pillars if (_p.stem, _p.branch) in GOEGANG_SET]
+    if _gg_pos:
+        hits.append({"신살": "괴강", "위치": ", ".join(_gg_pos), "성격": "극단·카리스마", "반영": 0.0})
+        notes.append("괴강은 강한 카리스마·극단성의 보조 신호로 표시(점수 미반영)")
+
+    _bh_pos = [f"{_lb} {_p.stem}{_p.branch}" for _lb, _p in _ss_pillars if (_p.stem, _p.branch) in BAEKHO_SET]
+    if _bh_pos:
+        hits.append({"신살": "백호", "위치": ", ".join(_bh_pos), "성격": "강렬한 기운", "반영": 0.0})
+        notes.append("백호는 해당 기둥 기운이 강렬하게 작동하는 보조 신호로 표시(점수 미반영)")
 
     gongmang = _gongmang_branches_for_day(chart.day.stem, chart.day.branch)
     gongmang_hits = _branch_position_hits(chart, list(gongmang))
@@ -24463,6 +24505,13 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
     day_stem = chart.day_master
     day_branch = chart.day.branch
     group = _day_branch_group(day_branch)
+    year_group = _day_branch_group(chart.year.branch)
+    _grps = [group] + ([year_group] if year_group != group else [])
+    _basis_txt = (
+        f"일지 {day_branch}({group}) 기준"
+        if year_group == group
+        else f"일지 {day_branch}({group})와 년지 {chart.year.branch}({year_group}) 두 기준"
+    )
 
     profiles = {
         "천을귀인": {
@@ -24494,9 +24543,9 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "title": "역마",
             "summary": "이동, 변화, 활동 반경 확장, 새로운 판으로 움직이는 힘을 뜻합니다.",
             "meaning": "한 자리에 고정되기보다 움직이면서 기회가 생기는 카드입니다. 출장, 이동, 확장, 새 환경 적응과 연결해 볼 수 있습니다.",
-            "how": f"일지 {day_branch}는 {_day_branch_group(day_branch)} 그룹이야. 이 그룹의 역마 글자는 {_branch_list_ko([YEOKMA_BRANCH[group]])}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
+            "how": f"{_basis_txt}으로 봐. 역마 글자는 {_branch_list_ko(sorted({YEOKMA_BRANCH[g] for g in _grps}))}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
             "reading": "움직임이 좋다는 뜻일 수 있지만, 중복되면 변동성이 커져 안정감이 약해질 수도 있습니다.",
-            "targets": [YEOKMA_BRANCH[group]],
+            "targets": sorted({YEOKMA_BRANCH[g] for g in _grps}),
         },
         "도화": {
             "icon": "🌸",
@@ -24505,9 +24554,9 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "title": "도화",
             "summary": "시선, 매력, 대인 노출, 분위기 형성에 관한 보조 신호입니다.",
             "meaning": "사람들의 시선이 닿는 자리, 호감, 표현 매력, 분위기 장악력으로 읽습니다. SNS·대인관계·미적 감각과도 연결해 볼 수 있습니다.",
-            "how": f"일지 {day_branch}는 {_day_branch_group(day_branch)} 그룹이야. 이 그룹의 도화 글자는 {_branch_list_ko([DOHWA_BRANCH[group]])}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
+            "how": f"{_basis_txt}으로 봐. 도화 글자는 {_branch_list_ko(sorted({DOHWA_BRANCH[g] for g in _grps}))}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
             "reading": "매력 신호이지만 중복되면 과노출, 관계 피로, 시선 부담으로도 작동할 수 있습니다.",
-            "targets": [DOHWA_BRANCH[group]],
+            "targets": sorted({DOHWA_BRANCH[g] for g in _grps}),
         },
         "화개": {
             "icon": "🪷",
@@ -24516,9 +24565,53 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "title": "화개",
             "summary": "취향, 몰입, 축적, 사색, 자기만의 세계를 깊게 만드는 보조 신호입니다.",
             "meaning": "혼자 깊이 파고드는 힘, 취향의 깊이, 예술성, 종교성, 연구성처럼 안쪽으로 쌓이는 기운을 뜻합니다.",
-            "how": f"일지 {day_branch}는 {_day_branch_group(day_branch)} 그룹이야. 이 그룹의 화개 글자는 {_branch_list_ko([HWAGAE_BRANCH[group]])}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
+            "how": f"{_basis_txt}으로 봐. 화개 글자는 {_branch_list_ko(sorted({HWAGAE_BRANCH[g] for g in _grps}))}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
             "reading": "몰입과 축적에는 좋지만, 중복되면 고립감이나 자기 세계 과잉으로 느껴질 수 있습니다.",
-            "targets": [HWAGAE_BRANCH[group]],
+            "targets": sorted({HWAGAE_BRANCH[g] for g in _grps}),
+        },
+        "현침": {
+            "icon": "📍",
+            "badge": "예리함 배지",
+            "tag": "기술·정밀형",
+            "title": "현침",
+            "summary": "침처럼 예리한 감각 — 정밀함, 기술, 의술, 날카로운 언변의 보조 신호입니다.",
+            "meaning": "손기술, 의료·침구, 디자인·세공, 분석, 비평처럼 뾰족하게 파고드는 능력으로 읽습니다. 말이 날카로워질 수 있다는 신호이기도 합니다.",
+            "how": f"甲·辛·卯·午·申 다섯 글자가 현침 글자야. 원국의 천간·지지에 이 글자가 있으면 성립하는 거야.",
+            "reading": "예리함은 장점이지만, 말끝이 사람을 찌르지 않도록 표현을 부드럽게 다듬으면 더 좋습니다.",
+            "targets": sorted(HYEONCHIM_CHARS),
+        },
+        "양인": {
+            "icon": "🗡️",
+            "badge": "추진 배지",
+            "tag": "추진·결단형",
+            "title": "양인",
+            "summary": "강한 추진력과 결단 — 칼자루를 쥔 듯한 돌파 에너지의 보조 신호입니다.",
+            "meaning": "위기에서 밀어붙이는 힘, 승부사 기질, 책임지고 끊어내는 결단력으로 읽습니다.",
+            "how": f"내 일간 {day_stem} 기준 양인 글자는 {_branch_list_ko([YANGIN_MAP.get(day_stem, '')])}이야. 원국 지지에 이 글자가 있으면 성립하는 거야.",
+            "reading": "추진력이 강한 만큼 과격해질 수 있어, 힘을 어디에 쓸지 방향 설정이 중요합니다.",
+            "targets": [YANGIN_MAP.get(day_stem, "")],
+        },
+        "괴강": {
+            "icon": "⚡",
+            "badge": "카리스마 배지",
+            "tag": "극단·카리스마형",
+            "title": "괴강",
+            "summary": "극과 극을 오가는 강한 카리스마 — 평범함을 거부하는 기둥의 보조 신호입니다.",
+            "meaning": "리더십, 총명함, 강한 자존심으로 읽습니다. 크게 이루거나 크게 흔들리는 양면성이 있다고 전해집니다.",
+            "how": "庚辰·庚戌·壬辰·壬戌·戊戌 — 이 다섯 기둥(간지)이 원국에 있으면 성립하는 거야.",
+            "reading": "강한 기운인 만큼 독선으로 흐르지 않게 주변과 보조를 맞추면 큰 힘이 됩니다.",
+            "targets": [],
+        },
+        "백호": {
+            "icon": "🐯",
+            "badge": "강렬함 배지",
+            "tag": "강렬·집중형",
+            "title": "백호",
+            "summary": "해당 기둥의 기운이 유난히 강렬하게 작동하는 보조 신호입니다.",
+            "meaning": "그 기둥이 뜻하는 영역(년=뿌리, 월=사회, 일=나·배우자, 시=미래)에서 에너지가 격하게 움직인다고 읽습니다.",
+            "how": "甲辰·乙未·丙戌·丁丑·戊辰·壬戌·癸丑 — 이 일곱 기둥(간지)이 원국에 있으면 성립하는 거야.",
+            "reading": "흉살로 단정하기보다, 그 영역의 에너지가 강하니 무리한 충돌을 피하라는 주의 신호로 참고합니다.",
+            "targets": [],
         },
         "공망": {
             "icon": "◌",
@@ -24855,22 +24948,34 @@ def render_origin_identity_table(
             return "?"
         return "".join(f"<div>{html.escape(hs)}</div>" for hs, _ in BRANCHES[p.branch]["hidden"])
 
-    def _sinsal_tags(branch: str) -> str:
-        """지지에 해당하는 신살 태그 문자열 반환 (e.g. '천을·역마')."""
+    def _sinsal_tags(branch: str, stem: str = "") -> str:
+        """지지(+천간)에 해당하는 신살 태그 문자열 반환 (e.g. '천을·역마').
+
+        삼합 신살(역마·도화·화개)은 일지 기준과 년지 기준을 함께 본다.
+        stem이 주어지면 현침(천간)·양인·괴강·백호(기둥 단위)도 표시한다.
+        """
         if not branch or branch in ("-", "?"):
             return ""
         tags = []
-        _grp = _day_branch_group(chart.day.branch)
+        _grps = {_day_branch_group(chart.day.branch), _day_branch_group(chart.year.branch)}
         if branch in CHEONEUL_BRANCHES.get(chart.day_master, []):
             tags.append("천을")
         if branch == MUNCHANG_BRANCH.get(chart.day_master, ""):
             tags.append("문창")
-        if branch == YEOKMA_BRANCH.get(_grp, ""):
+        if any(branch == YEOKMA_BRANCH.get(g, "") for g in _grps):
             tags.append("역마")
-        if branch == DOHWA_BRANCH.get(_grp, ""):
+        if any(branch == DOHWA_BRANCH.get(g, "") for g in _grps):
             tags.append("도화")
-        if branch == HWAGAE_BRANCH.get(_grp, ""):
+        if any(branch == HWAGAE_BRANCH.get(g, "") for g in _grps):
             tags.append("화개")
+        if branch == YANGIN_MAP.get(chart.day_master, ""):
+            tags.append("양인")
+        if stem and (stem, branch) in GOEGANG_SET:
+            tags.append("괴강")
+        if stem and (stem, branch) in BAEKHO_SET:
+            tags.append("백호")
+        if stem in HYEONCHIM_CHARS or branch in HYEONCHIM_CHARS:
+            tags.append("현침")
         if branch in gongmang:
             tags.append("공망")
         return "·".join(tags)
@@ -25077,11 +25182,12 @@ def render_origin_identity_table(
     # ─ 신살 행 ─
     for lbl4, gz4, col4 in _4un_disp:
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
-        ss4 = _sinsal_tags(b4)
+        s4 = gz4[0] if gz4 and len(gz4) >= 1 else ""
+        ss4 = _sinsal_tags(b4, s4)
         p.append(f"<div style='{_S_SS}{_S_4BG}'>{html.escape(ss4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
         sep_st = _S_SEP if i == 0 else ""
-        ss = _sinsal_tags(pi.branch) if pi else ""
+        ss = _sinsal_tags(pi.branch, pi.stem) if pi else ""
         p.append(f"<div style='{_S_SS}{sep_st}{_S_WBG}'>{html.escape(ss)}</div>")
 
     p.append("</div>")  # end 8col grid
