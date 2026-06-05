@@ -27686,6 +27686,20 @@ elif payload.get("multi_chem"):
     )
     render_multi_chem_result(participants)
 
+elif payload.get("battle"):
+    # ── 1:1 케미 분석 결과 (battle 페이로드 전용 분기 복원) ──
+    mine   = payload["mine"]
+    friend = payload["friend"]
+    st.markdown(
+        f"<span class='summary-chip'>모드: 케미 분석</span>"
+        f"<span class='summary-chip'>{html.escape(str(mine.get('name', '참가자 1')))} × {html.escape(str(friend.get('name', '참가자 2')))}</span>"
+        f"<span class='summary-chip'>관계: {html.escape(str(payload.get('relationship_mode', '친구') or '친구'))}</span>",
+        unsafe_allow_html=True,
+    )
+    _battle_summary_1v1 = make_battle_summary(mine, friend)
+    _compatibility_1v1  = compatibility_analysis(mine, friend, str(payload.get("relationship_mode", "친구") or "친구"))
+    render_battle_result_board(mine, friend, _battle_summary_1v1, _compatibility_1v1)
+
 elif not payload.get("battle"):
         render_single_summary(payload)
 
