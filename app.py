@@ -26726,26 +26726,7 @@ if _broom_url_id:
 
 if st.session_state.payload is None and st.session_state.selected_main_mode is None:
     # 첫 화면은 순수 Streamlit 레이아웃으로만 구성한다.
-    # ── 최신 패치 공지 ──
-    st.markdown(
-        f"""
-        <div style='background:#0d0d0d;border:1.5px solid #2a2010;border-radius:10px;
-        padding:12px 16px;margin-bottom:14px;'>
-        <div style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>
-          <span style='background:#92400e;color:#fff;border-radius:4px;padding:2px 8px;
-          font-size:13px;font-weight:700;'>🆕 {APP_VERSION} 업데이트</span>
-          <span style='font-size:13px;color:#d6bd92;'>2026년 5월</span>
-        </div>
-        <div style='font-size:13px;color:#e3d0ac;line-height:1.9;'>
-          · 사주예보가 추가되었어 — 오늘 내 사주 기운을 한눈에 확인해봐<br>
-          · 사주 맞짱이 추가되었어 — 단톡방에서 오늘의 운 대결을 즐겨봐<br>
-          · 모임 케미 초대가 추가되었어 — 방 링크로 그룹을 초대해 케미를 함께 확인해봐<br>
-          · 사주 원국 화면이 새롭게 바뀌었어 — 모바일에서 더 보기 편해졌어
-        </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # (업데이트 공지 박스는 비활성화)
     st.markdown("### 시작할 메뉴를 선택하세요")
     st.caption(f"버전 {APP_VERSION}")
 
