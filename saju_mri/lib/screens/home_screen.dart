@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final WebViewController _webViewController;
   BannerAd? _bannerAd;
   bool _isBannerLoaded = false;
@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   InterstitialAd? _interstitialAd;
   bool _isInterstitialReady = false;
   int _pageLoadCount = 0;         // 페이지 로드 횟수 카운터
-  static const int _adEveryN = 5; // N번 페이지 로드마다 전면광고 노출
+  static const int _adEveryN = 10; // N번 페이지 로드마다 전면광고 노출 (5→10, 광고 피로 완화)
 
   // ─── 광고 ID (테스트용 — 실제 배포 전 AdMob 실제 ID로 교체) ───
   static const String _bannerAdUnitId =
@@ -37,9 +37,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initWebView();
     _loadBannerAd();
     _loadInterstitialAd();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 다른 앱에 다녀오거나 오래 방치한 뒤 복귀하면 끊긴 연결을 자동 복구한다.
+    if (state == AppLifecycleState.resumed && _hasError) {
+      _reload();
+    }
   }
 
   void _initWebView() {
@@ -81,10 +90,14 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           },
           onWebResourceError: (error) {
-            setState(() {
-              _isLoading = false;
-              _hasError = true;
-            });
+            // 광고·이미지 등 부속 리소스 오류로는 오류 화면을 띄우지 않는다.
+            // 메인 페이지 로드 실패일 때만 오류 화면 표시.
+            if (error.isForMainFrame ?? true) {
+              setState(() {
+                _isLoading = false;
+                _hasError = true;
+              });
+            }
           },
         ),
       )
@@ -331,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _bannerAd?.dispose();
     _interstitialAd?.dispose();
     super.dispose();
