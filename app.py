@@ -19782,11 +19782,11 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         return None
 
     W, H = 1080, 980
-    img = Image.new("RGB", (W, H), "#fffbf0")
+    img = Image.new("RGB", (W, H), "#241327")
     draw = ImageDraw.Draw(img)
 
-    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#e3d0ac", width=3)
-    draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#ffffff", outline="#f8dce6", width=2)
+    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#2b1830", outline="#caa24c", width=3)
+    draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#36213c", outline="#5a3a4a", width=2)
 
     f_logo = _share_font(32, True)
     f_title = _share_font(56, True)
@@ -19797,7 +19797,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
 
     x = 86
     y = 84
-    draw.text((x, y), "사주MRI", fill="#92400e", font=f_logo)
+    draw.text((x, y), "사주키링", fill="#f0c75a", font=f_logo)
     draw.text((W-310, y+4), "시각화 사주 분석", fill="#fde68a", font=f_label)
 
     y += 66
@@ -19806,8 +19806,8 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         y += 66
 
     def box(x1, y1, x2, y2, label, body):
-        draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill="#fffbf0", outline="#fde68a", width=2)
-        draw.text((x1+24, y1+20), label, fill="#92400e", font=f_label)
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill="#2e1b33", outline="#caa24c", width=2)
+        draw.text((x1+24, y1+20), label, fill="#f0c75a", font=f_label)
         yy = y1 + 62
         for ln in _wrap_for_image(draw, body, f_body, x2-x1-48)[:2]:
             draw.text((x1+24, yy), ln, fill="#fde68a", font=f_body)
@@ -19820,8 +19820,8 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
     box(86, y, 520, y+165, "작동 해석", interpretation)
     box(560, y, 994, y+165, "과부하 신호", overload)
     y += 190
-    draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#fefce8", outline="#f0e0b8", width=2)
-    draw.text((112, y+20), "핵심 한 줄", fill="#92400e", font=f_label)
+    draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#3a2433", outline="#caa24c", width=2)
+    draw.text((112, y+20), "핵심 한 줄", fill="#f0c75a", font=f_label)
     line_y = y + 58
     for ln in _wrap_for_image(draw, one_liner, f_body, 850)[:2]:
         draw.text((112, line_y), ln, fill="#fde68a", font=f_body)
@@ -19834,12 +19834,12 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         for badge in reversed(badge_items):
             tw = int(draw.textlength(str(badge), font=f_small)) + 34
             x1 = bx - tw
-            draw.rounded_rectangle((x1, by, bx, by + 34), radius=17, fill="#fff6ea", outline="#f0e0b8", width=2)
+            draw.rounded_rectangle((x1, by, bx, by + 34), radius=17, fill="#3a2433", outline="#6a5a32", width=2)
             draw.text((x1 + 16, by + 7), str(badge), fill="#d6bd92", font=f_small)
             bx = x1 - 10
 
     foot_y1, foot_y2 = H - 188, H - 84
-    draw.rounded_rectangle((86, foot_y1, 994, foot_y2), radius=26, fill="#fff9f1", outline="#f0d8c0", width=2)
+    draw.rounded_rectangle((86, foot_y1, 994, foot_y2), radius=26, fill="#2b1830", outline="#5a4326", width=2)
     qr_bytes = _make_qr_png_bytes(APP_PUBLIC_URL, box_size=6, border=1)
     qr_ready = False
     if qr_bytes:
@@ -19851,7 +19851,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         except Exception:
             qr_ready = False
     text_x = 236 if qr_ready else 112
-    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#92400e", font=f_label)
+    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#f0c75a", font=f_label)
     draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#fde68a", font=f_small)
     url_lines = _wrap_for_image(draw, APP_PUBLIC_URL, f_tiny, 690)[:2]
     url_y = foot_y1 + 82
@@ -19859,7 +19859,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         draw.text((text_x, url_y), ln, fill="#d6bd92", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
+    draw.text((86, H-44), "※ 사주키링 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -19977,17 +19977,17 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
 
     snap = _single_front_snapshot(payload)
     result = payload.get("result", {}) or {}
-    title_plain = str(char.get("title", "사주MRI 캐릭터"))
+    title_plain = str(char.get("title", "사주키링 캐릭터"))
     tone_plain = str(char.get("tone", ""))
     operation_plain = str(char.get("operation", "-"))
     one_liner = share_card_one_liner(char, result)
 
     W, H = 1080, 1380
-    img = Image.new("RGB", (W, H), "#fffbf0")
+    img = Image.new("RGB", (W, H), "#241327")
     draw = ImageDraw.Draw(img)
 
-    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#fffdf8", outline="#e3d0ac", width=3)
-    draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#ffffff", outline="#f8dce6", width=2)
+    draw.rounded_rectangle((28, 28, W-28, H-28), radius=46, fill="#2b1830", outline="#caa24c", width=3)
+    draw.rounded_rectangle((56, 56, W-56, H-56), radius=38, fill="#36213c", outline="#5a3a4a", width=2)
 
     f_logo = _share_font(30, True)
     f_title = _share_font(54, True)
@@ -20004,7 +20004,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     _share_pillars = ganji_text(_share_chart) if _share_chart else "- / - / - / -"
     _pillar_parts = [p.strip() for p in _share_pillars.split("/")]
 
-    draw.text((x, y), "사주MRI", fill="#92400e", font=f_logo)
+    draw.text((x, y), "사주키링", fill="#f0c75a", font=f_logo)
     draw.text((W-300, y+4), "사주 진단서 요약", fill="#fde68a", font=f_label)
 
     y += 56
@@ -20029,8 +20029,8 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
 
     chip_text = f"힘 쓰는 스타일 · {operation_plain}"
     chip_w = int(draw.textlength(chip_text, font=f_small)) + 42
-    draw.rounded_rectangle((86, y+6, 86 + chip_w, y + 44), radius=20, fill="#eef8f3", outline="#d8efe3", width=2)
-    draw.text((106, y+13), chip_text, fill="#34d399", font=f_small)
+    draw.rounded_rectangle((86, y+6, 86 + chip_w, y + 44), radius=20, fill="#1e2e26", outline="#2e4a3e", width=2)
+    draw.text((106, y+13), chip_text, fill="#5ee0a8", font=f_small)
     y += 68
 
     badge_items = _shinsal_badge_items(payload.get("chart"), result, limit=3)
@@ -20044,14 +20044,14 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
             if bx + tw > 994:
                 bx = 86
                 by += row_h + 10
-            draw.rounded_rectangle((bx, by, bx + tw, by + row_h), radius=19, fill="#fffbf0", outline="#f0e0b8", width=2)
+            draw.rounded_rectangle((bx, by, bx + tw, by + row_h), radius=19, fill="#3a2433", outline="#6a5a32", width=2)
             draw.text((bx + 14, by + 8), label, fill="#d6bd92", font=f_small)
             bx += tw + 10
         y = by + row_h + 18
 
-    def box(x1, y1, x2, y2, label, body_lines, fill="#fffbf0"):
-        draw.rounded_rectangle((x1, y1, x2, y2), radius=22, fill=fill, outline="#fde68a", width=2)
-        draw.text((x1+22, y1+18), label, fill="#92400e", font=f_label)
+    def box(x1, y1, x2, y2, label, body_lines, fill="#2e1b33"):
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=22, fill=fill, outline="#caa24c", width=2)
+        draw.text((x1+22, y1+18), label, fill="#f0c75a", font=f_label)
         yy = y1 + 58
         for ln in body_lines:
             draw.text((x1+22, yy), ln, fill="#fde68a", font=f_small)
@@ -20068,32 +20068,32 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     temp = float(snap.get("temp", 50) or 50)
     climate_label = str(snap.get("climate_label", "균형권"))
 
-    box(86, y, 350, y+160, "내 사주 인상", [title_plain, tone_plain[:22]], fill="#fefce8")
-    box(408, y, 672, y+160, "오행", [f"강한 {dominant_el} {float(dominant_pct):.1f}%", f"약한 {weak_el} {float(weak_pct):.1f}%"], fill="#fffdf8")
-    box(730, y, 994, y+160, "조후", [f"{climate_label} · {temp:.0f}/100", "차갑고 뜨거운 균형 감각"], fill="#f8fbff")
+    box(86, y, 350, y+160, "내 사주 인상", [title_plain, tone_plain[:22]], fill="#2e1b33")
+    box(408, y, 672, y+160, "오행", [f"강한 {dominant_el} {float(dominant_pct):.1f}%", f"약한 {weak_el} {float(weak_pct):.1f}%"], fill="#2e1b33")
+    box(730, y, 994, y+160, "조후", [f"{climate_label} · {temp:.0f}/100", "차갑고 뜨거운 균형 감각"], fill="#2e1b33")
     y += 186
 
     el_colors = {
-        "목": ("#e8f7df", "#4c8b3c"),
-        "화": ("#ffe7e2", "#d95c4e"),
-        "토": ("#f8ead8", "#9a6b2f"),
-        "금": ("#eef1f6", "#6b7280"),
-        "수": ("#e4f1ff", "#3277d8"),
+        "목": ("#1e3324", "#86efac"),
+        "화": ("#3a1e1e", "#fca5a5"),
+        "토": ("#3a2e1a", "#f0c75a"),
+        "금": ("#26262e", "#cbd5e1"),
+        "수": ("#1a2a3a", "#93c5fd"),
     }
-    draw.text((86, y), "오행 비율", fill="#92400e", font=f_label)
+    draw.text((86, y), "오행 비율", fill="#f0c75a", font=f_label)
     pill_x = 86
     pill_y = y + 38
     for el in ELEMENTS:
         val = float((snap.get("elements") or {}).get(el, 0) or 0)
-        bg, fg = el_colors.get(el, ("#f4f4f5", "#52525b"))
+        bg, fg = el_colors.get(el, ("#2b2b33", "#cbd5e1"))
         label = f"{el} {val:.1f}%"
         tw = int(draw.textlength(label, font=f_small)) + 34
-        draw.rounded_rectangle((pill_x, pill_y, pill_x+tw, pill_y+38), radius=19, fill=bg, outline="#f0e0b8", width=2)
+        draw.rounded_rectangle((pill_x, pill_y, pill_x+tw, pill_y+38), radius=19, fill=bg, outline="#5a4326", width=2)
         draw.text((pill_x+16, pill_y+8), label, fill=fg, font=f_small)
         pill_x += tw + 12
     y += 102
 
-    draw.text((86, y), "기운 3대 축", fill="#92400e", font=f_label)
+    draw.text((86, y), "기운 3대 축", fill="#f0c75a", font=f_label)
     y += 38
     score_boxes = [
         ("기초체력", size, "기본 재료와 버티는 힘"),
@@ -20103,28 +20103,28 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     sx = 86
     for label, info, desc in score_boxes:
         sw = 286
-        draw.rounded_rectangle((sx, y, sx+sw, y+182), radius=22, fill="#ffffff", outline="#fde68a", width=2)
+        draw.rounded_rectangle((sx, y, sx+sw, y+182), radius=22, fill="#2e1b33", outline="#caa24c", width=2)
         draw.text((sx+20, y+16), label, fill="#fde68a", font=f_label)
         score = float(info.get("score", 0) or 0)
         max_score = float(info.get("max", 0) or 0)
         pct_score = float(info.get("pct", 0) or 0)
-        draw.text((sx+20, y+58), f"{score:.1f}점", fill="#92400e", font=f_body)
-        draw.rounded_rectangle((sx+20, y+106, sx+sw-20, y+120), radius=8, fill="#f5e8ef")
-        draw.rounded_rectangle((sx+20, y+106, sx+20 + int((sw-40) * pct_score / 100.0), y+120), radius=8, fill="#92400e")
+        draw.text((sx+20, y+58), f"{score:.1f}점", fill="#f0c75a", font=f_body)
+        draw.rounded_rectangle((sx+20, y+106, sx+sw-20, y+120), radius=8, fill="#1c0e20")
+        draw.rounded_rectangle((sx+20, y+106, sx+20 + int((sw-40) * pct_score / 100.0), y+120), radius=8, fill="#e9b84e")
         for ln in _wrap_for_image(draw, desc, f_tiny, sw-40)[:2]:
             draw.text((sx+20, y+136 if ln == _wrap_for_image(draw, desc, f_tiny, sw-40)[:1][0] else y+158), ln, fill="#d6bd92", font=f_tiny)
         sx += sw + 18
     y += 208
 
-    draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#fefce8", outline="#f0e0b8", width=2)
-    draw.text((112, y+20), "핵심 한 줄", fill="#92400e", font=f_label)
+    draw.rounded_rectangle((86, y, 994, y+120), radius=26, fill="#3a2433", outline="#caa24c", width=2)
+    draw.text((112, y+20), "핵심 한 줄", fill="#f0c75a", font=f_label)
     line_y = y + 58
     for ln in _wrap_for_image(draw, one_liner, f_small, 850)[:2]:
         draw.text((112, line_y), ln, fill="#fde68a", font=f_small)
         line_y += 30
 
     foot_y1, foot_y2 = H - 188, H - 84
-    draw.rounded_rectangle((86, foot_y1, 994, foot_y2), radius=26, fill="#fff9f1", outline="#f0d8c0", width=2)
+    draw.rounded_rectangle((86, foot_y1, 994, foot_y2), radius=26, fill="#2b1830", outline="#5a4326", width=2)
     qr_bytes = _make_qr_png_bytes(APP_PUBLIC_URL, box_size=6, border=1)
     qr_ready = False
     if qr_bytes:
@@ -20136,7 +20136,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         except Exception:
             qr_ready = False
     text_x = 236 if qr_ready else 112
-    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#92400e", font=f_label)
+    draw.text((text_x, foot_y1 + 16), "다시 들어오기", fill="#f0c75a", font=f_label)
     draw.text((text_x, foot_y1 + 50), "카톡 링크가 지나가면 바로가기 만들기 또는 주소 저장으로 다시 들어오세요.", fill="#fde68a", font=f_small)
     url_lines = _wrap_for_image(draw, APP_PUBLIC_URL, f_tiny, 690)[:2]
     url_y = foot_y1 + 82
@@ -20144,7 +20144,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         draw.text((text_x, url_y), ln, fill="#d6bd92", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ 사주MRI 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
+    draw.text((86, H-44), "※ 사주키링 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
@@ -20773,12 +20773,12 @@ def make_chemistry_share_card_png_bytes(
         return None
 
     W, H = 1080, 900
-    img = Image.new("RGB", (W, H), "#fffbf0")
+    img = Image.new("RGB", (W, H), "#241327")
     draw = ImageDraw.Draw(img)
 
     # background card
-    draw.rounded_rectangle((30, 30, W-30, H-30), radius=44, fill="#fffdfb", outline="#f2d7e0", width=3)
-    draw.rounded_rectangle((62, 62, W-62, H-62), radius=34, fill="#ffffff", outline="#f8e5ec", width=2)
+    draw.rounded_rectangle((30, 30, W-30, H-30), radius=44, fill="#2b1830", outline="#d98aa8", width=3)
+    draw.rounded_rectangle((62, 62, W-62, H-62), radius=34, fill="#36213c", outline="#5a3a4a", width=2)
 
     f_logo = _share_font(28, True)
     f_title = _share_font(54, True)
@@ -20800,9 +20800,9 @@ def make_chemistry_share_card_png_bytes(
     y = 92
 
     # top header
-    logo_text = "사주MRI 모두의 케미"
+    logo_text = "사주키링 모두의 케미"
     pair_text = str(pair_label or "나 × 상대")[:26]
-    draw.text((x, y), logo_text, fill="#92400e", font=f_logo)
+    draw.text((x, y), logo_text, fill="#f0c75a", font=f_logo)
     pair_w, _ = measure(pair_text, f_label)
     draw.text((W - 92 - pair_w, y + 2), pair_text, fill="#fde68a", font=f_label)
 
@@ -20811,20 +20811,20 @@ def make_chemistry_share_card_png_bytes(
     safe_stamp = _share_safe_icon(stamp or chem_title)
     title_text = f"{safe_stamp} {chem_title}".strip()
     for line in _wrap_for_image(draw, title_text, f_title, W - 184)[:2]:
-        draw.text((x, y), line, fill="#35252c", font=f_title)
+        draw.text((x, y), line, fill="#f7f1e8", font=f_title)
         y += 64
 
     # score hero box
     y += 6
-    draw.rounded_rectangle((92, y, W-92, y+120), radius=28, fill="#fff0f6", outline="#fde68a", width=2)
-    draw.text((122, y+18), "한눈 궁합점수", fill="#92400e", font=f_score_label)
-    draw.text((122, y+48), f"{int(score)}/100", fill="#92400e", font=f_score)
+    draw.rounded_rectangle((92, y, W-92, y+120), radius=28, fill="#3a2433", outline="#caa24c", width=2)
+    draw.text((122, y+18), "한눈 궁합점수", fill="#f0c75a", font=f_score_label)
+    draw.text((122, y+48), f"{int(score)}/100", fill="#f0935a", font=f_score)
     y += 146
 
-    def panel(x1, y1, x2, y2, label, body, fill="#fff9fc", body_font=None, max_lines=3):
+    def panel(x1, y1, x2, y2, label, body, fill="#2e1b33", body_font=None, max_lines=3):
         bf = body_font or f_body_small
-        draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill=fill, outline="#efd6df", width=2)
-        draw.text((x1+22, y1+18), label, fill="#92400e", font=f_label)
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=24, fill=fill, outline="#6a4a55", width=2)
+        draw.text((x1+22, y1+18), label, fill="#f0c75a", font=f_label)
         yy = y1 + 56
         lines = _wrap_for_image(draw, body, bf, x2 - x1 - 44)[:max_lines]
         gap = 34 if bf == f_body_small else 38
@@ -20833,24 +20833,24 @@ def make_chemistry_share_card_png_bytes(
             yy += gap
 
     # 2-up panels
-    panel(92, y, 518, y+170, "가장 잘 맞는 자리", best, fill="#fffafc", body_font=f_body, max_lines=3)
-    panel(562, y, 988, y+170, "케미 키워드", keywords, fill="#fffbf0", body_font=f_body_small, max_lines=3)
+    panel(92, y, 518, y+170, "가장 잘 맞는 자리", best, fill="#2e1b33", body_font=f_body, max_lines=3)
+    panel(562, y, 988, y+170, "케미 키워드", keywords, fill="#2e1b33", body_font=f_body_small, max_lines=3)
     y += 196
 
     # overload full width
-    panel(92, y, 988, y+128, "과부하 신호", overload, fill="#fffafc", body_font=f_body_small, max_lines=2)
+    panel(92, y, 988, y+128, "과부하 신호", overload, fill="#2e1b33", body_font=f_body_small, max_lines=2)
     y += 154
 
     # one-liner highlight
-    draw.rounded_rectangle((92, y, 988, y+136), radius=26, fill="#fff3f7", outline="#fde68a", width=2)
-    draw.text((118, y+18), "핵심 한 줄", fill="#92400e", font=f_label)
+    draw.rounded_rectangle((92, y, 988, y+136), radius=26, fill="#3a2433", outline="#caa24c", width=2)
+    draw.text((118, y+18), "핵심 한 줄", fill="#f0c75a", font=f_label)
     yy = y + 54
     for ln in _wrap_for_image(draw, one_liner, f_body, 840)[:3]:
-        draw.text((118, yy), ln, fill="#35252c", font=f_body)
+        draw.text((118, yy), ln, fill="#f7f1e8", font=f_body)
         yy += 36
     y += 164
 
-    draw.text((92, H-54), "※ 케미 카드는 두 사람의 맞물림 방식을 보는 요약입니다.", fill="#8a6875", font=f_note)
+    draw.text((92, H-54), "※ 케미 카드는 두 사람의 맞물림 방식을 보는 요약입니다.", fill="#c7a9bd", font=f_note)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
