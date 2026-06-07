@@ -15283,7 +15283,10 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
                     bt = _t2.fromisoformat(btime_str.strip()) if btime_str.strip() else _t2(12, 0)
                 except Exception:
                     bt = _t2(12, 0)
-                my_chart, my_lf, my_result = get_saju_automated(bd, bt, gender_sel)
+                _gender_full = "남자" if (gender_sel or "남") == "남" else "여자"
+                my_chart, my_daewuns, my_meta = get_saju_automated(bd, bt, _gender_full)
+                my_result = analyze(my_chart, "")
+                my_lf = build_luck_flow_rows(my_chart, my_result, my_daewuns, bd, DEFAULT_AGE_BASIS)
             except Exception as _e:
                 st.error(f"사주 산출 오류: {_e}")
                 st.stop()
@@ -15753,7 +15756,10 @@ def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p:
                     bt = _t2.fromisoformat(btime_str.strip()) if (btime_str or "").strip() else _t2(12, 0)
                 except Exception:
                     bt = _t2(12, 0)
-                _chart, _lf, _res = get_saju_automated(bd, bt, gender_sel or "남")
+                _gender_full = "남자" if (gender_sel or "남") == "남" else "여자"
+                _chart, _daewuns, _meta = get_saju_automated(bd, bt, _gender_full)
+                _res = analyze(_chart, "")
+                _lf = build_luck_flow_rows(_chart, _res, _daewuns, bd, DEFAULT_AGE_BASIS)
                 tmp_payload = {"chart": _chart, "result": _res, "luck_flow": _lf}
                 p_data = _extract_battle_participant_data(tmp_payload, name)
             except Exception as _e:
