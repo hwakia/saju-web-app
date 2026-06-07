@@ -15195,16 +15195,17 @@ def _render_create_room_view() -> None:
         st.components.v1.html(
             f"""<button onclick="
                 var url = '{APP_PUBLIC_URL}?room={room_id_safe}';
+                var msg = '🔮 사주끼리 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
                 if(navigator.share){{
-                    navigator.share({{title:'모임 케미 초대 참가 링크',url:url}}).catch(function(){{}});
+                    navigator.share({{title:'사주끼리 모임 케미 초대',text:msg,url:url}}).catch(function(){{}});
                 }} else {{
-                    navigator.clipboard.writeText(url).then(function(){{
-                        alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
+                    navigator.clipboard.writeText(msg).then(function(){{
+                        alert('초대 메시지가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
                     }});
                 }}
             " style="width:100%;padding:13px;background:#d4a853;color:#0a0a0a;
                 border:none;border-radius:10px;font-size:15px;font-weight:800;
-                cursor:pointer;">📤 참가 링크 단톡방에 공유</button>""",
+                cursor:pointer;">📤 케미방 초대 메시지 공유</button>""",
             height=60,
         )
         if st.button("🚪 방에 직접 입장하기", use_container_width=True, key="room_self_enter"):
@@ -15217,7 +15218,14 @@ def _render_create_room_view() -> None:
 
 
 def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -> None:
-    st.markdown("## 🧑‍🤝‍🧑 모임 케미 초대 — 참가")
+    st.markdown(
+        "<div style='background:rgba(212,168,83,0.12);border:1.5px solid #d4a853;"
+        "border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center;'>"
+        "<div style='font-size:1.3rem;font-weight:900;color:#d4a853;'>🔮 모임 케미에 초대되었습니다!</div>"
+        "<div style='font-size:13px;color:#d6bd92;margin-top:4px;'>"
+        "생년월일을 넣고 입장하면 우리 모임의 궁합을 함께 볼 수 있어요.</div></div>",
+        unsafe_allow_html=True,
+    )
     st.caption(f"방 ID: `{room_id}` · {len(participants)}/{max_p}명 입장 완료")
 
     if participants:
@@ -15353,11 +15361,12 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
         f"""<button onclick="
             var base = '{APP_PUBLIC_URL}';
             var url = base + '?room={room_id_safe}{_t_param}';
+            var msg = '🔮 사주끼리 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
             if(navigator.share){{
-                navigator.share({{title:'모임 케미 초대 참가 링크', url:url}}).catch(()=>{{}});
+                navigator.share({{title:'사주끼리 모임 케미 초대', text:msg, url:url}}).catch(()=>{{}});
             }} else {{
-                navigator.clipboard.writeText(url)
-                  .then(()=>alert('참가 링크가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
+                navigator.clipboard.writeText(msg)
+                  .then(()=>alert('초대 메시지가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
             }}
         " style="width:100%;padding:12px;background:#d4a853;color:#0a0a0a;
             border:none;border-radius:10px;font-size:14px;font-weight:800;
@@ -15665,16 +15674,17 @@ def _render_create_battle_room_view() -> None:
         st.components.v1.html(
             f"""<button onclick="
                 var url = '{APP_PUBLIC_URL}?broom={room_id_safe}';
+                var msg = '⚔️ 사주끼리 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
                 if(navigator.share){{
-                    navigator.share({{title:'사주 맞짱 방 참가 링크',url:url}}).catch(function(){{}});
+                    navigator.share({{title:'사주끼리 맞짱방 초대',text:msg,url:url}}).catch(function(){{}});
                 }} else {{
-                    navigator.clipboard.writeText(url).then(function(){{
-                        alert('참가 링크가 복사됐어!\\n단톡방에 붙여넣어봐 ⚔️');
+                    navigator.clipboard.writeText(msg).then(function(){{
+                        alert('초대 메시지가 복사됐어!\\n단톡방에 붙여넣어봐 ⚔️');
                     }});
                 }}
             " style="width:100%;padding:13px;background:#f59e0b;color:#1c0a00;
                 border:none;border-radius:10px;font-size:15px;font-weight:800;
-                cursor:pointer;">📤 참가 링크 단톡방에 공유</button>""",
+                cursor:pointer;">📤 맞짱방 초대 메시지 공유</button>""",
             height=60,
         )
         if st.button("🚪 방에 직접 입장하기", use_container_width=True, key="broom_self_enter"):
@@ -15687,7 +15697,14 @@ def _render_create_battle_room_view() -> None:
 
 
 def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p: int) -> None:
-    st.markdown("## ⚔️ 사주 맞짱 방 참가")
+    st.markdown(
+        "<div style='background:rgba(245,158,11,0.12);border:1.5px solid #f59e0b;"
+        "border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center;'>"
+        "<div style='font-size:1.3rem;font-weight:900;color:#f59e0b;'>⚔️ 맞짱방에 초대되었습니다!</div>"
+        "<div style='font-size:13px;color:#d6bd92;margin-top:4px;'>"
+        "생년월일을 넣고 입장하면 오늘의 운으로 다 같이 대결해요.</div></div>",
+        unsafe_allow_html=True,
+    )
     st.caption(f"방 ID: `{room_id}` · {len(participants)}/{max_p}명 입장 완료")
 
     if participants:
@@ -15807,11 +15824,12 @@ def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max
         f"""<button onclick="
             var base = '{APP_PUBLIC_URL}';
             var url = base + '?broom={room_id_safe}';
+            var msg = '⚔️ 사주끼리 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
             if(navigator.share){{
-                navigator.share({{title:'사주 맞짱 방 참가 링크', url:url}}).catch(()=>{{}});
+                navigator.share({{title:'사주끼리 맞짱방 초대', text:msg, url:url}}).catch(()=>{{}});
             }} else {{
-                navigator.clipboard.writeText(url)
-                  .then(()=>alert('참가 링크가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 ⚔️'));
+                navigator.clipboard.writeText(msg)
+                  .then(()=>alert('초대 메시지가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 ⚔️'));
             }}
         " style="width:100%;padding:12px;background:#f59e0b;color:#1c0a00;
             border:none;border-radius:10px;font-size:14px;font-weight:800;
@@ -15998,23 +16016,18 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
         unsafe_allow_html=True,
     )
 
-    # ── 재공유 버튼 ─────────────────────────────────────────
-    room_id_safe = str(room_id)
-    winner_name_safe = str(winner.get("name", "?")).replace("'", "\\'")
-    st.components.v1.html(
-        f"""<button onclick="
-            var url = '{APP_PUBLIC_URL}?broom={room_id_safe}';
-            var msg = '⚔️ 사주 맞짱 결과\\n🏆 오늘의 승자: {winner_name_safe}\\n' + url;
-            if(navigator.share){{
-                navigator.share({{title:'사주 맞짱 결과', text:msg, url:url}}).catch(()=>{{}});
-            }} else {{
-                navigator.clipboard.writeText(url)
-                  .then(()=>alert('결과 링크가 복사됐어!\\n단톡방에 공유해봐 ⚔️'));
-            }}
-        " style="width:100%;padding:13px;background:#f59e0b;color:#1c0a00;
-            border:none;border-radius:10px;font-size:15px;font-weight:800;
-            cursor:pointer;margin-top:4px;">📤 결과 단톡방에 공유</button>""",
-        height=60,
+    # ── 결과 이미지 저장/공유 ───────────────────────────────
+    st.markdown("#### 📤 결과 이미지로 공유")
+    st.caption("아래 이미지를 저장하거나 길게 눌러 복사해서 단톡방에 올려봐.")
+    try:
+        _battle_png = make_battle_result_png_bytes(sorted_p, winner, today.strftime('%Y년 %m월 %d일'))
+    except Exception:
+        _battle_png = None
+    render_share_image_tools(
+        _battle_png,
+        f"saju_battle_{today.strftime('%Y%m%d')}.png",
+        download_label="📥 결과 이미지 저장",
+        element_key=f"battle_result_{room_id}",
     )
 
     render_mode_jump_buttons(f"broom_result_{room_id}")
@@ -19901,6 +19914,58 @@ def render_share_image_tools(
         key=f"download_{safe_key}_{file_name}",
     )
     st.caption("저장 전 미리보기가 정상적으로 보이면 다운로드 파일도 같은 PNG로 저장됩니다. 직접 복사 기능은 안정성을 위해 비활성화했습니다.")
+
+
+def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label: str) -> bytes | None:
+    """맞짱 결과(승자 + 랭킹)를 단톡 공유용 PNG 카드로 만든다."""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+    W = 1080
+    n = len(sorted_p)
+    H = 520 + n * 150
+    img = Image.new("RGB", (W, H), "#0a0a0a")
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((24, 24, W-24, H-24), radius=40, fill="#100e0c", outline="#caa24c", width=3)
+
+    f_logo  = _share_font(34, True)
+    f_title = _share_font(52, True)
+    f_name  = _share_font(46, True)
+    f_score = _share_font(40, True)
+    f_small = _share_font(26, False)
+
+    d.text((70, 70), "⚔️ 사주끼리 맞짱 결과", fill="#f0c75a", font=f_logo)
+    d.text((70, 120), date_label, fill="#8a7a4a", font=f_small)
+
+    # 승자 히어로
+    d.text((W//2-150, 180), "🏆 오늘의 승자", fill="#d6bd92", font=f_small)
+    _wn = str(winner.get("name", "?"))
+    _wb = d.textbbox((0,0), _wn + " 승!", font=f_title)
+    d.text(((W-(_wb[2]-_wb[0]))//2, 220), _wn + " 승!", fill="#fbbf24", font=f_title)
+
+    rank_colors = ["#fbbf24", "#c0c4cc", "#f0935a"] + ["#d6bd92"] * 12
+    medal = ["🥇", "🥈", "🥉"] + ["  "] * 12
+    y = 320
+    for idx, p in enumerate(sorted_p):
+        score = int(p.get("score", 0) or 0)
+        col = rank_colors[idx] if idx < len(rank_colors) else "#d6bd92"
+        mk = medal[idx] if idx < len(medal) else "  "
+        d.text((70, y), f"{mk} {str(p.get('name','?'))}", fill=col, font=f_name)
+        _sb = d.textbbox((0,0), f"{score}", font=f_score)
+        d.text((W-90-(_sb[2]-_sb[0]), y+6), f"{score}", fill=col, font=f_score)
+        # 막대
+        bar_full = W - 140
+        bar_w = int(bar_full * max(0, min(100, score)) / 100)
+        d.rounded_rectangle((70, y+62, 70+bar_full, y+82), radius=10, fill="#1a1208")
+        if bar_w > 0:
+            d.rounded_rectangle((70, y+62, 70+bar_w, y+82), radius=10, fill=col)
+        y += 150
+
+    d.text((70, H-90), "사주끼리 · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
+    import io as _io
+    buf = _io.BytesIO(); img.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str, str]) -> bytes | None:
