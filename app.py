@@ -23729,10 +23729,10 @@ def render_saju_yebo_page(payload: dict) -> None:
     # ══════════════════════════════════════════════════════════
     _yebo_top = st.radio(
         "예보 보기",
-        ["📡 종합 예보", "🌤 오늘의 처방", "📅 캘린더"],
+        ["🌤 오늘의 처방", "📡 종합 예보", "📅 캘린더"],
         index=0,
         horizontal=True,
-        key="yebo_top_nav_v5158",
+        key="yebo_top_nav_v5159",
         label_visibility="collapsed",
     )
 
