@@ -15892,6 +15892,41 @@ def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max
     )
 
 
+def _battle_rank_sort(participants: List[Dict]) -> List[Dict]:
+    """점수 내림차순 정렬 + '점수 1점 이내'로 묶인 무리 안에서만 오행 상극(克)으로 1:1 승부를 가린다.
+
+    상극은 5순환(가위바위보)이라 단독 비교는 모순이 생길 수 있으므로,
+    '내가 극하는 상대 수 − 극당하는 수'(net)가 큰 사람을 위로 올린다(숫자 보정→순환 모순 없음).
+    1점을 초과해 벌어지면 점수 그대로 둔다.
+    """
+    sp = sorted(participants, key=lambda x: float(x.get("score", 0) or 0), reverse=True)
+    n = len(sp)
+    out: List[Dict] = []
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and abs(float(sp[j].get("score", 0) or 0) - float(sp[j + 1].get("score", 0) or 0)) <= 1.0:
+            j += 1
+        cluster = sp[i:j + 1]
+        if len(cluster) >= 2:
+            def _netk(m: Dict) -> int:
+                me = str(m.get("dom_el", "-")); net = 0
+                for o in cluster:
+                    if o is m:
+                        continue
+                    oe = str(o.get("dom_el", "-"))
+                    if me != "-" and oe != "-":
+                        if CONTROLS.get(me) == oe:
+                            net += 1
+                        elif CONTROLS.get(oe) == me:
+                            net -= 1
+                return net
+            cluster = sorted(cluster, key=lambda m: (_netk(m), float(m.get("score", 0) or 0)), reverse=True)
+        out.extend(cluster)
+        i = j + 1
+    return out
+
+
 def _battle_versus(sorted_p: List[Dict]) -> Tuple[str, Dict[str, str]]:
     """참가자 대표 오행으로 상극(克)·맞불(同)·상생(生) 대결 서사를 만든다.
     저장된 'dom_el'(대표 오행, 간지 아님)만 사용한다. 없으면 빈 값."""
@@ -15995,7 +16030,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
 """, height=0)
         st.session_state[f"_broom_{room_id}_revealed"] = True
 
-    sorted_p = sorted(participants, key=lambda x: x.get("score", 0), reverse=True)
+    sorted_p = _battle_rank_sort(participants)
     winner   = sorted_p[0] if sorted_p else {}
     medal    = ["🥇", "🥈", "🥉"] + ["  "] * 10
     rank_colors = ["#fbbf24", "#94a3b8", "#f97316"] + ["#d6bd92"] * 10
