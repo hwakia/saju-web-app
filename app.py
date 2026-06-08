@@ -136,7 +136,7 @@ def _interaction_detail_html(interactions: list) -> str:
         seen_names.add(key)
 
         style = TYPE_STYLE.get(itype, TYPE_STYLE.get("형", {"bg":"#f5f5f5","border":"#ccc","icon":"🎴","color":"#333"}))
-        detail = TYPE_DESC.get(itype, {"성립": "전통 명리 기준에 따라 성립이 확인되었습니다.", "효과": desc or "원국 에너지 흐름에 영향을 줍니다."})
+        detail = TYPE_DESC.get(itype, {"성립": "전통 명리 기준으로 성립이 확인됐어.", "효과": desc or "원국 에너지 흐름에 영향을 줘."})
 
         elem_badge = f"<span style='background:{style['color']};color:#fff;font-size:12px;padding:2px 8px;border-radius:99px;margin-left:6px;'>{elem} 기운</span>" if elem else ""
         strength_badge = f"<span style='font-size:12px;color:{style['color']};opacity:.7;margin-left:4px;'>({strength})</span>" if strength else ""
@@ -814,7 +814,7 @@ GRADE_BANDS = [
         "z_range": "+2σ 이상",
         "ratio": 0.0228,
         "label": "눈에 띄는 상위 골격",
-        "description": "오행 균형, 순환, 현실 발현력이 함께 강하게 나온 드문 상위 구조입니다.",
+        "description": "오행 균형, 순환, 현실 발현력이 함께 강하게 나온 드문 상위 구조야.",
     },
     {
         "grade": "A+",
@@ -823,7 +823,7 @@ GRADE_BANDS = [
         "z_range": "+1.5σ ~ +2σ",
         "ratio": 0.0440,
         "label": "매우 안정적인 우수 골격",
-        "description": "장점이 뚜렷하고 구조적 안정성이 매우 높은 편입니다.",
+        "description": "장점이 뚜렷하고 구조적 안정성이 매우 높은 편이야.",
     },
     {
         "grade": "A",
@@ -832,7 +832,7 @@ GRADE_BANDS = [
         "z_range": "+1σ ~ +1.5σ",
         "ratio": 0.0919,
         "label": "안정적인 상위 골격",
-        "description": "평균권보다 뚜렷하게 좋은 흐름과 발현력을 가진 구조입니다.",
+        "description": "평균권보다 뚜렷하게 좋은 흐름과 발현력을 가진 구조야.",
     },
     {
         "grade": "A-",
@@ -841,7 +841,7 @@ GRADE_BANDS = [
         "z_range": "+0.5σ ~ +1σ",
         "ratio": 0.1499,
         "label": "양호한 골격",
-        "description": "일반적인 명식 중에서도 장점과 활용 방향이 비교적 분명한 구조입니다.",
+        "description": "일반적인 명식 중에서도 장점과 활용 방향이 비교적 분명한 구조야.",
     },
     {
         "grade": "B+",
@@ -850,7 +850,7 @@ GRADE_BANDS = [
         "z_range": "0 ~ +0.5σ",
         "ratio": 0.1915,
         "label": "평균보다 좋은 골격",
-        "description": "장단점이 함께 있으나 전반적으로 활용 가능한 강점이 보이는 구조입니다.",
+        "description": "장단점이 함께 있으나 전반적으로 활용 가능한 강점이 보이는 구조야.",
     },
     {
         "grade": "B",
@@ -859,7 +859,7 @@ GRADE_BANDS = [
         "z_range": "-0.5σ ~ 0",
         "ratio": 0.1915,
         "label": "표준권 골격",
-        "description": "대부분의 일반적인 명식이 걸치는 중심 구간으로, 장점과 보완점이 함께 있습니다.",
+        "description": "대부분의 일반적인 명식이 걸치는 중심 구간으로, 장점과 보완점이 함께 있어.",
     },
     {
         "grade": "B-",
@@ -868,7 +868,7 @@ GRADE_BANDS = [
         "z_range": "-1σ ~ -0.5σ",
         "ratio": 0.1499,
         "label": "보완점이 보이는 골격",
-        "description": "일부 편중이나 흐름의 제한이 있어 보완 방향을 함께 보는 것이 좋습니다.",
+        "description": "일부 편중이나 흐름의 제한이 있어 보완 방향을 함께 보는 게 좋아.",
     },
     {
         "grade": "C+",
@@ -877,7 +877,7 @@ GRADE_BANDS = [
         "z_range": "-1.5σ ~ -1σ",
         "ratio": 0.0919,
         "label": "조율이 필요한 골격",
-        "description": "강점보다 보완해야 할 지점이 더 눈에 띄는 구조입니다.",
+        "description": "강점보다 보완해야 할 지점이 더 눈에 띄는 구조야.",
     },
     {
         "grade": "C",
@@ -886,7 +886,7 @@ GRADE_BANDS = [
         "z_range": "-2σ ~ -1.5σ",
         "ratio": 0.0440,
         "label": "흐름 보완이 큰 골격",
-        "description": "편중이나 충돌 신호가 비교적 커서 운의 흐름과 보완 요소를 신중히 봐야 합니다.",
+        "description": "편중이나 충돌 신호가 비교적 커서 운의 흐름과 보완 요소를 신중히 봐야 해.",
     },
     {
         "grade": "C-",
@@ -895,7 +895,7 @@ GRADE_BANDS = [
         "z_range": "-2σ 이하",
         "ratio": 0.0228,
         "label": "보완 과제가 큰 골격",
-        "description": "구조적 불균형이 커서 단정적 해석보다 보완 방향 중심으로 참고해야 합니다.",
+        "description": "구조적 불균형이 커서 단정적 해석보다 보완 방향 중심으로 참고해야 해.",
     },
 ]
 
@@ -2440,7 +2440,7 @@ def origin_profile_tags(
 
     if pct.get(wealth_el, 0) >= 25 or pct.get("土", 0) >= 30:
         tags.append("현실관리형")
-        notes.append("현실 감각, 관리, 책임, 자원 배분 쪽의 기운이 강합니다.")
+        notes.append("현실 감각, 관리, 책임, 자원 배분 쪽의 기운이 강해.")
 
     if has_officer and pct.get(officer_el, 0) >= 18:
         tags.append("규범운용형")
@@ -2452,7 +2452,7 @@ def origin_profile_tags(
 
     if any(it.get("type") == "충" and it.get("strength") == "강함" for it in interactions):
         tags.append("변동 자극형")
-        notes.append("강한 충이 있어 정체보다 변화·재조정이 중요한 구조입니다.")
+        notes.append("강한 충이 있어 정체보다 변화·재조정이 중요한 구조야.")
 
     unique_tags: List[str] = []
     for t in tags:
@@ -2460,7 +2460,7 @@ def origin_profile_tags(
             unique_tags.append(t)
     if not unique_tags:
         unique_tags = ["표준 혼합형"]
-        notes.append("특정 유형 하나로만 단정하기보다 여러 요소가 섞인 표준 혼합 구조입니다.")
+        notes.append("특정 유형 하나로만 단정하기보다 여러 요소가 섞인 표준 혼합 구조야.")
 
     primary = unique_tags[:3]
     return {"tags": primary, "all_tags": unique_tags, "summary": " · ".join(primary), "notes": notes[:6]}
@@ -2848,7 +2848,7 @@ def detect_luck_branch_interactions(chart: Chart, luck_branch: str) -> List[Dict
                     "name": name,
                     "element": None,
                     "strength": "약함",
-                    "description": "운 지지가 원국 지지와 파(破)를 이룹니다. 계획·약속이 어그러지기 쉬운 신호입니다.",
+                    "description": "운 지지가 원국 지지와 파(破)를 이뤄. 계획·약속이 어그러지기 쉬운 신호야.",
                     "target": other,
                     "important": important,
                 })
@@ -5544,7 +5544,7 @@ def detect_forecast_signals(items: list) -> list:
                 "type": "삼형", "name": name,
                 "branches": "·".join(sorted(combo)),
                 "score": sc, "sign": "pressure",
-                "desc": f"세 지지가 서로 긴장·압박하는 구조입니다. {_forecast_layer_desc(items, combo)}",
+                "desc": f"세 지지가 서로 긴장·압박하는 구조야. {_forecast_layer_desc(items, combo)}",
                 "tip": "무리한 결정보다 확인·정리 중심으로 움직이세요.",
             })
 
@@ -5568,7 +5568,7 @@ def detect_forecast_signals(items: list) -> list:
         signals.append({
             "type": "형", "name": "자묘형", "branches": "子·卯",
             "score": sc, "sign": "pressure",
-            "desc": f"예의·형식이 어긋나는 긴장이 생기기 쉽습니다. {_forecast_layer_desc(items, combo)}",
+            "desc": f"예의·형식이 어긋나는 긴장이 생기기 쉬워. {_forecast_layer_desc(items, combo)}",
             "tip": "말투와 태도에 조금 더 주의하세요.",
         })
 
@@ -5587,7 +5587,7 @@ def detect_forecast_signals(items: list) -> list:
                 "type": "충", "name": name,
                 "branches": "·".join(sorted(combo)),
                 "score": sc, "sign": "pressure",
-                "desc": f"두 기운이 정면으로 부딪히는 구조입니다. {_forecast_layer_desc(items, combo)}",
+                "desc": f"두 기운이 정면으로 부딪히는 구조야. {_forecast_layer_desc(items, combo)}",
                 "tip": "일정·계약·이동·말투 중 하나를 점검하세요.",
             })
 
@@ -5606,7 +5606,7 @@ def detect_forecast_signals(items: list) -> list:
                 "type": "해", "name": name,
                 "branches": "·".join(sorted(combo)),
                 "score": sc, "sign": "pressure",
-                "desc": f"서로 방해하는 신호입니다. {_forecast_layer_desc(items, combo)}",
+                "desc": f"서로 방해하는 신호야. {_forecast_layer_desc(items, combo)}",
                 "tip": "관계나 일의 흐름에서 방해 요소가 생기지 않도록 조심하세요.",
             })
 
@@ -5624,7 +5624,7 @@ def detect_forecast_signals(items: list) -> list:
                 "type": "파", "name": name,
                 "branches": "·".join(sorted(combo)),
                 "score": sc, "sign": "pressure",
-                "desc": f"기운이 깨지거나 흐름이 끊기는 신호입니다. {_forecast_layer_desc(items, combo)}",
+                "desc": f"기운이 깨지거나 흐름이 끊기는 신호야. {_forecast_layer_desc(items, combo)}",
                 "tip": "시작한 일의 중간 점검을 권합니다.",
             })
 
@@ -5635,7 +5635,7 @@ def detect_forecast_signals(items: list) -> list:
         signals.append({
             "type": "합/파 혼합", "name": "사신 혼합", "branches": "巳·申",
             "score": sc, "sign": "mixed",
-            "desc": f"巳申은 합이면서 파로도 작용하는 혼합 신호입니다. {_forecast_layer_desc(items, combo)}",
+            "desc": f"巳申은 합이면서 파로도 작용하는 혼합 신호야. {_forecast_layer_desc(items, combo)}",
             "tip": "기대와 충돌이 동시에 올 수 있으니 너무 단정 짓지 마세요.",
         })
 
@@ -5653,7 +5653,7 @@ def detect_forecast_signals(items: list) -> list:
                 "type": "합", "name": name,
                 "branches": "·".join(sorted(combo)),
                 "score": sc, "sign": "positive",
-                "desc": f"기운이 하나로 모이는 연결 신호입니다. {_forecast_layer_desc(items, combo)}",
+                "desc": f"기운이 하나로 모이는 연결 신호야. {_forecast_layer_desc(items, combo)}",
                 "tip": "자연스러운 인연이나 기회가 연결될 수 있습니다.",
             })
 
@@ -6077,7 +6077,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": left,
                     "right": right,
-                    "impact": "두 글자가 서로 묶이는 결속 신호입니다. 편안함, 끌림, 협력감으로 체감될 수 있지만, 과하면 한쪽 방향으로 묶이는 느낌도 생길 수 있습니다.",
+                    "impact": "두 글자가 서로 묶이는 결속 신호야. 편안함, 끌림, 협력감으로 체감될 수 있지만, 과하면 한쪽 방향으로 묶이는 느낌도 생길 수 있어.",
                 })
             if pair in DAY_BRANCH_CLASH_NAME:
                 name = DAY_BRANCH_CLASH_NAME[pair]
@@ -6086,7 +6086,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": left,
                     "right": right,
-                    "impact": "두 글자가 정면으로 부딪히는 변화 신호입니다. 갈등 단정이 아니라 자극, 이동, 일정 변경, 감정 속도 차이처럼 움직임이 커지는 포인트로 봅니다.",
+                    "impact": "두 글자가 정면으로 부딪히는 변화 신호야. 갈등 단정이 아니라 자극, 이동, 일정 변경, 감정 속도 차이처럼 움직임이 커지는 포인트로 봐.",
                 })
             if pair in CROSS_PENALTY_NAME:
                 name = CROSS_PENALTY_NAME[pair]
@@ -6095,7 +6095,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": left,
                     "right": right,
-                    "impact": "두 글자가 압박감·예민함·규칙 충돌을 만들 수 있는 신호입니다. 관계 단절보다는 가까울수록 조율 방식이 중요해지는 포인트로 봅니다.",
+                    "impact": "두 글자가 압박감·예민함·규칙 충돌을 만들 수 있는 신호야. 관계 단절보다는 가까울수록 조율 방식이 중요해지는 포인트로 봐.",
                 })
             if pair in CROSS_BREAK_NAME:
                 name = CROSS_BREAK_NAME[pair]
@@ -6104,7 +6104,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": left,
                     "right": right,
-                    "impact": "처음에는 맞는 듯해도 세부 조건이나 기대가 작게 어긋날 수 있는 신호입니다. 약속·역할·돈·시간 같은 실무 조건 확인이 중요합니다.",
+                    "impact": "처음에는 맞는 듯해도 세부 조건이나 기대가 작게 어긋날 수 있는 신호야. 약속·역할·돈·시간 같은 실무 조건 확인이 중요해.",
                 })
             if pair in CROSS_HARM_NAME:
                 name = CROSS_HARM_NAME[pair]
@@ -6113,7 +6113,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": left,
                     "right": right,
-                    "impact": "겉으로 큰 충돌은 아니어도 은근한 오해·피로·서운함이 생길 수 있는 신호입니다. 돌려 말하기보다 확인하는 방식이 좋습니다.",
+                    "impact": "겉으로 큰 충돌은 아니어도 은근한 오해·피로·서운함이 생길 수 있는 신호야. 돌려 말하기보다 확인하는 방식이 좋아.",
                 })
             if pair in CROSS_WONJIN_NAME:
                 name = CROSS_WONJIN_NAME[pair]
@@ -6122,7 +6122,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": left,
                     "right": right,
-                    "impact": "끌림과 불편감이 함께 나타날 수 있는 예민한 신호입니다. 가까운 관계일수록 감정 해석을 단정하지 않고 확인하는 태도가 필요합니다.",
+                    "impact": "끌림과 불편감이 함께 나타날 수 있는 예민한 신호야. 가까운 관계일수록 감정 해석을 단정하지 않고 확인하는 태도가 필요해.",
                 })
 
     combined = [("나", x) for x in my_items] + [("상대", x) for x in fr_items]
@@ -6139,7 +6139,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": " + ".join(contributors[:4]),
                     "right": "",
-                    "impact": "두 명식의 글자가 모여 한 오행 방향을 크게 키우는 신호입니다. 관계에서 특정 분위기나 주제가 강하게 살아날 수 있습니다.",
+                    "impact": "두 명식의 글자가 모여 한 오행 방향을 크게 키우는 신호야. 관계에서 특정 분위기나 주제가 강하게 살아날 수 있어.",
                 })
     for name, group in DIRECTION_GROUPS.items():
         if group.issubset(branch_set):
@@ -6153,7 +6153,7 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "name": name,
                     "left": " + ".join(contributors[:4]),
                     "right": "",
-                    "impact": "계절 방향으로 글자가 모이는 신호입니다. 관계의 분위기가 한쪽 성질로 뚜렷해질 수 있습니다.",
+                    "impact": "계절 방향으로 글자가 모이는 신호야. 관계의 분위기가 한쪽 성질로 뚜렷해질 수 있어.",
                 })
     return details
 
@@ -6162,7 +6162,7 @@ def render_cross_chart_interaction_cards(compatibility: Dict[str, object]) -> No
     details = compatibility.get("cross_interactions") or []
     st.markdown("#### 두 명식 사이의 합·충·형·파·해·원진 세부 신호")
     if not details:
-        st.caption("두 명식 사이에 크게 드러나는 합·충·형·파·해·원진 신호는 적습니다. 대신 오행 보완성, 흐름 동조성, 조후 차이를 중심으로 케미를 봅니다.")
+        st.caption("두 명식 사이에 크게 드러나는 합·충·형·파·해·원진 신호는 적어. 대신 오행 보완성, 흐름 동조성, 조후 차이를 중심으로 케미를 봐.")
         return
     cards = []
     for d in details[:16]:
@@ -6377,7 +6377,7 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
     if my_dm_el == fr_dm_el:
         alliance += 8
         complement += 2
-        positives.append("일간 오행이 같아 기본 반응 방식이 비슷한 편입니다.")
+        positives.append("일간 오행이 같아 기본 반응 방식이 비슷한 편이야.")
     elif GENERATES.get(my_dm_el) == fr_dm_el or GENERATES.get(fr_dm_el) == my_dm_el:
         complement += 12
         alliance += 4
@@ -6441,7 +6441,7 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
 
     if day_pair in SIX_HARMONY:
         alliance += 22 * day_branch_weight
-        positives.append(f"일지에 {SIX_HARMONY[day_pair]}이 있어 친밀한 결속 신호가 강합니다. 결속 신호로 반영")
+        positives.append(f"일지에 {SIX_HARMONY[day_pair]}이 있어 친밀한 결속 신호가 강해. 결속 신호로 반영")
         day_relation = SIX_HARMONY[day_pair]
     elif my_chart.day.branch == fr_chart.day.branch:
         alliance += 12 * day_branch_weight
@@ -6623,10 +6623,10 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
         flow_gap = abs(my_avg - fr_avg)
         if flow_gap <= 4:
             sync += 12
-            positives.append("향후 5년 세운 평균 차이가 작아 운의 온도 차이가 크지 않습니다.")
+            positives.append("향후 5년 세운 평균 차이가 작아 운의 온도 차이가 크지 않아.")
         elif flow_gap >= 12:
             sync -= 12
-            cautions.append("향후 5년 세운 평균 차이가 커서 체감 운의 온도 차이가 있을 수 있습니다.")
+            cautions.append("향후 5년 세운 평균 차이가 커서 체감 운의 온도 차이가 있을 수 있어.")
         else:
             sync -= 4
 
@@ -6636,10 +6636,10 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
             fr_trend = float(fr_luck["sewun_rows"][-1]["점수"]) - float(fr_luck["sewun_rows"][0]["점수"])
             if (my_trend >= 2 and fr_trend >= 2) or (my_trend <= -2 and fr_trend <= -2) or (abs(my_trend) < 2 and abs(fr_trend) < 2):
                 sync += 5
-                positives.append("향후 흐름의 방향이 비슷해 관계 리듬 동조성에 가점했습니다.")
+                positives.append("향후 흐름의 방향이 비슷해 관계 리듬 동조성에 가점했어.")
             elif (my_trend >= 2 and fr_trend <= -2) or (my_trend <= -2 and fr_trend >= 2):
                 sync -= 5
-                cautions.append("향후 흐름 방향이 엇갈려 체감 리듬 차이가 커질 수 있습니다.")
+                cautions.append("향후 흐름 방향이 엇갈려 체감 리듬 차이가 커질 수 있어.")
 
         rows.append({"항목": "향후 5년 흐름 차이", "내 값": round(my_avg, 1), "상대 값": round(fr_avg, 1), "판정": f"{flow_gap:.1f}점 차이"})
     else:
@@ -6656,7 +6656,7 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
     ):
         alliance += 2
         tension -= 3
-        positives.append("무충·고보완·고결속·저긴장 조건을 충족해 복합 안정 보정을 적용했습니다. 동맹성 +2, 긴장도 -3")
+        positives.append("무충·고보완·고결속·저긴장 조건을 충족해 복합 안정 보정을 넣었어. 동맹성 +2, 긴장도 -3")
 
     complement = round(max(0, min(100, complement)), 1)
     alliance = round(max(0, min(100, alliance)), 1)
@@ -6822,7 +6822,7 @@ GLOSSARY = {
     "합": "두 글자 이상이 만나 결합·협력·변화의 신호를 보인다고 해석하는 관계입니다.",
     "육합": "지지 두 글자 사이의 결합 관계입니다. 친화, 결속, 변화 가능성을 봅니다.",
     "삼합": "세 지지가 모여 특정 오행의 큰 흐름을 만든다고 보는 관계입니다.",
-    "방합": "계절 방향이 같은 지지들이 모여 세력을 이루는 구조입니다.",
+    "방합": "계절 방향이 같은 지지들이 모여 세력을 이루는 구조야.",
     "반합": "삼합의 일부가 성립한 것으로, 완전한 삼합보다는 약하게 봅니다.",
     "충": "지지끼리 부딪히는 관계입니다. 반드시 나쁘다기보다 변화, 충돌, 이동, 긴장을 의미할 수 있습니다.",
     "형": "지지 간의 압박, 꼬임, 불편한 작용을 보는 관계입니다. 해석은 조심해야 합니다.",
@@ -6835,8 +6835,8 @@ GLOSSARY = {
     "재성": "일간이 극하는 오행입니다. 남성 명식에서는 관계성 해석에 참고되지만 단정적 판단은 피해야 합니다.",
     "관성": "일간을 극하는 오행입니다. 여성 명식에서는 관계성 해석에 참고되지만 단정적 판단은 피해야 합니다.",
     "군겁쟁재": "비겁이 강해 재성을 다투는 구조로 설명되는 전통 용어입니다. 실제 해석은 전체 균형을 함께 보아야 합니다.",
-    "정편재 혼합": "정재와 편재가 함께 나타나는 구조입니다. 관계성·재물성 해석에 쓰이지만 단정적 판단은 피해야 합니다.",
-    "정편관 혼잡": "정관과 편관이 함께 나타나는 구조입니다. 관계성·사회성 해석에 쓰이지만 단정적 판단은 피해야 합니다.",
+    "정편재 혼합": "정재와 편재가 함께 나타나는 구조야. 관계성·재물성 해석에 쓰이지만 단정적 판단은 피해야 해.",
+    "정편관 혼잡": "정관과 편관이 함께 나타나는 구조야. 관계성·사회성 해석에 쓰이지만 단정적 판단은 피해야 해.",
     "케미": "두 원국의 상호작용을 보는 참고 분석입니다. 관계의 결론이나 사람의 가치를 단정하지 않습니다.",
     "케미 판정": "모두의 케미 또는 1:1 관계에서 협력축과 긴장축을 비유적으로 보여주는 기능입니다. 상호 보완성, 동맹성, 긴장도, 흐름 동조성을 나누어 참고합니다. 실제 인간관계의 적대 관계를 단정하지 않습니다.",
 }
@@ -6980,7 +6980,7 @@ def render_privacy_policy() -> None:
 - 오류 메시지에 입력값이 직접 노출되지 않도록 안전 오류 메시지 사용
 - 사용자 입력을 HTML로 표시할 때 이스케이프 처리 적용
 - 화면 캡처와 리포트 공유 시 개인정보 노출 주의 문구 제공
-- 클라우드 데이터베이스에 원본 생년월일시·성별·사주 간지를 저장하지 않으며, 분석 후 산출된 점수와 등급만 저장
+- 클라우드 데이터베이스에 원본 생년월일시·성별·사주 간지를 저장하지 않으며, 분석 후 산출된 점수·등급과 대표 오행(예: 화 강함)만 저장
 - 데이터베이스 접근 정보(비밀번호, 연결 문자열)는 서버 환경 변수에만 보관하며 코드·저장소에 노출하지 않음
 - 서버는 방화벽(UFW)으로 불필요한 포트를 차단하며, SSH 접근은 공개키 기반 인증만 허용
 - 데이터베이스(PostgreSQL)는 외부 직접 접근을 차단하고 로컬호스트 및 컨테이너 내부 통신만 허용
@@ -7415,14 +7415,14 @@ def multi_battle_summary(participants: List[Dict[str, object]]) -> Dict[str, obj
     second = totals[1] if len(totals) > 1 else None
     if second:
         diff = 0.0
-        summary = f"대운·세운 흐름 기준 주목 참가자는 {top['참가자']}입니다."
+        summary = f"대운·세운 흐름 기준 주목 참가자는 {top['참가자']}야."
     else:
         diff = 0.0
-        summary = f"참가자는 {top['참가자']}입니다."
+        summary = f"참가자는 {top['참가자']}야."
 
     auto_count = sum(1 for p in participants if p.get("mode") == "생년월일시 자동 산출")
     direct_count = len(participants) - auto_count
-    summary += f" 자동 산출 {auto_count}명, 원국 직접 입력 {direct_count}명 기준으로 비교했습니다."
+    summary += f" 자동 산출 {auto_count}명, 원국 직접 입력 {direct_count}명 기준으로 비교했어."
 
     return {
         "summary": summary,
@@ -7458,35 +7458,35 @@ def multi_role_recommendation(participant: Dict[str, object], diplomacy_row: Dic
 
     if "연결 허브" in position or "완충" in position:
         role_title = " 연결 허브"
-        role_desc = "사람 사이 결을 맞추고, 어색한 흐름을 부드럽게 이어주는 역할이 잘 맞습니다."
+        role_desc = "사람 사이 결을 맞추고, 어색한 흐름을 부드럽게 이어주는 역할이 잘 맞아."
     elif "중심축 후보" in position:
         role_title = "🧭 중심축"
-        role_desc = "전체의 기준과 방향을 잡는 축 역할이 자연스럽습니다."
+        role_desc = "전체의 기준과 방향을 잡는 축 역할이 자연스러워."
     elif "긴장 집중축" in position:
         role_title = " 긴장 돌파형"
-        role_desc = "판을 흔들어 돌파구를 만들 수 있지만, 정면충돌을 줄이는 설계가 중요합니다."
+        role_desc = "판을 흔들어 돌파구를 만들 수 있지만, 정면충돌을 줄이는 설계가 중요해."
     elif "부분 협력축" in position:
         role_title = "🛠 부분 협력형"
-        role_desc = "특정 사람 또는 특정 과업에서 힘이 잘 붙는 실전형 역할이 잘 맞습니다."
+        role_desc = "특정 사람 또는 특정 과업에서 힘이 잘 붙는 실전형 역할이 잘 맞아."
     else:
         role_title = "🌙 독립 플레이어"
-        role_desc = "자율성이 높아 혼자 맡는 구간에서 강점이 드러나는 타입입니다."
+        role_desc = "자율성이 높아 혼자 맡는 구간에서 강점이 드러나는 타입이야."
 
     if "발현" in axis_name:
         play_style = "실행·퍼포먼스 담당"
-        axis_desc = "가진 기운을 밖으로 꺼내고 밀어붙이는 실행축이 강합니다."
+        axis_desc = "가진 기운을 밖으로 꺼내고 밀어붙이는 실행축이 강해."
     elif "순환" in axis_name:
         play_style = "조율·흐름 설계 담당"
-        axis_desc = "순서, 소통, 연결 흐름을 맞추는 축이 강합니다."
+        axis_desc = "순서, 소통, 연결 흐름을 맞추는 축이 강해."
     else:
         play_style = "기반·판짜기 담당"
-        axis_desc = "전체 판을 세우고 재료를 쌓는 기본 체력이 강합니다."
+        axis_desc = "전체 판을 세우고 재료를 쌓는 기본 체력이 강해."
 
-    caution = f"조율하면 더 좋아지는 상대 축은 {caution_axis}입니다."
+    caution = f"조율하면 더 좋아지는 상대 축은 {caution_axis}야."
     if "긴장 집중축" in position:
-        caution = f"자극이 쌓이면 역할과 권한을 먼저 나누면 더 편합니다. 조율 우선 축: {caution_axis}"
+        caution = f"자극이 쌓이면 역할과 권한을 먼저 나누면 더 편해. 조율 우선 축: {caution_axis}"
     elif "독립형" in position:
-        caution = f"각자 하려는 힘이 강할 수 있어, 합의 기준을 먼저 정하면 더 잘 맞습니다. 조율 우선 축: {caution_axis}"
+        caution = f"각자 하려는 힘이 강할 수 있어, 합의 기준을 먼저 정하면 더 잘 맞아. 조율 우선 축: {caution_axis}"
 
     return {
         "participant": participant["name"],
@@ -7596,7 +7596,7 @@ def render_multi_situation_map(participants: List[Dict[str, object]], power_map:
         return
 
     st.markdown("#### 다자간 국면")
-    st.caption("참가자 사이의 케미 결을 카드형으로 요약합니다. 조율 포인트는 피하라는 뜻이 아니라 맞춰가면 좋아지는 축입니다.")
+    st.caption("참가자 사이의 케미 결을 카드형으로 요약했어. 조율 포인트는 피하라는 뜻이 아니라 맞춰가면 좋아지는 축이야.")
 
     pair_rows = pairwise_compatibility_rows(participants)
     if pair_rows:
@@ -7773,34 +7773,34 @@ def diplomacy_narrative(participants: List[Dict[str, object]]) -> Dict[str, obje
     top_connector = structure_sorted[0] if structure_sorted else None
 
     if allies:
-        alliance_text = "강한 협력축은 " + ", ".join([r["조합"] for r in allies[:3]]) + "입니다."
+        alliance_text = "강한 협력축은 " + ", ".join([r["조합"] for r in allies[:3]]) + "야."
     elif cooperative:
-        alliance_text = "강한 결속보다는 여러 조합의 협력 가능성이 분산되어 있습니다."
+        alliance_text = "강한 결속보다는 여러 조합의 협력 가능성이 분산되어 있어."
     else:
-        alliance_text = "뚜렷한 협력축은 약하고 각자의 독립성이 더 강하게 보입니다."
+        alliance_text = "뚜렷한 협력축은 약하고 각자의 독립성이 더 강하게 보여."
 
     if tensions:
-        tension_text = "긴장축은 " + ", ".join([r["조합"] for r in tensions[:3]]) + "에서 두드러집니다."
+        tension_text = "긴장축은 " + ", ".join([r["조합"] for r in tensions[:3]]) + "에서 두드러져."
     elif cold:
-        tension_text = "정면 충돌보다는 조율이 필요한 축이 일부 보입니다."
+        tension_text = "정면 충돌보다는 조율이 필요한 축이 일부 보여."
     else:
-        tension_text = "직접적인 긴장축은 비교적 약합니다."
+        tension_text = "직접적인 긴장축은 비교적 약해."
 
     mediator_text = ""
     if mediators:
-        mediator_text = f"완충·조율 역할은 {mediators[0]['참가자']}에게 가장 자연스럽게 보입니다."
+        mediator_text = f"완충·조율 역할은 {mediators[0]['참가자']}에게 가장 자연스럽게 보여."
 
     summary = (
-        f"총점 기준 중심 후보는 {top_score['name']}입니다. "
-        f"다자간 케미 구조에서는 평균 케미가 높은 {top_connector['참가자'] if top_connector else '-'}가 대화와 흐름을 잇는 역할을 하기 쉽습니다. "
+        f"총점 기준 중심 후보는 {top_score['name']}야. "
+        f"다자간 케미 구조에서는 평균 케미가 높은 {top_connector['참가자'] if top_connector else '-'}가 대화와 흐름을 잇는 역할을 하기 쉬워. "
         f"{alliance_text} {tension_text} {mediator_text}"
     )
 
     comments = []
     for row in structure_rows:
         comments.append(
-            f"{josa(row['참가자'], '은/는')} {row['세력 포지션']}에 가깝고, 관계 성향은 {row['관계 성향']}입니다. "
-            f"가장 가까운 축은 {row['가장 가까운 축']}, 조율하면 좋은 축은 {row['가장 조심할 축']}입니다."
+            f"{josa(row['참가자'], '은/는')} {row['세력 포지션']}에 가깝고, 관계 성향은 {row['관계 성향']}야. "
+            f"가장 가까운 축은 {row['가장 가까운 축']}, 조율하면 좋은 축은 {row['가장 조심할 축']}야."
         )
 
     return {
@@ -7840,8 +7840,8 @@ def axis_info_from_category(category_name: str) -> Dict[str, str]:
             "legacy": "기운의 크기",
             "icon": "💪",
             "short": "오행·월령·통근·일간",
-            "meaning": "기본 체급과 버티는 힘입니다. 원국의 재료가 얼마나 단단하게 잡혀 있는지를 봅니다.",
-            "strong": "세 축 중 기초체력이 가장 두드러집니다. 기본 재료와 버티는 힘이 비교적 단단해 환경이 흔들려도 자기 구조를 유지하려는 힘이 강한 편입니다.",
+            "meaning": "기본 체급과 버티는 힘이야. 원국의 재료가 얼마나 단단하게 잡혀 있는지를 봐.",
+            "strong": "세 축 중 기초체력이 가장 두드러져. 기본 재료와 버티는 힘이 비교적 단단해 환경이 흔들려도 자기 구조를 유지하려는 힘이 강한 편이야.",
         }
     if "순환" in raw:
         return {
@@ -7849,8 +7849,8 @@ def axis_info_from_category(category_name: str) -> Dict[str, str]:
             "legacy": "기운의 순환",
             "icon": "🔄",
             "short": "조후·십성 흐름",
-            "meaning": "기운이 막히지 않고 이어지는 힘입니다. 생각·자원·표현·역할이 서로 연결되는지를 봅니다.",
-            "strong": "세 축 중 흐름과 연결이 가장 두드러집니다. 혼자 힘을 쌓는 것보다 상황을 읽고 연결하며 흐름을 만들어내는 힘이 강한 편입니다.",
+            "meaning": "기운이 막히지 않고 이어지는 힘이야. 생각·자원·표현·역할이 서로 연결되는지를 봐.",
+            "strong": "세 축 중 흐름과 연결이 가장 두드러져. 혼자 힘을 쌓는 것보다 상황을 읽고 연결하며 흐름을 만들어내는 힘이 강한 편이야.",
         }
     if "발현" in raw:
         return {
@@ -7858,10 +7858,10 @@ def axis_info_from_category(category_name: str) -> Dict[str, str]:
             "legacy": "기운의 발현",
             "icon": "✨",
             "short": "합충·현실 작동",
-            "meaning": "기운이 실제 행동, 관계, 역할 수행으로 드러나는 힘입니다. 현실에서 작동하는 방식을 봅니다.",
-            "strong": "세 축 중 현실작동력이 가장 두드러집니다. 생각이나 기질이 안에만 머물기보다 실제 행동, 관계, 역할 수행으로 또렷하게 드러나는 편입니다.",
+            "meaning": "기운이 실제 행동, 관계, 역할 수행으로 드러나는 힘이야. 현실에서 작동하는 방식을 봐.",
+            "strong": "세 축 중 현실작동력이 가장 두드러져. 생각이나 기질이 안에만 머물기보다 실제 행동, 관계, 역할 수행으로 또렷하게 드러나는 편이야.",
         }
-    return {"primary": str(category_name or "-"), "legacy": "", "icon": "•", "short": "", "meaning": "세부 항목별 반영치와 근거를 확인합니다.", "strong": ""}
+    return {"primary": str(category_name or "-"), "legacy": "", "icon": "•", "short": "", "meaning": "세부 항목별 반영치와 근거를 확인해.", "strong": ""}
 
 
 def category_plain_title(category_name: str) -> str:
@@ -14235,7 +14235,7 @@ def _climate_character_axis(chart: Chart, result: Dict[str, object]) -> Dict[str
         "adj": "부드럽게 균형 잡는",
         "tone": "화랑 수 기운이 한쪽으로 크게 쏠리지 않아서 과열되거나 차갑게 식는 느낌이 덜한 편이야. 지금 이 균형 잘 유지해봐.",
         "color": "#10b981",
-        "climate_note": "전체 온도감과 반응 속도는 비교적 고른 편입니다. 다만 합충과 운의 흐름에 따라 체감은 달라질 수 있습니다.",
+        "climate_note": "전체 온도감과 반응 속도는 비교적 고른 편이야. 다만 합충과 운의 흐름에 따라 체감은 달라질 수 있어.",
     }
 
 
@@ -14268,55 +14268,55 @@ def energy_operation_user_tips(operation: Dict[str, str]) -> Dict[str, str]:
     tips = {
         "고압 엔진형": {
             "best": "스스로 방향을 정하고 책임 범위가 분명한 환경",
-            "caution": "힘이 한곳에 몰리면 과속·고집으로 보일 수 있어 중간 배출구가 필요합니다.",
+            "caution": "힘이 한곳에 몰리면 과속·고집으로 보일 수 있어 중간 배출구가 필요해.",
         },
         "강압 추진형": {
             "best": "목표와 마감이 분명하고 빠르게 밀어붙일 수 있는 환경",
-            "caution": "속도보다 방향 조절을 먼저 잡으면 에너지가 낭비되지 않습니다.",
+            "caution": "속도보다 방향 조절을 먼저 잡으면 에너지가 낭비되지 않아.",
         },
         "자기 엔진형": {
             "best": "자율성이 있고, 혼자 판단해 움직일 여지가 있는 환경",
-            "caution": "혼자 끌고 가려는 부담이 커질 수 있어 역할 분담을 의식하면 좋습니다.",
+            "caution": "혼자 끌고 가려는 부담이 커질 수 있어 역할 분담을 의식하면 좋아.",
         },
         "자력 추진형": {
             "best": "목표가 분명하고 스스로 실행 계획을 짤 수 있는 환경",
-            "caution": "과속하면 주변과 박자가 어긋날 수 있으니 중간 점검이 필요합니다.",
+            "caution": "과속하면 주변과 박자가 어긋날 수 있으니 중간 점검이 필요해.",
         },
         "지원 증폭형": {
             "best": "자료, 조언, 배움, 좋은 시스템이 갖춰진 환경",
-            "caution": "준비와 검토가 길어지면 실행이 늦어질 수 있어 작은 실행 단위가 필요합니다.",
+            "caution": "준비와 검토가 길어지면 실행이 늦어질 수 있어 작은 실행 단위가 필요해.",
         },
         "균형 조율형": {
             "best": "상황에 따라 밀고 당길 수 있는 유연한 환경",
-            "caution": "장점이 무난함으로만 보이지 않도록 우선순위를 분명히 하면 좋습니다.",
+            "caution": "장점이 무난함으로만 보이지 않도록 우선순위를 분명히 하면 좋아.",
         },
         "압력 조율형": {
             "best": "책임과 권한이 함께 주어지는 환경",
-            "caution": "외부 기준을 너무 의식하면 피로가 커질 수 있어 자기 기준도 필요합니다.",
+            "caution": "외부 기준을 너무 의식하면 피로가 커질 수 있어 자기 기준도 필요해.",
         },
         "방출 조율형": {
             "best": "생각과 아이디어를 결과물로 꺼낼 수 있는 환경",
-            "caution": "많이 쏟아내기보다 리듬을 나눠야 오래 갑니다.",
+            "caution": "많이 쏟아내기보다 리듬을 나눠야 오래 가.",
         },
         "보강 적응형": {
             "best": "좋은 루틴, 안정된 팀, 믿을 만한 지원 체계가 있는 환경",
-            "caution": "무리하게 혼자 버티기보다 판을 먼저 갖추는 편이 좋습니다.",
+            "caution": "무리하게 혼자 버티기보다 판을 먼저 갖추는 편이 좋아.",
         },
         "환경 활용형": {
             "best": "사람, 기회, 현실 조건을 읽고 연결할 수 있는 환경",
-            "caution": "상황에 맞추는 힘이 장점이지만, 끌려다니지 않도록 기준선을 정해야 합니다.",
+            "caution": "상황에 맞추는 힘이 장점이지만, 끌려다니지 않도록 기준선을 정해야 해.",
         },
         "유연 적응형": {
             "best": "변화에 맞춰 역할을 조정할 수 있는 환경",
-            "caution": "너무 맞춰주면 자기 리듬이 흐려질 수 있어 회복 시간이 필요합니다.",
+            "caution": "너무 맞춰주면 자기 리듬이 흐려질 수 있어 회복 시간이 필요해.",
         },
         "기반 회복형": {
             "best": "속도보다 안정, 회복, 루틴을 먼저 세울 수 있는 환경",
-            "caution": "확장보다 기반 만들기가 먼저일 때 힘이 살아납니다.",
+            "caution": "확장보다 기반 만들기가 먼저일 때 힘이 살아나.",
         },
         "외부 연결형": {
             "best": "혼자보다 팀, 제도, 멘토, 네트워크와 연결되는 환경",
-            "caution": "좋은 판을 고르는 것이 중요하고, 무리한 독주에는 피로가 큽니다.",
+            "caution": "좋은 판을 고르는 게 중요하고, 무리한 독주에는 피로가 커.",
         },
     }
 
@@ -14614,7 +14614,7 @@ def _single_front_snapshot(payload: Dict[str, object]) -> Dict[str, object]:
         climate_color = "#ef4444"
     elif temp > 50:
         climate_label = "따뜻한 편"
-        climate_note = "온기가 살아 있는 편입니다. 과열 여부를 함께 보면 좋습니다."
+        climate_note = "온기가 살아 있는 편이야. 과열 여부를 함께 보면 좋아."
         climate_color = "#f2c94c"
     else:
         climate_label = "차가운 편"
@@ -15088,9 +15088,17 @@ def _extract_battle_participant_data(payload: Dict, name: str) -> Dict:
     생년월일·생시·원국(팔자)은 저장하지 않음. 이름과 점수만 저장."""
     from datetime import datetime as _dtnow
     score = calculate_battle_power(payload)
+    # 대결 서사(오행 상극)용 파생값 — 간지가 아니라 '대표 오행' 분석 결과만 저장
+    try:
+        _res = payload.get("result", {}) or {}
+        (_dom, _), (_weak, _) = _dominant_and_weak_elements(_res)
+    except Exception:
+        _dom, _weak = "-", "-"
     return {
         "name":      name[:10],
         "score":     score,
+        "dom_el":    _dom,
+        "weak_el":   _weak,
         "joined_at": _dtnow.now().isoformat(),
     }
 
@@ -15742,7 +15750,7 @@ def _render_battle_room_join_view(room_id: str, participants: List[Dict], max_p:
 
     birth_str = btime_str = gender_sel = None
     if input_method == "생년월일 직접 입력":
-        st.caption("생년월일과 생시를 입력하면 서버에는 점수·등급만 저장됩니다.")
+        st.caption("생년월일과 생시를 입력하면 서버에는 점수·등급과 대표 오행(예: 화 강함)만 저장됩니다. 생년월일·간지는 저장하지 않습니다.")
         birth_str  = st.text_input("생년월일 (YYYY-MM-DD)", key=f"broom_birth_{room_id}",
                                    placeholder="예: 1990-03-15")
         btime_str  = st.text_input("태어난 시각 (HH:MM, 모르면 빈칸)", key=f"broom_time_{room_id}",
@@ -15836,6 +15844,54 @@ def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max
             cursor:pointer;margin-top:4px;">📤 아직 안 온 친구에게 링크 공유</button>""",
         height=56,
     )
+
+
+def _battle_versus(sorted_p: List[Dict]) -> Tuple[str, Dict[str, str]]:
+    """참가자 대표 오행으로 상극(克)·맞불(同)·상생(生) 대결 서사를 만든다.
+    저장된 'dom_el'(대표 오행, 간지 아님)만 사용한다. 없으면 빈 값."""
+    EL_HAN = {"목": "목(木)", "화": "화(火)", "토": "토(土)", "금": "금(金)", "수": "수(水)"}
+
+    def _ctrl_phrase(wn: str, we: str, on: str, oe: str) -> str:
+        t = {
+            ("금", "목"): f"{wn}의 날 선 금(金)이 {on}의 목(木)을 눌렀어 ⚔️",
+            ("목", "토"): f"{wn}의 뻗어나가는 목(木)이 {on}의 토(土)를 파고들었어 ⚔️",
+            ("토", "수"): f"{wn}의 단단한 토(土)가 {on}의 물길(水)을 막아섰어 ⚔️",
+            ("수", "화"): f"{wn}의 물(水)이 {on}의 불(火)을 식혀버렸어 ⚔️",
+            ("화", "금"): f"{wn}의 불(火)이 {on}의 금(金)을 녹였어 ⚔️",
+        }
+        return t.get((we, oe), f"{wn}의 {EL_HAN.get(we, we)}이 {on}의 {EL_HAN.get(oe, oe)}을 제압했어 ⚔️")
+
+    winner_line = ""
+    if len(sorted_p) >= 2:
+        w = sorted_p[0]
+        we = str(w.get("dom_el", "-")); wn = str(w.get("name", "?"))
+        if we in CONTROLS:
+            target = next((o for o in sorted_p[1:] if str(o.get("dom_el")) == CONTROLS[we]), None)
+            if target:
+                winner_line = _ctrl_phrase(wn, we, str(target.get("name", "?")), str(target.get("dom_el")))
+        if not winner_line and we != "-":
+            same = next((o for o in sorted_p[1:] if str(o.get("dom_el")) == we), None)
+            if same:
+                winner_line = f"{wn}와 {same.get('name', '?')}, 둘 다 {EL_HAN.get(we, we)} 기운이라 불꽃 튀는 맞불이었어 🔥"
+        if not winner_line and we != "-":
+            winner_line = f"오늘은 {wn}의 {EL_HAN.get(we, we)} 기운 흐름이 가장 매끄러웠어"
+
+    tags: Dict[str, str] = {}
+    for i in range(1, len(sorted_p)):
+        me = sorted_p[i]; above = sorted_p[i - 1]
+        my = str(me.get("dom_el", "-")); ab = str(above.get("dom_el", "-"))
+        abn = str(above.get("name", "?")); nm = str(me.get("name", "?"))
+        if my == "-" or ab == "-":
+            continue
+        if CONTROLS.get(ab) == my:
+            tags[nm] = f"위의 {abn} {EL_HAN.get(ab, ab)}에 눌렸어"
+        elif CONTROLS.get(my) == ab:
+            tags[nm] = f"{EL_HAN.get(my, my)}로 {abn}을 노렸지만 점수에선 밀렸어"
+        elif my == ab:
+            tags[nm] = f"{abn}와 {EL_HAN.get(my, my)} 맞불"
+        elif GENERATES.get(my) == ab:
+            tags[nm] = f"{abn}을 키워주는 흐름이었어"
+    return winner_line, tags
 
 
 def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> None:
@@ -15980,33 +16036,43 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
         except Exception:
             return "오늘 일운이 사주 기운을 좌우해"
 
+    _vs_line, _vs_tags = _battle_versus(sorted_p)
+    _winner_reason = _vs_line or _battle_reason(winner)
+    _winner_score = int(winner.get("score", 0) or 0)
+
     st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
     st.markdown(
-        f"<div style='text-align:center;padding:18px 0 10px;'>"
-        f"<div style='font-size:2.8rem;'>🏆</div>"
-        f"<div style='font-size:1.5rem;font-weight:900;color:#fbbf24;margin-top:4px;'>"
-        f"{html.escape(str(winner.get('name','?')))} 승!</div>"
-        f"<div style='font-size:13px;color:#d6bd92;margin-top:4px;'>"
-        f"{html.escape(_battle_reason(winner))}</div></div>",
+        f"<div style='background:linear-gradient(150deg,#3a2433 0%,#5a3a2a 100%);"
+        f"border:1.5px solid #e9c068;border-radius:18px;padding:16px 14px;text-align:center;margin:6px 0 12px;'>"
+        f"<div style='font-size:2.4rem;line-height:1;'>👑</div>"
+        f"<div style='font-size:1.4rem;font-weight:900;color:#fbe7a0;margin-top:4px;'>"
+        f"{html.escape(str(winner.get('name','?')))} <span style='font-size:1rem;color:#e9c068;'>승!</span></div>"
+        f"<div style='font-size:2.2rem;font-weight:900;color:#fff;line-height:1.1;'>{_winner_score}"
+        f"<span style='font-size:0.9rem;color:#d6bd92;'>점</span></div>"
+        f"<div style='display:inline-block;font-size:12px;color:#f0d9a8;background:rgba(0,0,0,0.28);"
+        f"padding:6px 13px;border-radius:99px;margin-top:8px;line-height:1.45;'>{html.escape(_winner_reason)}</div>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
     rank_html = ""
     for idx, p in enumerate(sorted_p):
-        score = p.get("score", 0)
+        score = int(p.get("score", 0) or 0)
         bar_w = int(score)
         color = rank_colors[idx] if idx < len(rank_colors) else "#d6bd92"
         m     = medal[idx] if idx < len(medal) else " "
-        reason = _battle_reason(p)
+        nm    = str(p.get("name", "?"))
+        reason = _vs_tags.get(nm) or ("🔥 오늘 가장 강한 운" if idx == 0 else "오늘 운의 결을 탔어")
         rank_html += (
-            f"<div style='padding:10px 14px;border-bottom:1px solid #1a1208;'>"
-            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;'>"
-            f"<span style='font-size:1.1rem;'>{m} "
-            f"<span style='color:{color};font-weight:800;'>{html.escape(str(p.get('name','?')))}</span></span>"
+            f"<div style='padding:11px 14px;border-bottom:1px solid #1c0e20;'>"
+            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;'>"
+            f"<span style='font-size:1.05rem;'>{m} "
+            f"<span style='color:{color};font-weight:800;'>{html.escape(nm)}</span></span>"
+            f"<span style='font-size:1.05rem;color:{color};font-weight:900;'>{score}점</span>"
             f"</div>"
-            f"<div style='font-size:11px;color:#888;margin-bottom:5px;'>{html.escape(reason)}</div>"
-            f"<div style='background:#1a1208;border-radius:4px;height:7px;overflow:hidden;'>"
-            f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:4px;'></div></div>"
+            f"<div style='background:#1c0e20;border-radius:99px;height:8px;overflow:hidden;'>"
+            f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:99px;'></div></div>"
+            f"<div style='font-size:11px;color:#9a8aaa;margin-top:5px;'>{html.escape(reason)}</div>"
             f"</div>"
         )
 
@@ -16343,10 +16409,10 @@ def _axis_bias_summary(score_map: Dict[str, Dict[str, float]]) -> Dict[str, str]
 
     if spread < 6:
         headline = "세 축이 비교적 고르게 분포"
-        subline = "한쪽으로 크게 치우치기보다 전반적으로 균형에 가깝습니다."
+        subline = "한쪽으로 크게 치우치기보다 전반적으로 균형에 가까워."
     else:
         headline = f"{label_short[top]} 쪽이 더 두드러짐"
-        subline = f"{label_short[top]} 축이 상대적으로 강하고, {label_short[low]} 축은 상대적으로 약한 편입니다."
+        subline = f"{label_short[top]} 축이 상대적으로 강하고, {label_short[low]} 축은 상대적으로 약한 편이야."
 
     return {
         "headline": headline,
@@ -16529,7 +16595,7 @@ def operation_axis_profile(op: Dict[str, str], result: Dict[str, object]) -> Dic
         # 중화권은 계산 지수로 살짝 이동만 준다.
         pos = max(42, min(58, idx))
         label = "균형 조율권"
-        note = "환경을 받는 힘과 스스로 미는 힘이 함께 작동합니다. 상황에 맞는 조율이 핵심입니다."
+        note = "환경을 받는 힘과 스스로 미는 힘이 함께 작동해. 상황에 맞는 조율이 핵심이야."
 
     return {"pos": pos, "label": label, "note": note}
 
@@ -16620,7 +16686,7 @@ def render_radar_chart(result: Dict[str, object], title: str = "오행 밸런스
         )
     st.markdown(
         "<div class='svg-radar-card'>" + svg + "<div class='element-bars'>" + "".join(bars) + "</div>"
-        "<div class='small-muted'>오행 비율은 천간, 지지의 중심 기운, 지장간을 모두 가중치로 반영한 값입니다.</div></div>",
+        "<div class='small-muted'>오행 비율은 천간, 지지의 중심 기운, 지장간을 모두 가중치로 반영한 값이야.</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -16712,15 +16778,15 @@ def render_climate_thermometer(result: Dict[str, object]) -> None:
     temp = max(0, min(100, 50 + fire * 0.9 - water * 0.9))
     if temp >= 70:
         label = "뜨거운 편"
-        note = "열이 강하게 느껴지는 구조입니다. 식히고 정리하는 방향을 함께 봅니다."
+        note = "열이 강하게 느껴지는 구조야. 식히고 정리하는 방향을 함께 봐."
         color = "#ef4444"
     elif temp > 50:
         label = "따뜻한 편"
-        note = "온기가 살아 있는 구조입니다. 과열 여부를 함께 봅니다."
+        note = "온기가 살아 있는 구조야. 과열 여부를 함께 봐."
         color = "#f2c94c"
     else:
         label = "차가운 편"
-        note = "차분하고 냉정한 쪽으로 기울 수 있습니다. 온기 보완 여부를 함께 봅니다."
+        note = "차분하고 냉정한 쪽으로 기울 수 있어. 온기 보완 여부를 함께 봐."
         color = "#3b82f6"
     pin = max(2, min(98, temp))
     fill = pin
@@ -17067,17 +17133,17 @@ def _flow_plain_desc(row: Dict[str, object]) -> str:
     raw_name = str(row.get("구조", ""))
     raw_flow = str(row.get("흐름", ""))
     if "식상생재" in raw_name or "식상생재" in raw_flow:
-        return "표현력과 아이디어가 일의 결과, 돈, 현실적 성과로 이어지는 통로입니다. 어느 글자에서 이 흐름이 확인되는지는 아래 근거에 표시합니다."
+        return "표현력과 아이디어가 일의 결과, 돈, 현실적 성과로 이어지는 통로야. 어느 글자에서 이 흐름이 확인되는지는 아래 근거에 표시해."
     if "재생관" in raw_name or "재생관" in raw_flow:
-        return "돈·결과·현실 감각으로 잡힌 기운이 책임감, 신뢰, 역할 의식으로 이어지는 통로입니다. 어느 글자에서 이 흐름이 확인되는지는 아래 근거에 표시합니다."
+        return "돈·결과·현실 감각으로 잡힌 기운이 책임감, 신뢰, 역할 의식으로 이어지는 통로야. 어느 글자에서 이 흐름이 확인되는지는 아래 근거에 표시해."
     if "관인상생" in raw_name or "관인상생" in raw_flow:
-        return "책임과 압박을 배움, 정리력, 자격으로 흡수하는 통로입니다."
+        return "책임과 압박을 배움, 정리력, 자격으로 흡수하는 통로야."
     if "상관패인" in raw_name or "상관패인" in raw_flow:
-        return "강한 표현력이나 튀는 생각을 분석과 정리력으로 다듬는 통로입니다."
+        return "강한 표현력이나 튀는 생각을 분석과 정리력으로 다듬는 통로야."
     if "살인상생" in raw_name or "살인상생" in raw_flow:
-        return "부담스럽게 들어오는 압박을 공부와 성장 동력으로 바꾸는 통로입니다."
+        return "부담스럽게 들어오는 압박을 공부와 성장 동력으로 바꾸는 통로야."
     desc = raw_flow if raw_flow and raw_flow != "-" else str(row.get("비고", ""))
-    return desc or "기운이 한곳에 머물지 않고 다음 작용으로 이어지는 정도를 봅니다."
+    return desc or "기운이 한곳에 머물지 않고 다음 작용으로 이어지는 정도를 봐."
 
 
 def _interaction_plain_note(it: Dict[str, object]) -> str:
@@ -17087,15 +17153,15 @@ def _interaction_plain_note(it: Dict[str, object]) -> str:
     if typ in {"삼합", "방합", "반합"}:
         extra = ""
         if typ == "삼합" and ("巳酉丑" in name or all(x in name for x in ["巳", "酉", "丑"])) and str(el) == "금":
-            extra = " 특히 사화가 불로만 남기보다 금 기운 쪽으로 끌려가므로, 조후상 온기 역할은 보수적으로 봅니다."
-        return f"{name}: 여러 지지가 한 방향으로 모여 {el or '특정'} 기운 덩어리를 키우는 구조입니다. 그래서 발현 신호라기보다 ‘기운이 커지는 신호’에 가깝습니다.{extra}"
+            extra = " 특히 사화가 불로만 남기보다 금 기운 쪽으로 끌려가니까, 조후상 온기 역할은 보수적으로 봐."
+        return f"{name}: 여러 지지가 한 방향으로 모여 {el or '특정'} 기운 덩어리를 키우는 구조야. 그래서 발현 신호라기보다 ‘기운이 커지는 신호’에 가까워.{extra}"
     if typ == "육합":
-        return f"{name}: 두 지지가 서로 묶여 결속감이나 연결감을 만드는 구조입니다."
+        return f"{name}: 두 지지가 서로 묶여 결속감이나 연결감을 만드는 구조야."
     if typ == "충":
-        return f"{name}: 서로 부딪혀 변화·이동·자극을 만드는 구조입니다. 나쁨이 아니라 움직임이 커지는 표시입니다."
+        return f"{name}: 서로 부딪혀 변화·이동·자극을 만드는 구조야. 나쁨이 아니라 움직임이 커지는 표시야."
     if typ == "형":
-        return f"{name}: 내부 긴장이나 예민한 조율 포인트가 생기는 구조입니다."
-    return f"{name}: 원국 안에서 참고할 만한 구조 신호입니다."
+        return f"{name}: 내부 긴장이나 예민한 조율 포인트가 생기는 구조야."
+    return f"{name}: 원국 안에서 참고할 만한 구조 신호야."
 
 
 def _root_plain_detail(raw: str) -> List[str]:
@@ -17121,13 +17187,13 @@ def _markdown_signal_cards(items: List[str]) -> None:
 def _friendly_root_note(raw: str) -> str:
     raw = str(raw or "")
     if not raw or raw == "통근 정보 없음":
-        return "뿌리 신호는 약하게 잡힙니다."
+        return "뿌리 신호는 약하게 잡혀."
     count = raw.count("통근")
     if count >= 2:
-        return f"내 기운이 뿌리내린 자리 {count}곳이 잡힙니다. 쉽게 흔들리지 않는 구조입니다."
+        return f"내 기운이 뿌리내린 자리 {count}곳이 잡혀. 쉽게 흔들리지 않는 구조야."
     if count == 1:
-        return "내 기운이 뿌리내린 자리가 1곳 잡힙니다. 기본 지지대가 있습니다."
-    return "뿌리 신호는 보조적으로만 잡힙니다."
+        return "내 기운이 뿌리내린 자리가 1곳 잡혀. 기본 지지대가 있어."
+    return "뿌리 신호는 보조적으로만 잡혀."
 
 
 def _friendly_interaction_lists(interactions: List[Dict[str, object]]) -> Tuple[List[str], List[str], List[str]]:
@@ -17300,9 +17366,9 @@ def render_character_axis_cards(payload: Dict[str, object], char: Dict[str, str]
     }.get(char.get("role", ""), "겉으로 가장 두드러지는 행동 방식")
 
     energy_name = f"{dominant[0]} 중심"
-    energy_desc = f"가장 크게 잡힌 오행은 {dominant[0]} {dominant[1]:.1f}%이고, 가장 약한 오행은 {weak[0]} {weak[1]:.1f}%입니다."
+    energy_desc = f"가장 크게 잡힌 오행은 {dominant[0]} {dominant[1]:.1f}%이고, 가장 약한 오행은 {weak[0]} {weak[1]:.1f}%야."
     style_name = friendly_tags[0] if friendly_tags else "균형형"
-    style_desc = "강점이 어디에 또렷하게 드러나는지 보여주는 보조 설명입니다." if friendly_tags else "한쪽으로 과하게 몰리기보다 전체 균형이 먼저 보이는 타입입니다."
+    style_desc = "강점이 어디에 또렷하게 드러나는지 보여주는 보조 설명이야." if friendly_tags else "한쪽으로 과하게 몰리기보다 전체 균형이 먼저 보이는 타입이야."
 
     st.markdown("#### 🧬 캐릭터 조합 축")
     axis_rows = [
@@ -17328,7 +17394,7 @@ def render_character_axis_cards(payload: Dict[str, object], char: Dict[str, str]
 
     with st.expander("힘 쓰는 스타일 자세히 보기", expanded=False):
         tips = energy_operation_user_tips(operation)
-        st.caption("이 캐릭터가 힘을 내기 쉬운 환경과 조율 포인트를 정리했습니다.")
+        st.caption("이 캐릭터가 힘을 내기 쉬운 환경과 조율 포인트를 정리했어.")
         safe_dataframe([
             ("힘 쓰는 스타일", tips.get("display_name", char.get("operation", "-")), tips.get("summary", "")),
             ("잘 맞는 환경", "추천", tips.get("best", "")),
@@ -17353,31 +17419,31 @@ def element_daily_theme(el: str) -> Dict[str, str]:
     themes = {
         "목": {
             "keyword": "성장·시작",
-            "use": "작은 계획을 세우고, 미뤄둔 일을 시작하기 좋습니다.",
-            "overload": "벌리는 일이 많아지면 집중이 흐려질 수 있습니다.",
+            "use": "작은 계획을 세우고, 미뤄둔 일을 시작하기 좋아.",
+            "overload": "벌리는 일이 많아지면 집중이 흐려질 수 있어.",
         },
         "화": {
             "keyword": "표현·활력",
-            "use": "말하기, 알리기, 분위기 살리기에 힘을 쓰기 좋습니다.",
-            "overload": "속도가 빨라지면 말이 앞서거나 감정이 뜨거워질 수 있습니다.",
+            "use": "말하기, 알리기, 분위기 살리기에 힘을 쓰기 좋아.",
+            "overload": "속도가 빨라지면 말이 앞서거나 감정이 뜨거워질 수 있어.",
         },
         "토": {
             "keyword": "정리·안정",
-            "use": "정리, 점검, 루틴 만들기, 약속 확정에 좋습니다.",
-            "overload": "생각이 무거워지면 결정이 늦어질 수 있습니다.",
+            "use": "정리, 점검, 루틴 만들기, 약속 확정에 좋아.",
+            "overload": "생각이 무거워지면 결정이 늦어질 수 있어.",
         },
         "금": {
             "keyword": "판단·정돈",
-            "use": "기준 세우기, 문서 검토, 불필요한 것 덜어내기에 좋습니다.",
-            "overload": "기준이 날카로워지면 사람에게 차갑게 보일 수 있습니다.",
+            "use": "기준 세우기, 문서 검토, 불필요한 것 덜어내기에 좋아.",
+            "overload": "기준이 날카로워지면 사람에게 차갑게 보일 수 있어.",
         },
         "수": {
             "keyword": "흡수·관찰",
-            "use": "배우기, 듣기, 관찰하기, 정보를 모으기 좋습니다.",
-            "overload": "생각이 깊어지면 실행이 늦어질 수 있습니다.",
+            "use": "배우기, 듣기, 관찰하기, 정보 모으기에 좋아.",
+            "overload": "생각이 깊어지면 실행이 늦어질 수 있어.",
         },
     }
-    return themes.get(el, {"keyword": "균형", "use": "무리하지 않고 리듬을 고르는 데 좋습니다.", "overload": "컨디션을 살피며 속도를 조절하세요."})
+    return themes.get(el, {"keyword": "균형", "use": "무리하지 않고 리듬을 고르기에 좋아.", "overload": "컨디션을 살피며 속도를 조절해봐."})
 
 
 def _daily_interaction_maps() -> Dict[str, Dict[frozenset, str]]:
@@ -17413,16 +17479,16 @@ def daily_interaction_impact(kind: str, pos_label: str, name: str) -> str:
     }.get(pos_label, "해당 자리")
 
     if kind == "합":
-        return f"{pos_note}에서 묶임과 협력감이 생기기 쉽습니다. 다만 한 방향으로 너무 끌려가지 않게 균형을 봅니다."
+        return f"{pos_note}에서 묶임과 협력감이 생기기 쉬워. 다만 한 방향으로 너무 끌려가지 않게 균형을 봐."
     if kind == "충":
-        return f"{pos_note}에 변동·자극이 생기기 쉽습니다. 일정 변경, 말투, 속도 조절을 먼저 챙기면 좋습니다."
+        return f"{pos_note}에 변동·자극이 생기기 쉬워. 일정 변경, 말투, 속도 조절을 먼저 챙기면 좋아."
     if kind == "파":
-        return f"{pos_note}에서 작게 어긋나거나 깨지는 느낌이 생길 수 있습니다. 약속·세부 조건을 다시 확인하세요."
+        return f"{pos_note}에서 작게 어긋나거나 깨지는 느낌이 생길 수 있어. 약속·세부 조건을 다시 확인해봐."
     if kind == "형":
-        return f"{pos_note}에 예민함이나 압박감이 올라올 수 있습니다. 참기보다 규칙과 절차를 분명히 하는 편이 낫습니다."
+        return f"{pos_note}에 예민함이나 압박감이 올라올 수 있어. 참기보다 규칙과 절차를 분명히 하는 편이 나아."
     if kind == "해":
-        return f"{pos_note}에서 은근한 오해나 피로가 생길 수 있습니다. 직접 확인하고 돌려 말하지 않는 것이 좋습니다."
-    return f"{pos_note}에 작은 변화 신호가 있습니다."
+        return f"{pos_note}에서 은근한 오해나 피로가 생길 수 있어. 직접 확인하고 돌려 말하지 않는 게 좋아."
+    return f"{pos_note}에 작은 변화 신호가 있어."
 
 
 
@@ -17585,9 +17651,9 @@ def daily_stem_interactions(chart: "Chart", day_stem: str) -> List[Dict[str, str
                     "pos_label": pos_label,
                     "target":    chart_stem,
                     "strength":  strength,
-                    "impact":    f"오늘 일간 {day_stem}이 원국 {pos_label} {chart_stem}을 충합니다. "
-                                 f"정신적 긴장·의사결정 압박·말의 충돌로 나타날 수 있습니다. "
-                                 f"중요한 약속이나 계약은 한 템포 늦추는 것이 좋습니다.",
+                    "impact":    f"오늘 일간 {day_stem}이 원국 {pos_label} {chart_stem}을 충해. "
+                                 f"정신적 긴장·의사결정 압박·말의 충돌로 나타날 수 있어. "
+                                 f"중요한 약속이나 계약은 한 템포 늦추는 게 좋아.",
                 })
         return rows
     except Exception:
@@ -17596,7 +17662,7 @@ def daily_stem_interactions(chart: "Chart", day_stem: str) -> List[Dict[str, str
 
 def daily_interaction_summary(interactions: List[Dict[str, str]]) -> str:
     if not interactions:
-        return "오늘 일운과 원국 사이에 크게 표시할 합·충·파·형·해 신호는 약합니다."
+        return "오늘 일운과 원국 사이에 크게 표시할 합·충·파·형·해 신호는 약해."
     kinds = []
     has_stem_clash = any(r.get("kind") == "천간충" for r in interactions)
     for row in interactions:
@@ -17608,15 +17674,15 @@ def daily_interaction_summary(interactions: List[Dict[str, str]]) -> str:
             kinds.append(row["kind"])
     if has_stem_clash:
         names = "·".join(r["name"] for r in interactions if r.get("kind") == "천간충")
-        return (f"오늘은 천간충({names}) 신호가 있습니다. "
-                "정신적 긴장과 말의 충돌이 생기기 쉬우니 중요한 발언·결정·약속은 한 템포 늦추는 것이 좋습니다.")
+        return (f"오늘은 천간충({names}) 신호가 있어. "
+                "정신적 긴장과 말의 충돌이 생기기 쉬우니 중요한 발언·결정·약속은 한 템포 늦추는 게 좋아.")
     if "충" in kinds:
-        return "오늘은 변동·자극 신호가 있으니 일정, 말투, 약속 확인을 조금 더 부드럽게 챙기세요."
+        return "오늘은 변동·자극 신호가 있으니 일정, 말투, 약속 확인을 조금 더 부드럽게 챙겨봐."
     if "합" in kinds and not any(k in kinds for k in ["형", "파", "해"]):
-        return "오늘은 묶임과 협력 신호가 비교적 좋습니다. 사람·일정·자료를 연결하기에 괜찮습니다."
+        return "오늘은 묶임과 협력 신호가 비교적 좋아. 사람·일정·자료를 연결하기에 괜찮아."
     if any(k in kinds for k in ["형", "파", "해"]):
-        return "오늘은 작은 어긋남이나 예민함을 줄이는 쪽이 좋습니다. 확인과 거리 조절이 처방입니다."
-    return "오늘은 큰 충돌보다 조율 중심으로 쓰기 좋은 날입니다."
+        return "오늘은 작은 어긋남이나 예민함을 줄이는 쪽이 좋아. 확인하고 거리 조절하는 게 처방이야."
+    return "오늘은 큰 충돌보다 조율 중심으로 쓰기 좋은 날이야."
 
 
 
@@ -17647,7 +17713,7 @@ def _today_luck_identity(chart: Chart, day_gz: str) -> Dict[str, str]:
     if not day_gz or len(str(day_gz)) < 2:
         return {
             "day_luck_title": "일운 산출 제한",
-            "day_luck_detail": "오늘 들어온 간지 정보를 확인하지 못했습니다.",
+            "day_luck_detail": "오늘 들어온 간지 정보를 못 불러왔어.",
             "day_stem_detail": "천간 정보 제한",
             "day_branch_detail": "지지 정보 제한",
             "day_tengod_summary": "십성 정보 제한",
@@ -17657,7 +17723,7 @@ def _today_luck_identity(chart: Chart, day_gz: str) -> Dict[str, str]:
     if stem not in STEMS or branch not in BRANCHES:
         return {
             "day_luck_title": gz,
-            "day_luck_detail": "오늘 일운 간지의 세부 해석이 제한됩니다.",
+            "day_luck_detail": "오늘 일운 간지의 세부 해석이 좀 제한돼.",
             "day_stem_detail": "천간 정보 제한",
             "day_branch_detail": "지지 정보 제한",
             "day_tengod_summary": "십성 정보 제한",
@@ -17671,7 +17737,7 @@ def _today_luck_identity(chart: Chart, day_gz: str) -> Dict[str, str]:
     branch_tg = relation_to_day(chart.day_master, branch)
     return {
         "day_luck_title": f"{gz} 일운",
-        "day_luck_detail": f"오늘은 {stem}{stem_ko}({stem_el})가 위에 뜨고, {branch}{branch_ko}({branch_el})가 아래에서 받치는 날입니다.",
+        "day_luck_detail": f"오늘은 {stem}{stem_ko}({stem_el})가 위에 뜨고, {branch}{branch_ko}({branch_el})가 아래에서 받치는 날이야.",
         "day_stem_detail": f"천간 {stem}{stem_ko} · {stem_el} · {stem_tg}",
         "day_branch_detail": f"지지 {branch}{branch_ko} · {branch_el} · {branch_tg}",
         "day_tengod_summary": f"내 일간 기준 {stem_tg}/{branch_tg} 흐름",
@@ -17812,7 +17878,7 @@ def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: 
             "date": today.strftime("%Y-%m-%d"),
             "day_gz": "일진 산출 제한",
             "day_luck_title": "일운 산출 제한",
-            "day_luck_detail": "오늘 들어온 간지 정보를 확인하지 못했습니다.",
+            "day_luck_detail": "오늘 들어온 간지 정보를 못 불러왔어.",
             "day_stem_detail": "천간 정보 제한",
             "day_branch_detail": "지지 정보 제한",
             "day_tengod_summary": "십성 정보 제한",
@@ -17820,13 +17886,13 @@ def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: 
             "month_background": "월운 산출이 제한되어 이번 달 배경 기운은 간단 참고만 가능합니다.",
             "main_element": dominant[0],
             "keyword": theme["keyword"],
-            "direction": f"오늘은 원국에서 큰 {dominant[0]} 기운을 무리 없이 쓰는 쪽으로 봅니다.",
+            "direction": f"오늘은 원국에서 큰 {dominant[0]} 기운을 무리 없이 쓰는 쪽으로 봐.",
             "overload": theme["overload"],
-            "prescription": f"{weak[0]} 기운이 약하게 잡히므로, 부족한 쪽을 억지로 밀기보다 작은 보완 루틴을 하나만 잡아보세요.",
+            "prescription": f"{weak[0]} 기운이 약하게 잡히니까, 부족한 쪽을 억지로 밀기보다 작은 보완 루틴을 하나만 잡아봐.",
             "note": "lunar_python 일진 산출 제한 · " + format_luck_reactivity_note(reactivity),
             "reactivity": format_luck_reactivity_note(reactivity),
             "interactions": [],
-            "interaction_summary": "일진 산출이 제한되어 합·충·파·형·해 신호는 표시하지 않습니다.",
+            "interaction_summary": "일진 산출이 제한돼서 합·충·파·형·해 신호는 표시 못 해.",
             "interaction_overview": "일진 산출 제한",
             "ten_god_focus": "",
             "ten_god_title": "",
@@ -17850,21 +17916,21 @@ def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: 
 
     day_elements = {stem_el, branch_el}
     if day_elements & primary and mod >= 0:
-        direction = f"{', '.join(day_elements & primary)} 보완 신호가 들어와 부족한 부분을 채우기 좋은 날입니다."
-        prescription = f"{theme['use']} 크게 벌리기보다 오늘 들어온 보완 기운을 한 가지 행동으로 옮겨보세요."
+        direction = f"{', '.join(day_elements & primary)} 보완 신호가 들어와 부족한 부분을 채우기 좋은 날이야."
+        prescription = f"{theme['use']} 크게 벌리기보다 오늘 들어온 보완 기운을 한 가지 행동으로 옮겨봐."
     elif day_elements & burden and mod < 0:
-        direction = f"{', '.join(day_elements & burden)} 부담 신호가 있어 속도를 줄이고 정리하는 쪽이 낫습니다."
-        prescription = "새로 밀어붙이기보다 확인, 정리, 말의 온도 조절을 우선해 보세요."
+        direction = f"{', '.join(day_elements & burden)} 부담 신호가 있어 속도를 줄이고 정리하는 쪽이 나아."
+        prescription = "새로 밀어붙이기보다 확인, 정리, 말의 온도 조절을 먼저 해봐."
     else:
         direction = theme["use"]
-        prescription = f"오늘의 키워드는 {theme['keyword']}입니다. 무리한 확장보다 내 리듬에 맞는 작은 실행 하나가 좋습니다."
+        prescription = f"오늘의 키워드는 {theme['keyword']}야. 무리한 확장보다 내 리듬에 맞는 작은 실행 하나가 좋아."
 
     if "충" in luck_note or "변동" in luck_note:
-        overload = "변동 신호가 있어 일정·말투·약속을 조금 더 부드럽게 조율하세요."
+        overload = "변동 신호가 있어 일정·말투·약속을 조금 더 부드럽게 조율해봐."
     elif mod < -2:
         overload = theme["overload"]
     elif mod > 2:
-        overload = "기운이 받쳐주는 만큼 과속만 조심하면 좋습니다."
+        overload = "기운이 받쳐주는 만큼 과속만 조심하면 좋아."
     else:
         overload = theme["overload"]
 
@@ -17884,7 +17950,45 @@ def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: 
     if stem_clashes:
         interactions = stem_clashes + interactions
 
+    # ── 복음(伏吟)·반음(反吟): 오늘 일운 간지가 원국 일주(주)·월주(보조)와 같은지/정반대 충인지 ──
+    _bb_special = ""
+    try:
+        _stem_clash_set = {frozenset([a, b]) for a, b, _n in STEM_CLASHES}
+        _branch_clash_set = {frozenset([a, b]) for a, b, _n in CLASHES}
+        _bb_rows: List[Dict[str, str]] = []
+        for _pos, _pil in [("일주", getattr(chart, "day", None)), ("월주", getattr(chart, "month", None))]:
+            if not _pil:
+                continue
+            _ps, _pb = str(_pil.stem), str(_pil.branch)
+            if stem == _ps and branch == _pb:
+                _bb_rows.append({"kind": "복음", "name": "복음(伏吟)", "pos_label": _pos, "target": f"{_ps}{_pb}", "impact": ""})
+            elif frozenset([stem, _ps]) in _stem_clash_set and frozenset([branch, _pb]) in _branch_clash_set:
+                _bb_rows.append({"kind": "반음", "name": "반음(反吟)", "pos_label": _pos, "target": f"{_ps}{_pb}", "impact": ""})
+        if _bb_rows:
+            interactions = _bb_rows + interactions
+            _bb_kinds = {r["kind"] for r in _bb_rows}
+            _bb_pos = _bb_rows[0]["pos_label"]
+            if "복음" in _bb_kinds:
+                _bb_special += (
+                    f"오늘은 {_bb_pos}와 똑같은 간지가 다시 드는 ‘복음(伏吟)’의 날이야. "
+                    "새로 크게 벌이기보다 묵혀둔 일이나 감정을 정리하고 마무리하는 쪽이 잘 맞아. "
+                    "제자리 같아 답답하게 느껴지면 무리해서 밀지 말고 한 박자 쉬어가도 괜찮아. "
+                )
+            if "반음" in _bb_kinds:
+                _bb_special += (
+                    f"{_bb_pos}가 정반대로 부딪치는 ‘반음(反吟)’ 기운이 있어 갑자기 뒤집히거나 바뀌는 일이 생기기 쉬워. "
+                    "중요한 결정·계약·발언은 하루쯤 여유를 두고 보는 게 좋아. "
+                )
+    except Exception:
+        _bb_special = ""
+
     interaction_summary = daily_interaction_summary(interactions)
+    if _bb_special:
+        _bb_lead = ("오늘은 복음(같은 간지가 다시 듦) 신호가 있어 정체·정리 기운이 강해. "
+                    if "복음" in _bb_special else
+                    "오늘은 반음(정반대 충) 신호가 있어 변동 기운이 강해. ")
+        interaction_summary = _bb_lead + interaction_summary
+        prescription = (_bb_special + prescription).strip()
     interaction_overview = daily_interaction_overview(interactions)
     reactivity = luck_reactivity_profile(chart, result, {stem_el, branch_el})
 
@@ -17893,8 +17997,8 @@ def today_compass_payload(chart: Chart, result: Dict[str, object], target_date: 
         clash_names = "·".join(r["name"] for r in stem_clashes)
         clash_pos   = "·".join(r["pos_label"] for r in stem_clashes)
         overload = (
-            f"오늘 {clash_names}({clash_pos}) 신호가 있습니다. "
-            "말의 강도를 낮추고, 중요한 결정·계약·발언은 하루 여유를 두는 것이 좋습니다."
+            f"오늘 {clash_names}({clash_pos}) 신호가 있어. "
+            "말의 강도를 낮추고, 중요한 결정·계약·발언은 하루 여유를 두는 게 좋아."
         )
 
     return {
@@ -17967,7 +18071,7 @@ def render_today_compass_card(payload: Dict[str, object]) -> None:
         interaction_html = (
             "<div class='today-interaction-empty'>"
             "<b>오늘 일운 합·충·파·형·해</b><br>"
-            f"{html.escape(str(compass.get('interaction_summary', '오늘은 크게 표시할 합충파형해 신호가 약합니다.')), quote=True)}"
+            f"{html.escape(str(compass.get('interaction_summary', '오늘은 크게 표시할 합충파형해 신호가 약해.')), quote=True)}"
             "</div>"
         )
 
@@ -18014,7 +18118,7 @@ def render_today_compass_card(payload: Dict[str, object]) -> None:
             <div class="today-compass-label">한 줄 처방</div>
             <div class="today-compass-body">{html.escape(compass['prescription'])}</div>
         </div>
-        <div class="today-compass-note">※ 오늘의 나침반은 매일의 기운을 가볍게 보는 보조 카드입니다. 중요한 결정은 현실 조건을 우선하세요.</div>
+        <div class="today-compass-note">※ 오늘의 나침반은 매일의 기운을 가볍게 보는 보조 카드야. 중요한 결정은 현실 조건을 먼저 봐.</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -18250,9 +18354,9 @@ def render_saju_forecast_box(forecast: dict) -> None:
                     unsafe_allow_html=True,
                 )
     else:
-        st.caption("감지된 주요 신호가 없습니다. 평소 루틴대로 움직이기 좋은 날입니다.")
+        st.caption("감지된 주요 신호는 없어. 평소 루틴대로 움직이기 좋은 날이야.")
 
-    st.caption("※ 이 예보는 명리학적 참고용 신호입니다. 의료·법률·투자·계약 판단을 대신하지 않습니다.")
+    st.caption("※ 이 예보는 명리학 참고용 신호야. 의료·법률·투자·계약 판단을 대신하진 않아.")
 
 
 def share_card_strength_keywords(char: Dict[str, str], result: Dict[str, object]) -> List[str]:
@@ -18661,7 +18765,7 @@ def build_saju_landscape_model(payload: Dict[str, object]) -> Dict[str, object]:
     elif light_mode == "glow":
         sun_reason = "화가 보완 포인트라서 장면 전체에 은은한 온기를 깔았습니다."
     else:
-        sun_reason = "강한 불빛보다는 차분한 하늘 쪽이 더 어울리는 구조입니다."
+        sun_reason = "강한 불빛보다는 차분한 하늘 쪽이 더 어울리는 구조야."
 
     if water_mode == "riversea":
         water_reason = "임수형 수상이라 넓고 크게 움직이는 강·바다 스케일로 그렸습니다."
@@ -18705,7 +18809,7 @@ def build_saju_landscape_model(payload: Dict[str, object]) -> Dict[str, object]:
 
     support_reason = _branch_support_phrase(chart)
     strength_reason = f"주된 분위기는 {dominant[0]}가, 약한 축은 {weak[0]}가 맡습니다."
-    root_reason = (f"뿌리는 {', '.join(root_positions)} 쪽에서 확인됩니다." if root_positions else "직접 받치는 뿌리는 약한 편입니다.")
+    root_reason = (f"뿌리는 {', '.join(root_positions)} 쪽에서 확인돼." if root_positions else "직접 받치는 뿌리는 약한 편이야.")
     scene_signature = f"{season_desc} · {soil_kind} · {_water_mode_label(water_mode)}" + (" · 금생수 형상" if metal_supports_water else "")
 
     one = f"{season_desc} 위에 {stem_meta.get('yin_yang','')}의 {josa(day_name, "이/가")} 중심이 되고, {dominant[0]} 기운이 장면의 주조를 이룹니다."
@@ -19924,7 +20028,7 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
         return None
     W = 1080
     n = len(sorted_p)
-    H = 520 + n * 150
+    H = 560 + n * 150
     img = Image.new("RGB", (W, H), "#241327")
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((24, 24, W-24, H-24), radius=40, fill="#100e0c", outline="#caa24c", width=3)
@@ -19944,9 +20048,19 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
     _wb = d.textbbox((0,0), _wn + " 승!", font=f_title)
     d.text(((W-(_wb[2]-_wb[0]))//2, 220), _wn + " 승!", fill="#fbbf24", font=f_title)
 
+    # 상극 대결 한 줄
+    try:
+        _vs_line, _ = _battle_versus(sorted_p)
+    except Exception:
+        _vs_line = ""
+    if _vs_line:
+        for _ln in _wrap_for_image(d, _vs_line, f_small, W-180)[:1]:
+            _lb = d.textbbox((0,0), _ln, font=f_small)
+            d.text(((W-(_lb[2]-_lb[0]))//2, 292), _ln, fill="#f0d9a8", font=f_small)
+
     rank_colors = ["#fbbf24", "#c0c4cc", "#f0935a"] + ["#d6bd92"] * 12
     medal = ["🥇", "🥈", "🥉"] + ["  "] * 12
-    y = 320
+    y = 360
     for idx, p in enumerate(sorted_p):
         score = int(p.get("score", 0) or 0)
         col = rank_colors[idx] if idx < len(rank_colors) else "#d6bd92"
@@ -20384,7 +20498,7 @@ def relationship_orientation_from_compatibility(compatibility: Dict[str, object]
             "stamp": "🪞",
             "slogan": "설명 반만 해도 알아듣는 케미",
             "roles": "친구, 형제자매 같은 사이, 취향 메이트, 말 잘 통하는 동료",
-            "desc": "닮은 결이 강해 설명을 많이 하지 않아도 통하는 편입니다. 농담, 취향, 루틴을 공유할수록 관계 온도가 올라갑니다.",
+            "desc": "닮은 결이 강해 설명을 많이 하지 않아도 통하는 편이야. 농담, 취향, 루틴을 공유할수록 관계 온도가 올라가.",
             "caution": "너무 닮아서 서로의 단점도 같이 커질 수 있으니 새로운 관점을 일부러 섞는 편이 좋습니다.",
         }
     if alliance >= 66 and tension > 50:
@@ -20571,7 +20685,7 @@ def _dynamic_chemistry_axes_for_year(
         desc = "두 사람의 기본 궁합에서 보완성이 중심이 됩니다. 서로 다른 점이 불편함보다 쓸모로 느껴질 수 있습니다."
     elif strongest == "동맹성":
         title = "동맹감이 강해지는 해"
-        desc = "같은 방향을 보거나 비슷한 선택을 하기 쉽습니다. 함께 정한 규칙과 목표가 있으면 관계가 안정됩니다."
+        desc = "같은 방향을 보거나 비슷한 선택을 하기 쉬워. 함께 정한 규칙과 목표가 있으면 관계가 안정돼."
     elif strongest == "리듬":
         title = "리듬이 맞는 해"
         desc = "운의 체감 박자가 크게 벌어지지 않아 약속, 일상, 협업 타이밍을 맞추기 좋습니다."
@@ -21759,7 +21873,7 @@ def render_analysis_logic_panel(mode: str, key: str, show_toggle: bool = True) -
             ("3대 능력치", "각 참가자의 기운의 크기·순환·발현을 나란히 비교합니다."),
             ("다자간 국면", "모든 참가자 쌍의 케미 점수를 계산한 뒤, 동맹·협력·조율·긴장 선으로 원형 도식화합니다."),
             ("역할 추천", "케미 평균, 긴장축 수, 가장 가까운 축, 가장 조심할 축, 강한 능력치를 바탕으로 중심축·연결 허브·긴장 돌파형 등 역할을 붙입니다."),
-            ("주의", "다자간 국면은 편 가르기가 아니라, 조합 안에서 각자의 자연스러운 포지션을 설명하는 오락용 구조입니다."),
+            ("주의", "다자간 국면은 편 가르기가 아니라, 조합 안에서 각자의 자연스러운 포지션을 설명하는 오락용 구조야."),
         ]
     elif mode in ["meal", "workload", "leader"]:
         cfg = role_config(mode)
@@ -21776,7 +21890,7 @@ def render_analysis_logic_panel(mode: str, key: str, show_toggle: bool = True) -
             rows = [
                 ("일감흡수력", "식상력과 편관력을 중심으로 보고, 정관·인성·재성은 보조로 반영합니다."),
                 ("식상", "처리·산출·문서화·결과물을 만드는 손의 힘으로 봅니다."),
-                ("편관", "갑자기 들어오는 책임, 압박, 떠맡는 일을 보는 핵심 신호입니다."),
+                ("편관", "갑자기 들어오는 책임, 압박, 떠맡는 일을 보는 핵심 신호야."),
                 ("운 반영", "월운과 일운에서 관성·식상·인성·재성 신호가 켜지면 오늘 일감 신호를 보정합니다."),
                 ("뽑기 칸", "흡수력이 높을수록 16칸 뽑기에서 더 많은 칸을 배정받습니다."),
             ]
@@ -23287,7 +23401,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
         if _gathering_notes:
             with st.expander(f"💥 합국·방합으로 커지는 기운 자세히 보기 ({len(_gathering_notes)}개 구조)", expanded=False):
-                st.caption("여러 지지가 한 방향으로 모여 기운 덩어리를 키우는 구조입니다. 발현과 현실작동력에 직접 영향을 줍니다.")
+                st.caption("여러 지지가 한 방향으로 모여 기운 덩어리를 키우는 구조야. 발현과 현실작동력에 직접 영향을 줘.")
                 for _note in _gathering_notes:
                     st.markdown(f"- {_note}")
 
@@ -24380,8 +24494,8 @@ def render_single_summary(payload: Dict[str, object]) -> None:
     if payload.get("unknown_time") or result.get("unknown_time"):
         info = result.get("unknown_time", {})
         st.warning(
-            f"삼주 간이 분석입니다. 총점 후보 범위는 {info.get('score_min', '-')}~{info.get('score_max', '-')}점입니다. "
-            "시주가 없으면 합충·운 흐름 해석은 제한됩니다."
+            f"삼주 간이 분석이야. 총점 후보 범위는 {info.get('score_min', '-')}~{info.get('score_max', '-')}점이야. "
+            "시주가 없으면 합충·운 흐름 해석은 좀 제한돼."
         )
 
     char = get_mbti_character(chart, result)
@@ -24494,7 +24608,7 @@ def refined_strength_interpretation(result: Dict[str, object]) -> Tuple[str, str
     raw_label = str(result.get("strength_label", "중화") or "중화")
     detail = result.get("strength_detail", {}) or {}
     if not isinstance(detail, dict):
-        return raw_label, "일간 강약은 계절, 통근, 생조와 소모를 함께 본 참고 라벨입니다."
+        return raw_label, "일간 강약은 계절, 통근, 생조와 소모를 함께 본 참고 라벨이야."
 
     peer = float(detail.get("비겁", 0) or 0)
     resource = float(detail.get("인성", 0) or 0)
@@ -24504,26 +24618,26 @@ def refined_strength_interpretation(result: Dict[str, object]) -> Tuple[str, str
 
     if raw_label in ["극신강", "신강"]:
         if resource >= max(peer * 1.15, 24):
-            return f"생조형 {raw_label}", "같은 오행 자체보다 인성의 지원을 강하게 받아 일간이 힘을 얻는 구조입니다."
+            return f"생조형 {raw_label}", "같은 오행 자체보다 인성의 지원을 강하게 받아 일간이 힘을 얻는 구조야."
         if peer >= max(resource * 1.10, 24):
-            return f"자력형 {raw_label}", "같은 오행·통근의 힘이 뚜렷해 자기 체급으로 버티는 구조입니다."
-        return raw_label, "일간의 기본 체급이 강한 편입니다. 다만 방향 조절과 균형이 중요합니다."
+            return f"자력형 {raw_label}", "같은 오행·통근의 힘이 뚜렷해 자기 체급으로 버티는 구조야."
+        return raw_label, "일간의 기본 체급이 강한 편이야. 다만 방향 조절과 균형이 중요해."
 
     if raw_label == "중화":
         if wealth >= 30 or officer >= 30:
-            return "압박형 중화", "중화권이지만 재성·관성의 현실 압박이 커서 보완 방향을 함께 봐야 합니다."
+            return "압박형 중화", "중화권이지만 재성·관성의 현실 압박이 커서 보완 방향을 함께 봐야 해."
         if output >= 30:
-            return "설기형 중화", "중화권이지만 식상으로 기운이 많이 빠져나가 표현·산출 쪽으로 작동하는 구조입니다."
+            return "설기형 중화", "중화권이지만 식상으로 기운이 많이 빠져나가 표현·산출 쪽으로 작동하는 구조야."
         if resource >= 30:
-            return "생조형 중화", "중화권이지만 인성의 지원이 강해 생각·자료·보호막이 두터운 구조입니다."
-        return "균형형 중화", "혼자 미는 힘과 외부 도움의 균형이 비교적 맞는 편입니다."
+            return "생조형 중화", "중화권이지만 인성의 지원이 강해 생각·자료·보호막이 두터운 구조야."
+        return "균형형 중화", "혼자 미는 힘과 외부 도움의 균형이 비교적 맞는 편이야."
 
     if raw_label in ["신약", "극신약"]:
         if wealth + officer >= 45:
-            return f"환경 압박형 {raw_label}", "일간보다 재성·관성의 요구가 커서 환경과 역할의 압박을 크게 느끼기 쉬운 구조입니다."
-        return raw_label, "혼자 버티는 힘보다 환경, 팀, 보완 오행의 도움을 받을 때 힘이 살아나는 편입니다."
+            return f"환경 압박형 {raw_label}", "일간보다 재성·관성의 요구가 커서 환경과 역할의 압박을 크게 느끼기 쉬운 구조야."
+        return raw_label, "혼자 버티는 힘보다 환경, 팀, 보완 오행의 도움을 받을 때 힘이 살아나는 편이야."
 
-    return raw_label, "일간 강약은 계절, 통근, 생조와 소모를 함께 본 참고 라벨입니다."
+    return raw_label, "일간 강약은 계절, 통근, 생조와 소모를 함께 본 참고 라벨이야."
 
 
 def polished_useful_directions(useful: Dict[str, object], result: Dict[str, object] | None = None) -> Dict[str, List[str]]:
@@ -24606,10 +24720,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "귀인 배지",
             "tag": "보호·지원형",
             "title": "천을귀인",
-            "summary": "위기 완충, 도움 인연, 예상 밖 지원이 들어오는 보호막형 보조 신호입니다.",
-            "meaning": "사람운, 중재자, 도움 인연처럼 ‘숨통을 틔워주는 손’으로 읽습니다. 만능 길성이라기보다는 어려운 장면에서 완충재가 생기는 느낌에 가깝습니다.",
+            "summary": "위기 완충, 도움 인연, 예상 밖 지원이 들어오는 보호막형 보조 신호야.",
+            "meaning": "사람운, 중재자, 도움 인연처럼 ‘숨통을 틔워주는 손’으로 읽어. 만능 길성이라기보다는 어려운 장면에서 완충재가 생기는 느낌에 가까워.",
             "how": f"내 일간 {day_stem} 기준으로 천을귀인 후보 글자는 {_branch_list_ko(CHEONEUL_BRANCHES.get(day_stem, []))}이야. 내 원국 지지에 이 글자가 있으면 성립하는 거거든.",
-            "reading": "도움이 들어올 가능성은 있지만, 본인의 선택과 행동을 대신해주는 표식은 아닙니다. 원국의 큰 구조와 함께 참고합니다.",
+            "reading": "도움이 들어올 가능성은 있지만, 본인의 선택과 행동을 대신해주는 표식은 아니야. 원국의 큰 구조와 함께 참고해.",
             "targets": CHEONEUL_BRANCHES.get(day_stem, []),
         },
         "문창귀인": {
@@ -24617,10 +24731,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "문창 배지",
             "tag": "문서·표현형",
             "title": "문창귀인",
-            "summary": "문서, 공부, 말과 글, 정리 능력이 살아나는 지적 보조 신호입니다.",
-            "meaning": "학습, 기록, 설명, 문서화, 기획처럼 생각을 정리해 밖으로 꺼내는 힘을 보조합니다.",
+            "summary": "문서, 공부, 말과 글, 정리 능력이 살아나는 지적 보조 신호야.",
+            "meaning": "학습, 기록, 설명, 문서화, 기획처럼 생각을 정리해 밖으로 꺼내는 힘을 보조해.",
             "how": f"내 일간 {day_stem} 기준 문창귀인 글자는 {_branch_list_ko([MUNCHANG_BRANCH.get(day_stem, '')])}이야. 원국 지지에 이 글자가 딱 들어와 있으면 성립하는 거야.",
-            "reading": "공부를 무조건 잘한다는 단정이 아니라, 정리하고 표현할 때 장점이 살아날 수 있다는 신호입니다.",
+            "reading": "공부를 무조건 잘한다는 단정이 아니라, 정리하고 표현할 때 장점이 살아날 수 있다는 신호야.",
             "targets": [MUNCHANG_BRANCH.get(day_stem, "")],
         },
         "역마": {
@@ -24628,10 +24742,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "이동 배지",
             "tag": "이동·변화형",
             "title": "역마",
-            "summary": "이동, 변화, 활동 반경 확장, 새로운 판으로 움직이는 힘을 뜻합니다.",
-            "meaning": "한 자리에 고정되기보다 움직이면서 기회가 생기는 카드입니다. 출장, 이동, 확장, 새 환경 적응과 연결해 볼 수 있습니다.",
+            "summary": "이동, 변화, 활동 반경 확장, 새로운 판으로 움직이는 힘을 뜻해.",
+            "meaning": "한 자리에 고정되기보다 움직이면서 기회가 생기는 카드야. 출장, 이동, 확장, 새 환경 적응과 연결해 볼 수 있어.",
             "how": f"{_basis_txt}으로 봐. 역마 글자는 {_branch_list_ko(sorted({YEOKMA_BRANCH[g] for g in _grps}))}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
-            "reading": "움직임이 좋다는 뜻일 수 있지만, 중복되면 변동성이 커져 안정감이 약해질 수도 있습니다.",
+            "reading": "움직임이 좋다는 뜻일 수 있지만, 중복되면 변동성이 커져 안정감이 약해질 수도 있어.",
             "targets": sorted({YEOKMA_BRANCH[g] for g in _grps}),
         },
         "도화": {
@@ -24639,10 +24753,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "매력 배지",
             "tag": "매력·노출형",
             "title": "도화",
-            "summary": "시선, 매력, 대인 노출, 분위기 형성에 관한 보조 신호입니다.",
-            "meaning": "사람들의 시선이 닿는 자리, 호감, 표현 매력, 분위기 장악력으로 읽습니다. SNS·대인관계·미적 감각과도 연결해 볼 수 있습니다.",
+            "summary": "시선, 매력, 대인 노출, 분위기 형성에 관한 보조 신호야.",
+            "meaning": "사람들의 시선이 닿는 자리, 호감, 표현 매력, 분위기 장악력으로 읽어. SNS·대인관계·미적 감각과도 연결해 볼 수 있어.",
             "how": f"{_basis_txt}으로 봐. 도화 글자는 {_branch_list_ko(sorted({DOHWA_BRANCH[g] for g in _grps}))}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
-            "reading": "매력 신호이지만 중복되면 과노출, 관계 피로, 시선 부담으로도 작동할 수 있습니다.",
+            "reading": "매력 신호이지만 중복되면 과노출, 관계 피로, 시선 부담으로도 작동할 수 있어.",
             "targets": sorted({DOHWA_BRANCH[g] for g in _grps}),
         },
         "화개": {
@@ -24650,10 +24764,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "몰입 배지",
             "tag": "몰입·취향형",
             "title": "화개",
-            "summary": "취향, 몰입, 축적, 사색, 자기만의 세계를 깊게 만드는 보조 신호입니다.",
-            "meaning": "혼자 깊이 파고드는 힘, 취향의 깊이, 예술성, 종교성, 연구성처럼 안쪽으로 쌓이는 기운을 뜻합니다.",
+            "summary": "취향, 몰입, 축적, 사색, 자기만의 세계를 깊게 만드는 보조 신호야.",
+            "meaning": "혼자 깊이 파고드는 힘, 취향의 깊이, 예술성, 종교성, 연구성처럼 안쪽으로 쌓이는 기운을 뜻해.",
             "how": f"{_basis_txt}으로 봐. 화개 글자는 {_branch_list_ko(sorted({HWAGAE_BRANCH[g] for g in _grps}))}인데, 원국 어딘가에 이 글자가 있으면 성립하는 거야.",
-            "reading": "몰입과 축적에는 좋지만, 중복되면 고립감이나 자기 세계 과잉으로 느껴질 수 있습니다.",
+            "reading": "몰입과 축적에는 좋지만, 중복되면 고립감이나 자기 세계 과잉으로 느껴질 수 있어.",
             "targets": sorted({HWAGAE_BRANCH[g] for g in _grps}),
         },
         "현침": {
@@ -24661,10 +24775,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "예리함 배지",
             "tag": "기술·정밀형",
             "title": "현침",
-            "summary": "침처럼 예리한 감각 — 정밀함, 기술, 의술, 날카로운 언변의 보조 신호입니다.",
-            "meaning": "손기술, 의료·침구, 디자인·세공, 분석, 비평처럼 뾰족하게 파고드는 능력으로 읽습니다. 말이 날카로워질 수 있다는 신호이기도 합니다.",
+            "summary": "침처럼 예리한 감각 — 정밀함, 기술, 의술, 날카로운 언변의 보조 신호야.",
+            "meaning": "손기술, 의료·침구, 디자인·세공, 분석, 비평처럼 뾰족하게 파고드는 능력으로 읽어. 말이 날카로워질 수 있다는 신호이기도 해.",
             "how": f"甲·辛·卯·午·申 다섯 글자가 현침 글자야. 원국의 천간·지지에 이 글자가 있으면 성립하는 거야.",
-            "reading": "예리함은 장점이지만, 말끝이 사람을 찌르지 않도록 표현을 부드럽게 다듬으면 더 좋습니다.",
+            "reading": "예리함은 장점이지만, 말끝이 사람을 찌르지 않도록 표현을 부드럽게 다듬으면 더 좋아.",
             "targets": sorted(HYEONCHIM_CHARS),
         },
         "양인": {
@@ -24672,10 +24786,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "추진 배지",
             "tag": "추진·결단형",
             "title": "양인",
-            "summary": "강한 추진력과 결단 — 칼자루를 쥔 듯한 돌파 에너지의 보조 신호입니다.",
-            "meaning": "위기에서 밀어붙이는 힘, 승부사 기질, 책임지고 끊어내는 결단력으로 읽습니다.",
+            "summary": "강한 추진력과 결단 — 칼자루를 쥔 듯한 돌파 에너지의 보조 신호야.",
+            "meaning": "위기에서 밀어붙이는 힘, 승부사 기질, 책임지고 끊어내는 결단력으로 읽어.",
             "how": f"내 일간 {day_stem} 기준 양인 글자는 {_branch_list_ko([YANGIN_MAP.get(day_stem, '')])}이야. 원국 지지에 이 글자가 있으면 성립하는 거야.",
-            "reading": "추진력이 강한 만큼 과격해질 수 있어, 힘을 어디에 쓸지 방향 설정이 중요합니다.",
+            "reading": "추진력이 강한 만큼 과격해질 수 있어, 힘을 어디에 쓸지 방향 설정이 중요해.",
             "targets": [YANGIN_MAP.get(day_stem, "")],
         },
         "괴강": {
@@ -24683,10 +24797,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "카리스마 배지",
             "tag": "극단·카리스마형",
             "title": "괴강",
-            "summary": "극과 극을 오가는 강한 카리스마 — 평범함을 거부하는 기둥의 보조 신호입니다.",
-            "meaning": "리더십, 총명함, 강한 자존심으로 읽습니다. 크게 이루거나 크게 흔들리는 양면성이 있다고 전해집니다.",
+            "summary": "극과 극을 오가는 강한 카리스마 — 평범함을 거부하는 기둥의 보조 신호야.",
+            "meaning": "리더십, 총명함, 강한 자존심으로 읽어. 크게 이루거나 크게 흔들리는 양면성이 있다고 전해져.",
             "how": "庚辰·庚戌·壬辰·壬戌·戊戌 — 이 다섯 기둥(간지)이 원국에 있으면 성립하는 거야.",
-            "reading": "강한 기운인 만큼 독선으로 흐르지 않게 주변과 보조를 맞추면 큰 힘이 됩니다.",
+            "reading": "강한 기운인 만큼 독선으로 흐르지 않게 주변과 보조를 맞추면 큰 힘이 돼.",
             "targets": [],
         },
         "백호": {
@@ -24694,10 +24808,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "강렬함 배지",
             "tag": "강렬·집중형",
             "title": "백호",
-            "summary": "해당 기둥의 기운이 유난히 강렬하게 작동하는 보조 신호입니다.",
-            "meaning": "그 기둥이 뜻하는 영역(년=뿌리, 월=사회, 일=나·배우자, 시=미래)에서 에너지가 격하게 움직인다고 읽습니다.",
+            "summary": "해당 기둥의 기운이 유난히 강렬하게 작동하는 보조 신호야.",
+            "meaning": "그 기둥이 뜻하는 영역(년=뿌리, 월=사회, 일=나·배우자, 시=미래)에서 에너지가 격하게 움직인다고 읽어.",
             "how": "甲辰·乙未·丙戌·丁丑·戊辰·壬戌·癸丑 — 이 일곱 기둥(간지)이 원국에 있으면 성립하는 거야.",
-            "reading": "흉살로 단정하기보다, 그 영역의 에너지가 강하니 무리한 충돌을 피하라는 주의 신호로 참고합니다.",
+            "reading": "흉살로 단정하기보다, 그 영역의 에너지가 강하니 무리한 충돌을 피하라는 주의 신호로 참고해.",
             "targets": [],
         },
         "공망": {
@@ -24705,10 +24819,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
             "badge": "빈자리 배지",
             "tag": "공백·우회형",
             "title": "공망",
-            "summary": "없다는 뜻보다 바로 손에 잡히지 않고 우회적으로 작동하는 자리입니다.",
-            "meaning": "기대만큼 바로 체감되지 않거나, 직접적인 방식보다 돌아가는 방식으로 드러나는 자리입니다. 비어 보이는 만큼 상상력이나 재해석이 들어갈 여지도 있습니다.",
+            "summary": "없다는 뜻보다 바로 손에 잡히지 않고 우회적으로 작동하는 자리야.",
+            "meaning": "기대만큼 바로 체감되지 않거나, 직접적인 방식보다 돌아가는 방식으로 드러나는 자리야. 비어 보이는 만큼 상상력이나 재해석이 들어갈 여지도 있어.",
             "how": f"일주 {chart.day.stem}{chart.day.branch} 기준으로 공망이 되는 글자는 {_branch_list_ko(_gongmang_branches_for_day(chart.day.stem, chart.day.branch))}이야. 원국 지지에 이 글자가 있으면 공망으로 보는 거거든.",
-            "reading": "없다/나쁘다로 단정하지 않습니다. 해당 자리의 일이 바로 잡히지 않거나, 다른 경로를 거쳐 뒤늦게 의미가 생기는 식으로 읽습니다.",
+            "reading": "없다/나쁘다로 단정하진 않아. 해당 자리의 일이 바로 잡히지 않거나, 다른 경로를 거쳐 뒤늦게 의미가 생기는 식으로 읽어.",
             "targets": list(_gongmang_branches_for_day(chart.day.stem, chart.day.branch)),
         },
     }
@@ -24718,10 +24832,10 @@ def _shinsal_card_profile(name: str, hit: Dict[str, object], chart: Chart) -> Di
         "badge": "특수 배지",
         "tag": "보조 신호",
         "title": name or "보조 신호",
-        "summary": "원국의 큰 구조 위에 덧붙여 참고하는 보조 신호입니다.",
-        "meaning": "단독 판단이 아니라 전체 원국의 흐름 위에서 보조적으로 읽습니다.",
+        "summary": "원국의 큰 구조 위에 덧붙여 참고하는 보조 신호야.",
+        "meaning": "단독 판단이 아니라 전체 원국의 흐름 위에서 보조적으로 읽어.",
         "how": "전통 신살 기준으로 원국 지지를 대조해서 성립 여부를 봐.",
-        "reading": "재미와 참고용으로만 봅니다.",
+        "reading": "재미와 참고용으로만 봐.",
         "targets": [],
     }).copy()
 
@@ -24786,7 +24900,7 @@ def render_shinsal_badge_cards(payload: Dict[str, object] | Dict[str, object], p
         )
 
     st.markdown("#### 🎴 특수 배지 카드")
-    st.caption("공망·신살은 원국의 중심 판단을 대체하지 않지만, 사건감과 체감 포인트를 보강하는 특수 신호입니다. 어떤 자리에 잡혔는지 함께 확인해 보세요.")
+    st.caption("공망·신살은 원국의 중심 판단을 대체하지 않지만, 사건감과 체감 포인트를 보강하는 특수 신호야. 어떤 자리에 잡혔는지 함께 확인해 봐.")
     st.markdown("<div class='shinsal-grid'>" + "".join(cards[:8]) + "</div>", unsafe_allow_html=True)
     st.markdown("<div class='shinsal-footnote'>※ 공망·신살은 단독으로 길흉을 확정하지 않습니다. 다만 v5.81부터는 위치와 중복 여부에 따라 체감 보정으로 일부 반영합니다.</div>", unsafe_allow_html=True)
 
@@ -24896,7 +25010,7 @@ def render_score_formula_diagram(result: Dict[str, object], prefix: str = "singl
     </div>
     """, unsafe_allow_html=True)
     if abs(total - base_total) >= 0.1:
-        st.caption(f"참고: 신살·공망 체감 보정 {shinsal:+.1f}점을 대표 점수에 반영했습니다. 전체 인상 보정 {holistic:+.1f}점은 해설용 참고 신호입니다.")
+        st.caption(f"참고: 신살·공망 체감 보정 {shinsal:+.1f}점을 대표 점수에 반영했어. 전체 인상 보정 {holistic:+.1f}점은 해설용 참고 신호야.")
     else:
         st.caption("대표 점수는 기초체력 + 흐름과 연결 + 현실작동력에 신살·공망 체감 보정을 더한 값입니다.")
 
@@ -24947,7 +25061,7 @@ def render_manse_daewun_cards(payload: Dict[str, object]) -> None:
     html_parts = [
         "<div class='manse-luck-wrap'>",
         "<div class='manse-luck-head'>",
-        "<div><div class='manse-luck-title'>〽️ 대운 배열</div><div class='manse-luck-sub'>10년 단위로 들어오는 큰 배경값입니다. 현재 대운은 진한 테두리로 표시합니다.</div></div>",
+        "<div><div class='manse-luck-title'>〽️ 대운 배열</div><div class='manse-luck-sub'>10년 단위로 들어오는 큰 배경값이야. 현재 대운은 진한 테두리로 표시했어.</div></div>",
         f"<div class='manse-luck-chip'>{len(daewuns)}개 흐름</div>",
         "</div><div class='manse-luck-grid'>",
     ]
@@ -24989,7 +25103,7 @@ def render_manse_sewun_cards(luck_flow: Dict[str, object]) -> None:
     html_parts = [
         "<div class='manse-luck-wrap'>",
         "<div class='manse-luck-head'>",
-        "<div><div class='manse-luck-title'>📆 5년 세운 참고</div><div class='manse-luck-sub'>현재 대운 위에 해마다 얹히는 짧은 흐름입니다. 점수보다 변동 방향과 비고를 참고합니다.</div></div>",
+        "<div><div class='manse-luck-title'>📆 5년 세운 참고</div><div class='manse-luck-sub'>현재 대운 위에 해마다 얹히는 짧은 흐름이야. 점수보다 변동 방향과 비고를 참고해.</div></div>",
         f"<div class='manse-luck-chip'>{len(rows)}년 보기</div>",
         "</div><div class='manse-sewun-grid'>",
     ]
@@ -25739,7 +25853,7 @@ def render_interaction_signal(result: Dict[str, object]) -> None:
     for note in compound_notes:
         st.caption(note)
     if interactions and not compound_notes:
-        st.caption("합국·육합은 기운을 묶는 신호입니다. 참여 글자의 원래 십성·신살 의미도 함께 참고합니다.")
+        st.caption("합국·육합은 기운을 묶는 신호야. 참여 글자의 원래 십성·신살 의미도 함께 참고해.")
 
     # ── 상세 설명 expander ──────────────────────────────────
     detail_html = _interaction_detail_html(interactions)
@@ -27804,7 +27918,7 @@ elif payload.get("multi"):
 
         if safe_toggle("케미 판정 신뢰도 보기", value=False, key="multi_chem_confidence_toggle"):
             safe_dataframe(pd.DataFrame(pairwise_compatibility_confidence_rows(participants)), use_container_width=True, hide_index=True)
-            st.caption("원국 입력 확인 메모는 입력값을 다시 확인하면 좋은 항목이라는 뜻입니다. 케미가 틀렸다는 의미는 아닙니다.")
+            st.caption("원국 입력 확인 메모는 입력값을 다시 확인하면 좋은 항목이라는 뜻이야. 케미가 틀렸다는 의미는 아니야.")
 
     else:
         selected_name = selected_view.replace(" 상세 분석", "")
