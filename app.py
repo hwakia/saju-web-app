@@ -6980,7 +6980,7 @@ def render_privacy_policy() -> None:
 - 오류 메시지에 입력값이 직접 노출되지 않도록 안전 오류 메시지 사용
 - 사용자 입력을 HTML로 표시할 때 이스케이프 처리 적용
 - 화면 캡처와 리포트 공유 시 개인정보 노출 주의 문구 제공
-- 클라우드 데이터베이스에 원본 생년월일시·성별·사주 간지를 저장하지 않으며, 분석 후 산출된 점수·등급과 대표 오행(예: 화 강함)만 저장
+- 클라우드 데이터베이스에 원본 생년월일시·성별을 저장하지 않으며, 분석 후 산출된 점수·등급과 대표 오행(예: 화 강함)만 저장. 단, '모임 케미 초대' 기능은 참가자 간 케미 계산을 위해 사주 팔자(간지)를 인코딩한 토큰을 방 유지 기간(생성·입장 후 30분) 동안만 임시 저장하며, 만료된 방은 토큰과 함께 자동 삭제
 - 데이터베이스 접근 정보(비밀번호, 연결 문자열)는 서버 환경 변수에만 보관하며 코드·저장소에 노출하지 않음
 - 서버는 방화벽(UFW)으로 불필요한 포트를 차단하며, SSH 접근은 공개키 기반 인증만 허용
 - 데이터베이스(PostgreSQL)는 외부 직접 접근을 차단하고 로컬호스트 및 컨테이너 내부 통신만 허용
@@ -14698,8 +14698,8 @@ def calculate_battle_power(payload: dict) -> int:
     primary   = list(useful.get("primary") or [])
     burden    = list(useful.get("burden")  or [])
 
-    # 원국 점수를 40~70 구간으로 압축 (30pt 범위)
-    base = 40.0 + (max(0.0, min(100.0, total)) / 100.0) * 30.0
+    # 원국 점수를 38~72 구간으로 (기존 40~70보다 약간 넓게)
+    base = 38.0 + (max(0.0, min(100.0, total)) / 100.0) * 34.0
 
     def el_dir(el: str) -> float:
         if el in primary: return 1.0
@@ -14735,16 +14735,16 @@ def calculate_battle_power(payload: dict) -> int:
     except Exception:
         pass
 
-    # 각 운별 가중치: 대운 7 / 세운 9 / 월운 12 / 일운 16
+    # 각 운별 가중치 상향(하루 변동폭↑): 대운 8 / 세운 12 / 월운 18 / 일운 26
     raw = (base
-           + gz_factor(dw_gz)    * 7.0
-           + gz_factor(sw_gz)    * 9.0
-           + gz_factor(month_gz) * 12.0
-           + gz_factor(day_gz)   * 16.0)
+           + gz_factor(dw_gz)    * 8.0
+           + gz_factor(sw_gz)    * 12.0
+           + gz_factor(month_gz) * 18.0
+           + gz_factor(day_gz)   * 26.0)
 
-    # raw 이론 범위 [-4, 114] → [0, 100] 정규화
-    score = (raw - (-4.0)) / (114.0 - (-4.0)) * 100.0
-    return max(0, min(100, int(round(score))))
+    # raw 이론 범위 [-26, 136] → [0, 100] 정규화. 소수 1자리(동점 자동 해소·변동 가시화)
+    score = (raw - (-26.0)) / (136.0 - (-26.0)) * 100.0
+    return round(max(0.0, min(100.0, score)), 1)
 
 
 def parse_battle_codes_from_text(text: str, today) -> list:
@@ -14779,10 +14779,10 @@ def _sb_gen_id(length: int = 6) -> str:
 
 
 def sb_cleanup_expired_rooms() -> None:
-    """만료(expires_at) 후 1시간이 지난 케미방/맞짱방/맞짱결과 row를 삭제한다.
+    """만료(expires_at, 생성·입장 후 30분)된 케미방/맞짱방/맞짱결과 row를 즉시 삭제한다.
 
-    진행 중 화면이 깨지지 않도록 1시간의 유예를 두고, DB 호출을 아끼기 위해
-    세션당 1회만 실행한다. 저장된 데이터는 별명·수치뿐이지만 DB를 깨끗하게 유지한다.
+    개인정보(케미 토큰 등) 최소 보관 원칙에 따라 유예 없이 만료 즉시 정리한다.
+    DB 호출을 아끼기 위해 세션당 1회만 실행한다.
     """
     if st.session_state.get("_sb_rooms_cleaned_v1"):
         return
@@ -14790,7 +14790,7 @@ def sb_cleanup_expired_rooms() -> None:
     sb = _get_pg()
     if sb is None:
         return
-    cutoff = (datetime.now() - timedelta(hours=1)).isoformat()
+    cutoff = datetime.now().isoformat()
     for _table in ("chemistry_rooms", "battle_rooms", "battles"):
         try:
             sb.table(_table).delete().lt("expires_at", cutoff).execute()
@@ -14957,13 +14957,36 @@ def _extract_participant_data(payload: Dict, name: str) -> Dict:
     from datetime import datetime as _dtnow
     chart  = payload.get("chart")
     result = payload.get("result", {}) or {}
+    # 케미·그룹진단 계산용 인코딩 토큰(원국 8글자+용신). 방 유지기간(최대 24h) 동안만 임시 저장, 자동 삭제.
+    try:
+        _tok = _encode_pillars_to_token(chart, result) if chart is not None else ""
+    except Exception:
+        _tok = ""
     return {
         "name":           name[:10],
         "total":          float(result.get("total", 50) or 50),
         "strength_label": str(result.get("strength_label", "중화") or "중화"),
         "role":           _infer_saju_role(result),
+        "t":              _tok,
         "joined_at":      _dtnow.now().isoformat(),
     }
+
+
+def _reconstruct_payload_from_room_participant(p: Dict) -> "Dict | None":
+    """방 참가자 레코드의 토큰(t)을 원국으로 복원하고 analyze()로 전체 분석값을 재생성한다.
+    토큰이 없거나(구버전 방) 복원 실패 시 None."""
+    tok  = str(p.get("t", "") or "")
+    name = str(p.get("name", "") or "")
+    if not tok:
+        return None
+    dec = _decode_token_to_payload(tok, name)
+    if dec is None or dec.get("chart") is None:
+        return None
+    try:
+        full = analyze(dec["chart"], "")
+    except Exception:
+        full = dec.get("result", {}) or {}
+    return {"name": name, "chart": dec["chart"], "result": full}
 
 
 def sb_create_battle_room(max_participants: int = 5) -> "str | None":
@@ -15046,24 +15069,28 @@ def sb_update_room_chemistry_result(room_id: str, chemistry_result: Dict) -> boo
 
 
 def _compute_and_store_room_chemistry(room_id: str, participants: List[Dict], my_payload: Dict) -> None:
-    """방이 꽉 찼을 때 URL 토큰으로 다른 참가자 원국을 복원하고 케미 매트릭스를 계산해
-    Supabase에 결과만 저장한다. 원국 자체는 Supabase에 저장하지 않는다."""
+    """방이 꽉 차면 참가자 DB 토큰으로 원국을 복원해 케미 매트릭스를 계산·저장한다.
+    매트릭스 결과만 저장하며, 토큰(원국)은 방 자동삭제와 함께 사라진다."""
     try:
-        raw_t = st.query_params.get("t", "").strip()
-        other_tokens = [tok for tok in raw_t.split(",") if tok] if raw_t else []
         my_name = str(my_payload.get("name", ""))
-        p_names_others = [
-            str(p.get("name", f"참가자{i+1}"))
-            for i, p in enumerate(participants)
-            if str(p.get("name", "")) != my_name
-        ]
         payloads: List[Dict] = []
-        for i, tok in enumerate(other_tokens):
-            pname = p_names_others[i] if i < len(p_names_others) else f"참가자{i+1}"
-            decoded = _decode_token_to_payload(tok, pname)
-            if decoded is not None:
-                payloads.append(decoded)
-        payloads.append(my_payload)
+        for p in participants:
+            pl = _reconstruct_payload_from_room_participant(p)
+            if pl is None and str(p.get("name", "")) == my_name:
+                pl = my_payload  # 본인은 방금 산출한 payload로 보강
+            if pl is not None:
+                payloads.append(pl)
+        # 구버전 방(토큰 없음) 폴백: URL 토큰으로 보조 복원
+        if len(payloads) < 2:
+            raw_t = st.query_params.get("t", "").strip()
+            url_tokens = [tok for tok in raw_t.split(",") if tok] if raw_t else []
+            seen = {str(x.get("name", "")) for x in payloads}
+            for tok in url_tokens:
+                dec = _decode_token_to_payload(tok, "")
+                if dec is not None:
+                    payloads.append(dec)
+            if str(my_payload.get("name", "")) not in seen:
+                payloads.append(my_payload)
         if len(payloads) < 2:
             return
         matrix = _compute_room_chemistry_matrix(payloads)
@@ -15145,7 +15172,7 @@ def render_chemistry_room_page() -> None:
     # ── 방 데이터 로드 ────────────────────────────────────────────
     room = sb_load_room(room_id)
     if room is None:
-        st.error("방을 찾을 수 없거나 링크가 만료되었습니다. (케미 방은 24시간 유지)")
+        st.error("방을 찾을 수 없거나 링크가 만료되었습니다. (케미 방은 생성·입장 후 30분 유지)")
         if st.button("새 방 만들기", use_container_width=True, key="room_notfound_new"):
             try:
                 st.query_params.clear()
@@ -15251,9 +15278,10 @@ def _render_room_join_view(room_id: str, participants: List[Dict], max_p: int) -
 
     st.markdown("#### 내 정보 입력")
     st.info(
-        "**개인정보 수집 안내:** 별명과 분석 점수·등급만 서버(국내 춘천)에 저장되며, "
+        "**개인정보 수집 안내:** 별명·분석 점수·등급과, 모임 케미 계산을 위한 "
+        "**사주 팔자(간지) 인코딩 토큰**이 서버(국내 춘천)에 저장되며, "
         "방 생성·입장 시각으로부터 **30분 후 자동 삭제**됩니다. "
-        "생년월일·사주 원국·성별은 서버에 저장되지 않습니다. "
+        "생년월일·생시·성별 원본은 저장하지 않습니다. "
         "실명 대신 별명을 사용해 주세요.",
         icon="🔒",
     )
@@ -15425,10 +15453,25 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         roles  = stored_roles
         matrix = stored_matrix
     else:
-        st.warning("케미 결과를 불러오는 중입니다. 잠시 후 새로고침해 주세요.")
-        names  = [str(p.get("name", f"참가자{i+1}")) for i, p in enumerate(participants)]
-        roles  = [str(p.get("role", "균형형")) for p in participants]
-        matrix = [[{"score": None, "grade": "-", "summary": ""}] * len(names)] * len(names)
+        # 저장본이 없으면 참가자 DB 토큰으로 즉석 계산 (마지막 입장자 의존 제거)
+        _live = [pl for pl in (_reconstruct_payload_from_room_participant(p) for p in participants) if pl]
+        if len(_live) >= 2:
+            names  = [str(p.get("name", "")) for p in _live]
+            roles  = [_infer_saju_role(p.get("result", {}) or {}) for p in _live]
+            _m = _compute_room_chemistry_matrix(_live)
+            matrix = [
+                [{"score": c.get("score"), "grade": c.get("grade", ""), "summary": c.get("summary", "")} for c in row]
+                for row in _m
+            ]
+            try:
+                sb_update_room_chemistry_result(room_id, {"names": names, "roles": roles, "matrix": matrix})
+            except Exception:
+                pass
+        else:
+            st.warning("케미 결과를 불러오는 중입니다. 잠시 후 새로고침해 주세요. (이전 버전 방은 원국 정보가 없어 결과가 제한될 수 있어요.)")
+            names  = [str(p.get("name", f"참가자{i+1}")) for i, p in enumerate(participants)]
+            roles  = [str(p.get("role", "균형형")) for p in participants]
+            matrix = [[{"score": None, "grade": "-", "summary": ""} for _ in range(len(names))] for _ in range(len(names))]
 
     n = len(names)
 
@@ -15596,11 +15639,14 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     st.markdown("### 🧩 이 모임 전체 케미 진단")
     st.caption("참가자 전원의 사주를 하나의 집합으로 보고, 모임의 오행 균형·체온·운영 방향을 분석합니다.")
     try:
-        _payloads = [_reconstruct_payload_from_room_participant(p) for p in participants]
-        _ga = group_chemistry_analysis(_payloads)
-        render_group_chemistry_diagnosis(_ga)
-    except Exception as _ge:
-        st.caption(f"그룹 진단 중 오류가 발생했습니다: {_ge}")
+        _payloads = [pl for pl in (_reconstruct_payload_from_room_participant(p) for p in participants) if pl]
+        if len(_payloads) >= 2:
+            _ga = group_chemistry_analysis(_payloads)
+            render_group_chemistry_diagnosis(_ga)
+        else:
+            st.caption("그룹 진단은 이 방을 새로 만들어 다시 모이면 표시돼. (이전 버전 방은 원국 정보가 없어 생략)")
+    except Exception:
+        st.caption("그룹 진단을 표시하지 못했어. 방을 새로 만들어 다시 시도해봐.")
 
     render_mode_jump_buttons(f"room_result_{room_id}")
 
@@ -15627,7 +15673,7 @@ def render_battle_room_page() -> None:
 
     room = sb_load_battle_room(room_id)
     if room is None:
-        st.error("방을 찾을 수 없거나 링크가 만료되었습니다. (맞짱 방은 24시간 유지)")
+        st.error("방을 찾을 수 없거나 링크가 만료되었습니다. (맞짱 방은 생성·입장 후 30분 유지)")
         if st.button("새 방 만들기", use_container_width=True, key="broom_notfound_new"):
             try:
                 st.query_params.clear()
@@ -16038,7 +16084,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
 
     _vs_line, _vs_tags = _battle_versus(sorted_p)
     _winner_reason = _vs_line or _battle_reason(winner)
-    _winner_score = int(winner.get("score", 0) or 0)
+    _winner_score = float(winner.get("score", 0) or 0)
 
     st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
     st.markdown(
@@ -16047,7 +16093,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
         f"<div style='font-size:2.4rem;line-height:1;'>👑</div>"
         f"<div style='font-size:1.4rem;font-weight:900;color:#fbe7a0;margin-top:4px;'>"
         f"{html.escape(str(winner.get('name','?')))} <span style='font-size:1rem;color:#e9c068;'>승!</span></div>"
-        f"<div style='font-size:2.2rem;font-weight:900;color:#fff;line-height:1.1;'>{_winner_score}"
+        f"<div style='font-size:2.2rem;font-weight:900;color:#fff;line-height:1.1;'>{_winner_score:.1f}"
         f"<span style='font-size:0.9rem;color:#d6bd92;'>점</span></div>"
         f"<div style='display:inline-block;font-size:12px;color:#f0d9a8;background:rgba(0,0,0,0.28);"
         f"padding:6px 13px;border-radius:99px;margin-top:8px;line-height:1.45;'>{html.escape(_winner_reason)}</div>"
@@ -16055,10 +16101,36 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
         unsafe_allow_html=True,
     )
 
+    # ── 시상대 (top 3) ──────────────────────────────────────
+    _podium = sorted_p[:3]
+    if len(_podium) >= 2:
+        _ph = {0: 86, 1: 60, 2: 44}
+        _pbg = {0: "linear-gradient(#f3d488,#e9c068)", 1: "#c0c4cc", 2: "#cd8b5a"}
+        _ptx = {0: "#3a2a05", 1: "#2a2433", 2: "#3a1f0a"}
+        _order = [1, 0, 2] if len(_podium) >= 3 else [1, 0]
+        _cells = ""
+        for pos in _order:
+            if pos >= len(_podium):
+                continue
+            pp = _podium[pos]
+            _cells += (
+                f"<div style='flex:1;text-align:center;'>"
+                f"<div style='font-size:1.25rem;'>{medal[pos]}</div>"
+                f"<div style='font-size:12px;color:#e3d0ac;font-weight:800;margin:2px 0;'>{html.escape(str(pp.get('name','?')))}</div>"
+                f"<div style='background:{_pbg[pos]};border-radius:9px 9px 0 0;height:{_ph[pos]}px;"
+                f"display:flex;align-items:flex-start;justify-content:center;padding-top:6px;"
+                f"font-size:14px;font-weight:900;color:{_ptx[pos]};'>{float(pp.get('score',0) or 0):.1f}</div>"
+                f"</div>"
+            )
+        st.markdown(
+            f"<div style='display:flex;align-items:flex-end;gap:8px;margin:2px 0 16px;'>{_cells}</div>",
+            unsafe_allow_html=True,
+        )
+
     rank_html = ""
     for idx, p in enumerate(sorted_p):
-        score = int(p.get("score", 0) or 0)
-        bar_w = int(score)
+        score = float(p.get("score", 0) or 0)
+        bar_w = int(max(0, min(100, score)))
         color = rank_colors[idx] if idx < len(rank_colors) else "#d6bd92"
         m     = medal[idx] if idx < len(medal) else " "
         nm    = str(p.get("name", "?"))
@@ -16068,7 +16140,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
             f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;'>"
             f"<span style='font-size:1.05rem;'>{m} "
             f"<span style='color:{color};font-weight:800;'>{html.escape(nm)}</span></span>"
-            f"<span style='font-size:1.05rem;color:{color};font-weight:900;'>{score}점</span>"
+            f"<span style='font-size:1.05rem;color:{color};font-weight:900;'>{score:.1f}점</span>"
             f"</div>"
             f"<div style='background:#1c0e20;border-radius:99px;height:8px;overflow:hidden;'>"
             f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:99px;'></div></div>"
@@ -20062,15 +20134,16 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
     medal = ["🥇", "🥈", "🥉"] + ["  "] * 12
     y = 360
     for idx, p in enumerate(sorted_p):
-        score = int(p.get("score", 0) or 0)
+        score = float(p.get("score", 0) or 0)
         col = rank_colors[idx] if idx < len(rank_colors) else "#d6bd92"
         mk = medal[idx] if idx < len(medal) else "  "
         d.text((70, y), f"{mk} {str(p.get('name','?'))}", fill=col, font=f_name)
-        _sb = d.textbbox((0,0), f"{score}", font=f_score)
-        d.text((W-90-(_sb[2]-_sb[0]), y+6), f"{score}", fill=col, font=f_score)
+        _stxt = f"{score:.1f}"
+        _sb = d.textbbox((0,0), _stxt, font=f_score)
+        d.text((W-90-(_sb[2]-_sb[0]), y+6), _stxt, fill=col, font=f_score)
         # 막대
         bar_full = W - 140
-        bar_w = int(bar_full * max(0, min(100, score)) / 100)
+        bar_w = int(bar_full * max(0.0, min(100.0, score)) / 100)
         d.rounded_rectangle((70, y+62, 70+bar_full, y+82), radius=10, fill="#1a1208")
         if bar_w > 0:
             d.rounded_rectangle((70, y+62, 70+bar_w, y+82), radius=10, fill=col)
