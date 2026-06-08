@@ -15700,6 +15700,7 @@ def render_battle_room_page() -> None:
 
 def _render_create_battle_room_view() -> None:
     st.markdown("## ⚔️ 사주 맞짱 방")
+    st.caption("타고난 사주에 **오늘의 운(대운·세운·월운·일운)**을 얹어 겨루는 '오늘의 운세 대결'이야. 그래서 점수는 매일 바뀌고, 오늘 진 사람이 내일은 1등이 될 수도 있어! 🔄")
     st.markdown(
         "<div style='background:#241327;border-left:4px solid #f59e0b;"
         "border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:14px;"
@@ -16122,6 +16123,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
     _winner_score = float(winner.get("score", 0) or 0)
 
     st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
+    st.caption("타고난 사주에 오늘의 운을 얹어 가린 순위야. 매일 바뀌니까 내일 또 붙어봐! 🔄")
     st.markdown(
         f"<div style='background:linear-gradient(150deg,#3a2433 0%,#5a3a2a 100%);"
         f"border:1.5px solid #e9c068;border-radius:18px;padding:16px 14px;text-align:center;margin:6px 0 12px;'>"
@@ -20147,7 +20149,7 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
     f_small = _share_font(26, False)
 
     d.text((70, 70), "⚔️ 사주키링 맞짱 결과", fill="#f0c75a", font=f_logo)
-    d.text((70, 120), date_label, fill="#8a7a4a", font=f_small)
+    d.text((70, 120), f"{date_label} · 오늘의 운세 대결 (매일 바뀜)", fill="#8a7a4a", font=f_small)
 
     # 승자 히어로
     d.text((W//2-150, 180), "🏆 오늘의 승자", fill="#d6bd92", font=f_small)
