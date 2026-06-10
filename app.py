@@ -15426,6 +15426,47 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
     )
 
 
+def _chem_pair_persona(grade: str, a: str, b: str):
+    """케미 등급 기반 조합 칭호 + 드립 한줄평. (title, quip) 반환."""
+    import hashlib as _hl
+    seed = int(_hl.md5(f"{a}|{b}|{grade}".encode("utf-8")).hexdigest(), 16)
+    POOL = {
+        "천생연분 케미": (
+            ["환상의 콤비", "전생에 가족", "말 안 해도 통하는 사이"],
+            ["눈빛만 봐도 척. 둘이 팀 먹으면 반칙이야 🤝",
+             "이 조합 깨지면 우주가 섭섭해할 듯.",
+             "서로 등만 봐도 웃음 나는 사이지?"],
+        ),
+        "쌍방 귀인 케미": (
+            ["서로의 복덩이", "윈윈 듀오", "귀인 상호교환권"],
+            ["서로한테 운을 퍼주는 사이. 자주 만날수록 둘 다 잘 풀려 ✨",
+             "한 명이 막히면 다른 한 명이 뚫어줘. 든든하지."],
+        ),
+        "상호보완 케미": (
+            ["부족함을 채우는 짝", "톱니바퀴 듀오", "서로의 빈칸"],
+            ["성향은 다른데 그게 오히려 딱 맞아. 다름이 무기야.",
+             "혼자선 반쪽, 둘이면 완성. 묘하게 잘 굴러가."],
+        ),
+        "친구로 좋은 케미": (
+            ["적당히 좋은 사이", "무난 평화 듀오", "편한 친구"],
+            ["불꽃은 없어도 오래 갈 사이. 편한 게 최고지 😌",
+             "큰 일 안 나는 안전한 조합. 가끔 심심한 게 단점."],
+        ),
+        "배려가 필요한 케미": (
+            ["조심조심 듀오", "사용설명서 필요", "온도차 주의보"],
+            ["한 템포만 늦추면 의외로 괜찮아져. 욱하지만 말자 😅",
+             "다름을 인정하면 평화, 우기면 전쟁. 선택은 둘의 몫."],
+        ),
+        "안 보면 보고 싶은 케미": (
+            ["애증의 단짝", "싸우고 또 보는 사이", "물과 기름인데 자꾸 섞임"],
+            ["만나면 티격태격, 안 보면 궁금해. 이게 정이지 뭐.",
+             "점수는 낮은데 이상하게 안 끊겨. 인연은 인연이야."],
+        ),
+    }
+    titles, quips = POOL.get(grade, (["오묘한 사이"], ["뭐라 정의하기 힘든 관계야. 그게 매력이지."]))
+    return titles[seed % len(titles)], quips[seed % len(quips)]
+
+
 def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     """전원 입장 완료 — 케미 매트릭스 + 역할 공개."""
     # ── 공개 오버레이 (처음 로드 시 1회) ─────────────────────────
@@ -15610,9 +15651,10 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     _pair_html = ""
     for i2, j2, sc, gd, summ in sorted(pairs, key=lambda x: x[2], reverse=True):
         col = GRADE_COLOR.get(gd, "#d6bd92")
+        _ptitle, _pquip = _chem_pair_persona(gd, names[i2], names[j2])
         _pair_html += (
             f"<div style='display:flex;align-items:flex-start;gap:10px;"
-            f"padding:8px 12px;border-bottom:1px solid #1a0a28;'>"
+            f"padding:9px 12px;border-bottom:1px solid #1a0a28;'>"
             f"<div style='min-width:90px;'>"
             f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[i2])}</span>"
             f"<span style='font-size:11px;color:#888;'> &amp; </span>"
@@ -15621,7 +15663,8 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
             f"<div style='flex:1;'>"
             f"<span style='background:{col}22;border:1px solid {col}55;border-radius:12px;"
             f"padding:2px 8px;font-size:11px;font-weight:700;color:{col};'>{html.escape(gd)}</span>"
-            f"<div style='font-size:11px;color:#888;margin-top:3px;line-height:1.5;'>{html.escape(summ)}</div>"
+            f"<span style='font-size:11px;font-weight:800;color:#fde68a;margin-left:6px;'>{html.escape(_ptitle)}</span>"
+            f"<div style='font-size:12px;color:#cbb8d6;margin-top:4px;line-height:1.5;'>{html.escape(_pquip)}</div>"
             f"</div></div>"
         )
     if _pair_html:
@@ -15638,13 +15681,17 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     if best_score >= 0 and best_pair[0]:
         bc      = GRADE_COLOR.get(compatibility_grade_summary(best_score)[0], "#4ade80")
         bc_grade = compatibility_grade_summary(best_score)[0]
+        _bt, _bq = _chem_pair_persona(bc_grade, best_pair[0], best_pair[1])
         st.markdown(
             f"<div style='background:#241327;border:2px solid {bc};"
             f"border-radius:12px;padding:14px 18px;text-align:center;margin-bottom:12px;'>"
             f"<div style='font-size:13px;color:{bc};font-weight:700;margin-bottom:6px;'>💫 이 방 최고 케미</div>"
             f"<div style='font-size:1.3rem;color:#fde68a;font-weight:800;'>"
             f"{html.escape(best_pair[0])} &amp; {html.escape(best_pair[1])}</div>"
-            f"<div style='font-size:13px;color:{bc};margin-top:4px;'>{html.escape(bc_grade)}</div>"
+            f"<div style='display:inline-block;font-size:12px;color:#1c0a00;font-weight:800;"
+            f"background:{bc};padding:3px 12px;border-radius:99px;margin-top:7px;'>{html.escape(_bt)}</div>"
+            f"<div style='font-size:12px;color:#cbb8d6;margin-top:7px;line-height:1.5;'>{html.escape(_bq)}</div>"
+            f"<div style='font-size:11px;color:{bc};margin-top:5px;'>{html.escape(bc_grade)}</div>"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -15991,6 +16038,55 @@ def _battle_versus(sorted_p: List[Dict]) -> Tuple[str, Dict[str, str]]:
     return winner_line, tags
 
 
+def _battle_persona(rank: int, total: int, score: float, dom_el: str, name: str):
+    """순위·오행 기반 칭호 + 드립 한줄평. (title, quip) 반환."""
+    import hashlib as _hl
+    seed = int(_hl.md5(f"{name}|{rank}".encode("utf-8")).hexdigest(), 16)
+    EL_PERSONA = {
+        "목": ("🌳", "쑥쑥 자라는"),
+        "화": ("🔥", "불타오르는"),
+        "토": ("🪨", "묵직하게 버티는"),
+        "금": ("⚔️", "날 선"),
+        "수": ("🌊", "유유히 흐르는"),
+    }
+    emoji, adj = EL_PERSONA.get(str(dom_el), ("✨", "오묘한"))
+    if rank == 0:
+        titles = ["오늘의 사주 깡패", "기운 폭주 1위", "오늘의 천하장사", f"{adj} 절대강자"]
+        quips = [
+            "기운이 흘러넘쳐서 주체를 못 해. 오늘은 그냥 네 날이야 😎",
+            "타고난 사주에 오늘 운까지 풀세트. 슬슬 로또 사러 갈 때.",
+            "다들 비켜, 오늘의 주인공 입장이요 👑",
+        ]
+    elif rank == 1:
+        titles = ["아쉬운 은메달", "1위 노리던 자객", "거의 다 왔던 사람"]
+        quips = [
+            "한 끗 차이로 왕좌를 놓쳤어. 분하지? 내일 또 붙어 🔥",
+            "2등은 1등을 가장 아쉽게 만드는 자리지. 그래도 충분히 셌어.",
+            "운이 1도만 더 도와줬어도 너였는데. 아깝다 진짜.",
+        ]
+    elif rank == 2 and total >= 4:
+        titles = ["턱걸이 동메달", "끝까지 살아남은 자", "시상대 막차 탑승"]
+        quips = [
+            "마지막 칸에 슬쩍 올라탔어. 그래도 메달은 메달이야 🥉",
+            "위 두 명 뒤꽁무니 바짝 쫓는 중. 다음엔 추월각이야.",
+        ]
+    elif total >= 3 and rank == total - 1:
+        titles = ["오늘은 쉬어가는 날", "내일을 위한 빌드업", "꼴찌의 반란 예약자"]
+        quips = [
+            "기운이 잠깐 외출했나 봐. 내일이면 돌아올 거야… 아마도 😌",
+            "오늘 운이 좀 삐졌어. 근데 매력은 점수로 안 나오잖아.",
+            "바닥 찍었으니 이제 올라갈 일만 남았네. 긍정 회로 가동 🔋",
+        ]
+    else:
+        titles = [f"{adj} 중위권 강자", "조용한 실력자", "숨은 다크호스"]
+        quips = [
+            "튀지도 처지지도 않는 안정감. 은근히 무서운 타입.",
+            "오늘은 몸만 풀었어. 진짜 실력은 아직 안 보여줬지?",
+            "중간이 제일 편하지 — 위는 부담, 아래는 서러우니까.",
+        ]
+    return f"{emoji} {titles[seed % len(titles)]}", quips[seed % len(quips)]
+
+
 def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> None:
     """전원 입장 완료 — 맞짱 랭킹 공개."""
     from datetime import date as _date
@@ -16137,18 +16233,25 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
     _winner_reason = _vs_line or _battle_reason(winner)
     _winner_score = float(winner.get("score", 0) or 0)
 
+    _win_title, _win_quip = _battle_persona(
+        0, len(sorted_p), _winner_score,
+        str(winner.get("dom_el", "-")), str(winner.get("name", "?")),
+    )
+
     st.markdown(f"### ⚔️ 오늘의 맞짱 결과 — {today.strftime('%Y년 %m월 %d일')}")
     st.caption("타고난 사주에 오늘의 운을 얹어 가린 순위야. 매일 바뀌니까 내일 또 붙어봐! 🔄")
     st.markdown(
         f"<div style='background:linear-gradient(150deg,#3a2433 0%,#5a3a2a 100%);"
         f"border:1.5px solid #e9c068;border-radius:18px;padding:16px 14px;text-align:center;margin:6px 0 12px;'>"
         f"<div style='font-size:2.4rem;line-height:1;'>👑</div>"
-        f"<div style='font-size:1.4rem;font-weight:900;color:#fbe7a0;margin-top:4px;'>"
+        f"<div style='display:inline-block;font-size:12px;font-weight:800;color:#1c0a00;"
+        f"background:#f0c75a;padding:3px 12px;border-radius:99px;margin-top:6px;'>{html.escape(_win_title)}</div>"
+        f"<div style='font-size:1.4rem;font-weight:900;color:#fbe7a0;margin-top:7px;'>"
         f"{html.escape(str(winner.get('name','?')))} <span style='font-size:1rem;color:#e9c068;'>승!</span></div>"
         f"<div style='font-size:2.2rem;font-weight:900;color:#fff;line-height:1.1;'>{_winner_score:.1f}"
         f"<span style='font-size:0.9rem;color:#d6bd92;'>점</span></div>"
-        f"<div style='display:inline-block;font-size:12px;color:#f0d9a8;background:rgba(0,0,0,0.28);"
-        f"padding:6px 13px;border-radius:99px;margin-top:8px;line-height:1.45;'>{html.escape(_winner_reason)}</div>"
+        f"<div style='font-size:13px;color:#fff;font-weight:600;margin-top:8px;line-height:1.5;'>{html.escape(_win_quip)}</div>"
+        f"<div style='font-size:11px;color:#d6bd92;margin-top:5px;line-height:1.4;'>📌 {html.escape(_winner_reason)}</div>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -16186,17 +16289,20 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
         color = rank_colors[idx] if idx < len(rank_colors) else "#d6bd92"
         m     = medal[idx] if idx < len(medal) else " "
         nm    = str(p.get("name", "?"))
-        reason = _vs_tags.get(nm) or ("🔥 오늘 가장 강한 운" if idx == 0 else "오늘 운의 결을 탔어")
+        _title, _quip = _battle_persona(
+            idx, len(sorted_p), score, str(p.get("dom_el", "-")), nm,
+        )
         rank_html += (
             f"<div style='padding:11px 14px;border-bottom:1px solid #1c0e20;'>"
             f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;'>"
             f"<span style='font-size:1.05rem;'>{m} "
-            f"<span style='color:{color};font-weight:800;'>{html.escape(nm)}</span></span>"
+            f"<span style='color:{color};font-weight:800;'>{html.escape(nm)}</span> "
+            f"<span style='font-size:11px;font-weight:800;color:{color};'>{html.escape(_title)}</span></span>"
             f"<span style='font-size:1.05rem;color:{color};font-weight:900;'>{score:.1f}점</span>"
             f"</div>"
             f"<div style='background:#1c0e20;border-radius:99px;height:8px;overflow:hidden;'>"
             f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:99px;'></div></div>"
-            f"<div style='font-size:11px;color:#9a8aaa;margin-top:5px;'>{html.escape(reason)}</div>"
+            f"<div style='font-size:12px;color:#cbb8d6;margin-top:6px;line-height:1.5;'>{html.escape(_quip)}</div>"
             f"</div>"
         )
 
