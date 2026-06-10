@@ -15703,6 +15703,20 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
             unsafe_allow_html=True,
         )
 
+    # ── 결과 이미지 저장/공유 ───────────────────────────────
+    st.markdown("#### 📤 결과 이미지로 공유")
+    st.caption("아래 이미지를 저장하거나 길게 눌러 복사해서 단톡방에 올려봐.")
+    try:
+        _room_png = make_room_chem_result_png_bytes(names, roles, pairs, best_pair, best_score)
+    except Exception:
+        _room_png = None
+    render_share_image_tools(
+        _room_png,
+        f"saju_room_chemistry_{room_id}.png",
+        download_label="📥 케미 결과 이미지 저장",
+        element_key=f"room_chem_result_{room_id}",
+    )
+
     # ── 그룹 전체 케미 진단 ──────────────────────────────────────
     st.markdown("---")
     st.markdown("### 🧩 이 모임 전체 케미 진단")
@@ -20034,6 +20048,18 @@ def _share_safe_icon(name_or_icon: str) -> str:
     return mapping.get(raw, raw if len(raw) <= 2 else "•")
 
 
+def _png_text(s: str) -> str:
+    """PNG에 그릴 때 폰트가 못 그리는 이모지·기호를 제거한다(한글·문장부호는 유지)."""
+    import re as _re
+    s = str(s or "")
+    s = _re.sub(
+        "[\U0001F000-\U0001FAFF\U00002600-\U000026FF\U00002700-\U000027BF"
+        "\U00002B00-\U00002BFF\U00002190-\U000021FF\U0000FE00-\U0000FE0F]",
+        "", s,
+    )
+    return s.strip()
+
+
 def _shinsal_badge_items(chart: Chart, result: Dict[str, object], limit: int = 3) -> List[Dict[str, str]]:
     """첫 화면/공유카드에서 쓸 작은 신살·공망 배지 데이터."""
     items: List[Dict[str, str]] = []
@@ -20283,17 +20309,19 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
     d.text((W//2-150, 180), "🏆 오늘의 승자", fill="#d6bd92", font=f_small)
     _wn = str(winner.get("name", "?"))
     _wb = d.textbbox((0,0), _wn + " 승!", font=f_title)
-    d.text(((W-(_wb[2]-_wb[0]))//2, 220), _wn + " 승!", fill="#fbbf24", font=f_title)
+    d.text(((W-(_wb[2]-_wb[0]))//2, 218), _wn + " 승!", fill="#fbbf24", font=f_title)
 
-    # 상극 대결 한 줄
-    try:
-        _vs_line, _ = _battle_versus(sorted_p)
-    except Exception:
-        _vs_line = ""
-    if _vs_line:
-        for _ln in _wrap_for_image(d, _vs_line, f_small, W-180)[:1]:
-            _lb = d.textbbox((0,0), _ln, font=f_small)
-            d.text(((W-(_lb[2]-_lb[0]))//2, 292), _ln, fill="#f0d9a8", font=f_small)
+    # 승자 칭호 + 드립 한 줄
+    _wtitle, _wquip = _battle_persona(
+        0, n, float(winner.get("score", 0) or 0),
+        str(winner.get("dom_el", "-")), _wn,
+    )
+    _wtitle = _png_text(_wtitle); _wquip = _png_text(_wquip)
+    _tb = d.textbbox((0,0), _wtitle, font=f_small)
+    d.text(((W-(_tb[2]-_tb[0]))//2, 284), _wtitle, fill="#f0c75a", font=f_small)
+    for _ln in _wrap_for_image(d, _wquip, f_small, W-180)[:1]:
+        _lb = d.textbbox((0,0), _ln, font=f_small)
+        d.text(((W-(_lb[2]-_lb[0]))//2, 318), _ln, fill="#f0d9a8", font=f_small)
 
     rank_colors = ["#fbbf24", "#c0c4cc", "#f0935a"] + ["#d6bd92"] * 12
     medal = ["🥇", "🥈", "🥉"] + ["  "] * 12
@@ -20312,9 +20340,87 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
         d.rounded_rectangle((70, y+62, 70+bar_full, y+82), radius=10, fill="#1a1208")
         if bar_w > 0:
             d.rounded_rectangle((70, y+62, 70+bar_w, y+82), radius=10, fill=col)
+        # 순위별 칭호
+        _rtitle, _ = _battle_persona(
+            idx, n, score, str(p.get("dom_el", "-")), str(p.get("name", "?")),
+        )
+        d.text((70, y+96), _png_text(_rtitle), fill=col, font=f_small)
         y += 150
 
     d.text((70, H-90), "사주키링 · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
+    import io as _io
+    buf = _io.BytesIO(); img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def make_room_chem_result_png_bytes(
+    names: List[str], roles: List[str], pairs: List,
+    best_pair, best_score, date_label: str = "",
+) -> bytes | None:
+    """모임(초대) 케미 결과를 단톡 공유용 PNG 카드로 만든다."""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+
+    GRADE_COLOR = {
+        "천생연분 케미": "#4ade80", "쌍방 귀인 케미": "#34d399",
+        "상호보완 케미": "#60a5fa", "친구로 좋은 케미": "#d6bd92",
+        "배려가 필요한 케미": "#fb923c", "안 보면 보고 싶은 케미": "#f87171",
+    }
+    pairs_sorted = sorted(pairs, key=lambda x: x[2], reverse=True)
+    show  = pairs_sorted[:10]
+    extra = len(pairs_sorted) - len(show)
+
+    W = 1080
+    has_best = bool(best_pair and best_pair[0] and float(best_score) >= 0)
+    H = 250 + (214 if has_best else 0) + 60 + len(show) * 104 + (44 if extra > 0 else 0) + 110
+    img = Image.new("RGB", (W, H), "#241327")
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((24, 24, W-24, H-24), radius=40, fill="#2b1830", outline="#d98aa8", width=3)
+
+    f_logo  = _share_font(34, True)
+    f_title = _share_font(46, True)
+    f_name  = _share_font(36, True)
+    f_score = _share_font(48, True)
+    f_small = _share_font(26, False)
+    f_chip  = _share_font(24, True)
+
+    d.text((70, 66), "🔮 사주키링 모임 케미", fill="#f0c75a", font=f_logo)
+    _sub = f"{len(names)}명 케미 결과" + (f" · {date_label}" if date_label else "")
+    d.text((70, 116), _sub, fill="#c7a9bd", font=f_small)
+
+    y = 178
+    if has_best:
+        _bgrade = compatibility_grade_summary(best_score)[0]
+        bc = GRADE_COLOR.get(_bgrade, "#4ade80")
+        _bt, _ = _chem_pair_persona(_bgrade, best_pair[0], best_pair[1])
+        d.rounded_rectangle((70, y, W-70, y+184), radius=28, fill="#3a2433", outline=bc, width=3)
+        d.text((96, y+20), "이 방 최고 케미", fill=bc, font=f_small)
+        d.text((96, y+56), _png_text(f"{best_pair[0]} & {best_pair[1]}")[:30], fill="#fde68a", font=f_title)
+        _sc  = f"{int(round(float(best_score)))}"
+        _scb = d.textbbox((0,0), _sc, font=f_score)
+        d.text((W-110-(_scb[2]-_scb[0]), y+56), _sc, fill=bc, font=f_score)
+        d.text((96, y+128), _png_text(_bt), fill=bc, font=f_chip)
+        y += 214
+
+    d.text((70, y), "쌍별 케미", fill="#d6bd92", font=f_small)
+    y += 50
+    for (i2, j2, sc, gd, summ) in show:
+        col = GRADE_COLOR.get(gd, "#d6bd92")
+        _t, _ = _chem_pair_persona(gd, names[i2], names[j2])
+        d.text((70, y), _png_text(f"{names[i2]} & {names[j2]}")[:24], fill="#d4a853", font=f_name)
+        _sc  = f"{int(round(float(sc)))}"
+        _scb = d.textbbox((0,0), _sc, font=f_score)
+        d.text((W-100-(_scb[2]-_scb[0]), y-4), _sc, fill=col, font=f_score)
+        d.text((70, y+46), _png_text(f"{gd} · {_t}"), fill=col, font=f_small)
+        d.line((70, y+92, W-70, y+92), fill="#3b1f4e", width=1)
+        y += 104
+    if extra > 0:
+        d.text((70, y), f"외 {extra}쌍 더…", fill="#9a8aaa", font=f_small)
+        y += 44
+
+    d.text((70, H-80), "사주키링 · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
     import io as _io
     buf = _io.BytesIO(); img.save(buf, format="PNG")
     return buf.getvalue()
