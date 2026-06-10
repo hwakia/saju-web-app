@@ -15652,10 +15652,11 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     for i2, j2, sc, gd, summ in sorted(pairs, key=lambda x: x[2], reverse=True):
         col = GRADE_COLOR.get(gd, "#d6bd92")
         _ptitle, _pquip = _chem_pair_persona(gd, names[i2], names[j2])
+        _pscore = int(round(float(sc)))
         _pair_html += (
-            f"<div style='display:flex;align-items:flex-start;gap:10px;"
+            f"<div style='display:flex;align-items:center;gap:10px;"
             f"padding:9px 12px;border-bottom:1px solid #1a0a28;'>"
-            f"<div style='min-width:90px;'>"
+            f"<div style='min-width:84px;'>"
             f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[i2])}</span>"
             f"<span style='font-size:11px;color:#888;'> &amp; </span>"
             f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[j2])}</span>"
@@ -15665,6 +15666,10 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
             f"padding:2px 8px;font-size:11px;font-weight:700;color:{col};'>{html.escape(gd)}</span>"
             f"<span style='font-size:11px;font-weight:800;color:#fde68a;margin-left:6px;'>{html.escape(_ptitle)}</span>"
             f"<div style='font-size:12px;color:#cbb8d6;margin-top:4px;line-height:1.5;'>{html.escape(_pquip)}</div>"
+            f"</div>"
+            f"<div style='text-align:right;min-width:46px;'>"
+            f"<div style='font-size:1.45rem;font-weight:900;color:{col};line-height:1;'>{_pscore}</div>"
+            f"<div style='font-size:9px;color:#9a8aaa;margin-top:1px;'>점</div>"
             f"</div></div>"
         )
     if _pair_html:
@@ -15688,6 +15693,8 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
             f"<div style='font-size:13px;color:{bc};font-weight:700;margin-bottom:6px;'>💫 이 방 최고 케미</div>"
             f"<div style='font-size:1.3rem;color:#fde68a;font-weight:800;'>"
             f"{html.escape(best_pair[0])} &amp; {html.escape(best_pair[1])}</div>"
+            f"<div style='font-size:2.6rem;font-weight:900;color:{bc};line-height:1.1;margin-top:4px;'>"
+            f"{int(round(float(best_score)))}<span style='font-size:1rem;color:#d6bd92;'>점</span></div>"
             f"<div style='display:inline-block;font-size:12px;color:#1c0a00;font-weight:800;"
             f"background:{bc};padding:3px 12px;border-radius:99px;margin-top:7px;'>{html.escape(_bt)}</div>"
             f"<div style='font-size:12px;color:#cbb8d6;margin-top:7px;line-height:1.5;'>{html.escape(_bq)}</div>"
@@ -16298,7 +16305,7 @@ def _render_battle_room_result_view(room_id: str, participants: List[Dict]) -> N
             f"<span style='font-size:1.05rem;'>{m} "
             f"<span style='color:{color};font-weight:800;'>{html.escape(nm)}</span> "
             f"<span style='font-size:11px;font-weight:800;color:{color};'>{html.escape(_title)}</span></span>"
-            f"<span style='font-size:1.05rem;color:{color};font-weight:900;'>{score:.1f}점</span>"
+            f"<span style='font-size:1.45rem;color:{color};font-weight:900;'>{score:.1f}<span style='font-size:0.8rem;'>점</span></span>"
             f"</div>"
             f"<div style='background:#1c0e20;border-radius:99px;height:8px;overflow:hidden;'>"
             f"<div style='width:{bar_w}%;height:100%;background:{color};border-radius:99px;'></div></div>"
