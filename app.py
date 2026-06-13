@@ -27259,9 +27259,17 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
     st.markdown("### 시작할 메뉴를 선택하세요")
     st.caption(f"버전 {APP_VERSION}")
 
+    # 🌤 오늘의 처방 — 메인 메뉴 가장 위 CTA
+    if st.button("🌤 오늘의 처방", type="primary", use_container_width=True, key="landing_yebo"):
+        st.session_state.selected_main_mode = "혼자 보기"
+        st.session_state.show_details = False
+        st.session_state["single_mri_page_view"] = "📡 사주 예보"
+        st.rerun()
+    st.caption("내 사주로 오늘의 처방·종합 예보를 바로 봅니다")
+
     landing_cols = st.columns(2)
     with landing_cols[0]:
-        if st.button("🌸 내 사주 진단", type="primary", use_container_width=True, key="landing_single"):
+        if st.button("🌸 내 사주 진단", use_container_width=True, key="landing_single"):
             st.session_state.selected_main_mode = "혼자 보기"
             st.session_state.show_details = False
             st.session_state["single_mri_page_view"] = "🏥 사주 진단서"
@@ -27286,12 +27294,6 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.show_details = False
             st.rerun()
         st.caption("방 링크로 그룹케미 보기")
-    if st.button("📡 사주예보 — 오늘의 처방 바로 보기", use_container_width=True, key="landing_yebo"):
-        st.session_state.selected_main_mode = "혼자 보기"
-        st.session_state.show_details = False
-        st.session_state["single_mri_page_view"] = "📡 사주 예보"
-        st.rerun()
-    st.caption("내 사주로 오늘의 처방·종합 예보를 바로 봅니다")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
@@ -27461,19 +27463,36 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
                 st.session_state["_my_saju_ls_delete_v1"] = True
                 st.rerun()
         if _load_clicked:
-            # URL 파라미터 파싱 → query_params 적용 → 자동 분석
+            # 저장 링크 값을 입력칸 세션상태에 직접 채우고 자동 분석까지 강제한다.
+            # (query_params·prefill 라운드트립에 의존하지 않으므로 "분석 시작" 재클릭 불필요)
+            import urllib.parse as _up
             try:
-                import urllib.parse as _up
                 _p = dict(_up.parse_qsl(_up.urlparse(_saved_url).query))
-                st.query_params.clear()
-                for _k, _v in _p.items():
-                    st.query_params[_k] = _v
             except Exception:
-                pass
-            # 가드 해제(다음 실행에서 입력칸 재채움) + 자동 분석 강제
-            # → "분석 시작"을 다시 누르지 않아도 곧바로 결과까지 진행
-            st.session_state.pop("_my_saju_query_prefilled_v5138", None)
-            st.session_state["_my_saju_auto_run_pending_v5140"] = True
+                _p = {}
+            if _p:
+                _nm = sanitize_display_name(_p.get("n", "나"), "나")
+                _g = _p.get("g", "남자")
+                _g = _g if _g in ["남자", "여자"] else "남자"
+                _cal = _p.get("cal", "양력")
+                _cal = _cal if _cal in CALENDAR_TYPES else "양력"
+                _unk = str(_p.get("unk", "0")).strip().lower() in ["1", "true", "yes", "y", "on"]
+                _yaja = str(_p.get("yaja", "0")).strip().lower() in ["1", "true", "yes", "y", "on"]
+                # 아래 입력 위젯들은 이 버튼보다 뒤에서 생성되므로 사전 세팅이 안전하다.
+                st.session_state["single_auto_name"] = _nm
+                st.session_state["gender_auto"] = _g
+                st.session_state["single_calendar_compact_v5110"] = _cal
+                st.session_state["single_time_unknown"] = _unk
+                st.session_state["single_auto_yaja"] = _yaja
+                _bd = str(_p.get("bd", "")).strip()
+                _bt = str(_p.get("bt", "")).strip()
+                if _bd:
+                    _set_text_state_pair("single_date_text", _bd)
+                if (not _unk) and _bt:
+                    _set_text_state_pair("single_time_text", _bt)
+                # prefill 재실행 방지 + 자동 분석 강제 → 곧바로 결과 화면
+                st.session_state["_my_saju_query_prefilled_v5138"] = True
+                st.session_state["_my_saju_auto_run_pending_v5140"] = True
             st.rerun()
 
     top_row = st.columns([1.1, 1])
