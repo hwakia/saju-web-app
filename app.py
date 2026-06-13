@@ -27264,8 +27264,9 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
         if st.button("🌸 내 사주 진단", type="primary", use_container_width=True, key="landing_single"):
             st.session_state.selected_main_mode = "혼자 보기"
             st.session_state.show_details = False
+            st.session_state["single_mri_page_view"] = "🏥 사주 진단서"
             st.rerun()
-        st.caption("내 원국 분석 · 사주예보")
+        st.caption("내 원국 분석 · 사주 진단서")
     with landing_cols[1]:
         if st.button(" 모두의 케미", use_container_width=True, key="landing_friend"):
             st.session_state.selected_main_mode = "케미 분석"
@@ -27285,6 +27286,12 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.session_state.show_details = False
             st.rerun()
         st.caption("방 링크로 그룹케미 보기")
+    if st.button("📡 사주예보 — 오늘의 처방 바로 보기", use_container_width=True, key="landing_yebo"):
+        st.session_state.selected_main_mode = "혼자 보기"
+        st.session_state.show_details = False
+        st.session_state["single_mri_page_view"] = "📡 사주 예보"
+        st.rerun()
+    st.caption("내 사주로 오늘의 처방·종합 예보를 바로 봅니다")
     render_algorithm_disclosure_notice(compact=True)
     if st.session_state.get("_my_saju_prefill_notice_v5138"):
         st.success("저장된 내 사주 링크의 입력값을 불러왔습니다. 곧바로 결과를 열 수 있습니다.")
@@ -27461,9 +27468,12 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
                 st.query_params.clear()
                 for _k, _v in _p.items():
                     st.query_params[_k] = _v
-                st.session_state.pop("_my_saju_query_prefilled_v5138", None)
             except Exception:
                 pass
+            # 가드 해제(다음 실행에서 입력칸 재채움) + 자동 분석 강제
+            # → "분석 시작"을 다시 누르지 않아도 곧바로 결과까지 진행
+            st.session_state.pop("_my_saju_query_prefilled_v5138", None)
+            st.session_state["_my_saju_auto_run_pending_v5140"] = True
             st.rerun()
 
     top_row = st.columns([1.1, 1])
