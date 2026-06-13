@@ -27463,14 +27463,16 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
                 st.session_state["_my_saju_ls_delete_v1"] = True
                 st.rerun()
         if _load_clicked:
-            # 저장 링크 값을 입력칸 세션상태에 직접 채우고 자동 분석까지 강제한다.
-            # (query_params·prefill 라운드트립에 의존하지 않으므로 "분석 시작" 재클릭 불필요)
+            # 저장 링크 값으로 그 자리에서 사주를 직접 계산해 결과 화면으로 직행한다.
+            # (플래그·위젯 순서·prefill 라운드트립에 전혀 의존하지 않음 → 한 번 클릭으로 결과)
             import urllib.parse as _up
+            from datetime import datetime as _dt2
             try:
                 _p = dict(_up.parse_qsl(_up.urlparse(_saved_url).query))
             except Exception:
                 _p = {}
-            if _p:
+            _loaded_ok = False
+            try:
                 _nm = sanitize_display_name(_p.get("n", "나"), "나")
                 _g = _p.get("g", "남자")
                 _g = _g if _g in ["남자", "여자"] else "남자"
@@ -27478,22 +27480,31 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
                 _cal = _cal if _cal in CALENDAR_TYPES else "양력"
                 _unk = str(_p.get("unk", "0")).strip().lower() in ["1", "true", "yes", "y", "on"]
                 _yaja = str(_p.get("yaja", "0")).strip().lower() in ["1", "true", "yes", "y", "on"]
-                # 아래 입력 위젯들은 이 버튼보다 뒤에서 생성되므로 사전 세팅이 안전하다.
-                st.session_state["single_auto_name"] = _nm
-                st.session_state["gender_auto"] = _g
-                st.session_state["single_calendar_compact_v5110"] = _cal
-                st.session_state["single_time_unknown"] = _unk
-                st.session_state["single_auto_yaja"] = _yaja
-                _bd = str(_p.get("bd", "")).strip()
-                _bt = str(_p.get("bt", "")).strip()
-                if _bd:
-                    _set_text_state_pair("single_date_text", _bd)
-                if (not _unk) and _bt:
-                    _set_text_state_pair("single_time_text", _bt)
-                # prefill 재실행 방지 + 자동 분석 강제 → 곧바로 결과 화면
-                st.session_state["_my_saju_query_prefilled_v5138"] = True
-                st.session_state["_my_saju_auto_run_pending_v5140"] = True
-            st.rerun()
+                _bd = _dt2.strptime(str(_p.get("bd", "")).strip(), "%Y-%m-%d").date()
+                _bt = None
+                _bt_raw = str(_p.get("bt", "")).strip()
+                if (not _unk) and _bt_raw:
+                    _bt = _dt2.strptime(_bt_raw, "%H:%M").time()
+                _corr = LOCATION_CORRECTION_MINUTES[KOREA_DEFAULT_CORRECTION_LABEL]
+                if _bt is None:
+                    if Solar is None:
+                        raise RuntimeError("lunar_python 미설치")
+                    _loaded = build_three_pillar_auto_payload(_nm, _bd, _g, _corr, _yaja, DEFAULT_AGE_BASIS, _cal)
+                    _loaded["mode"] = "혼자 보기 / 생년월일 삼주 간이 분석"
+                else:
+                    _loaded = build_auto_payload(_nm, _bd, _bt, _g, _corr, _yaja, DEFAULT_AGE_BASIS, _cal)
+                    _loaded["mode"] = "혼자 보기"
+                # 결과 payload 직접 확정 → 다음 실행에서 곧장 결과 화면 렌더
+                st.session_state.payload = {"battle": False, "multi": False, **_loaded}
+                st.session_state.pending_payload = None
+                st.session_state.result_revealed = True
+                st.session_state.selected_main_mode = "혼자 보기"
+                _loaded_ok = True
+            except Exception:
+                show_safe_error("저장된 사주를 불러오는 중 오류가 발생했어. 다시 저장하거나 직접 입력해줘.", "LOADSAJU")
+                st.stop()
+            if _loaded_ok:
+                st.rerun()
 
     top_row = st.columns([1.1, 1])
     with top_row[0]:
