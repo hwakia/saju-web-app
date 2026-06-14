@@ -1,0 +1,53 @@
+name: keep-streamlit-awake
+
+# 스트림릿 Community Cloud는 ~12시간 무트래픽 시 앱을 재운다.
+# 6시간마다 실제 헤드리스 브라우저로 앱을 열어 세션을 만들어 sleep을 막고,
+# 이미 잠들어 있으면 "다시 깨우기" 버튼을 눌러 자동 기상시킨다.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # 6시간마다 (UTC 기준)
+  workflow_dispatch:          # 수동 실행 버튼
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright (chromium)
+        run: |
+          npm init -y
+          npm i -D playwright
+          npx playwright install --with-deps chromium
+
+      - name: Visit app to keep it awake
+        env:
+          APP_URL: "https://saju-web-app-hwaki.streamlit.app/?app_ok=1"
+        run: |
+          node <<'EOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            const url = process.env.APP_URL;
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+
+            // 잠든 상태면 "다시 깨우기" 버튼 클릭
+            try {
+              const wake = page.getByRole('button', { name: /get this app back up|다시 깨우|wake/i });
+              if (await wake.count()) {
+                console.log('App was asleep — clicking wake button');
+                await wake.first().click();
+              }
+            } catch (e) { /* 버튼 없으면 무시 */ }
+
+            // Streamlit 웹소켓 세션이 충분히 붙도록 대기 → 활동으로 집계됨
+            await page.waitForTimeout(20000);
+            console.log('OK · title:', await page.title());
+            await browser.close();
+          })().catch((e) => { console.error(e); process.exit(1); });
+          EOF
