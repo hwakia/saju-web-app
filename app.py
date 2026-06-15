@@ -11622,9 +11622,10 @@ def apply_my_saju_query_prefill_once() -> None:
     st.session_state["auto_consent"] = True
 
     if bd:
-        _set_text_state_pair("single_date_text", bd)
-    if not unknown and bt:
-        _set_text_state_pair("single_time_text", bt)
+        _combined_dt = bd
+        if (not unknown) and bt:
+            _combined_dt = f"{bd} {bt}"
+        _set_text_state_pair("single_birth_dt_text", _combined_dt)
 
     # run=1이면 바로가기 접속 시 입력 화면에 멈추지 않고 결과까지 자동 실행한다.
     st.session_state["_my_saju_auto_run_pending_v5140"] = _safe_bool_qp("run", True)
@@ -14162,6 +14163,30 @@ def parse_manual_time(value: str) -> time | None:
         return datetime.strptime(normalized, "%H:%M").time()
     except Exception:
         return None
+
+
+def parse_birth_datetime(raw: str) -> "Tuple[date | None, time | None]":
+    """'생년월일시'를 한 칸에서 파싱한다. (date|None, time|None) 반환.
+    허용 예: '19900520 1230' · '1990-05-20 12:30' · '199005201230' · '19900520'(시간 없음)."""
+    s = str(raw or "").strip()
+    if not s:
+        return None, None
+    s2 = s.replace(",", " ").replace("T", " ")
+    parts = s2.split()
+    d = None
+    t = None
+    if len(parts) >= 2:
+        d = parse_manual_date(parts[0])
+        t = parse_manual_time(parts[1])
+    else:
+        tok = parts[0]
+        digits = "".join(ch for ch in tok if ch.isdigit())
+        if len(digits) >= 12:
+            d = parse_manual_date(digits[:8])
+            t = parse_manual_time(digits[8:12])
+        else:
+            d = parse_manual_date(tok)
+    return d, t
 
 
 def _stable_text_input(label: str, default_value: str, key: str, help: str = "", disabled: bool = False, placeholder: str = "") -> str:
@@ -27688,19 +27713,29 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     with top_row[1]:
         gender = st.radio("성별", ["남자", "여자"], horizontal=True, key="gender_auto")
 
-    # 생년월일 + 생시 한 행
-    dt_row = st.columns([1.2, 1.0, 0.8])
+    # 생년월일시 한 칸에 입력 (날짜 + 시간 함께)
+    dt_row = st.columns([2.0, 0.85])
     with dt_row[0]:
-        b_date = manual_date_input("생년월일", date(1990, 5, 20), key="single_date_text")
+        _bdt_raw = _stable_text_input(
+            "생년월일시",
+            "",
+            key="single_birth_dt_text",
+            help="날짜와 시간을 함께 입력해. 예: 19900520 1230 · 1990-05-20 12:30 · 시간 모르면 날짜만",
+            placeholder="예: 19900520 1230  (날짜 시간)",
+        )
     with dt_row[1]:
-        time_unknown = st.checkbox("시간 모름", value=False, key="single_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
-        if time_unknown:
-            st.text_input("태어난 시간", value="미상", disabled=True, key="single_time_disabled")
-            b_time = None
-        else:
-            b_time = manual_time_input("태어난 시간", time(12, 0), key="single_time_text")
-    with dt_row[2]:
         calendar_type = compact_calendar_selector("single")
+
+    time_unknown = st.checkbox("시간 모름", value=False, key="single_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
+
+    b_date, b_time = parse_birth_datetime(_bdt_raw)
+    if time_unknown:
+        b_time = None
+    if _bdt_raw.strip():
+        if b_date is None:
+            st.warning("생년월일을 8자리 숫자(YYYYMMDD) 또는 YYYY-MM-DD로 입력해 주세요. 시간은 뒤에 1230 또는 12:30처럼 붙여줘.")
+        elif (not time_unknown) and b_time is None:
+            st.caption("시간을 못 읽었어 — 날짜 뒤에 시간(예: 1230)을 띄워 적거나 '시간 모름'을 체크해줘.")
 
     age_basis = DEFAULT_AGE_BASIS
     correction_label = KOREA_DEFAULT_CORRECTION_LABEL
