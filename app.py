@@ -6084,6 +6084,23 @@ def natal_stem_unions(chart: Chart) -> List[Dict[str, str]]:
     return out
 
 
+def natal_stem_clashes(chart: Chart) -> List[Dict[str, str]]:
+    """원국 천간끼리 이루는 천간충(甲庚·乙辛·丙壬·丁癸)을 반환한다."""
+    stems = _chart_stem_positions(chart, "원국")
+    cset = {frozenset([a, b]): name for a, b, name in STEM_CLASHES}
+    out: List[Dict[str, str]] = []
+    for i in range(len(stems)):
+        for j in range(i + 1, len(stems)):
+            s1, s2 = stems[i]["stem"], stems[j]["stem"]
+            nm = cset.get(frozenset([s1, s2]))
+            if nm and s1 != s2:
+                out.append({
+                    "pair": nm,
+                    "where": f"{stems[i]['pos_label']}·{stems[j]['pos_label']}",
+                })
+    return out
+
+
 def _branch_ko(branch: str) -> str:
     info = BRANCHES.get(branch, {})
     return f"{info.get('ko', branch)}({branch})"
@@ -14851,14 +14868,17 @@ def calculate_battle_power(payload: dict) -> float:
     except Exception:
         pass
 
-    # 오늘 일운 천간과 일간이 천간합이면 기운 결합 보조 가점(소폭, 보조 신호)
-    stem_union_bonus = 0.0
+    # 오늘 일운 천간과 일간의 관계 보조 조정: 천간합 +2(결합), 천간충 -2(충돌)
+    stem_relation_adj = 0.0
     try:
         if chart is not None and day_gz and len(day_gz) >= 2:
-            if frozenset([chart.day.stem, day_gz[0]]) in STEM_COMBINATIONS:
-                stem_union_bonus = 2.0
+            _dp = frozenset([chart.day.stem, day_gz[0]])
+            if _dp in STEM_COMBINATIONS:
+                stem_relation_adj = 2.0
+            elif _dp in {frozenset([a, b]) for a, b, _n in STEM_CLASHES} and chart.day.stem != day_gz[0]:
+                stem_relation_adj = -2.0
     except Exception:
-        stem_union_bonus = 0.0
+        stem_relation_adj = 0.0
 
     # 각 운별 가중치 상향(하루 변동폭↑): 대운 8 / 세운 12 / 월운 18 / 일운 26
     raw = (base
@@ -14866,7 +14886,7 @@ def calculate_battle_power(payload: dict) -> float:
            + gz_factor(sw_gz)    * 12.0
            + gz_factor(month_gz) * 18.0
            + gz_factor(day_gz)   * 26.0
-           + stem_union_bonus)
+           + stem_relation_adj)
 
     # raw 이론 범위 [-26, 136] → [0, 100] 정규화. 소수 1자리(동점 자동 해소·변동 가시화)
     score = (raw - (-26.0)) / (136.0 - (-26.0)) * 100.0
@@ -25018,6 +25038,10 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             st.caption("천간합: " + _u_txt + " — 해당 천간끼리 묶여 그 오행 방향으로 결속·집중하는 신호야.")
         else:
             st.caption("천간합: 원국 천간끼리 뚜렷한 합은 없어.")
+        _natal_clashes = natal_stem_clashes(chart)
+        if _natal_clashes:
+            _c_txt = " · ".join(f"{c['pair']}({c['where']})" for c in _natal_clashes)
+            st.caption("천간충: " + _c_txt + " — 해당 천간끼리 부딪혀 긴장·결단 자극이 있는 신호야.")
 
     else:
         st.markdown("### 🔎 기운 정밀 분석")
