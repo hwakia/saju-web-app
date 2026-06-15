@@ -532,6 +532,8 @@ TWELVE_STAGE_START = {"甲":"亥","乙":"午","丙":"寅","丁":"酉","戊":"寅
 TWELVE_STAGE_DIRECTION = {"甲":1,"丙":1,"戊":1,"庚":1,"壬":1,"乙":-1,"丁":-1,"己":-1,"辛":-1,"癸":-1}
 TWELVE_STAGE_POWER = {"장생":1.0,"목욕":0.7,"관대":1.1,"건록":1.2,"제왕":1.2,"쇠":0.8,"병":0.3,"사":0.2,"묘":0.5,"절":0.2,"태":0.4,"양":0.5}
 STEM_COMBINATIONS = {frozenset(["甲","己"]):"토", frozenset(["乙","庚"]):"금", frozenset(["丙","辛"]):"수", frozenset(["丁","壬"]):"목", frozenset(["戊","癸"]):"화"}
+# 천간합 정식 라벨(명리 관례 순서: 양간 우선) — 유니코드 정렬 대신 사용
+STEM_UNION_NAME = {frozenset(["甲","己"]):"甲己합", frozenset(["乙","庚"]):"乙庚합", frozenset(["丙","辛"]):"丙辛합", frozenset(["丁","壬"]):"丁壬합", frozenset(["戊","癸"]):"戊癸합"}
 RELATIONSHIP_WEIGHTS = {
     "연인": {"complement":0.30,"alliance":0.30,"flow":0.15,"buffer":0.25,"day_branch":1.0},
     "친구": {"complement":0.32,"alliance":0.28,"flow":0.22,"buffer":0.18,"day_branch":0.6},
@@ -6054,6 +6056,34 @@ def _chart_branch_positions(chart: Chart, owner: str) -> List[Dict[str, str]]:
     return items
 
 
+def _chart_stem_positions(chart: Chart, owner: str) -> List[Dict[str, str]]:
+    items = [
+        {"owner": owner, "pos": "year", "pos_label": "년간", "stem": chart.year.stem},
+        {"owner": owner, "pos": "month", "pos_label": "월간", "stem": chart.month.stem},
+        {"owner": owner, "pos": "day", "pos_label": "일간", "stem": chart.day.stem},
+    ]
+    if chart.hour is not None:
+        items.append({"owner": owner, "pos": "hour", "pos_label": "시간", "stem": chart.hour.stem})
+    return items
+
+
+def natal_stem_unions(chart: Chart) -> List[Dict[str, str]]:
+    """원국 천간끼리 이루는 천간합(甲己·乙庚·丙辛·丁壬·戊癸)을 반환한다."""
+    stems = _chart_stem_positions(chart, "원국")
+    out: List[Dict[str, str]] = []
+    for i in range(len(stems)):
+        for j in range(i + 1, len(stems)):
+            s1, s2 = stems[i]["stem"], stems[j]["stem"]
+            tgt = STEM_COMBINATIONS.get(frozenset([s1, s2]))
+            if tgt and s1 != s2:
+                out.append({
+                    "pair": STEM_UNION_NAME.get(frozenset([s1, s2]), f"{s1}{s2}합"),
+                    "element": tgt,
+                    "where": f"{stems[i]['pos_label']}·{stems[j]['pos_label']}",
+                })
+    return out
+
+
 def _branch_ko(branch: str) -> str:
     info = BRANCHES.get(branch, {})
     return f"{info.get('ko', branch)}({branch})"
@@ -6123,6 +6153,42 @@ def describe_cross_chart_interactions(my_chart: Chart, fr_chart: Chart, my_name:
                     "left": left,
                     "right": right,
                     "impact": "끌림과 불편감이 함께 나타날 수 있는 예민한 신호야. 가까운 관계일수록 감정 해석을 단정하지 않고 확인하는 태도가 필요해.",
+                })
+
+    # ── 천간(天干) 상호작용: 천간합·천간충 (일간끼리가 가장 강함) ──
+    my_stems = _chart_stem_positions(my_chart, my_name)
+    fr_stems = _chart_stem_positions(fr_chart, fr_name)
+    _STEM_CLASH_SET = {frozenset([a, b]) for a, b, _ in STEM_CLASHES}
+    for a in my_stems:
+        for b in fr_stems:
+            spair = frozenset([a["stem"], b["stem"]])
+            left = f"{a['owner']} {a['pos_label']} {a['stem']}"
+            right = f"{b['owner']} {b['pos_label']} {b['stem']}"
+            is_day = (a["pos"] == "day" and b["pos"] == "day")
+            tgt = STEM_COMBINATIONS.get(spair)
+            if tgt:
+                details.append({
+                    "kind": "천간합",
+                    "name": f"{STEM_UNION_NAME.get(spair, a['stem'] + b['stem'] + '합')} → {tgt}",
+                    "left": left,
+                    "right": right,
+                    "impact": (
+                        "일간끼리 천간합이야 — 서로 강하게 끌리고 결합하는 핵심 신호. 협력·친밀감이 잘 살지만, 한쪽으로 묶이는 느낌이 과해지지 않게 보면 돼."
+                        if is_day else
+                        f"천간이 서로 묶여 {tgt} 방향으로 결속하는 신호야. 편안함·협력감으로 체감될 수 있어."
+                    ),
+                })
+            elif spair in _STEM_CLASH_SET and a["stem"] != b["stem"]:
+                details.append({
+                    "kind": "천간충",
+                    "name": f"{a['stem']}{b['stem']}충",
+                    "left": left,
+                    "right": right,
+                    "impact": (
+                        "일간끼리 천간충이야 — 생각·방향이 정면으로 갈릴 수 있는 신호. 갈등 단정보다 속도·관점 차이로 보면 돼."
+                        if is_day else
+                        "천간이 부딪히는 신호야. 자극·의견차가 커질 수 있는 포인트로 봐."
+                    ),
                 })
 
     combined = [("나", x) for x in my_items] + [("상대", x) for x in fr_items]
@@ -6351,7 +6417,7 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
     my_name_for_signal = _clean_display_text(my_payload.get("name", "나")) or "나"
     fr_name_for_signal = _clean_display_text(friend_payload.get("name", "상대")) or "상대"
     cross_interaction_details = describe_cross_chart_interactions(my_chart, fr_chart, my_name_for_signal, fr_name_for_signal)
-    cross_harmony_count = sum(1 for d in cross_interaction_details if d.get("kind") in {"합", "삼합", "방합"})
+    cross_harmony_count = sum(1 for d in cross_interaction_details if d.get("kind") in {"합", "삼합", "방합", "천간합"})
     cross_clash_count = sum(1 for d in cross_interaction_details if d.get("kind") == "충")
     cross_penalty_count = sum(1 for d in cross_interaction_details if d.get("kind") == "형")
     cross_break_count = sum(1 for d in cross_interaction_details if d.get("kind") == "파")
@@ -6460,6 +6526,35 @@ def compatibility_analysis(my_payload: Dict[str, object], friend_payload: Dict[s
     if extra_six:
         alliance += min(12, 4 * extra_six)
         positives.append(f"원국 사이 육합 신호가 추가로 {extra_six}개 있습니다.")
+
+    # 3-2. 천간합·천간충 (일간끼리 최고 가중 + 그 외 천간 약가중)
+    my_stem_list = [my_chart.year.stem, my_chart.month.stem, my_chart.day.stem] + ([my_chart.hour.stem] if my_chart.hour is not None else [])
+    fr_stem_list = [fr_chart.year.stem, fr_chart.month.stem, fr_chart.day.stem] + ([fr_chart.hour.stem] if fr_chart.hour is not None else [])
+    _stem_clash_set = {frozenset([a, b]) for a, b, _ in STEM_CLASHES}
+    day_stem_pair = frozenset([my_chart.day.stem, fr_chart.day.stem])
+    if day_stem_pair in STEM_COMBINATIONS:
+        alliance += 20 * day_branch_weight
+        positives.append(f"일간끼리 천간합({STEM_UNION_NAME.get(day_stem_pair, '천간합')})이라 서로 끌리고 결합하는 핵심 결속 신호야.")
+    elif day_stem_pair in _stem_clash_set and my_chart.day.stem != fr_chart.day.stem:
+        tension += 12 * day_branch_weight
+        cautions.append("일간끼리 천간충이라 가까울수록 생각·방향 차이로 인한 자극이 생길 수 있습니다.")
+    other_stem_union = 0
+    other_stem_clash = 0
+    for _i, _ls in enumerate(my_stem_list):
+        for _j, _rs in enumerate(fr_stem_list):
+            if _i == 2 and _j == 2:
+                continue  # 일간끼리는 위에서 처리
+            _sp = frozenset([_ls, _rs])
+            if _sp in STEM_COMBINATIONS:
+                other_stem_union += 1
+            elif _sp in _stem_clash_set and _ls != _rs:
+                other_stem_clash += 1
+    if other_stem_union:
+        alliance += min(9, 3 * other_stem_union)
+        positives.append(f"원국 천간합 신호가 추가로 {other_stem_union}개 있어 결속을 보탭니다.")
+    if other_stem_clash:
+        tension += min(7, 2 * other_stem_clash)
+        cautions.append(f"원국 천간충 신호가 {other_stem_clash}개 있어 긴장을 약간 키웁니다.")
 
     trine_hits = []
     half_trine_hits = []
@@ -6871,18 +6966,18 @@ def render_algorithm_disclosure_notice(compact: bool = False) -> None:
 
 
 def render_privacy_policy() -> None:
-    """사주키링 개인정보 처리방침 (v5.222)"""
+    """SAI 개인정보 처리방침 (v5.222)"""
     st.markdown("### 개인정보 처리방침")
-    st.caption("시행일: 2026-06-13 · 최종 수정: 2026-06-13 · 서비스명: 사주키링")
+    st.caption("시행일: 2026-06-14 · 최종 수정: 2026-06-14 · 서비스명: SAI (Saju Analysis Interactive)")
     st.markdown("""
-**사주키링**는 정보주체의 자유와 권리 보호를 위해 「개인정보 보호법」 및 관계 법령이 정한 바를 준수하여, 적법하게 개인정보를 처리하고 안전하게 관리하고 있습니다. 이에 「개인정보 보호법」 제30조에 따라 정보주체에게 개인정보 처리에 관한 절차 및 기준을 안내하고, 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
+**SAI**는 정보주체의 자유와 권리 보호를 위해 「개인정보 보호법」 및 관계 법령이 정한 바를 준수하여, 적법하게 개인정보를 처리하고 안전하게 관리하고 있습니다. 이에 「개인정보 보호법」 제30조에 따라 정보주체에게 개인정보 처리에 관한 절차 및 기준을 안내하고, 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
 
 본 앱은 사주 원국 구조와 모두의 케미·맞짱을 **오락·참고용**으로 제공하며, 결과를 법률·의료·투자·채용·혼인 등 중대한 의사결정의 근거로 사용해서는 안 됩니다.
-사주키링의 분석 결과는 외부 생성형 AI API가 실시간으로 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따라 산출됩니다. 개발 과정에서 생성형 AI 도구를 코드 작성·점검 보조에 활용했을 수 있으나, 서비스 실행 단계의 사주 분석 결과가 ChatGPT 등 외부 생성형 AI에 의해 도출되는 구조는 아닙니다.
+SAI의 분석 결과는 외부 생성형 AI API가 실시간으로 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따라 산출됩니다. 개발 과정에서 생성형 AI 도구를 코드 작성·점검 보조에 활용했을 수 있으나, 서비스 실행 단계의 사주 분석 결과가 ChatGPT 등 외부 생성형 AI에 의해 도출되는 구조는 아닙니다.
 
 #### 1. 개인정보의 처리 목적 및 법적 근거
 
-사주키링는 다음 목적을 위해 입력 정보를 처리합니다. 각 목적의 처리 근거는 「개인정보 보호법」 제15조제1항 각 호에 따릅니다.
+SAI는 다음 목적을 위해 입력 정보를 처리합니다. 각 목적의 처리 근거는 「개인정보 보호법」 제15조제1항 각 호에 따릅니다.
 
 - 생년월일시 자동 산출 또는 원국 직접 입력에 따른 사주 원국 분석 *(제15조제1항제1호 — 정보주체의 동의)*
 - 모두의 케미, 케미 분석 결과 산출 *(제15조제1항제1호 — 정보주체의 동의)*
@@ -6927,7 +7022,7 @@ def render_privacy_policy() -> None:
 
 #### 4. 개인정보의 제3자 제공
 
-사주키링 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 없습니다.
+SAI 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 없습니다.
 다만 온라인 배포 시 이용자가 접속하는 호스팅 플랫폼, 클라우드 서버, 로그 관리 도구의 정책에 따라 일반 접속 로그가 처리될 수 있습니다.
 
 #### 5. 개인정보 처리의 위탁 및 국외 이전
@@ -6974,7 +7069,7 @@ def render_privacy_policy() -> None:
 
 #### 8. 정보주체와 법정대리인의 권리·의무 및 행사 방법
 
-이용자(정보주체)는 사주키링에 대해 언제든지 다음 개인정보 보호 관련 권리를 행사할 수 있습니다.
+이용자(정보주체)는 SAI에 대해 언제든지 다음 개인정보 보호 관련 권리를 행사할 수 있습니다.
 
 - 개인정보 열람 요구
 - 오류 등이 있을 경우 정정 요구
@@ -6992,7 +7087,7 @@ def render_privacy_policy() -> None:
 
 #### 9. 개인정보의 안전성 확보조치
 
-사주키링는 개인정보 노출을 줄이기 위해 다음 원칙을 적용합니다.
+SAI는 개인정보 노출을 줄이기 위해 다음 원칙을 적용합니다.
 
 - 실명 대신 별명 사용 권장
 - 다운로드 파일명에 참가자명·생년월일시를 넣지 않음
@@ -7014,7 +7109,7 @@ Streamlit 및 브라우저가 앱 세션 유지를 위해 기술적 쿠키 또�
 
 #### 11. 자동화된 결정에 관한 안내
 
-사주키링의 점수·등급은 앱 내부의 고정 명리 계산식에 따라 산출되는 오락·참고용 결과입니다.
+SAI의 점수·등급은 앱 내부의 고정 명리 계산식에 따라 산출되는 오락·참고용 결과입니다.
 본 서비스는 정보주체의 권리 또는 의무에 **중대한 영향을 미치는 자동화된 결정**(「개인정보 보호법」 제37조의2)을 수행하지 않으므로, 동 조항에 따른 거부·설명 요구권의 대상이 아닙니다.
 이 결과는 법률상 권리·의무, 채용, 투자, 대출, 의료, 혼인 등 중대한 의사결정을 자동으로 결정하기 위한 것이 아니며, 그러한 용도로 사용해서는 안 됩니다.
 
@@ -8134,7 +8229,7 @@ APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwa
 import time as _time_module
 
 st.set_page_config(
-    page_title="사주키링",
+    page_title="SAI",
     page_icon="⚔️",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -14756,12 +14851,22 @@ def calculate_battle_power(payload: dict) -> float:
     except Exception:
         pass
 
+    # 오늘 일운 천간과 일간이 천간합이면 기운 결합 보조 가점(소폭, 보조 신호)
+    stem_union_bonus = 0.0
+    try:
+        if chart is not None and day_gz and len(day_gz) >= 2:
+            if frozenset([chart.day.stem, day_gz[0]]) in STEM_COMBINATIONS:
+                stem_union_bonus = 2.0
+    except Exception:
+        stem_union_bonus = 0.0
+
     # 각 운별 가중치 상향(하루 변동폭↑): 대운 8 / 세운 12 / 월운 18 / 일운 26
     raw = (base
            + gz_factor(dw_gz)    * 8.0
            + gz_factor(sw_gz)    * 12.0
            + gz_factor(month_gz) * 18.0
-           + gz_factor(day_gz)   * 26.0)
+           + gz_factor(day_gz)   * 26.0
+           + stem_union_bonus)
 
     # raw 이론 범위 [-26, 136] → [0, 100] 정규화. 소수 1자리(동점 자동 해소·변동 가시화)
     score = (raw - (-26.0)) / (136.0 - (-26.0)) * 100.0
@@ -15259,9 +15364,9 @@ def _render_create_room_view() -> None:
         st.components.v1.html(
             f"""<button onclick="
                 var url = '{APP_PUBLIC_URL}?room={room_id_safe}';
-                var msg = '🔮 사주키링 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
+                var msg = '🔮 SAI 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
                 if(navigator.share){{
-                    navigator.share({{title:'사주키링 모임 케미 초대',text:msg,url:url}}).catch(function(){{}});
+                    navigator.share({{title:'SAI 모임 케미 초대',text:msg,url:url}}).catch(function(){{}});
                 }} else {{
                     navigator.clipboard.writeText(msg).then(function(){{
                         alert('초대 메시지가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
@@ -15426,9 +15531,9 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
         f"""<button onclick="
             var base = '{APP_PUBLIC_URL}';
             var url = base + '?room={room_id_safe}{_t_param}';
-            var msg = '🔮 사주키링 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
+            var msg = '🔮 SAI 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
             if(navigator.share){{
-                navigator.share({{title:'사주키링 모임 케미 초대', text:msg, url:url}}).catch(()=>{{}});
+                navigator.share({{title:'SAI 모임 케미 초대', text:msg, url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(msg)
                   .then(()=>alert('초대 메시지가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
@@ -15826,9 +15931,9 @@ def _render_create_battle_room_view() -> None:
         st.components.v1.html(
             f"""<button onclick="
                 var url = '{APP_PUBLIC_URL}?broom={room_id_safe}';
-                var msg = '⚔️ 사주키링 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
+                var msg = '⚔️ SAI 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
                 if(navigator.share){{
-                    navigator.share({{title:'사주키링 맞짱방 초대',text:msg,url:url}}).catch(function(){{}});
+                    navigator.share({{title:'SAI 맞짱방 초대',text:msg,url:url}}).catch(function(){{}});
                 }} else {{
                     navigator.clipboard.writeText(msg).then(function(){{
                         alert('초대 메시지가 복사됐어!\\n단톡방에 붙여넣어봐 ⚔️');
@@ -15976,9 +16081,9 @@ def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max
         f"""<button onclick="
             var base = '{APP_PUBLIC_URL}';
             var url = base + '?broom={room_id_safe}';
-            var msg = '⚔️ 사주키링 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
+            var msg = '⚔️ SAI 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
             if(navigator.share){{
-                navigator.share({{title:'사주키링 맞짱방 초대', text:msg, url:url}}).catch(()=>{{}});
+                navigator.share({{title:'SAI 맞짱방 초대', text:msg, url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(msg)
                   .then(()=>alert('초대 메시지가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 ⚔️'));
@@ -17920,6 +18025,22 @@ def daily_stem_interactions(chart: "Chart", day_stem: str) -> List[Dict[str, str
                                  f"정신적 긴장·의사결정 압박·말의 충돌로 나타날 수 있어. "
                                  f"중요한 약속이나 계약은 한 템포 늦추는 게 좋아.",
                 })
+
+        # 천간합(天干合): 오늘 일간이 원국 천간과 합을 이루는 경우 (긍정 결속 신호)
+        for chart_stem, pos_label in pillars:
+            tgt = STEM_COMBINATIONS.get(frozenset([day_stem, chart_stem]))
+            if tgt and chart_stem != day_stem:
+                strength = "강함" if pos_label in ("일간", "월간") else "중간"
+                rows.append({
+                    "kind":      "천간합",
+                    "name":      STEM_UNION_NAME.get(frozenset([day_stem, chart_stem]), f"{day_stem}{chart_stem}합"),
+                    "pos_label": pos_label,
+                    "target":    chart_stem,
+                    "strength":  strength,
+                    "impact":    f"오늘 일간 {day_stem}이 원국 {pos_label} {chart_stem}과 {tgt} 천간합을 이뤄. "
+                                 f"기운이 한곳으로 묶여 협력·집중·인연이 잘 살아나는 날이야. "
+                                 f"다만 한 가지에 매이면 다른 일이 미뤄질 수 있으니 우선순위를 정해봐.",
+                })
         return rows
     except Exception:
         return []
@@ -18303,7 +18424,7 @@ def render_today_compass_card(payload: Dict[str, object]) -> None:
         return
     compass = today_compass_payload(chart, result)
     interactions = compass.get("interactions", []) or []
-    kind_class = {"합": "good", "충": "change", "천간충": "change", "파": "caution", "형": "caution", "해": "soft"}
+    kind_class = {"합": "good", "천간합": "good", "충": "change", "천간충": "change", "파": "caution", "형": "caution", "해": "soft"}
     if interactions:
         interaction_rows = []
         for row in interactions[:6]:
@@ -20178,7 +20299,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
 
     x = 86
     y = 84
-    draw.text((x, y), "사주키링", fill="#f0c75a", font=f_logo)
+    draw.text((x, y), "SAI", fill="#f0c75a", font=f_logo)
     draw.text((W-310, y+4), "시각화 사주 분석", fill="#fde68a", font=f_label)
 
     y += 66
@@ -20240,7 +20361,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         draw.text((text_x, url_y), ln, fill="#d6bd92", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ 사주키링 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
+    draw.text((86, H-44), "※ SAI 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -20316,7 +20437,7 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
     f_score = _share_font(40, True)
     f_small = _share_font(26, False)
 
-    d.text((70, 70), "⚔️ 사주키링 맞짱 결과", fill="#f0c75a", font=f_logo)
+    d.text((70, 70), "⚔️ SAI 맞짱 결과", fill="#f0c75a", font=f_logo)
     d.text((70, 120), f"{date_label} · 오늘의 운세 대결 (매일 바뀜)", fill="#8a7a4a", font=f_small)
 
     # 승자 히어로
@@ -20361,7 +20482,7 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
         d.text((70, y+96), _png_text(_rtitle), fill=col, font=f_small)
         y += 150
 
-    d.text((70, H-90), "사주키링 · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
+    d.text((70, H-90), "SAI · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
     import io as _io
     buf = _io.BytesIO(); img.save(buf, format="PNG")
     return buf.getvalue()
@@ -20400,7 +20521,7 @@ def make_room_chem_result_png_bytes(
     f_small = _share_font(26, False)
     f_chip  = _share_font(24, True)
 
-    d.text((70, 66), "🔮 사주키링 모임 케미", fill="#f0c75a", font=f_logo)
+    d.text((70, 66), "🔮 SAI 모임 케미", fill="#f0c75a", font=f_logo)
     _sub = f"{len(names)}명 케미 결과" + (f" · {date_label}" if date_label else "")
     d.text((70, 116), _sub, fill="#c7a9bd", font=f_small)
 
@@ -20434,7 +20555,7 @@ def make_room_chem_result_png_bytes(
         d.text((70, y), f"외 {extra}쌍 더…", fill="#9a8aaa", font=f_small)
         y += 44
 
-    d.text((70, H-80), "사주키링 · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
+    d.text((70, H-80), "SAI · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
     import io as _io
     buf = _io.BytesIO(); img.save(buf, format="PNG")
     return buf.getvalue()
@@ -20449,7 +20570,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
 
     snap = _single_front_snapshot(payload)
     result = payload.get("result", {}) or {}
-    title_plain = str(char.get("title", "사주키링 캐릭터"))
+    title_plain = str(char.get("title", "SAI 캐릭터"))
     tone_plain = str(char.get("tone", ""))
     operation_plain = str(char.get("operation", "-"))
     one_liner = share_card_one_liner(char, result)
@@ -20476,7 +20597,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     _share_pillars = ganji_text(_share_chart) if _share_chart else "- / - / - / -"
     _pillar_parts = [p.strip() for p in _share_pillars.split("/")]
 
-    draw.text((x, y), "사주키링", fill="#f0c75a", font=f_logo)
+    draw.text((x, y), "SAI", fill="#f0c75a", font=f_logo)
     draw.text((W-300, y+4), "사주 진단서 요약", fill="#fde68a", font=f_label)
 
     y += 56
@@ -20616,7 +20737,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         draw.text((text_x, url_y), ln, fill="#d6bd92", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ 사주키링 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
+    draw.text((86, H-44), "※ SAI 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
@@ -21272,7 +21393,7 @@ def make_chemistry_share_card_png_bytes(
     y = 92
 
     # top header
-    logo_text = "사주키링 모두의 케미"
+    logo_text = "SAI 모두의 케미"
     pair_text = str(pair_label or "나 × 상대")[:26]
     draw.text((x, y), logo_text, fill="#f0c75a", font=f_logo)
     pair_w, _ = measure(pair_text, f_label)
@@ -24891,6 +25012,12 @@ def render_single_summary(payload: Dict[str, object]) -> None:
             daewuns=payload.get("daewuns"),
             result=result,
         )
+        _natal_unions = natal_stem_unions(chart)
+        if _natal_unions:
+            _u_txt = " · ".join(f"{u['pair']}→{u['element']}({u['where']})" for u in _natal_unions)
+            st.caption("천간합: " + _u_txt + " — 해당 천간끼리 묶여 그 오행 방향으로 결속·집중하는 신호야.")
+        else:
+            st.caption("천간합: 원국 천간끼리 뚜렷한 합은 없어.")
 
     else:
         st.markdown("### 🔎 기운 정밀 분석")
@@ -27248,10 +27375,16 @@ if not st.session_state.get("_privacy_consent_v1", False):
 
 st.markdown("""
 <div class="hero-wrap">
-    <div class="hero-title"><span>사주키링</span></div>
+    <div class="hero-title"><span>SAI</span></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 6px;">
+      <span style="height:1px;width:34px;background:linear-gradient(90deg,transparent,#7c4dff);"></span>
+      <span style="font-size:.72rem;letter-spacing:2.5px;font-weight:700;color:#9a7bff;">SAJU ANALYSIS INTERACTIVE</span>
+      <span style="height:1px;width:34px;background:linear-gradient(90deg,#34e7e4,transparent);"></span>
+    </div>
     <div class="hero-subtitle">
         내 사주 진단 · 사주예보 · 모두의 케미 · 사주 맞짱
     </div>
+    <div style="font-size:.8rem;color:#cbb8e6;margin-top:4px;">사주로 보는 우리 <span style="color:#34e7e4;font-weight:700;">사이</span></div>
 </div>
 """, unsafe_allow_html=True)
 
