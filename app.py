@@ -14164,8 +14164,9 @@ def parse_manual_time(value: str) -> time | None:
         return None
 
 
-def _stable_text_input(label: str, default_value: str, key: str, help: str = "", disabled: bool = False) -> str:
-    """성별/옵션 변경 rerun 시에도 생년월일·시간 원문을 최대한 유지하는 입력 위젯."""
+def _stable_text_input(label: str, default_value: str, key: str, help: str = "", disabled: bool = False, placeholder: str = "") -> str:
+    """성별/옵션 변경 rerun 시에도 생년월일·시간 원문을 최대한 유지하는 입력 위젯.
+    default_value를 ""로 주면 빈 칸으로 시작하고 placeholder(힌트)만 표시한다."""
     backup_key = f"{key}__last_value"
     if backup_key not in st.session_state:
         st.session_state[backup_key] = str(default_value)
@@ -14183,6 +14184,7 @@ def _stable_text_input(label: str, default_value: str, key: str, help: str = "",
         key=key,
         help=help,
         disabled=disabled,
+        placeholder=placeholder,
         on_change=_remember_input_value,
     )
     if raw is not None:
@@ -14191,19 +14193,22 @@ def _stable_text_input(label: str, default_value: str, key: str, help: str = "",
 
 
 def manual_date_input(label: str, default_value: date, key: str) -> date | None:
-    raw = _stable_text_input(label, default_value.strftime("%Y%m%d"), key=key, help="예: YYYYMMDD 또는 YYYY-MM-DD")
+    _ph = f"예: {default_value.strftime('%Y%m%d')} (YYYYMMDD)"
+    raw = _stable_text_input(label, "", key=key, help="예: YYYYMMDD 또는 YYYY-MM-DD", placeholder=_ph)
     parsed = parse_manual_date(raw)
     st.markdown("<div class='manual-input-hint'>예: YYYYMMDD 또는 YYYY-MM-DD 형식으로 입력</div>", unsafe_allow_html=True)
-    if parsed is None:
+    # 빈 칸은 '아직 입력 전'이므로 경고하지 않고, 입력값이 있는데 형식이 틀렸을 때만 안내
+    if raw.strip() and parsed is None:
         st.warning(f"{label}은 8자리 숫자 또는 YYYY-MM-DD 형식으로 입력해 주세요. 예: YYYYMMDD")
     return parsed
 
 
 def manual_time_input(label: str, default_value: time, key: str) -> time | None:
-    raw = _stable_text_input(label, default_value.strftime("%H%M"), key=key, help="예: HHMM 또는 HH:MM")
+    _ph = f"예: {default_value.strftime('%H%M')} (HHMM)"
+    raw = _stable_text_input(label, "", key=key, help="예: HHMM 또는 HH:MM", placeholder=_ph)
     parsed = parse_manual_time(raw)
     st.markdown("<div class='manual-input-hint'>예: HHMM 또는 HH:MM 형식으로 입력</div>", unsafe_allow_html=True)
-    if parsed is None:
+    if raw.strip() and parsed is None:
         st.warning(f"{label}은 3~4자리 숫자 또는 HH:MM 형식으로 입력해 주세요. 예: HHMM")
     return parsed
 
