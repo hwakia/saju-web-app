@@ -27772,7 +27772,7 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
             st.error("생년월일을 8자리 숫자 또는 YYYY-MM-DD 형식으로 입력해 주세요. 예: YYYYMMDD")
             st.stop()
         if not time_unknown and b_time is None:
-            st.error("태어난 시간을 3~4자리 숫자 또는 HH:MM 형식으로 입력해 주세요. 예: HHMM")
+            st.error("태어난 시간을 날짜 뒤에 입력해 주세요 (예: 1230 또는 12:30). 시간을 모르면 '시간 모름'을 체크하면 시(時) 없이 삼주로 분석할 수 있어.")
             st.stop()
         if b_time is None:
             if Solar is None:
