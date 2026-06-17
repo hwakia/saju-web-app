@@ -172,7 +172,7 @@ def _interaction_detail_html(interactions: list) -> str:
 
 
 # app.py
-# 사주MRI Streamlit 앱 v5.145-deepwine
+# SAI Streamlit 앱 v5.145-deepwine
 # 실행: python -m streamlit run app.py
 
 
@@ -5152,7 +5152,7 @@ def make_meal_report(participants: List[Dict[str, object]], meal_result: Dict[st
     cfg = role_config(role_type)
     payer = meal_result.get("payer") or {}
     payer_name = payer.get("participant", "아직 미정")
-    lines = [f"# 사주MRI {cfg['title']} 리포트", ""]
+    lines = [f"# SAI {cfg['title']} 리포트", ""]
     lines.append(f"- 기준일: {meal_result['meal_date']}")
     lines.append(f"- 대운 반영: {meal_result.get('daewun_used_count', 0)}/{meal_result.get('participant_count', len(participants))}명")
     lines.append(f"- 월운: {meal_result['month_gz']}")
@@ -6972,10 +6972,10 @@ def render_compact_privacy_notice() -> None:
 def render_algorithm_disclosure_notice(compact: bool = False) -> None:
     """생성형 AI 사용 여부와 앱 산출 방식에 관한 정확한 고지."""
     if compact:
-        st.caption("사주MRI 결과는 외부 생성형 AI가 실시간 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따른 참고 결과입니다.")
+        st.caption("SAI 결과는 외부 생성형 AI가 실시간 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따른 참고 결과입니다.")
         return
     st.info(
-        "사주MRI는 명리학 기반 계산 로직과 앱 내부 산식을 활용해 사주 경향을 참고용으로 보여주는 서비스입니다. "
+        "SAI는 명리학 기반 계산 로직과 앱 내부 산식을 활용해 사주 경향을 참고용으로 보여주는 서비스입니다. "
         "개발 과정에서 코드 작성·점검 보조에 생성형 AI 도구를 활용했을 수 있으나, "
         "사용자의 사주 분석 결과는 ChatGPT 등 외부 생성형 AI가 실시간으로 도출하거나 작성하는 구조가 아닙니다. "
         "결과는 오락·자기이해 목적의 참고자료이며, 건강·법률·투자·채용·대출·혼인 등 중대한 의사결정의 근거로 사용해서는 안 됩니다."
@@ -7762,7 +7762,7 @@ def render_multi_situation_map(participants: List[Dict[str, object]], power_map:
 
 def make_multi_report(participants: List[Dict[str, object]], summary: Dict[str, object]) -> str:
     lines: List[str] = []
-    lines.append("# 사주MRI 모두의 케미 리포트")
+    lines.append("# SAI 모두의 케미 리포트")
     lines.append("")
     lines.append(f"- 최종 1위: {summary.get('winner')} ({summary.get('top_score')}점)")
     lines.append(f"- 요약: {summary.get('summary')}")
@@ -8240,7 +8240,7 @@ APP_VERSION = "v5.223"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
-# 12. Streamlit UI — 사주MRI
+# 12. Streamlit UI — SAI
 # ============================================================
 
 import time as _time_module
@@ -10180,7 +10180,7 @@ div[data-testid="stRadio"] span {
     font-weight:780;
 }
 
-/* v5.51: 내 사주MRI 레이어 메뉴와 힘 쓰는 스타일 포인터 개선 */
+/* v5.51: 내 SAI 레이어 메뉴와 힘 쓰는 스타일 포인터 개선 */
 .operation-meter {
     position: relative;
     height: 16px;
@@ -16957,7 +16957,7 @@ def render_mbti_character_hero(payload: Dict[str, object]) -> Dict[str, str]:
         hero = st.container()
 
     with hero:
-        st.markdown(f"### {char.get('title', '사주MRI 캐릭터')}")
+        st.markdown(f"### {char.get('title', 'SAI 캐릭터')}")
         st.caption(str(char.get("tone", "")))
         st.markdown(
             f"`{char.get('role_display', char.get('role', '핵심 강점'))} · {char.get('role_score', '-')}` "
@@ -20313,7 +20313,7 @@ def render_revisit_guide_card(public_url: str = APP_PUBLIC_URL) -> None:
       <span>3. 이름 확인 후 추가</span>
     </div>
     <div class="revisit-device-note">
-      이름이 보이면 <b>사주MRI</b>로 두고 추가하세요.<br>갤럭시: Chrome·삼성 인터넷 메뉴(⋮/≡) → 홈 화면에 추가 · 아이폰: Safari 공유(□↑) → 홈 화면에 추가
+      이름이 보이면 <b>SAI</b>로 두고 추가하세요.<br>갤럭시: Chrome·삼성 인터넷 메뉴(⋮/≡) → 홈 화면에 추가 · 아이폰: Safari 공유(□↑) → 홈 화면에 추가
     </div>
   </div>
 </div>
@@ -20321,9 +20321,9 @@ def render_revisit_guide_card(public_url: str = APP_PUBLIC_URL) -> None:
         unsafe_allow_html=True,
     )
     try:
-        st.link_button("🔗 사주MRI 바로 열기", public_url, use_container_width=True)
+        st.link_button("🔗 SAI 바로 열기", public_url, use_container_width=True)
     except Exception:
-        st.markdown(f"[사주MRI 바로 열기]({html.escape(public_url, quote=True)})")
+        st.markdown(f"[SAI 바로 열기]({html.escape(public_url, quote=True)})")
     st.text_input("주소 복사용", value=public_url, key="revisit_public_url_v5112", disabled=True)
 
 def make_share_card_png_bytes(title: str, operation: str, keywords: str, overload: str, interpretation: str, one_liner: str, badges: List[str] | None = None, landscape_model: Dict[str, object] | None = None) -> bytes | None:
@@ -26457,9 +26457,9 @@ def render_meal_spoke_distribution(meal_result: Dict[str, object]) -> None:
 
 
 def render_patch_notes() -> None:
-    """사주MRI 패치노트 — 버전별 주요 변경 내역."""
+    """SAI 패치노트 — 버전별 주요 변경 내역."""
     st.markdown("#### 📋 패치노트")
-    st.caption("사주MRI의 주요 변경 내역입니다.")
+    st.caption("SAI의 주요 변경 내역입니다.")
 
     PATCH_NOTES = [
         {

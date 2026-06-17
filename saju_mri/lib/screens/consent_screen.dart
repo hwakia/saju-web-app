@@ -54,7 +54,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      '사주키링',
+                      'SAI',
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -251,7 +251,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      '시행일: 2026-05-04 · 최종 수정: 2026-05-30 · 서비스명: 사주키링',
+                      '시행일: 2026-06-14 · 최종 수정: 2026-06-14 · 서비스명: SAI (Saju Analysis Interactive)',
                       style: TextStyle(fontSize: 11, color: Color(0xFF888888)),
                     ),
                     const SizedBox(height: 16),
@@ -294,7 +294,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
         Text('1. 개인정보의 처리 목적', style: headStyle),
         SizedBox(height: 4),
         Text(
-          '사주키링은 사주 원국 분석, 케미 방·맞짱 방 기능 제공 등을 위해 '
+          'SAI는 사주 원국 분석, 케미 방·맞짱 방 기능 제공 등을 위해 '
           '정보주체의 동의를 바탕으로 개인정보를 처리합니다.',
           style: style,
         ),

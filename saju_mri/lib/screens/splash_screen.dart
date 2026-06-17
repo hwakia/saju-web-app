@@ -83,7 +83,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  '사주맞짱',
+                  'SAI',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
