@@ -227,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                             SizedBox(height: 16),
                             Text(
-                              'SAI 불러오는 중...',
+                              'Sai 불러오는 중...',
                               style: TextStyle(
                                 color: Color(0xFF666666),
                                 fontSize: 14,
@@ -311,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('앱 종료'),
-        content: const Text('SAI를 종료하시겠습니까?'),
+        content: const Text('Sai를 종료하시겠습니까?'),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),

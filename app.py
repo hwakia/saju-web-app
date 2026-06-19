@@ -172,7 +172,7 @@ def _interaction_detail_html(interactions: list) -> str:
 
 
 # app.py
-# SAI Streamlit 앱 v5.145-deepwine
+# Sai Streamlit 앱 v5.145-deepwine
 # 실행: python -m streamlit run app.py
 
 
@@ -5152,7 +5152,7 @@ def make_meal_report(participants: List[Dict[str, object]], meal_result: Dict[st
     cfg = role_config(role_type)
     payer = meal_result.get("payer") or {}
     payer_name = payer.get("participant", "아직 미정")
-    lines = [f"# SAI {cfg['title']} 리포트", ""]
+    lines = [f"# Sai {cfg['title']} 리포트", ""]
     lines.append(f"- 기준일: {meal_result['meal_date']}")
     lines.append(f"- 대운 반영: {meal_result.get('daewun_used_count', 0)}/{meal_result.get('participant_count', len(participants))}명")
     lines.append(f"- 월운: {meal_result['month_gz']}")
@@ -6972,10 +6972,10 @@ def render_compact_privacy_notice() -> None:
 def render_algorithm_disclosure_notice(compact: bool = False) -> None:
     """생성형 AI 사용 여부와 앱 산출 방식에 관한 정확한 고지."""
     if compact:
-        st.caption("SAI 결과는 외부 생성형 AI가 실시간 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따른 참고 결과입니다.")
+        st.caption("Sai 결과는 외부 생성형 AI가 실시간 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따른 참고 결과입니다.")
         return
     st.info(
-        "SAI는 명리학 기반 계산 로직과 앱 내부 산식을 활용해 사주 경향을 참고용으로 보여주는 서비스입니다. "
+        "Sai는 명리학 기반 계산 로직과 앱 내부 산식을 활용해 사주 경향을 참고용으로 보여주는 서비스입니다. "
         "개발 과정에서 코드 작성·점검 보조에 생성형 AI 도구를 활용했을 수 있으나, "
         "사용자의 사주 분석 결과는 ChatGPT 등 외부 생성형 AI가 실시간으로 도출하거나 작성하는 구조가 아닙니다. "
         "결과는 오락·자기이해 목적의 참고자료이며, 건강·법률·투자·채용·대출·혼인 등 중대한 의사결정의 근거로 사용해서는 안 됩니다."
@@ -6983,18 +6983,18 @@ def render_algorithm_disclosure_notice(compact: bool = False) -> None:
 
 
 def render_privacy_policy() -> None:
-    """SAI 개인정보 처리방침 (v5.222)"""
+    """Sai 개인정보 처리방침 (v5.222)"""
     st.markdown("### 개인정보 처리방침")
-    st.caption("시행일: 2026-06-18 · 최종 수정: 2026-06-18 · 서비스명: SAI (Saju Analysis Interactive) · 「개인정보 처리방침 작성지침(2026.4.)」 반영")
+    st.caption("시행일: 2026-06-18 · 최종 수정: 2026-06-18 · 서비스명: Sai (Saju Analysis Interactive) · 「개인정보 처리방침 작성지침(2026.4.)」 반영")
     st.markdown("""
-**SAI**는 정보주체의 자유와 권리 보호를 위해 「개인정보 보호법」 및 관계 법령이 정한 바를 준수하여, 적법하게 개인정보를 처리하고 안전하게 관리하고 있습니다. 이에 「개인정보 보호법」 제30조에 따라 정보주체에게 개인정보 처리에 관한 절차 및 기준을 안내하고, 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
+**Sai**는 정보주체의 자유와 권리 보호를 위해 「개인정보 보호법」 및 관계 법령이 정한 바를 준수하여, 적법하게 개인정보를 처리하고 안전하게 관리하고 있습니다. 이에 「개인정보 보호법」 제30조에 따라 정보주체에게 개인정보 처리에 관한 절차 및 기준을 안내하고, 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.
 
 본 앱은 사주 원국 구조와 모두의 케미·맞짱을 **오락·참고용**으로 제공하며, 결과를 법률·의료·투자·채용·혼인 등 중대한 의사결정의 근거로 사용해서는 안 됩니다.
-SAI의 분석 결과는 외부 생성형 AI API가 실시간으로 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따라 산출됩니다. 개발 과정에서 생성형 AI 도구를 코드 작성·점검 보조에 활용했을 수 있으나, 서비스 실행 단계의 사주 분석 결과가 ChatGPT 등 외부 생성형 AI에 의해 도출되는 구조는 아닙니다.
+Sai의 분석 결과는 외부 생성형 AI API가 실시간으로 생성하는 답변이 아니라, 앱 내부 명리 계산 로직과 고정 산식에 따라 산출됩니다. 개발 과정에서 생성형 AI 도구를 코드 작성·점검 보조에 활용했을 수 있으나, 서비스 실행 단계의 사주 분석 결과가 ChatGPT 등 외부 생성형 AI에 의해 도출되는 구조는 아닙니다.
 
 #### 1. 개인정보의 처리 목적 및 법적 근거
 
-SAI는 다음 목적을 위해 입력 정보를 처리합니다. 각 목적의 처리 근거는 「개인정보 보호법」 제15조제1항 각 호에 따릅니다.
+Sai는 다음 목적을 위해 입력 정보를 처리합니다. 각 목적의 처리 근거는 「개인정보 보호법」 제15조제1항 각 호에 따릅니다.
 
 - 생년월일시 자동 산출 또는 원국 직접 입력에 따른 사주 원국 분석 *(제15조제1항제1호 — 정보주체의 동의)*
 - 모두의 케미, 케미 분석 결과 산출 *(제15조제1항제1호 — 정보주체의 동의)*
@@ -7039,7 +7039,7 @@ SAI는 다음 목적을 위해 입력 정보를 처리합니다. 각 목적의 �
 
 #### 4. 개인정보의 제3자 제공
 
-SAI 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 없습니다.
+Sai 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 없습니다.
 다만 온라인 배포 시 이용자가 접속하는 호스팅 플랫폼, 클라우드 서버, 로그 관리 도구의 정책에 따라 일반 접속 로그가 처리될 수 있습니다.
 
 #### 5. 개인정보 처리의 위탁 및 국외 이전
@@ -7086,7 +7086,7 @@ SAI 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 �
 
 #### 8. 정보주체와 법정대리인의 권리·의무 및 행사 방법
 
-이용자(정보주체)는 SAI에 대해 언제든지 다음 개인정보 보호 관련 권리를 행사할 수 있습니다.
+이용자(정보주체)는 Sai에 대해 언제든지 다음 개인정보 보호 관련 권리를 행사할 수 있습니다.
 
 - 개인정보 열람 요구
 - 오류 등이 있을 경우 정정 요구
@@ -7104,7 +7104,7 @@ SAI 앱 코드 자체에는 입력값을 제3자에게 제공하는 기능이 �
 
 #### 9. 개인정보의 안전성 확보조치
 
-SAI는 개인정보 노출을 줄이기 위해 다음 원칙을 적용합니다.
+Sai는 개인정보 노출을 줄이기 위해 다음 원칙을 적용합니다.
 
 - 실명 대신 별명 사용 권장
 - 다운로드 파일명에 참가자명·생년월일시를 넣지 않음
@@ -7136,7 +7136,7 @@ Streamlit·브라우저가 앱 세션 유지·화면 표시를 위해 기술적 
 
 #### 11. 자동화된 결정에 관한 안내
 
-SAI의 점수·등급은 앱 내부의 고정 명리 계산식에 따라 산출되는 오락·참고용 결과입니다.
+Sai의 점수·등급은 앱 내부의 고정 명리 계산식에 따라 산출되는 오락·참고용 결과입니다.
 본 서비스는 정보주체의 권리 또는 의무에 **중대한 영향을 미치는 자동화된 결정**(「개인정보 보호법」 제37조의2)을 수행하지 않으므로, 동 조항에 따른 거부·설명 요구권의 대상이 아닙니다.
 이 결과는 법률상 권리·의무, 채용, 투자, 대출, 의료, 혼인 등 중대한 의사결정을 자동으로 결정하기 위한 것이 아니며, 그러한 용도로 사용해서는 안 됩니다.
 
@@ -7785,7 +7785,7 @@ def render_multi_situation_map(participants: List[Dict[str, object]], power_map:
 
 def make_multi_report(participants: List[Dict[str, object]], summary: Dict[str, object]) -> str:
     lines: List[str] = []
-    lines.append("# SAI 모두의 케미 리포트")
+    lines.append("# Sai 모두의 케미 리포트")
     lines.append("")
     lines.append(f"- 최종 1위: {summary.get('winner')} ({summary.get('top_score')}점)")
     lines.append(f"- 요약: {summary.get('summary')}")
@@ -8263,13 +8263,13 @@ APP_VERSION = "v5.223"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
-# 12. Streamlit UI — SAI
+# 12. Streamlit UI — Sai
 # ============================================================
 
 import time as _time_module
 
 st.set_page_config(
-    page_title="SAI",
+    page_title="Sai",
     page_icon="⚔️",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -10203,7 +10203,7 @@ div[data-testid="stRadio"] span {
     font-weight:780;
 }
 
-/* v5.51: 내 SAI 레이어 메뉴와 힘 쓰는 스타일 포인터 개선 */
+/* v5.51: 내 Sai 레이어 메뉴와 힘 쓰는 스타일 포인터 개선 */
 .operation-meter {
     position: relative;
     height: 16px;
@@ -15437,9 +15437,9 @@ def _render_create_room_view() -> None:
         st.components.v1.html(
             f"""<button onclick="
                 var url = '{APP_PUBLIC_URL}?room={room_id_safe}';
-                var msg = '🔮 SAI 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
+                var msg = '🔮 Sai 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
                 if(navigator.share){{
-                    navigator.share({{title:'SAI 모임 케미 초대',text:msg,url:url}}).catch(function(){{}});
+                    navigator.share({{title:'Sai 모임 케미 초대',text:msg,url:url}}).catch(function(){{}});
                 }} else {{
                     navigator.clipboard.writeText(msg).then(function(){{
                         alert('초대 메시지가 복사됐어!\\n단톡방에 붙여넣어봐 🔮');
@@ -15604,9 +15604,9 @@ def _render_room_waiting_view(room_id: str, participants: List[Dict], max_p: int
         f"""<button onclick="
             var base = '{APP_PUBLIC_URL}';
             var url = base + '?room={room_id_safe}{_t_param}';
-            var msg = '🔮 SAI 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
+            var msg = '🔮 Sai 모임 케미에 초대됐어!\\n아래 링크로 들어와서 우리 모임 궁합 같이 보자\\n' + url;
             if(navigator.share){{
-                navigator.share({{title:'SAI 모임 케미 초대', text:msg, url:url}}).catch(()=>{{}});
+                navigator.share({{title:'Sai 모임 케미 초대', text:msg, url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(msg)
                   .then(()=>alert('초대 메시지가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 😊'));
@@ -16004,9 +16004,9 @@ def _render_create_battle_room_view() -> None:
         st.components.v1.html(
             f"""<button onclick="
                 var url = '{APP_PUBLIC_URL}?broom={room_id_safe}';
-                var msg = '⚔️ SAI 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
+                var msg = '⚔️ Sai 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
                 if(navigator.share){{
-                    navigator.share({{title:'SAI 맞짱방 초대',text:msg,url:url}}).catch(function(){{}});
+                    navigator.share({{title:'Sai 맞짱방 초대',text:msg,url:url}}).catch(function(){{}});
                 }} else {{
                     navigator.clipboard.writeText(msg).then(function(){{
                         alert('초대 메시지가 복사됐어!\\n단톡방에 붙여넣어봐 ⚔️');
@@ -16154,9 +16154,9 @@ def _render_battle_room_waiting_view(room_id: str, participants: List[Dict], max
         f"""<button onclick="
             var base = '{APP_PUBLIC_URL}';
             var url = base + '?broom={room_id_safe}';
-            var msg = '⚔️ SAI 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
+            var msg = '⚔️ Sai 맞짱방에 초대됐어!\\n아래 링크로 들어와서 같이 오늘의 운 대결 ㄱㄱ\\n' + url;
             if(navigator.share){{
-                navigator.share({{title:'SAI 맞짱방 초대', text:msg, url:url}}).catch(()=>{{}});
+                navigator.share({{title:'Sai 맞짱방 초대', text:msg, url:url}}).catch(()=>{{}});
             }} else {{
                 navigator.clipboard.writeText(msg)
                   .then(()=>alert('초대 메시지가 복사됐어!\\n아직 안 들어온 친구한테 보내봐 ⚔️'));
@@ -16980,7 +16980,7 @@ def render_mbti_character_hero(payload: Dict[str, object]) -> Dict[str, str]:
         hero = st.container()
 
     with hero:
-        st.markdown(f"### {char.get('title', 'SAI 캐릭터')}")
+        st.markdown(f"### {char.get('title', 'Sai 캐릭터')}")
         st.caption(str(char.get("tone", "")))
         st.markdown(
             f"`{char.get('role_display', char.get('role', '핵심 강점'))} · {char.get('role_score', '-')}` "
@@ -20336,7 +20336,7 @@ def render_revisit_guide_card(public_url: str = APP_PUBLIC_URL) -> None:
       <span>3. 이름 확인 후 추가</span>
     </div>
     <div class="revisit-device-note">
-      이름이 보이면 <b>SAI</b>로 두고 추가하세요.<br>갤럭시: Chrome·삼성 인터넷 메뉴(⋮/≡) → 홈 화면에 추가 · 아이폰: Safari 공유(□↑) → 홈 화면에 추가
+      이름이 보이면 <b>Sai</b>로 두고 추가하세요.<br>갤럭시: Chrome·삼성 인터넷 메뉴(⋮/≡) → 홈 화면에 추가 · 아이폰: Safari 공유(□↑) → 홈 화면에 추가
     </div>
   </div>
 </div>
@@ -20344,9 +20344,9 @@ def render_revisit_guide_card(public_url: str = APP_PUBLIC_URL) -> None:
         unsafe_allow_html=True,
     )
     try:
-        st.link_button("🔗 SAI 바로 열기", public_url, use_container_width=True)
+        st.link_button("🔗 Sai 바로 열기", public_url, use_container_width=True)
     except Exception:
-        st.markdown(f"[SAI 바로 열기]({html.escape(public_url, quote=True)})")
+        st.markdown(f"[Sai 바로 열기]({html.escape(public_url, quote=True)})")
     st.text_input("주소 복사용", value=public_url, key="revisit_public_url_v5112", disabled=True)
 
 def make_share_card_png_bytes(title: str, operation: str, keywords: str, overload: str, interpretation: str, one_liner: str, badges: List[str] | None = None, landscape_model: Dict[str, object] | None = None) -> bytes | None:
@@ -20372,7 +20372,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
 
     x = 86
     y = 84
-    draw.text((x, y), "SAI", fill="#f0c75a", font=f_logo)
+    draw.text((x, y), "Sai", fill="#f0c75a", font=f_logo)
     draw.text((W-310, y+4), "시각화 사주 분석", fill="#fde68a", font=f_label)
 
     y += 66
@@ -20434,7 +20434,7 @@ def make_share_card_png_bytes(title: str, operation: str, keywords: str, overloa
         draw.text((text_x, url_y), ln, fill="#d6bd92", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ SAI 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
+    draw.text((86, H-44), "※ Sai 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -20510,7 +20510,7 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
     f_score = _share_font(40, True)
     f_small = _share_font(26, False)
 
-    d.text((70, 70), "⚔️ SAI 맞짱 결과", fill="#f0c75a", font=f_logo)
+    d.text((70, 70), "⚔️ Sai 맞짱 결과", fill="#f0c75a", font=f_logo)
     d.text((70, 120), f"{date_label} · 오늘의 운세 대결 (매일 바뀜)", fill="#8a7a4a", font=f_small)
 
     # 승자 히어로
@@ -20555,7 +20555,7 @@ def make_battle_result_png_bytes(sorted_p: List[Dict], winner: Dict, date_label:
         d.text((70, y+96), _png_text(_rtitle), fill=col, font=f_small)
         y += 150
 
-    d.text((70, H-90), "SAI · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
+    d.text((70, H-90), "Sai · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
     import io as _io
     buf = _io.BytesIO(); img.save(buf, format="PNG")
     return buf.getvalue()
@@ -20594,7 +20594,7 @@ def make_room_chem_result_png_bytes(
     f_small = _share_font(26, False)
     f_chip  = _share_font(24, True)
 
-    d.text((70, 66), "🔮 SAI 모임 케미", fill="#f0c75a", font=f_logo)
+    d.text((70, 66), "🔮 Sai 모임 케미", fill="#f0c75a", font=f_logo)
     _sub = f"{len(names)}명 케미 결과" + (f" · {date_label}" if date_label else "")
     d.text((70, 116), _sub, fill="#c7a9bd", font=f_small)
 
@@ -20628,7 +20628,7 @@ def make_room_chem_result_png_bytes(
         d.text((70, y), f"외 {extra}쌍 더…", fill="#9a8aaa", font=f_small)
         y += 44
 
-    d.text((70, H-80), "SAI · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
+    d.text((70, H-80), "Sai · 사주로 보는 우리 사이", fill="#6a5a32", font=f_small)
     import io as _io
     buf = _io.BytesIO(); img.save(buf, format="PNG")
     return buf.getvalue()
@@ -20643,7 +20643,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
 
     snap = _single_front_snapshot(payload)
     result = payload.get("result", {}) or {}
-    title_plain = str(char.get("title", "SAI 캐릭터"))
+    title_plain = str(char.get("title", "Sai 캐릭터"))
     tone_plain = str(char.get("tone", ""))
     operation_plain = str(char.get("operation", "-"))
     one_liner = share_card_one_liner(char, result)
@@ -20670,7 +20670,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     _share_pillars = ganji_text(_share_chart) if _share_chart else "- / - / - / -"
     _pillar_parts = [p.strip() for p in _share_pillars.split("/")]
 
-    draw.text((x, y), "SAI", fill="#f0c75a", font=f_logo)
+    draw.text((x, y), "Sai", fill="#f0c75a", font=f_logo)
     draw.text((W-300, y+4), "사주 진단서 요약", fill="#fde68a", font=f_label)
 
     y += 56
@@ -20810,7 +20810,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
         draw.text((text_x, url_y), ln, fill="#d6bd92", font=f_tiny)
         url_y += 24
 
-    draw.text((86, H-44), "※ SAI 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
+    draw.text((86, H-44), "※ Sai 결과 카드는 오락·자기이해용 요약입니다.", fill="#e3d0ac", font=f_tiny)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
@@ -21466,7 +21466,7 @@ def make_chemistry_share_card_png_bytes(
     y = 92
 
     # top header
-    logo_text = "SAI 모두의 케미"
+    logo_text = "Sai 모두의 케미"
     pair_text = str(pair_label or "나 × 상대")[:26]
     draw.text((x, y), logo_text, fill="#f0c75a", font=f_logo)
     pair_w, _ = measure(pair_text, f_label)
@@ -26480,9 +26480,9 @@ def render_meal_spoke_distribution(meal_result: Dict[str, object]) -> None:
 
 
 def render_patch_notes() -> None:
-    """SAI 패치노트 — 버전별 주요 변경 내역."""
+    """Sai 패치노트 — 버전별 주요 변경 내역."""
     st.markdown("#### 📋 패치노트")
-    st.caption("SAI의 주요 변경 내역입니다.")
+    st.caption("Sai의 주요 변경 내역입니다.")
 
     PATCH_NOTES = [
         {
@@ -27452,7 +27452,7 @@ if not st.session_state.get("_privacy_consent_v1", False):
 
 st.markdown("""
 <div class="hero-wrap">
-    <div class="hero-title"><span>SAI</span></div>
+    <div class="hero-title"><span>Sai</span></div>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 6px;">
       <span style="height:1px;width:34px;background:linear-gradient(90deg,transparent,#7c4dff);"></span>
       <span style="font-size:.72rem;letter-spacing:2.5px;font-weight:700;color:#9a7bff;">SAJU ANALYSIS INTERACTIVE</span>
