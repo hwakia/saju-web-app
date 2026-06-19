@@ -7033,7 +7033,7 @@ Sai는 다음 목적을 위해 입력 정보를 처리합니다. 각 목적의 �
 - **브라우저 localStorage:** 참가자 보관함 등 일부 정보는 브라우저 localStorage에 저장될 수 있습니다. 브라우저 캐시·사이트 데이터 삭제 시 함께 삭제됩니다.
 - **서버 세션 메모리:** 분석을 위해 입력값은 계산 중 서버 메모리(세션)에 일시적으로 존재하며, 브라우저 탭을 닫거나 서버가 재시작되면 사라집니다.
 - **리포트 파일:** 사용자가 리포트를 다운로드하면 해당 파일은 사용자 기기에 남습니다.
-- **URL 저장 링크:** 내 사주 저장 링크는 서버 데이터베이스 저장 방식이 아니라 URL 쿼리에 입력값을 담아 다시 불러오는 방식입니다. **링크를 다시 열거나 공유하면 해당 쿼리값(생년월일시·성별 등)이 계산을 위해 미국 Streamlit 서버로 전송될 수 있고, 브라우저 방문기록·메신저 미리보기·공유 링크·플랫폼 접속 로그에 남을 수 있습니다.** 민감한 링크는 공유에 주의해 주세요.
+- **URL 저장 링크:** 내 사주 저장 링크는 서버 데이터베이스 저장 방식이 아니라, 입력값을 **평문이 아닌 인코딩 토큰**으로 URL에 담아 다시 불러오는 방식입니다. 다만 토큰은 강한 암호화가 아니므로, **링크를 가진 사람은 해당 사주 정보를 열람할 수 있고, 링크 재접속 시 토큰이 계산을 위해 미국 Streamlit 서버로 전송되며 브라우저 방문기록·메신저 미리보기·플랫폼 접속 로그에 남을 수 있습니다.** 링크 공유에 주의해 주세요.
 - **이용 통계 로그(개인을 식별하지 않도록 설계):** 이름·생년월일시·IP·기기식별자를 포함하지 않는 서비스 이용 통계로, 서비스 개선 목적상 **생성 후 180일 경과분을 정기 정리 루틴에 따라 운영 DB에서 삭제**합니다.
 - **접속 로그:** Supabase·Streamlit Community Cloud 등 저장·배포 플랫폼에서 접속 IP, 브라우저 정보, 접속 시각 등 일반 접속 로그가 각 사업자 정책에 따라 보관될 수 있습니다.
 
@@ -11615,10 +11615,32 @@ def _set_text_state_pair(key: str, value: str) -> None:
     st.session_state[f"{key}__last_value"] = str(value)
 
 
+def _pack_saju_token(params: Dict[str, str]) -> str:
+    """내 사주 저장 링크에서 생년월일·성별 등이 URL에 평문 노출되지 않도록
+    민감 파라미터를 단일 토큰으로 인코딩한다(가역 인코딩, 본인 재사용용)."""
+    import base64
+    raw = urllib.parse.urlencode({k: v for k, v in params.items() if k not in ("my_saju", "run")}, doseq=False)
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def _unpack_saju_token(token: str) -> Dict[str, str]:
+    """_pack_saju_token 으로 만든 토큰을 다시 파라미터 dict로 복원한다."""
+    import base64
+    try:
+        if not token:
+            return {}
+        pad = "=" * (-len(token) % 4)
+        raw = base64.urlsafe_b64decode((token + pad).encode("ascii")).decode("utf-8")
+        return dict(urllib.parse.parse_qsl(raw))
+    except Exception:
+        return {}
+
+
 def apply_my_saju_query_prefill_once() -> None:
     """내 사주 저장 링크의 URL 값을 입력칸에 1회 반영한다.
 
     서버 DB 저장이 아니라 링크의 query parameter를 이용한 재입력 보조 기능이다.
+    민감 입력값은 평문이 아닌 인코딩 토큰(d)으로 전달하며, 구형 평문 링크도 호환한다.
     """
     if st.session_state.get("_my_saju_query_prefilled_v5138"):
         return
@@ -11629,18 +11651,26 @@ def apply_my_saju_query_prefill_once() -> None:
     st.session_state.selected_main_mode = "혼자 보기"
     st.session_state["single_view_mode_selector_v5116"] = "생년월일시 자동 산출"
 
-    name = sanitize_display_name(_qp_value("n", "나"), "나")
-    gender = _qp_value("g", "남자")
+    # 신형 링크는 민감값을 토큰(d)에 담고, 구형 링크는 평문 파라미터를 사용(하위호환)
+    _tok = _unpack_saju_token(_qp_value("d", ""))
+    def _g(k: str, default: str = "") -> str:
+        v = _tok.get(k)
+        return v if (v is not None and v != "") else _qp_value(k, default)
+    def _gb(k: str, default: bool = False) -> bool:
+        return str(_g(k, "1" if default else "0")).strip().lower() in ["1", "true", "yes", "y", "on"]
+
+    name = sanitize_display_name(_g("n", "나"), "나")
+    gender = _g("g", "남자")
     if gender not in ["남자", "여자"]:
         gender = "남자"
-    cal = _qp_value("cal", "양력")
+    cal = _g("cal", "양력")
     if cal not in CALENDAR_TYPES:
         cal = "양력"
 
-    bd = _qp_value("bd", "").strip()
-    bt = _qp_value("bt", "").strip()
-    unknown = _safe_bool_qp("unk", False)
-    yaja = _safe_bool_qp("yaja", False)
+    bd = _g("bd", "").strip()
+    bt = _g("bt", "").strip()
+    unknown = _gb("unk", False)
+    yaja = _gb("yaja", False)
 
     st.session_state["single_auto_name"] = name
     st.session_state["gender_auto"] = gender
@@ -11700,7 +11730,9 @@ def build_my_saju_save_url(
     params = build_my_saju_save_params(name, birth_date, birth_time, gender, calendar_type, time_unknown, use_yajashee, auto_run=auto_run)
     if not params:
         return ""
-    return APP_PUBLIC_URL.rstrip("/") + "?" + urllib.parse.urlencode(params, doseq=False)
+    # 생년월일·성별 등은 평문 대신 토큰(d)으로 전달 — URL·로그 평문 노출 방지
+    token = _pack_saju_token(params)
+    return APP_PUBLIC_URL.rstrip("/") + "?my_saju=1&run=" + params.get("run", "1") + "&d=" + token
 
 
 
@@ -27698,6 +27730,8 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
             from datetime import datetime as _dt2
             try:
                 _p = dict(_up.parse_qsl(_up.urlparse(_saved_url).query))
+                if _p.get("d"):  # 신형 토큰 링크 → 민감값 복원
+                    _p = {**_p, **_unpack_saju_token(_p["d"])}
             except Exception:
                 _p = {}
             _loaded_ok = False
