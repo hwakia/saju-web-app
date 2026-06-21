@@ -39,8 +39,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initWebView();
-    _loadBannerAd();
-    _loadInterstitialAd();
+    // 동의 후 진입하는 HomeScreen에서만 광고 SDK 초기화·로드 (동의 전 전송 방지)
+    MobileAds.instance.initialize().then((_) {
+      if (!mounted) return;
+      _loadBannerAd();
+      _loadInterstitialAd();
+    });
   }
 
   @override

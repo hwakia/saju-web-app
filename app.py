@@ -27462,7 +27462,7 @@ if not st.session_state.get("_privacy_consent_v1", False):
 </table>
 </div>
 """, unsafe_allow_html=True)
-    c1 = st.checkbox("① 위 내용에 동의합니다. (필수)", key="_consent_c1")
+    c1 = st.checkbox("① 본인은 만 14세 이상이며, 위 내용에 동의합니다. (필수)", key="_consent_c1")
 
     st.markdown("""
 <div style="background:#241327;border:1px solid #2A2A4A;border-radius:12px;padding:16px;margin-bottom:14px;margin-top:8px;">

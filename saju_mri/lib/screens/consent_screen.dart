@@ -10,6 +10,8 @@ class ConsentScreen extends StatefulWidget {
 }
 
 class _ConsentScreenState extends State<ConsentScreen> {
+  bool _age14 = false;
+
   Future<void> _acceptAndProceed() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('privacy_consent_v1', true);
@@ -148,11 +150,31 @@ class _ConsentScreenState extends State<ConsentScreen> {
               ),
               const SizedBox(height: 12),
 
+              // 만 14세 이상 확인 (필수) — 체크해야 동의 버튼 활성화
+              Row(
+                children: [
+                  Checkbox(
+                    value: _age14,
+                    onChanged: (v) => setState(() => _age14 = v ?? false),
+                    activeColor: const Color(0xFF3B5BDB),
+                    checkColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF555577)),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      '본인은 만 14세 이상이며, 위 내용에 동의합니다. (필수)',
+                      style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
               // 동의 버튼 (하단 고정 — 내용은 위에서 스크롤)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _acceptAndProceed,
+                  onPressed: _age14 ? _acceptAndProceed : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B5BDB),
                     disabledBackgroundColor: const Color(0xFF2A2A4A),
