@@ -3788,6 +3788,7 @@ def compact_calendar_selector(prefix: str) -> str:
         index=0,
         horizontal=True,
         key=f"{prefix}_calendar_compact_v5110",
+        label_visibility="collapsed",
         help="기본값은 양력입니다. 음력 생일인 경우에만 음력 평달 또는 음력 윤달을 선택하세요.",
     )
 
@@ -11679,11 +11680,11 @@ def apply_my_saju_query_prefill_once() -> None:
     st.session_state["single_auto_yaja"] = yaja
     st.session_state["auto_consent"] = True
 
-    if bd:
-        _combined_dt = bd
-        if (not unknown) and bt:
-            _combined_dt = f"{bd} {bt}"
-        _set_text_state_pair("single_birth_dt_text", _combined_dt)
+    if bd and len(bd) >= 10:  # bd: "YYYY-MM-DD"
+        _bdt_val = bd[:4] + bd[5:7] + bd[8:10]
+        if (not unknown) and bt:  # bt: "HH:MM"
+            _bdt_val = _bdt_val + " " + bt.replace(":", "")
+        _set_text_state_pair("single_birth_dt_text", _bdt_val)
 
     # run=1이면 바로가기 접속 시 입력 화면에 멈추지 않고 결과까지 자동 실행한다.
     st.session_state["_my_saju_auto_run_pending_v5140"] = _safe_bool_qp("run", True)
@@ -14249,7 +14250,7 @@ def parse_birth_datetime(raw: str) -> "Tuple[date | None, time | None]":
     return d, t
 
 
-def _stable_text_input(label: str, default_value: str, key: str, help: str = "", disabled: bool = False, placeholder: str = "") -> str:
+def _stable_text_input(label: str, default_value: str, key: str, help: str = "", disabled: bool = False, placeholder: str = "", max_chars: int | None = None) -> str:
     """성별/옵션 변경 rerun 시에도 생년월일·시간 원문을 최대한 유지하는 입력 위젯.
     default_value를 ""로 주면 빈 칸으로 시작하고 placeholder(힌트)만 표시한다."""
     backup_key = f"{key}__last_value"
@@ -14270,6 +14271,7 @@ def _stable_text_input(label: str, default_value: str, key: str, help: str = "",
         help=help,
         disabled=disabled,
         placeholder=placeholder,
+        max_chars=max_chars,
         on_change=_remember_input_value,
     )
     if raw is not None:
@@ -27598,6 +27600,7 @@ if input_mode == "혼자 보기":
         index=0,
         horizontal=True,
         key="single_view_mode_selector_v5116",
+        label_visibility="collapsed",
         help="생년월일시로 자동 산출하거나, 외부 만세력에서 확인한 원국을 직접 선택해 입력합니다.",
     )
     st.session_state.single_view_mode = single_view_mode
@@ -27714,15 +27717,12 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     if not st.session_state.get("_my_saju_ls_deleted_once_v1"):
         _saved_url = st.session_state.get("_my_saju_saved_url_v1", "") or read_my_saju_from_browser()
     if _saved_url:
-        _load_col, _del_col = st.columns([5, 1])
-        with _load_col:
-            _load_clicked = st.button("⭐ 저장된 내 사주 바로 불러오기", type="primary",
-                                      use_container_width=True, key="load_my_saju_session_btn")
-        with _del_col:
-            if st.button("🗑️", help="이 기기에 저장된 내 사주 삭제", use_container_width=True,
-                         key="del_my_saju_ls_btn"):
-                st.session_state["_my_saju_ls_delete_v1"] = True
-                st.rerun()
+        _load_clicked = st.button("⭐ 저장된 내 사주 바로 불러오기", type="primary",
+                                  use_container_width=True, key="load_my_saju_session_btn")
+        if st.button("🗑 이 기기에 저장된 내 사주 삭제", use_container_width=True,
+                     key="del_my_saju_ls_btn"):
+            st.session_state["_my_saju_ls_delete_v1"] = True
+            st.rerun()
         if _load_clicked:
             # 저장 링크 값으로 그 자리에서 사주를 직접 계산해 결과 화면으로 직행한다.
             # (플래그·위젯 순서·prefill 라운드트립에 전혀 의존하지 않음 → 한 번 클릭으로 결과)
@@ -27773,31 +27773,34 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     with top_row[0]:
         single_auto_name = st.text_input("별명", value="나", key="single_auto_name", max_chars=10, help="실명 대신 짧은 별명을 권장합니다.")
     with top_row[1]:
-        gender = st.radio("성별", ["남자", "여자"], horizontal=True, key="gender_auto")
+        gender = st.radio("성별", ["남자", "여자"], horizontal=True, key="gender_auto", label_visibility="collapsed")
 
-    # 생년월일시 한 칸에 입력 (날짜 + 시간 함께)
-    dt_row = st.columns([2.0, 0.85])
-    with dt_row[0]:
-        _bdt_raw = _stable_text_input(
-            "생년월일시",
-            "",
-            key="single_birth_dt_text",
-            help="날짜와 시간을 함께 입력해. 예: 19900520 1230 · 1990-05-20 12:30 · 시간 모르면 날짜만",
-            placeholder="예: 19900520 1230  (날짜 시간)",
-        )
-    with dt_row[1]:
+    # 생년월일시 — 한 칸 입력 (예시는 placeholder)
+    _bdt_raw = _stable_text_input(
+        "생년월일시",
+        "",
+        key="single_birth_dt_text",
+        help="생년월일 8자리 뒤에 시간 4자리를 붙여 입력하세요. 시간을 모르면 날짜만 입력하고 '시간 모름'을 체크하세요.",
+        placeholder="예: 19900520 1230  (시간 모르면 19900520)",
+    )
+
+    # 양력/음력 + 시간 모름 한 줄
+    opt_row = st.columns([1.45, 1.0])
+    with opt_row[0]:
         calendar_type = compact_calendar_selector("single")
+    with opt_row[1]:
+        time_unknown = st.checkbox("시간 모름", value=False, key="single_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
 
-    time_unknown = st.checkbox("시간 모름", value=False, key="single_time_unknown", help="출생시간을 모르면 삼주 간이 분석으로 진행합니다.")
-
+    # 파싱: 한 칸에서 날짜 + 시간 추출
     b_date, b_time = parse_birth_datetime(_bdt_raw)
     if time_unknown:
         b_time = None
+    _bdt_digits = "".join(c for c in _bdt_raw if c.isdigit())
     if _bdt_raw.strip():
         if b_date is None:
-            st.warning("생년월일을 8자리 숫자(YYYYMMDD) 또는 YYYY-MM-DD로 입력해 주세요. 시간은 뒤에 1230 또는 12:30처럼 붙여줘.")
-        elif (not time_unknown) and b_time is None:
-            st.caption("시간을 못 읽었어 — 날짜 뒤에 시간(예: 1230)을 띄워 적거나 '시간 모름'을 체크해줘.")
+            st.warning("생년월일 8자리로 시작해 주세요. 예: 19900520 1230 (시간을 모르면 날짜만 입력하고 '시간 모름' 체크)")
+        elif (not time_unknown) and b_time is None and len(_bdt_digits) > 8:
+            st.caption("시간은 HHMM 4자리로 입력해 주세요. 예: 1230 (모르면 '시간 모름' 체크)")
 
     age_basis = DEFAULT_AGE_BASIS
     correction_label = KOREA_DEFAULT_CORRECTION_LABEL
@@ -27816,7 +27819,7 @@ elif input_mode == "혼자 보기" and single_view_mode == "생년월일시 자�
     with col_a:
         use_yajashee = st.checkbox("야자시 모드", value=False, key="single_auto_yaja")
     with col_b:
-        st.checkbox("내 사주 브라우저에 저장", value=st.session_state.get("save_to_browser_v1", False), key="save_to_browser_v1")
+        st.checkbox("내 사주 저장", value=st.session_state.get("save_to_browser_v1", False), key="save_to_browser_v1")
 
     render_my_saju_save_link_tool(
         single_auto_name or "나",
