@@ -23946,6 +23946,120 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     # ── 상세 섹션 (expander) ──────────────────────────────
 
+    # ── 처방전 다음: ✨ 신살·특수 신호 (개요 칩 + 상세) ──
+    # ── 8. ✨ 신살·특수 신호 ─────────────────────────────────
+    st.markdown("#### ✨ 신살·특수 신호")
+    _sh_data   = result.get("shinsal", {}) or {}
+    _sh_hits   = _sh_data.get("hits", []) or []
+    _sh_adj    = float(_sh_data.get("adjustment", 0) or 0)
+
+    if _sh_hits:
+        # 점수 영향 안내
+        _sh_sign = "+" if _sh_adj >= 0 else ""
+        st.caption(
+            f"이 신살들이 총점에 {_sh_sign}{_sh_adj:+.1f}점 영향을 줬어. "
+            f"신살은 사주의 중심 판단을 바꾸진 않고, 색깔을 더해주는 보조 신호야."
+        )
+        _SH_TONE = {
+            "천을귀인": ("💛", "길한 신호", "#1a1a08", "#ca8a04"),
+            "문창귀인": ("💙", "길한 신호", "#0d1420", "#2563eb"),
+            "역마":     ("🟠", "중립 신호", "#2b1830", "#ea580c"),
+            "도화":     ("🩷", "중립 신호", "#1a0d18", "#f59e0b"),
+            "화개":     ("🟣", "중립 신호", "#2b1830", "#7c3aed"),
+            "공망":     ("⚪", "주의 신호", "#2b1830", "#94a3b8"),
+            "현침":     ("📍", "중립 신호", "#0d1318", "#7dd3fc"),
+            "양인":     ("🗡️", "중립 신호", "#180d0d", "#f87171"),
+            "괴강":     ("⚡", "중립 신호", "#120e1c", "#a78bfa"),
+            "백호":     ("🐯", "중립 신호", "#181106", "#fb923c"),
+        }
+        # 신살별 의사 텍스트
+        _SH_DOC_TEXT = {
+            "천을귀인": "귀인이 곁에 있는 사주야. 힘들 때 예상 밖의 손길이 오는 구조거든. 너무 혼자 다 해결하려 하지 말고, 도움을 요청해봐 — 이 사주는 그때 진가가 나와.",
+            "문창귀인": "머리로 정리하고 표현하는 힘이 있는 사주야. 글·말·기획처럼 생각을 꺼내는 일에서 빛이 나거든. 이걸 살릴 일을 하나씩 만들어봐.",
+            "역마":     "가만있으면 답답해지는 사주야. 이동하고 바꾸고 새 판에 뛰어들 때 기회가 열리거든. 반대로 너무 한 자리에만 묶여 있으면 탈이 나는 경우가 많아.",
+            "도화":     "시선이 닿는 사주야. 분위기를 만들고 사람을 끌어당기는 힘이 있거든. 이걸 잘 쓰면 사람이 모이고, 과하면 피곤해질 수 있어 — 노출 관리가 처방이야.",
+            "화개":     "혼자 깊이 파고드는 걸 즐기는 사주야. 취향이 깊고 몰입력이 강하거든. 좋은 기운인데 — 자기 세계에 너무 갇히지 않도록 가끔은 밖으로 나와봐.",
+            "공망":     "이 자리는 바로 손에 잡히지 않는 자리야. 기대한 만큼 바로 오지 않는 경우가 있거든. 없는 게 아니야 — 돌아가는 방식이거든. 직접 밀기보다 우회 전략이 훨씬 잘 맞아.",
+            "현침":     "감각이 침처럼 예리한 사주야. 정밀한 손기술, 분석, 의술, 날카로운 말솜씨로 빛나거든. 다만 말끝이 사람을 찌르지 않게 표현만 부드럽게 다듬어봐.",
+            "양인":     "칼자루를 쥔 듯한 추진력이 있는 사주야. 위기에서 밀어붙이는 힘이 남다르거든. 이 힘을 어디에 쓸지 방향만 잘 잡으면 큰 무기가 돼.",
+            "괴강":     "평범함을 거부하는 강한 기둥이야. 총명함과 카리스마가 있는데, 극과 극을 오갈 수 있거든. 독선으로 흐르지 않게 주변과 보조를 맞추면 크게 이뤄.",
+            "백호":     "해당 기둥의 기운이 유난히 강렬한 사주야. 흉하다고 단정하는 게 아니라, 그 영역의 에너지가 세니까 무리한 충돌만 피하라는 신호로 읽으면 돼.",
+        }
+
+        # ── 개요: 어떤 신살이 있는지 한 줄 칩으로 병렬 나열 ──
+        _chip_html = "<div style='display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px;'>"
+        for _ch in _sh_hits:
+            _cn = str(_ch.get("신살", _ch.get("name", "")) or "")
+            _cem, _ctag, _cbg, _cbc = _SH_TONE.get(_cn, ("🎴", "보조 신호", "#2b1830", "#94a3b8"))
+            _chip_html += (
+                f"<div style='display:inline-flex;align-items:center;gap:5px;"
+                f"background:{_cbg};border:1px solid {_cbc};border-radius:999px;"
+                f"padding:5px 11px;font-size:13px;font-weight:700;color:{_cbc};'>"
+                f"{_cem} {_cn}</div>"
+            )
+        _chip_html += "</div>"
+        st.markdown(_chip_html, unsafe_allow_html=True)
+
+        for _hit in _sh_hits:
+            _sn      = str(_hit.get("신살", _hit.get("name", "")) or "")
+            _pos     = str(_hit.get("위치", "-") or "-")
+            _nature  = str(_hit.get("성격", "") or "")
+            _reflect = float(_hit.get("반영", 0) or 0)
+            try:
+                _prof = _shinsal_card_profile(_sn, _hit, chart)
+            except Exception:
+                _prof = {}
+            _summary = str(_prof.get("summary", "") or "")
+            _meaning = str(_prof.get("meaning", "") or "")
+            _how     = str(_prof.get("how", "") or "")
+            _icon    = str(_prof.get("icon", "🎴") or "🎴")
+            _doc_txt = _SH_DOC_TEXT.get(_sn, "")
+            _em, _tag, _bg, _bc = _SH_TONE.get(_sn, ("🎴", "보조 신호", "#2b1830", "#94a3b8"))
+            _rsign   = f"+{_reflect:.1f}" if _reflect > 0 else f"{_reflect:.1f}" if _reflect < 0 else "±0"
+            # 성립 조건 섹션 (how 있을 때만)
+            _how_section = (
+                f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid #94a3b8;"
+                f"margin-top:8px;padding:7px 10px;border-radius:4px;"
+                f"font-size:12px;color:#94a3b8;line-height:1.8;'>"
+                f"\U0001f4cc <b>어떻게 성립하냐면</b> \u2014 {_how}</div>"
+            ) if _how else ""
+            # 의사 텍스트 카드 (있을 때만)
+            _doc_section = (
+                f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid {_bc};"
+                f"margin-top:8px;padding:8px 10px;border-radius:4px;"
+                f"font-size:13px;color:#f0e8ec;line-height:1.8;'>"
+                f"\U0001f4ac {_doc_txt}</div>"
+            ) if _doc_txt else ""
+            st.markdown(
+                f"<div style='background:{_bg};border:1px solid {_bc};border-radius:10px;"
+                f"padding:12px 14px;margin-bottom:8px;'>"
+                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
+                f"<span style='font-size:15px;font-weight:700;color:{_bc};'>"
+                f"{_icon} {_sn}</span>"
+                f"<span style='font-size:13px;background:{_bc};color:#fff;border-radius:4px;"
+                f"padding:2px 7px;font-weight:700;'>{_tag} · {_rsign}점</span>"
+                f"</div>"
+                f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:6px;'>"
+                f"📍 {_pos}{(' · ' + _nature) if _nature else ''}</div>"
+                f"<div style='font-size:13px;color:#f0e0b8;line-height:1.7;margin-bottom:4px;'>"
+                f"{_summary}</div>"
+                f"<div style='font-size:12px;color:#a0b4bc;line-height:1.6;'>{_meaning}</div>"
+                f"{_how_section}"
+                f"{_doc_section}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            "<div style='background:#2b1830;border:1px solid #3a2830;border-radius:8px;"
+            "padding:12px 14px;font-size:13px;color:#a0b4bc;'>"
+            "이 사주엔 특기할 신살·공망 신호가 없어. 그것 자체가 나쁜 건 아니야 — "
+            "원국 자체 힘으로 흘러가는 구조거든."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    st.divider()
+
     with st.expander("🔄 흐름과 연결", expanded=False):
         # ── 5. ⚡ 기운의 순환 (3축 결과 카드 먼저) ───────────────
         st.markdown("#### ⚡ 흐름과 연결")
@@ -24069,106 +24183,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 st.caption("원국 안에서 서로 부딪히는 기운입니다. 긴장과 변화의 원천이 되기도 해요.")
                 for _note in _tension_notes:
                     st.markdown(f"- {_note}")
-
-
-    with st.expander("✨ 신살·특수신호", expanded=False):
-        # ── 8. ✨ 신살·특수 신호 ─────────────────────────────────
-        st.markdown("#### ✨ 신살·특수 신호")
-        _sh_data   = result.get("shinsal", {}) or {}
-        _sh_hits   = _sh_data.get("hits", []) or []
-        _sh_adj    = float(_sh_data.get("adjustment", 0) or 0)
-
-        if _sh_hits:
-            # 점수 영향 안내
-            _sh_sign = "+" if _sh_adj >= 0 else ""
-            st.caption(
-                f"이 신살들이 총점에 {_sh_sign}{_sh_adj:+.1f}점 영향을 줬어. "
-                f"신살은 사주의 중심 판단을 바꾸진 않고, 색깔을 더해주는 보조 신호야."
-            )
-            _SH_TONE = {
-                "천을귀인": ("💛", "길한 신호", "#1a1a08", "#ca8a04"),
-                "문창귀인": ("💙", "길한 신호", "#0d1420", "#2563eb"),
-                "역마":     ("🟠", "중립 신호", "#2b1830", "#ea580c"),
-                "도화":     ("🩷", "중립 신호", "#1a0d18", "#f59e0b"),
-                "화개":     ("🟣", "중립 신호", "#2b1830", "#7c3aed"),
-                "공망":     ("⚪", "주의 신호", "#2b1830", "#94a3b8"),
-                "현침":     ("📍", "중립 신호", "#0d1318", "#7dd3fc"),
-                "양인":     ("🗡️", "중립 신호", "#180d0d", "#f87171"),
-                "괴강":     ("⚡", "중립 신호", "#120e1c", "#a78bfa"),
-                "백호":     ("🐯", "중립 신호", "#181106", "#fb923c"),
-            }
-            # 신살별 의사 텍스트
-            _SH_DOC_TEXT = {
-                "천을귀인": "귀인이 곁에 있는 사주야. 힘들 때 예상 밖의 손길이 오는 구조거든. 너무 혼자 다 해결하려 하지 말고, 도움을 요청해봐 — 이 사주는 그때 진가가 나와.",
-                "문창귀인": "머리로 정리하고 표현하는 힘이 있는 사주야. 글·말·기획처럼 생각을 꺼내는 일에서 빛이 나거든. 이걸 살릴 일을 하나씩 만들어봐.",
-                "역마":     "가만있으면 답답해지는 사주야. 이동하고 바꾸고 새 판에 뛰어들 때 기회가 열리거든. 반대로 너무 한 자리에만 묶여 있으면 탈이 나는 경우가 많아.",
-                "도화":     "시선이 닿는 사주야. 분위기를 만들고 사람을 끌어당기는 힘이 있거든. 이걸 잘 쓰면 사람이 모이고, 과하면 피곤해질 수 있어 — 노출 관리가 처방이야.",
-                "화개":     "혼자 깊이 파고드는 걸 즐기는 사주야. 취향이 깊고 몰입력이 강하거든. 좋은 기운인데 — 자기 세계에 너무 갇히지 않도록 가끔은 밖으로 나와봐.",
-                "공망":     "이 자리는 바로 손에 잡히지 않는 자리야. 기대한 만큼 바로 오지 않는 경우가 있거든. 없는 게 아니야 — 돌아가는 방식이거든. 직접 밀기보다 우회 전략이 훨씬 잘 맞아.",
-                "현침":     "감각이 침처럼 예리한 사주야. 정밀한 손기술, 분석, 의술, 날카로운 말솜씨로 빛나거든. 다만 말끝이 사람을 찌르지 않게 표현만 부드럽게 다듬어봐.",
-                "양인":     "칼자루를 쥔 듯한 추진력이 있는 사주야. 위기에서 밀어붙이는 힘이 남다르거든. 이 힘을 어디에 쓸지 방향만 잘 잡으면 큰 무기가 돼.",
-                "괴강":     "평범함을 거부하는 강한 기둥이야. 총명함과 카리스마가 있는데, 극과 극을 오갈 수 있거든. 독선으로 흐르지 않게 주변과 보조를 맞추면 크게 이뤄.",
-                "백호":     "해당 기둥의 기운이 유난히 강렬한 사주야. 흉하다고 단정하는 게 아니라, 그 영역의 에너지가 세니까 무리한 충돌만 피하라는 신호로 읽으면 돼.",
-            }
-
-            for _hit in _sh_hits:
-                _sn      = str(_hit.get("신살", _hit.get("name", "")) or "")
-                _pos     = str(_hit.get("위치", "-") or "-")
-                _nature  = str(_hit.get("성격", "") or "")
-                _reflect = float(_hit.get("반영", 0) or 0)
-                try:
-                    _prof = _shinsal_card_profile(_sn, _hit, chart)
-                except Exception:
-                    _prof = {}
-                _summary = str(_prof.get("summary", "") or "")
-                _meaning = str(_prof.get("meaning", "") or "")
-                _how     = str(_prof.get("how", "") or "")
-                _icon    = str(_prof.get("icon", "🎴") or "🎴")
-                _doc_txt = _SH_DOC_TEXT.get(_sn, "")
-                _em, _tag, _bg, _bc = _SH_TONE.get(_sn, ("🎴", "보조 신호", "#2b1830", "#94a3b8"))
-                _rsign   = f"+{_reflect:.1f}" if _reflect > 0 else f"{_reflect:.1f}" if _reflect < 0 else "±0"
-                # 성립 조건 섹션 (how 있을 때만)
-                _how_section = (
-                    f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid #94a3b8;"
-                    f"margin-top:8px;padding:7px 10px;border-radius:4px;"
-                    f"font-size:12px;color:#94a3b8;line-height:1.8;'>"
-                    f"\U0001f4cc <b>어떻게 성립하냐면</b> \u2014 {_how}</div>"
-                ) if _how else ""
-                # 의사 텍스트 카드 (있을 때만)
-                _doc_section = (
-                    f"<div style='background:rgba(30,16,24,0.95);border-left:3px solid {_bc};"
-                    f"margin-top:8px;padding:8px 10px;border-radius:4px;"
-                    f"font-size:13px;color:#f0e8ec;line-height:1.8;'>"
-                    f"\U0001f4ac {_doc_txt}</div>"
-                ) if _doc_txt else ""
-                st.markdown(
-                    f"<div style='background:{_bg};border:1px solid {_bc};border-radius:10px;"
-                    f"padding:12px 14px;margin-bottom:8px;'>"
-                    f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
-                    f"<span style='font-size:15px;font-weight:700;color:{_bc};'>"
-                    f"{_icon} {_sn}</span>"
-                    f"<span style='font-size:13px;background:{_bc};color:#fff;border-radius:4px;"
-                    f"padding:2px 7px;font-weight:700;'>{_tag} · {_rsign}점</span>"
-                    f"</div>"
-                    f"<div style='font-size:12px;color:#a0b4bc;margin-bottom:6px;'>"
-                    f"📍 {_pos}{(' · ' + _nature) if _nature else ''}</div>"
-                    f"<div style='font-size:13px;color:#f0e0b8;line-height:1.7;margin-bottom:4px;'>"
-                    f"{_summary}</div>"
-                    f"<div style='font-size:12px;color:#a0b4bc;line-height:1.6;'>{_meaning}</div>"
-                    f"{_how_section}"
-                    f"{_doc_section}"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-        else:
-            st.markdown(
-                "<div style='background:#2b1830;border:1px solid #3a2830;border-radius:8px;"
-                "padding:12px 14px;font-size:13px;color:#a0b4bc;'>"
-                "이 사주엔 특기할 신살·공망 신호가 없어. 그것 자체가 나쁜 건 아니야 — "
-                "원국 자체 힘으로 흘러가는 구조거든."
-                "</div>",
-                unsafe_allow_html=True,
-            )
 
 
     with st.expander("⚖️ 신약신강판단", expanded=False):
