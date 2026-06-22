@@ -1,9 +1,9 @@
 [theme]
 base = "dark"
-primaryColor = "#7c4dff"
+primaryColor = "#e0a94e"
 backgroundColor = "#241327"
-secondaryBackgroundColor = "#36213c"
-textColor = "#f0d8e4"
+secondaryBackgroundColor = "#2f1c36"
+textColor = "#f3e6c8"
 
 [server]
 headless = true

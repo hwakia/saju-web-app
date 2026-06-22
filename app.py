@@ -8291,6 +8291,38 @@ _stcomp.html("""
 (function() {
     var css = `
 /* ══════════════════════════════════════════
+   디자인 토큰 (단일 출처) — UI 리디자인 B: 프리미엄 미스틱
+   ══════════════════════════════════════════ */
+:root {
+    /* 배경 */
+    --sai-bg-deep: #1a0d1f;
+    --sai-bg-base: #241327;
+    --sai-bg-surface: #2f1c36;
+    --sai-bg-sunken: #1c0e20;
+    --sai-bg-elev: rgba(58,36,51,.70);
+    /* 골드 (정제) */
+    --sai-gold: #ecca7e;
+    --sai-gold-soft: #cdb98f;
+    --sai-gold-line: rgba(232,200,122,.30);
+    --sai-gold-line-strong: rgba(232,200,122,.45);
+    --sai-gold-glow: 0 0 14px rgba(232,200,122,.42);
+    /* 텍스트 (명도 상향 = 시인성) */
+    --sai-text: #f3e6c8;
+    --sai-text-strong: #fbe7b8;
+    --sai-text-muted: #bfa884;
+    --sai-text-dim: #8f7d5e;
+    /* CTA */
+    --sai-cta-a: #d99a36;
+    --sai-cta-b: #f0c060;
+    --sai-cta-ink: #3a2405;
+    --sai-cta-glow: 0 0 16px rgba(240,192,96,.30);
+    /* 형태 */
+    --sai-r-card: 16px;
+    --sai-r-pill: 999px;
+    --sai-r-input: 10px;
+}
+
+/* ══════════════════════════════════════════
    0. 폰트 & 베이스
    ══════════════════════════════════════════ */
 html, body, * {
@@ -8387,6 +8419,19 @@ input, textarea, select {
     font-size: 0.95rem !important;
     font-weight: 700 !important;
     letter-spacing: -0.01em !important;
+}
+
+/* UI 리디자인 B: 입력 화면 분석 시작 CTA 강조 */
+.st-key-single_quick_start button, .st-key-direct_start button,
+.st-key-auto_start button, .st-key-friend_battle_start button {
+    min-height: 56px !important;
+    border-radius: var(--sai-r-card) !important;
+    background: linear-gradient(90deg, var(--sai-cta-a), var(--sai-cta-b)) !important;
+    color: var(--sai-cta-ink) !important;
+    font-size: 1.08rem !important;
+    font-weight: 900 !important;
+    border: none !important;
+    box-shadow: var(--sai-cta-glow) !important;
 }
 /* 경고/정보 박스 */
 [data-testid="stAlert"] p {
@@ -12428,7 +12473,7 @@ textarea::placeholder {
 }
 :root {
     --palja-readable-text: #fcf0cf;
-    --palja-readable-muted: #d6bd92;
+    --palja-readable-muted: #e4d2ad;
     --palja-readable-title: #f59e0b;
 }
 
@@ -12485,6 +12530,29 @@ small {
     -webkit-text-fill-color: var(--palja-readable-muted) !important;
     font-size: 0.98rem !important;
     line-height: 1.7 !important;
+}
+
+/* UI 리디자인 B: 히어로 강조 — 골드 + 글로우 + 디바이더 (후순위 override) */
+.hero-title, .hero-title span {
+    color: var(--sai-gold) !important;
+    -webkit-text-fill-color: var(--sai-gold) !important;
+    text-shadow: var(--sai-gold-glow) !important;
+}
+.hero-title::after {
+    content: "" !important;
+    display: block !important;
+    width: 64px !important;
+    height: 2px !important;
+    margin: 0.55rem auto 0.1rem !important;
+    background: linear-gradient(90deg, transparent, var(--sai-gold), transparent) !important;
+    opacity: 0.9 !important;
+}
+
+/* UI 리디자인 B: 결과 점수 강조 — 골드 + 글로우 (후순위 override) */
+.score-number, .mini-card-value, .luck-intensity-value {
+    color: var(--sai-gold) !important;
+    -webkit-text-fill-color: var(--sai-gold) !important;
+    text-shadow: var(--sai-gold-glow) !important;
 }
 
 /* 본문 카드 내부 글자 크기와 대비 보정 */
@@ -27521,6 +27589,34 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
     # (업데이트 공지 박스는 비활성화)
     st.markdown("### 시작할 메뉴를 선택하세요")
     st.caption(f"버전 {APP_VERSION}")
+    st.markdown("""<style>
+/* UI 리디자인 B: 랜딩 메뉴 카드화 (랜딩 화면 한정) */
+.st-key-landing_single button, .st-key-landing_friend button,
+.st-key-landing_broom button, .st-key-landing_croom button {
+    min-height: 66px !important;
+    border-radius: var(--sai-r-card) !important;
+    border: 1px solid var(--sai-gold-line) !important;
+    background: var(--sai-bg-surface) !important;
+    color: var(--sai-text-strong) !important;
+    font-size: 1.05rem !important; font-weight: 800 !important;
+    justify-content: flex-start !important; padding-left: 1.1rem !important;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease !important;
+}
+.st-key-landing_single button:hover, .st-key-landing_friend button:hover,
+.st-key-landing_broom button:hover, .st-key-landing_croom button:hover {
+    border-color: var(--sai-gold) !important;
+    box-shadow: var(--sai-gold-glow) !important;
+    transform: translateY(-2px) !important;
+}
+.st-key-landing_yebo button {
+    min-height: 60px !important;
+    border-radius: var(--sai-r-card) !important;
+    background: linear-gradient(90deg, var(--sai-cta-a), var(--sai-cta-b)) !important;
+    color: var(--sai-cta-ink) !important;
+    font-size: 1.1rem !important; font-weight: 900 !important;
+    border: none !important; box-shadow: var(--sai-cta-glow) !important;
+}
+</style>""", unsafe_allow_html=True)
 
     # 🌤 오늘의 처방 — 메인 메뉴 가장 위 CTA
     if st.button("🌤 오늘의 처방", type="primary", use_container_width=True, key="landing_yebo"):
@@ -27539,7 +27635,7 @@ if st.session_state.payload is None and st.session_state.selected_main_mode is N
             st.rerun()
         st.caption("내 원국 분석 · 사주 진단서")
     with landing_cols[1]:
-        if st.button(" 모두의 케미", use_container_width=True, key="landing_friend"):
+        if st.button("💞 모두의 케미", use_container_width=True, key="landing_friend"):
             st.session_state.selected_main_mode = "케미 분석"
             st.session_state.show_details = False
             st.rerun()

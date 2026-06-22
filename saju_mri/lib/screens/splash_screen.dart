@@ -58,58 +58,85 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 앱 아이콘 자리 (임시 아이콘)
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3B5BDB),
-                    borderRadius: BorderRadius.circular(24),
+      backgroundColor: const Color(0xFF1A0D1F),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A0D1F), Color(0xFF2A1830), Color(0xFF1C0E22)],
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 골드 이중 링 + "Sai" 워드마크 (웹/앱 아이콘과 통일)
+                  Container(
+                    width: 104,
+                    height: 104,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFE8C87A), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE8C87A).withOpacity(0.40),
+                          blurRadius: 24,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFE8C87A).withOpacity(0.55),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Sai',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFECCA7E),
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.self_improvement,
-                    size: 60,
-                    color: Colors.white,
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Saju Analysis Interactive',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFCDB98F),
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Sai',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 2,
+                  const SizedBox(height: 40),
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFE8C87A),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '내 사주로 맞짱 뜨자',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFFAAAAAA),
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 48),
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF3B5BDB),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
