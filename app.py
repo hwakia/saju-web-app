@@ -8265,7 +8265,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.225"
+APP_VERSION = "v5.226"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24111,8 +24111,15 @@ def render_hanuneyo_text_explanation(payload, char, result):
     st.divider()
 
     st.markdown("#### 📂 상세 분석 — 메뉴를 눌러서 봐")
-    _diag_tabs = st.tabs(["🔄 흐름과 연결", "⚖️ 신약신강판단", "🧮 십성 구성"])
-    with _diag_tabs[0]:
+    _diag_detail_key = "single_diag_detail_view"
+    _ddt_cols = st.columns(3)
+    for _ddi, (_ddk, _ddlbl) in enumerate([("flow", "🔄 흐름과 연결"), ("strength", "⚖️ 신약신강판단"), ("ten", "🧮 십성 구성")]):
+        with _ddt_cols[_ddi]:
+            if st.button(_ddlbl, use_container_width=True, key=f"diag_detail_btn_{_ddk}"):
+                st.session_state[_diag_detail_key] = _ddk
+                st.rerun()
+    _diag_sel = st.session_state.get(_diag_detail_key)
+    if _diag_sel == "flow":
         # ── 5. ⚡ 기운의 순환 (3축 결과 카드 먼저) ───────────────
         st.markdown("#### ⚡ 흐름과 연결")
         order = ["기초체력", "흐름과 연결", "현실작동력"]
@@ -24311,7 +24318,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
             st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
-    with _diag_tabs[1]:
+    elif _diag_sel == "strength":
         st.markdown("#### ⚖️ 신약·신강 판단 근거")
         _fw_idx = float(result.get("strength_index", 50) or 50)
         _fw_lbl = str(result.get("strength_label", "중화"))
@@ -24461,7 +24468,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if _fw_logic:
             st.caption(f"선정 원리 요약: {_fw_logic}")
 
-    with _diag_tabs[2]:
+    elif _diag_sel == "ten":
         _fw_detail = result.get("strength_detail", {}) or {}
         st.markdown(
             "<div style='background:#2b1830;border:1px solid #3b82f6;border-radius:8px;"
@@ -24537,6 +24544,9 @@ def render_hanuneyo_text_explanation(payload, char, result):
             "</div>",
             unsafe_allow_html=True,
         )
+
+    else:
+        st.caption("위 메뉴(흐름과 연결 · 신약신강판단 · 십성 구성)를 눌러 상세 내용을 봐.")
 
     st.caption("이 진단서는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
 
