@@ -22,8 +22,11 @@ class SajuMajjangApp extends StatelessWidget {
       title: 'Sai',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF1A0D1F),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3B5BDB),
+          seedColor: const Color(0xFFE8C87A),
+          brightness: Brightness.dark,
         ),
         useMaterial3: true,
       ),

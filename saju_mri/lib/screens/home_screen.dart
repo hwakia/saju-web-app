@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isBannerLoaded = false;
   bool _isLoading = true;
   bool _hasError = false;
+  bool _personalizedAds = false; // 광고 개인화 동의(기본=비맞춤형)
 
   // ─── 전면광고 ───────────────────────────────────────────────
   InterstitialAd? _interstitialAd;
@@ -24,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _pageLoadCount = 0;         // 페이지 로드 횟수 카운터
   static const int _adEveryN = 10; // N번 페이지 로드마다 전면광고 노출 (5→10, 광고 피로 완화)
 
-  // ─── 광고 ID (테스트용 — 실제 배포 전 AdMob 실제 ID로 교체) ───
+  // ─── 광고 ID (프로덕션 AdMob 광고 단위) ───
   static const String _bannerAdUnitId =
       'ca-app-pub-9539448818887468/9345493232'; // 배너 광고
   static const String _interstitialAdUnitId =
@@ -40,7 +42,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _initWebView();
     // 동의 후 진입하는 HomeScreen에서만 광고 SDK 초기화·로드 (동의 전 전송 방지)
-    MobileAds.instance.initialize().then((_) {
+    MobileAds.instance.initialize().then((_) async {
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      _personalizedAds = prefs.getBool('admob_consent_v1') ?? false;
       if (!mounted) return;
       _loadBannerAd();
       _loadInterstitialAd();
@@ -108,11 +113,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ..loadRequest(Uri.parse(_sajuUrl));
   }
 
+  // 광고 개인화 미동의 시 비맞춤형 광고로 요청
+  AdRequest _buildAdRequest() => AdRequest(nonPersonalizedAds: !_personalizedAds);
+
   // ─── 전면광고 로드 ───────────────────────────────────────────
   void _loadInterstitialAd() {
     InterstitialAd.load(
       adUnitId: _interstitialAdUnitId,
-      request: const AdRequest(),
+      request: _buildAdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           _interstitialAd = ad;
@@ -151,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _bannerAd = BannerAd(
       adUnitId: _bannerAdUnitId,
       size: AdSize.banner,
-      request: const AdRequest(),
+      request: _buildAdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
           setState(() => _isBannerLoaded = true);
@@ -176,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('인터넷 연결을 확인해주세요.'),
-            backgroundColor: Color(0xFF3B5BDB),
+            backgroundColor: Color(0xFF2F1C36),
           ),
         );
       }
@@ -227,13 +235,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             CircularProgressIndicator(
-                              color: Color(0xFF3B5BDB),
+                              color: Color(0xFFE8C87A),
                             ),
                             SizedBox(height: 16),
                             Text(
                               'Sai 불러오는 중...',
                               style: TextStyle(
-                                color: Color(0xFF666666),
+                                color: Color(0xFFCDB98F),
                                 fontSize: 14,
                               ),
                             ),
@@ -260,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildErrorScreen() {
     return Container(
-      color: const Color(0xFFF7F7F8),
+      color: const Color(0xFF1A0D1F),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -268,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const Icon(
               Icons.wifi_off_rounded,
               size: 64,
-              color: Color(0xFFCCCCCC),
+              color: Color(0xFF7A6A55),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -276,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
+                color: Color(0xFFF3E6C8),
               ),
             ),
             const SizedBox(height: 8),
@@ -284,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               '인터넷 연결을 확인하고 다시 시도해주세요.',
               style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF888888),
+                color: Color(0xFFBFA884),
               ),
             ),
             const SizedBox(height: 28),
@@ -293,8 +301,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('다시 시도'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B5BDB),
-                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFFE8C87A),
+                foregroundColor: const Color(0xFF3A2405),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 12,
@@ -337,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               SystemNavigator.pop();
             },
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF3B5BDB),
+              foregroundColor: const Color(0xFFE8C87A),
             ),
             child: const Text('종료'),
           ),

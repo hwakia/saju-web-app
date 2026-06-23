@@ -11,10 +11,12 @@ class ConsentScreen extends StatefulWidget {
 
 class _ConsentScreenState extends State<ConsentScreen> {
   bool _age14 = false;
+  bool _adConsent = false;
 
   Future<void> _acceptAndProceed() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('privacy_consent_v1', true);
+    await prefs.setBool('admob_consent_v1', _adConsent);
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -25,7 +27,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: const Color(0xFF1A0D1F),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -42,26 +44,22 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 child: Column(
                   children: [
                     Container(
-                      width: 72,
-                      height: 72,
+                      width: 76,
+                      height: 76,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B5BDB),
-                        borderRadius: BorderRadius.circular(18),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFE8C87A), width: 2),
                       ),
-                      child: const Icon(
-                        Icons.self_improvement,
-                        size: 44,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Sai',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
+                      child: const Center(
+                        child: Text(
+                          'Sai',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFECCA7E),
+                            letterSpacing: 1.5,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -69,7 +67,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       '서비스 이용 전 개인정보 처리방침을 확인해 주세요',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFFAAAAAA),
+                        color: Color(0xFFCDB98F),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -83,8 +81,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF12122A),
-                  border: Border.all(color: const Color(0xFF3B5BDB), width: 1),
+                  color: const Color(0xFF241327),
+                  border: Border.all(color: const Color(0xFFE8C87A), width: 1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -95,7 +93,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF93B4FF),
+                        color: Color(0xFFE8C87A),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -104,7 +102,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                     _infoRow('보유 기간', '방 입장 후 30분 자동 삭제'),
                     _infoRow('비저장 항목', '생년월일·사주 팔자·성별'),
                     _infoRow('이용 제한', '만 14세 미만 이용 불가'),
-                    const Divider(color: Color(0xFF2A2A4A), height: 20),
+                    const Divider(color: Color(0xFF3A2433), height: 20),
                     _infoRow('광고', 'Google AdMob 배너·전면 광고가 표시됩니다'),
                     _infoRow('광고 식별자', 'Google 광고 ID(GAID)가 Google LLC(미국)로 전송될 수 있습니다'),
                     const SizedBox(height: 10),
@@ -114,7 +112,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       '본 동의로 이에 동의하는 것으로 간주합니다.',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF888888),
+                        color: Color(0xFF8F7D5E),
                         height: 1.5,
                       ),
                     ),
@@ -130,15 +128,15 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   icon: const Icon(
                     Icons.open_in_new,
                     size: 14,
-                    color: Color(0xFF93B4FF),
+                    color: Color(0xFFE8C87A),
                   ),
                   label: const Text(
                     '개인정보 처리방침 전문 보기',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF93B4FF),
+                      color: Color(0xFFE8C87A),
                       decoration: TextDecoration.underline,
-                      decorationColor: Color(0xFF93B4FF),
+                      decorationColor: Color(0xFFE8C87A),
                     ),
                   ),
                 ),
@@ -156,19 +154,45 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   Checkbox(
                     value: _age14,
                     onChanged: (v) => setState(() => _age14 = v ?? false),
-                    activeColor: const Color(0xFF3B5BDB),
-                    checkColor: Colors.white,
-                    side: const BorderSide(color: Color(0xFF555577)),
+                    activeColor: const Color(0xFFE8C87A),
+                    checkColor: const Color(0xFF3A2405),
+                    side: const BorderSide(color: Color(0xFF7A6A55)),
                   ),
                   const Expanded(
                     child: Text(
                       '본인은 만 14세 이상이며, 위 내용에 동의합니다. (필수)',
-                      style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 13),
+                      style: TextStyle(color: Color(0xFFE4D2AD), fontSize: 13),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
+
+              // ② 선택 — Google 광고 식별자(GAID) 수집·이용
+              Row(
+                children: [
+                  Checkbox(
+                    value: _adConsent,
+                    onChanged: (v) => setState(() => _adConsent = v ?? false),
+                    activeColor: const Color(0xFFE8C87A),
+                    checkColor: const Color(0xFF3A2405),
+                    side: const BorderSide(color: Color(0xFF7A6A55)),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Google 광고 식별자(GAID) 수집·이용에 동의합니다. (선택)',
+                      style: TextStyle(color: Color(0xFFE4D2AD), fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 12, bottom: 8),
+                child: Text(
+                  '미동의 시 비맞춤형 광고가 제공되며, 앱은 그대로 이용할 수 있어요.',
+                  style: TextStyle(color: Color(0xFF8F7D5E), fontSize: 11),
+                ),
+              ),
 
               // 동의 버튼 (하단 고정 — 내용은 위에서 스크롤)
               SizedBox(
@@ -176,10 +200,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 child: ElevatedButton(
                   onPressed: _age14 ? _acceptAndProceed : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B5BDB),
-                    disabledBackgroundColor: const Color(0xFF2A2A4A),
-                    foregroundColor: Colors.white,
-                    disabledForegroundColor: const Color(0xFF555577),
+                    backgroundColor: const Color(0xFFE8C87A),
+                    disabledBackgroundColor: const Color(0xFF3A2433),
+                    foregroundColor: const Color(0xFF3A2405),
+                    disabledForegroundColor: const Color(0xFF7A6A55),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -213,7 +237,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
               label,
               style: const TextStyle(
                 fontSize: 12,
-                color: Color(0xFF888888),
+                color: Color(0xFF8F7D5E),
               ),
             ),
           ),
@@ -222,7 +246,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
               value,
               style: const TextStyle(
                 fontSize: 12,
-                color: Color(0xFFCCCCCC),
+                color: Color(0xFFE4D2AD),
                 height: 1.4,
               ),
             ),
@@ -236,7 +260,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF12122A),
+      backgroundColor: const Color(0xFF241327),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -252,7 +276,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFF3B5BDB),
+                color: const Color(0xFFE8C87A),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -273,8 +297,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      '시행일: 2026-06-14 · 최종 수정: 2026-06-14 · 서비스명: Sai (Saju Analysis Interactive)',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF888888)),
+                      '시행일: 2026-06-19 · 최종 수정: 2026-06-19 · 서비스명: Sai (Saju Analysis Interactive)',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF8F7D5E)),
                     ),
                     const SizedBox(height: 16),
                     _policyText(),
@@ -285,7 +309,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         onPressed: () => Navigator.of(ctx).pop(),
                         child: const Text(
                           '닫기',
-                          style: TextStyle(color: Color(0xFF93B4FF)),
+                          style: TextStyle(color: Color(0xFFE8C87A)),
                         ),
                       ),
                     ),
@@ -302,13 +326,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
   Widget _policyText() {
     const style = TextStyle(
       fontSize: 12,
-      color: Color(0xFFCCCCCC),
+      color: Color(0xFFE4D2AD),
       height: 1.7,
     );
     const headStyle = TextStyle(
       fontSize: 13,
       fontWeight: FontWeight.bold,
-      color: Color(0xFF93B4FF),
+      color: Color(0xFFE8C87A),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,8 +364,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
         Text('4. 위탁 및 국외 이전', style: headStyle),
         SizedBox(height: 4),
         Text(
-          '데이터는 Oracle Cloud 춘천 리전(대한민국 소재)에 저장되며 국외 이전이 발생하지 않습니다. '
-          '소스 코드 관리에 GitHub(미국)를 이용하나 개인정보는 저장되지 않습니다.',
+          '앱 구동·계산을 위해 입력값(생년월일 등)은 Streamlit Community Cloud(Snowflake Inc., 미국)로 '
+          '전송되어 계산에만 쓰이고 서버에 저장되지 않습니다. 케미·맞짱 방의 별명·점수·등급은 '
+          'Supabase, Inc.(미국)에 저장되어 30분 후 파기됩니다. 두 수탁자 모두 미국 소재로 '
+          '「개인정보 보호법」 제28조의8에 따른 국외 이전이며, 앱 최초 실행 동의로 이에 동의하는 것으로 봅니다. '
+          '광고 식별자(GAID)는 Google LLC(미국)로 전송될 수 있고, GitHub(미국)는 소스코드 관리용으로 개인정보를 저장하지 않습니다.',
           style: style,
         ),
         SizedBox(height: 12),
@@ -356,9 +383,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
         Text('6. 안전성 확보조치', style: headStyle),
         SizedBox(height: 4),
         Text(
-          '서버는 방화벽(UFW)으로 보호되며, SSH는 공개키 인증만 허용합니다. '
-          'DB는 외부 직접 접근을 차단하고 컨테이너 내부 통신만 허용합니다. '
-          'DB 접근 정보는 환경 변수에만 보관하며 코드에 노출하지 않습니다.',
+          '데이터는 접근이 통제되는 관리형 클라우드(Supabase)에 저장되고 전송 구간은 HTTPS로 암호화됩니다. '
+          'DB 접근 키는 환경 변수로만 관리하여 코드에 노출하지 않으며, 방 데이터는 30분 후 자동 파기됩니다.',
           style: style,
         ),
         SizedBox(height: 12),
