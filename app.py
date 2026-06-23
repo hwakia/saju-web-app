@@ -17606,23 +17606,6 @@ def _flow_key(row: Dict[str, object]) -> str:
     return str(row.get("구조", "") or "")
 
 
-def _flow_strength_rank(strength: str) -> int:
-    s = str(strength or "")
-    if "강함" in s:
-        return 4
-    if "중간" in s:
-        return 3
-    if "형태" in s:
-        return 2
-    if "낮음" in s:
-        return 1
-    return 0
-
-
-def _flow_key(row: Dict[str, object]) -> str:
-    return str(row.get("구조", "") or "")
-
-
 def _compress_flow_rows_for_display(flows: List[Dict[str, object]]) -> List[Dict[str, object]]:
     """흐름 보기는 사라지지 않게 한다. 강한 흐름은 크게, 약한 흐름은 작게 표시한다."""
     all_rows = [f for f in (flows or []) if _flow_key(f) and _flow_key(f) not in {"식신제살/상관패인"}]
@@ -20586,7 +20569,7 @@ def render_share_image_tools(
     try:
         st.image(png_bytes, caption="저장될 공유 이미지 미리보기", use_container_width=True)
     except TypeError:
-        st.image(png_bytes, caption="저장될 공유 이미지 미리보기", use_column_width=True)
+        st.image(png_bytes, caption="저장될 공유 이미지 미리보기", use_container_width=True)
     st.download_button(
         download_label,
         data=png_bytes,
@@ -23946,6 +23929,73 @@ def render_hanuneyo_text_explanation(payload, char, result):
 
     # ── 상세 섹션 (expander) ──────────────────────────────
 
+    # ── 처방전 다음: 🔗 원국 합·충 구조 ──
+    st.markdown("#### 🔗 원국 합·충 구조")
+    _fw_inter = result.get("interactions", []) or []
+    _fw_bindings = [it for it in _fw_inter if it["type"] in ("삼합","방합","반합","육합")]
+    _fw_clashes  = [it for it in _fw_inter if it["type"] in ("충","형")]
+    if _fw_bindings:
+        st.markdown(
+            "<div style='background:#2a1830;border-left:4px solid #4ade80;padding:10px 14px;"
+            "border-radius:6px;margin-bottom:8px;'>"
+            "<div style='font-size:12px;color:#4ade80;font-weight:700;margin-bottom:4px;'>🔗 합 — 묶이고 연결되는 구조</div>"
+            "<div style='font-size:13px;color:#f0e0b8;line-height:1.9;'>"
+            + "".join(
+                f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')} "
+                + (lambda _b: (
+                    f"<span style='font-size:11px;color:#7ecfa8;'>📍 "
+                    + ", ".join(
+                        f"{br}("
+                        + next((pos for pos,pb in [("년지",chart.year.branch),("월지",chart.month.branch),("일지",chart.day.branch)]+([( "시지",chart.hour.branch)] if chart.hour else []) if pb==br), "?")
+                        + ")"
+                        for br in _b
+                    )
+                    + "이(가) 만나 성립</span>"
+                ))([
+                    c for c in it['name']
+                    if c in set([chart.year.branch,chart.month.branch,chart.day.branch]+([chart.hour.branch] if chart.hour else []))
+                ])
+                + "<br>"
+                for it in _fw_bindings[:4]
+            ) +
+            "<span style='font-size:12px;color:#4ade80;'>→ 합이 있으면 해당 기운이 변화·강화돼. 용신 방향 합은 사주에 힘이 되고, 기신 방향 합은 부담이 될 수 있어.</span>"
+            "</div></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("원국에 뚜렷한 합 구조는 없어. 기운이 독립적으로 작용하는 편이야.")
+    if _fw_clashes:
+        st.markdown(
+            "<div style='background:#2b1830;border-left:4px solid #ea580c;padding:10px 14px;"
+            "border-radius:6px;margin-bottom:8px;'>"
+            "<div style='font-size:12px;color:#fb923c;font-weight:700;margin-bottom:4px;'>⚡ 충·형 — 부딪히고 긴장하는 구조</div>"
+            "<div style='font-size:13px;color:#f0e0b8;line-height:1.9;'>"
+            + "".join(
+                f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')} "
+                + (lambda _b: (
+                    f"<span style='font-size:11px;color:#fb923c;'>📍 "
+                    + ", ".join(
+                        f"{br}("
+                        + next((pos for pos,pb in [("년지",chart.year.branch),("월지",chart.month.branch),("일지",chart.day.branch)]+([( "시지",chart.hour.branch)] if chart.hour else []) if pb==br), "?")
+                        + ")"
+                        for br in _b
+                    )
+                    + "이(가) 충·형 관계</span>"
+                ) if _b else "")([
+                    c for c in it['name']
+                    if c in set([chart.year.branch,chart.month.branch,chart.day.branch]+([chart.hour.branch] if chart.hour else []))
+                ])
+                + "<br>"
+                for it in _fw_clashes[:4]
+            ) +
+            "<span style='font-size:12px;color:#fb923c;'>→ 충·형이 있으면 해당 자리에서 변동·긴장이 생기기 쉬워. 기신 기운을 흔드는 충은 오히려 도움이 되기도 해 — 무조건 나쁜 건 아니야.</span>"
+            "</div></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("원국에 뚜렷한 충·형 구조는 없어. 비교적 안정적인 원국 구조야.")
+    st.divider()
+
     # ── 처방전 다음: ✨ 신살·특수 신호 (개요 칩 + 상세) ──
     # ── 8. ✨ 신살·특수 신호 ─────────────────────────────────
     st.markdown("#### ✨ 신살·특수 신호")
@@ -24183,89 +24233,87 @@ def render_hanuneyo_text_explanation(payload, char, result):
                 st.caption("원국 안에서 서로 부딪히는 기운입니다. 긴장과 변화의 원천이 되기도 해요.")
                 for _note in _tension_notes:
                     st.markdown(f"- {_note}")
+        st.markdown("#### 🌊 식상생재·재생관·관인상생 구조")
+        _fw_flows = result.get("flows", []) or []
+        _FLOW_DOC = {
+            "식상생재": (
+                "내 재능과 표현(식상)이 물질적 결실(재성)로 이어지는 흐름이야. "
+                "쉽게 말하면 — 잘하는 걸 하면 돈이 된다는 구조거든. "
+                "이 흐름이 살아있으면 내가 즐기는 것, 잘하는 것을 실제 수입이나 결과물로 연결하는 힘이 있어."
+            ),
+            "재생관": (
+                "물질 기반(재성)이 역할과 책임(관성)으로 이어지는 흐름이야. "
+                "기반이 갖춰지면 사회적 역할·지위·인정으로 연결되는 구조야. "
+                "이 흐름이 돌면 실력을 쌓고 기반을 만들면 자연스럽게 자리가 따라오는 편이야."
+            ),
+            "관인상생": (
+                "역할과 책임(관성)이 내면 성장(인성)으로 돌아오는 흐름이야. "
+                "일하고 책임지는 과정에서 지혜와 실력이 쌓이는 구조야. "
+                "이 흐름이 있으면 힘든 시간이 결국 자기 자산이 되는 경우가 많아."
+            ),
+            "재관인상생": (
+                "재물·역할·성장이 한꺼번에 연결되는 강한 흐름이야. "
+                "물질 기반 → 사회적 역할 → 내면 성장의 선순환 구조거든. "
+                "이 흐름이 살아있으면 한 방향으로 집중하면 여러 가지가 함께 따라오는 편이야."
+            ),
+        }
+        _STRENGTH_COLOR = {
+            "중간~강함": ("#16a34a", "#2a1830"),
+            "중간":       ("#d97706", "#2b1830"),
+            "형태만 있음": ("#6b7280", "#2b1830"),
+            "해당 낮음":  ("#dc2626", "#200d0d"),
+        }
+        for _fw in _fw_flows:
+            _fn = str(_fw.get("구조", ""))
+            _fs = str(_fw.get("강도", ""))
+            _doc = _FLOW_DOC.get(_fn, "")
+            if not _doc or _fn == "식신제살/상관패인":
+                continue
+            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#2b1830"))
+            # 원국 근거 구성
+            _fsrc_items = []
+            for _frole, _fel in _flow_elements_for_name(chart, _fn):
+                _fsrcs = _element_sources_for_chart(chart, _fel)
+                if _fsrcs:
+                    _fsrc_items.append(
+                        f"<span style='font-size:11px;font-weight:800;color:{_fc};'>{html.escape(_frole)}({html.escape(_fel)})</span>"
+                        f"<span style='font-size:11px;color:#888;margin:0 4px;'>→</span>"
+                        f"<span style='font-size:11px;color:#b0a8c0;'>{html.escape(', '.join(_fsrcs[:2]))}</span>"
+                    )
+                else:
+                    _fsrc_items.append(
+                        f"<span style='font-size:11px;font-weight:800;color:{_fc};'>{html.escape(_frole)}({html.escape(_fel)})</span>"
+                        f"<span style='font-size:11px;color:#bfa6b8;margin-left:4px;'>원국에 직접 없음 (운에서 보완)</span>"
+                    )
+            _fsrc_html = (
+                "<div style='background:#2b1830;border-left:2px solid rgba(212,168,83,.3);"
+                "border-radius:0 5px 5px 0;padding:6px 10px;margin-top:6px;'>"
+                "<div style='font-size:11px;color:#d6bd92;font-weight:700;margin-bottom:3px;'>📍 원국 어디서 이 흐름이 나오냐면</div>"
+                + "<br>".join(_fsrc_items) +
+                "</div>"
+            ) if _fsrc_items else ""
+            st.markdown(
+                f"<div style='background:{_fbg};border-left:3px solid {_fc};"
+                f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
+                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
+                f"<span style='font-weight:700;color:{_fc};font-size:13px;'>{_fn}</span>"
+                f"<span style='font-size:13px;background:{_fc};color:#fff;border-radius:4px;"
+                f"padding:1px 7px;'>{_fs}</span>"
+                f"</div>"
+                f"<div style='font-size:13px;color:#f0e0b8;line-height:1.8;'>{_doc}</div>"
+                + _fsrc_html +
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
+        if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
+            st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
     with st.expander("⚖️ 신약신강판단", expanded=False):
         st.markdown("#### ⚖️ 신약·신강 판단 근거")
         _fw_idx = float(result.get("strength_index", 50) or 50)
         _fw_lbl = str(result.get("strength_label", "중화"))
         _fw_detail = result.get("strength_detail", {}) or {}
-        st.markdown(
-            "<div style='background:#2b1830;border:1px solid #3b82f6;border-radius:8px;"
-            "padding:10px 14px;margin-bottom:10px;font-size:12px;color:#60a5fa;line-height:1.9;'>"
-            "💡 <b>십성 용어 간단 풀이</b><br>"
-            "• <b>비겁(比劫)</b> — 나와 같은 오행, 동료·경쟁자 에너지야. 자아 강도랑 연결돼.<br>"
-            "• <b>인성(印星)</b> — 나를 키워주는 기운이야. 공부, 배움, 환경·어머니 에너지야.<br>"
-            "• <b>식상(食傷)</b> — 내가 표현하고 만들어내는 기운이야. 창의, 행동, 자식 에너지야.<br>"
-            "• <b>재성(財星)</b> — 내가 활용하고 관리하는 기운이야. 돈, 물질, 아버지 에너지야.<br>"
-            "• <b>관성(官星)</b> — 나를 통제하고 다듬는 기운이야. 조직, 책임, 남편·직업 에너지야."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-        # ── 이 사주의 십성 구성 ──────────────────────────────
-        _TEN_META = {
-            "비겁": {"icon": "🪨", "color": "#a78bfa", "role": "자아·독립",
-                      "strong": "자기 주도력과 버티는 힘이 강해. 자존감이 있고 혼자서도 밀고 나갈 수 있어.",
-                      "weak":  "혼자 버티는 힘이 약한 편이라 좋은 동료와 환경이 보약이야.",
-                      "mid":   "자아 기운이 적당해. 혼자서도, 협력해서도 움직일 수 있어."},
-            "인성": {"icon": "📚", "color": "#34d399", "role": "배움·보호",
-                      "strong": "배움과 사유 기운이 강해. 생각 정리가 잘 되고, 환경에서 에너지를 얻어.",
-                      "weak":  "인성 기운이 옅어. 스스로 움직이는 스타일이고 의존보다 독립을 선호해.",
-                      "mid":   "배움 기운이 균형 잡혀 있어. 필요할 때 흡수하고 필요할 때 행동해."},
-            "식상": {"icon": "✨", "color": "#fbbf24", "role": "표현·창의",
-                      "strong": "표현하고 만들어내는 기운이 넘쳐. 창의력·행동력이 강하고 입 밖으로 잘 풀어.",
-                      "weak":  "식상이 약해. 표현보다 축적을 선호하는 편이야. 말보다 실력으로 보여주는 스타일.",
-                      "mid":   "표현 기운이 적당해. 필요할 때 꺼내 쓰고, 불필요한 에너지 낭비는 없어."},
-            "재성": {"icon": "💰", "color": "#fbbf24", "role": "현실·관리",
-                      "strong": "현실 감각과 관리 기운이 강해. 결과를 챙기고 자원을 효율적으로 쓸 줄 알아.",
-                      "weak":  "재성이 약해. 물질보다 아이디어나 원칙 쪽에 무게를 두는 편이야.",
-                      "mid":   "현실 기운이 균형 있어. 원칙도 지키면서 결과도 놓치지 않아."},
-            "관성": {"icon": "⚖️", "color": "#60a5fa", "role": "책임·규율",
-                      "strong": "책임감과 규율 기운이 강해. 조직 안에서 역할을 잘 수행하고 신뢰를 쌓아.",
-                      "weak":  "관성이 약해. 규율보다 자유로운 방식이 잘 맞아. 틀에 얽매이기 싫어하는 편이야.",
-                      "mid":   "책임 기운이 적당해. 융통성도 있고 원칙도 지킬 수 있어."},
-        }
-        _ten_items = []
-        for _tn, _tm in _TEN_META.items():
-            _tv = float(_fw_detail.get(_tn, 0) or 0)
-            if _tv >= 30:
-                _tlevel, _tlabel = "strong", "강함"
-            elif _tv <= 10:
-                _tlevel, _tlabel = "weak", "약함"
-            else:
-                _tlevel, _tlabel = "mid", "보통"
-            _ten_items.append((_tn, _tm, _tv, _tlevel, _tlabel))
-
-        _sorted_ten = sorted(_ten_items, key=lambda x: -x[2])
-        _ten_rows_html = ""
-        for _tn, _tm, _tv, _tlevel, _tlabel in _sorted_ten:
-            _bar_w = max(4, min(100, int(_tv * 2.2)))
-            _badge_bg = {"strong": "#92400e", "mid": "#2a3a4a", "weak": "#1a2a1a"}.get(_tlevel, "#2a2a3a")
-            _badge_color = {"strong": "#fbbf24", "mid": "#a0c4cc", "weak": "#7ecfa8"}.get(_tlevel, "#d6bd92")
-            _ten_rows_html += (
-                f"<div style='margin-bottom:10px;'>"
-                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;'>"
-                f"<span style='font-size:13px;font-weight:800;color:{_tm['color']};'>{_tm['icon']} {_tn}({_tm['role']})</span>"
-                f"<span style='background:{_badge_bg};color:{_badge_color};border-radius:4px;"
-                f"padding:1px 8px;font-size:11px;font-weight:700;'>{_tlabel} {_tv:.0f}%</span>"
-                f"</div>"
-                f"<div style='background:#1a1020;border-radius:4px;height:6px;margin-bottom:4px;'>"
-                f"<div style='width:{_bar_w}%;height:100%;border-radius:4px;background:{_tm['color']};opacity:.7;'></div>"
-                f"</div>"
-                f"<div style='font-size:12px;color:#b0a8c0;line-height:1.6;'>{_tm[_tlevel]}</div>"
-                f"</div>"
-            )
-        st.markdown(
-            "<div style='background:#241327;border:1px solid rgba(167,139,250,.25);"
-            "border-radius:10px;padding:14px 16px;margin-bottom:12px;'>"
-            "<div style='font-size:13px;font-weight:800;color:#a78bfa;margin-bottom:10px;'>"
-            "📊 이 사주의 십성 구성</div>"
-            + _ten_rows_html +
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
         _STRENGTH_WHY = {
             "극신강": (
                 "일간 오행을 도와주는 비겁(나와 같은 기운)과 인성(나를 키우는 기운)이 원국의 절반을 훌쩍 넘어. "
@@ -24301,7 +24349,6 @@ def render_hanuneyo_text_explanation(payload, char, result):
             f"</div></div>",
             unsafe_allow_html=True,
         )
-
         st.markdown("#### 🔑 용신·기신·희신")
         _fw_useful  = result.get("useful", {}) or {}
         _fw_primary = list(_fw_useful.get("primary", []) or [])
@@ -24412,147 +24459,82 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if _fw_logic:
             st.caption(f"선정 원리 요약: {_fw_logic}")
 
-        st.markdown("#### 🔗 원국 합·충 구조")
-        _fw_inter = result.get("interactions", []) or []
-        _fw_bindings = [it for it in _fw_inter if it["type"] in ("삼합","방합","반합","육합")]
-        _fw_clashes  = [it for it in _fw_inter if it["type"] in ("충","형")]
-        if _fw_bindings:
-            st.markdown(
-                "<div style='background:#2a1830;border-left:4px solid #4ade80;padding:10px 14px;"
-                "border-radius:6px;margin-bottom:8px;'>"
-                "<div style='font-size:12px;color:#4ade80;font-weight:700;margin-bottom:4px;'>🔗 합 — 묶이고 연결되는 구조</div>"
-                "<div style='font-size:13px;color:#f0e0b8;line-height:1.9;'>"
-                + "".join(
-                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')} "
-                    + (lambda _b: (
-                        f"<span style='font-size:11px;color:#7ecfa8;'>📍 "
-                        + ", ".join(
-                            f"{br}("
-                            + next((pos for pos,pb in [("년지",chart.year.branch),("월지",chart.month.branch),("일지",chart.day.branch)]+([( "시지",chart.hour.branch)] if chart.hour else []) if pb==br), "?")
-                            + ")"
-                            for br in _b
-                        )
-                        + "이(가) 만나 성립</span>"
-                    ))([
-                        c for c in it['name']
-                        if c in set([chart.year.branch,chart.month.branch,chart.day.branch]+([chart.hour.branch] if chart.hour else []))
-                    ])
-                    + "<br>"
-                    for it in _fw_bindings[:4]
-                ) +
-                "<span style='font-size:12px;color:#4ade80;'>→ 합이 있으면 해당 기운이 변화·강화돼. 용신 방향 합은 사주에 힘이 되고, 기신 방향 합은 부담이 될 수 있어.</span>"
-                "</div></div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            st.caption("원국에 뚜렷한 합 구조는 없어. 기운이 독립적으로 작용하는 편이야.")
-        if _fw_clashes:
-            st.markdown(
-                "<div style='background:#2b1830;border-left:4px solid #ea580c;padding:10px 14px;"
-                "border-radius:6px;margin-bottom:8px;'>"
-                "<div style='font-size:12px;color:#fb923c;font-weight:700;margin-bottom:4px;'>⚡ 충·형 — 부딪히고 긴장하는 구조</div>"
-                "<div style='font-size:13px;color:#f0e0b8;line-height:1.9;'>"
-                + "".join(
-                    f"· <b>{it['name']}</b>({it['type']}) — {it.get('description','')} "
-                    + (lambda _b: (
-                        f"<span style='font-size:11px;color:#fb923c;'>📍 "
-                        + ", ".join(
-                            f"{br}("
-                            + next((pos for pos,pb in [("년지",chart.year.branch),("월지",chart.month.branch),("일지",chart.day.branch)]+([( "시지",chart.hour.branch)] if chart.hour else []) if pb==br), "?")
-                            + ")"
-                            for br in _b
-                        )
-                        + "이(가) 충·형 관계</span>"
-                    ) if _b else "")([
-                        c for c in it['name']
-                        if c in set([chart.year.branch,chart.month.branch,chart.day.branch]+([chart.hour.branch] if chart.hour else []))
-                    ])
-                    + "<br>"
-                    for it in _fw_clashes[:4]
-                ) +
-                "<span style='font-size:12px;color:#fb923c;'>→ 충·형이 있으면 해당 자리에서 변동·긴장이 생기기 쉬워. 기신 기운을 흔드는 충은 오히려 도움이 되기도 해 — 무조건 나쁜 건 아니야.</span>"
-                "</div></div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            st.caption("원국에 뚜렷한 충·형 구조는 없어. 비교적 안정적인 원국 구조야.")
+    with st.expander("🧮 십성 구성", expanded=False):
+        _fw_detail = result.get("strength_detail", {}) or {}
+        st.markdown(
+            "<div style='background:#2b1830;border:1px solid #3b82f6;border-radius:8px;"
+            "padding:10px 14px;margin-bottom:10px;font-size:12px;color:#60a5fa;line-height:1.9;'>"
+            "💡 <b>십성 용어 간단 풀이</b><br>"
+            "• <b>비겁(比劫)</b> — 나와 같은 오행, 동료·경쟁자 에너지야. 자아 강도랑 연결돼.<br>"
+            "• <b>인성(印星)</b> — 나를 키워주는 기운이야. 공부, 배움, 환경·어머니 에너지야.<br>"
+            "• <b>식상(食傷)</b> — 내가 표현하고 만들어내는 기운이야. 창의, 행동, 자식 에너지야.<br>"
+            "• <b>재성(財星)</b> — 내가 활용하고 관리하는 기운이야. 돈, 물질, 아버지 에너지야.<br>"
+            "• <b>관성(官星)</b> — 나를 통제하고 다듬는 기운이야. 조직, 책임, 남편·직업 에너지야."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        # ── 이 사주의 십성 구성 ──────────────────────────────
+        _TEN_META = {
+            "비겁": {"icon": "🪨", "color": "#a78bfa", "role": "자아·독립",
+                      "strong": "자기 주도력과 버티는 힘이 강해. 자존감이 있고 혼자서도 밀고 나갈 수 있어.",
+                      "weak":  "혼자 버티는 힘이 약한 편이라 좋은 동료와 환경이 보약이야.",
+                      "mid":   "자아 기운이 적당해. 혼자서도, 협력해서도 움직일 수 있어."},
+            "인성": {"icon": "📚", "color": "#34d399", "role": "배움·보호",
+                      "strong": "배움과 사유 기운이 강해. 생각 정리가 잘 되고, 환경에서 에너지를 얻어.",
+                      "weak":  "인성 기운이 옅어. 스스로 움직이는 스타일이고 의존보다 독립을 선호해.",
+                      "mid":   "배움 기운이 균형 잡혀 있어. 필요할 때 흡수하고 필요할 때 행동해."},
+            "식상": {"icon": "✨", "color": "#fbbf24", "role": "표현·창의",
+                      "strong": "표현하고 만들어내는 기운이 넘쳐. 창의력·행동력이 강하고 입 밖으로 잘 풀어.",
+                      "weak":  "식상이 약해. 표현보다 축적을 선호하는 편이야. 말보다 실력으로 보여주는 스타일.",
+                      "mid":   "표현 기운이 적당해. 필요할 때 꺼내 쓰고, 불필요한 에너지 낭비는 없어."},
+            "재성": {"icon": "💰", "color": "#fbbf24", "role": "현실·관리",
+                      "strong": "현실 감각과 관리 기운이 강해. 결과를 챙기고 자원을 효율적으로 쓸 줄 알아.",
+                      "weak":  "재성이 약해. 물질보다 아이디어나 원칙 쪽에 무게를 두는 편이야.",
+                      "mid":   "현실 기운이 균형 있어. 원칙도 지키면서 결과도 놓치지 않아."},
+            "관성": {"icon": "⚖️", "color": "#60a5fa", "role": "책임·규율",
+                      "strong": "책임감과 규율 기운이 강해. 조직 안에서 역할을 잘 수행하고 신뢰를 쌓아.",
+                      "weak":  "관성이 약해. 규율보다 자유로운 방식이 잘 맞아. 틀에 얽매이기 싫어하는 편이야.",
+                      "mid":   "책임 기운이 적당해. 융통성도 있고 원칙도 지킬 수 있어."},
+        }
+        _ten_items = []
+        for _tn, _tm in _TEN_META.items():
+            _tv = float(_fw_detail.get(_tn, 0) or 0)
+            if _tv >= 30:
+                _tlevel, _tlabel = "strong", "강함"
+            elif _tv <= 10:
+                _tlevel, _tlabel = "weak", "약함"
+            else:
+                _tlevel, _tlabel = "mid", "보통"
+            _ten_items.append((_tn, _tm, _tv, _tlevel, _tlabel))
 
-        st.markdown("#### 🌊 식상생재·재생관·관인상생 구조")
-        _fw_flows = result.get("flows", []) or []
-        _FLOW_DOC = {
-            "식상생재": (
-                "내 재능과 표현(식상)이 물질적 결실(재성)로 이어지는 흐름이야. "
-                "쉽게 말하면 — 잘하는 걸 하면 돈이 된다는 구조거든. "
-                "이 흐름이 살아있으면 내가 즐기는 것, 잘하는 것을 실제 수입이나 결과물로 연결하는 힘이 있어."
-            ),
-            "재생관": (
-                "물질 기반(재성)이 역할과 책임(관성)으로 이어지는 흐름이야. "
-                "기반이 갖춰지면 사회적 역할·지위·인정으로 연결되는 구조야. "
-                "이 흐름이 돌면 실력을 쌓고 기반을 만들면 자연스럽게 자리가 따라오는 편이야."
-            ),
-            "관인상생": (
-                "역할과 책임(관성)이 내면 성장(인성)으로 돌아오는 흐름이야. "
-                "일하고 책임지는 과정에서 지혜와 실력이 쌓이는 구조야. "
-                "이 흐름이 있으면 힘든 시간이 결국 자기 자산이 되는 경우가 많아."
-            ),
-            "재관인상생": (
-                "재물·역할·성장이 한꺼번에 연결되는 강한 흐름이야. "
-                "물질 기반 → 사회적 역할 → 내면 성장의 선순환 구조거든. "
-                "이 흐름이 살아있으면 한 방향으로 집중하면 여러 가지가 함께 따라오는 편이야."
-            ),
-        }
-        _STRENGTH_COLOR = {
-            "중간~강함": ("#16a34a", "#2a1830"),
-            "중간":       ("#d97706", "#2b1830"),
-            "형태만 있음": ("#6b7280", "#2b1830"),
-            "해당 낮음":  ("#dc2626", "#200d0d"),
-        }
-        for _fw in _fw_flows:
-            _fn = str(_fw.get("구조", ""))
-            _fs = str(_fw.get("강도", ""))
-            _doc = _FLOW_DOC.get(_fn, "")
-            if not _doc or _fn == "식신제살/상관패인":
-                continue
-            _fc, _fbg = _STRENGTH_COLOR.get(_fs, ("#6b7280", "#2b1830"))
-            # 원국 근거 구성
-            _fsrc_items = []
-            for _frole, _fel in _flow_elements_for_name(chart, _fn):
-                _fsrcs = _element_sources_for_chart(chart, _fel)
-                if _fsrcs:
-                    _fsrc_items.append(
-                        f"<span style='font-size:11px;font-weight:800;color:{_fc};'>{html.escape(_frole)}({html.escape(_fel)})</span>"
-                        f"<span style='font-size:11px;color:#888;margin:0 4px;'>→</span>"
-                        f"<span style='font-size:11px;color:#b0a8c0;'>{html.escape(', '.join(_fsrcs[:2]))}</span>"
-                    )
-                else:
-                    _fsrc_items.append(
-                        f"<span style='font-size:11px;font-weight:800;color:{_fc};'>{html.escape(_frole)}({html.escape(_fel)})</span>"
-                        f"<span style='font-size:11px;color:#bfa6b8;margin-left:4px;'>원국에 직접 없음 (운에서 보완)</span>"
-                    )
-            _fsrc_html = (
-                "<div style='background:#2b1830;border-left:2px solid rgba(212,168,83,.3);"
-                "border-radius:0 5px 5px 0;padding:6px 10px;margin-top:6px;'>"
-                "<div style='font-size:11px;color:#d6bd92;font-weight:700;margin-bottom:3px;'>📍 원국 어디서 이 흐름이 나오냐면</div>"
-                + "<br>".join(_fsrc_items) +
-                "</div>"
-            ) if _fsrc_items else ""
-            st.markdown(
-                f"<div style='background:{_fbg};border-left:3px solid {_fc};"
-                f"padding:10px 12px;border-radius:6px;margin-bottom:8px;'>"
-                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
-                f"<span style='font-weight:700;color:{_fc};font-size:13px;'>{_fn}</span>"
-                f"<span style='font-size:13px;background:{_fc};color:#fff;border-radius:4px;"
-                f"padding:1px 7px;'>{_fs}</span>"
+        _sorted_ten = sorted(_ten_items, key=lambda x: -x[2])
+        _ten_rows_html = ""
+        for _tn, _tm, _tv, _tlevel, _tlabel in _sorted_ten:
+            _bar_w = max(4, min(100, int(_tv * 2.2)))
+            _badge_bg = {"strong": "#92400e", "mid": "#2a3a4a", "weak": "#1a2a1a"}.get(_tlevel, "#2a2a3a")
+            _badge_color = {"strong": "#fbbf24", "mid": "#a0c4cc", "weak": "#7ecfa8"}.get(_tlevel, "#d6bd92")
+            _ten_rows_html += (
+                f"<div style='margin-bottom:10px;'>"
+                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;'>"
+                f"<span style='font-size:13px;font-weight:800;color:{_tm['color']};'>{_tm['icon']} {_tn}({_tm['role']})</span>"
+                f"<span style='background:{_badge_bg};color:{_badge_color};border-radius:4px;"
+                f"padding:1px 8px;font-size:11px;font-weight:700;'>{_tlabel} {_tv:.0f}%</span>"
                 f"</div>"
-                f"<div style='font-size:13px;color:#f0e0b8;line-height:1.8;'>{_doc}</div>"
-                + _fsrc_html +
-                f"</div>",
-                unsafe_allow_html=True,
+                f"<div style='background:#1a1020;border-radius:4px;height:6px;margin-bottom:4px;'>"
+                f"<div style='width:{_bar_w}%;height:100%;border-radius:4px;background:{_tm['color']};opacity:.7;'></div>"
+                f"</div>"
+                f"<div style='font-size:12px;color:#b0a8c0;line-height:1.6;'>{_tm[_tlevel]}</div>"
+                f"</div>"
             )
-
-        if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
-            st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
-
+        st.markdown(
+            "<div style='background:#241327;border:1px solid rgba(167,139,250,.25);"
+            "border-radius:10px;padding:14px 16px;margin-bottom:12px;'>"
+            "<div style='font-size:13px;font-weight:800;color:#a78bfa;margin-bottom:10px;'>"
+            "📊 이 사주의 십성 구성</div>"
+            + _ten_rows_html +
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     st.caption("이 진단서는 명리학 원리로 풀어본 참고 이야기야. 결국 네 인생은 네가 사는 거야 — 이건 그냥 지도 같은 거지, 정답은 아니거든.")
 
@@ -27575,7 +27557,7 @@ st.markdown("""
 <div class="hero-wrap">
     <div class="hero-title"><span>Sai</span></div>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 6px;">
-      <span style="height:1px;width:34px;background:linear-gradient(90deg,transparent,#7c4dff);"></span>
+      <span style="height:1px;width:34px;background:linear-gradient(90deg,transparent,#e8c87a);"></span>
       <span style="font-size:.72rem;letter-spacing:2.5px;font-weight:700;color:#9a7bff;">SAJU ANALYSIS INTERACTIVE</span>
       <span style="height:1px;width:34px;background:linear-gradient(90deg,#34e7e4,transparent);"></span>
     </div>
