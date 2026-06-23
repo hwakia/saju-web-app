@@ -8265,7 +8265,7 @@ def audit_summary_rows() -> List[Dict[str, str]]:
 # 변경 시 영향: 사용자 진입 흐름.
 # ============================================================
 
-APP_VERSION = "v5.224"
+APP_VERSION = "v5.225"
 APP_PUBLIC_URL = os.environ.get("SAJU_MRI_PUBLIC_URL", "https://saju-web-app-hwaki.streamlit.app")
 
 # ============================================================
@@ -24110,7 +24110,9 @@ def render_hanuneyo_text_explanation(payload, char, result):
         )
     st.divider()
 
-    with st.expander("🔄 흐름과 연결", expanded=False):
+    st.markdown("#### 📂 상세 분석 — 메뉴를 눌러서 봐")
+    _diag_tabs = st.tabs(["🔄 흐름과 연결", "⚖️ 신약신강판단", "🧮 십성 구성"])
+    with _diag_tabs[0]:
         # ── 5. ⚡ 기운의 순환 (3축 결과 카드 먼저) ───────────────
         st.markdown("#### ⚡ 흐름과 연결")
         order = ["기초체력", "흐름과 연결", "현실작동력"]
@@ -24309,7 +24311,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if not any(_FLOW_DOC.get(f.get("구조","")) for f in _fw_flows if f.get("구조") != "식신제살/상관패인"):
             st.caption("원국에서 뚜렷하게 작동하는 순환 구조가 없어. 단일 기운 위주로 움직이는 사주야.")
 
-    with st.expander("⚖️ 신약신강판단", expanded=False):
+    with _diag_tabs[1]:
         st.markdown("#### ⚖️ 신약·신강 판단 근거")
         _fw_idx = float(result.get("strength_index", 50) or 50)
         _fw_lbl = str(result.get("strength_label", "중화"))
@@ -24459,7 +24461,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         if _fw_logic:
             st.caption(f"선정 원리 요약: {_fw_logic}")
 
-    with st.expander("🧮 십성 구성", expanded=False):
+    with _diag_tabs[2]:
         _fw_detail = result.get("strength_detail", {}) or {}
         st.markdown(
             "<div style='background:#2b1830;border:1px solid #3b82f6;border-radius:8px;"
