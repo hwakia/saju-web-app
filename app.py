@@ -20690,7 +20690,7 @@ def make_room_chem_result_png_bytes(
 
     W = 1080
     has_best = bool(best_pair and best_pair[0] and float(best_score) >= 0)
-    H = 250 + (214 if has_best else 0) + 60 + len(show) * 104 + (44 if extra > 0 else 0) + 110
+    H = 250 + (244 if has_best else 0) + 60 + len(show) * 104 + (44 if extra > 0 else 0) + 110
     img = Image.new("RGB", (W, H), "#241327")
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((24, 24, W-24, H-24), radius=40, fill="#2b1830", outline="#d98aa8", width=3)
@@ -20710,15 +20710,17 @@ def make_room_chem_result_png_bytes(
     if has_best:
         _bgrade = compatibility_grade_summary(best_score)[0]
         bc = GRADE_COLOR.get(_bgrade, "#4ade80")
-        _bt, _ = _chem_pair_persona(_bgrade, best_pair[0], best_pair[1])
-        d.rounded_rectangle((70, y, W-70, y+184), radius=28, fill="#3a2433", outline=bc, width=3)
+        _bt, _bq = _chem_pair_persona(_bgrade, best_pair[0], best_pair[1])
+        d.rounded_rectangle((70, y, W-70, y+214), radius=28, fill="#3a2433", outline=bc, width=3)
         d.text((96, y+20), "이 방 최고 케미", fill=bc, font=f_small)
         d.text((96, y+56), _png_text(f"{best_pair[0]} & {best_pair[1]}")[:30], fill="#fde68a", font=f_title)
         _sc  = f"{int(round(float(best_score)))}"
         _scb = d.textbbox((0,0), _sc, font=f_score)
         d.text((W-110-(_scb[2]-_scb[0]), y+56), _sc, fill=bc, font=f_score)
-        d.text((96, y+128), _png_text(_bt), fill=bc, font=f_chip)
-        y += 214
+        d.text((96, y+122), _png_text(_bt), fill=bc, font=f_chip)
+        for _bln in _wrap_for_image(d, _png_text(_bq), f_small, W-200)[:1]:
+            d.text((96, y+160), _bln, fill="#f0d9a8", font=f_small)
+        y += 244
 
     d.text((70, y), "쌍별 케미", fill="#d6bd92", font=f_small)
     y += 50
