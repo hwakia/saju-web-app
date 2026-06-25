@@ -23997,6 +23997,23 @@ def render_hanuneyo_text_explanation(payload, char, result):
   </div>
 </div>
 """
+    # ── 캐릭터 페르소나 (칭호 + 욕쟁이 할매 톤 한 줄) — 진단서 최상단 ──
+    try:
+        _persona = _natal_persona(chart, result, char)
+        _p_title = _persona.get("title") or str(char.get("title", "Sai 캐릭터"))
+        _p_line = _persona.get("line", "")
+        st.markdown(
+            f"<div style='background:#241327;border:1px solid #caa24c;"
+            f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
+            f"<div style='font-size:11px;color:#9a8aaa;letter-spacing:2px;margin-bottom:4px;'>CHARACTER</div>"
+            f"<div style='font-size:22px;font-weight:800;color:#fde68a;line-height:1.25;'>{html.escape(_p_title)}</div>"
+            + (f"<div style='font-size:15px;color:#e6d4bb;line-height:1.65;margin-top:8px;'>{html.escape(_p_line)}</div>" if _p_line else "")
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
+
     # ── 종합 소견 (친근한 말투) — 진단서보다 먼저 ──────────
     if _grandma_intro_html:
         st.markdown(
