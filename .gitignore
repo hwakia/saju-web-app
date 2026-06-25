@@ -1,0 +1,28 @@
+# 비밀/키 — 절대 커밋 금지
+.streamlit/secrets.toml
+*.env
+.env
+.env.*
+secrets.toml
+key.properties
+*.jks
+*.keystore
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Flutter / Android 빌드 산출물
+saju_mri/build/
+saju_mri/.dart_tool/
+saju_mri/.gradle/
+*.aab
+*.apk
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
