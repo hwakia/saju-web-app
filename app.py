@@ -15844,6 +15844,9 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         "직관형": "깊이 읽고 분석하는 유형",
         "균형형": "다양한 역할을 유연하게 맡는 유형",
     }
+    def _circled(i: int) -> str:
+        return chr(0x245F + i) if 1 <= i <= 20 else f"({i})"
+
     badges = ""
     for idx, nm in enumerate(names):
         role  = roles[idx] if idx < len(roles) else "균형형"
@@ -15851,6 +15854,7 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         badges += (
             f"<div style='display:inline-block;margin:4px;padding:6px 12px;"
             f"background:{color}22;border:1px solid {color}55;border-radius:20px;'>"
+            f"<span style='font-weight:900;color:{color};margin-right:4px;'>{_circled(idx+1)}</span>"
             f"<span style='font-weight:800;color:{color};'>{html.escape(nm)}</span>"
             f"<span style='font-size:11px;color:#aaa;margin-left:6px;'>{html.escape(role)}</span>"
             f"</div>"
@@ -15914,26 +15918,19 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
             f"<line x1='{x1:.1f}' y1='{y1:.1f}' x2='{x2:.1f}' y2='{y2:.1f}' "
             f"stroke='{col}' stroke-width='{stroke_w:.1f}' stroke-opacity='{opacity:.2f}' stroke-linecap='round'/>"
         )
-        # 선 중점에 등급 텍스트
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-        _svg_lines.append(
-            f"<text x='{mx:.1f}' y='{my:.1f}' text-anchor='middle' dominant-baseline='middle' "
-            f"font-size='9' fill='{col}' font-weight='700' "
-            f"style='font-family:sans-serif;'>{html.escape(gd)}</text>"
-        )
+        # (등급 글자는 중앙에 겹쳐 가독성을 해쳐 제거 — 상세는 아래 '쌍별 케미' 목록 참고)
 
     _svg_nodes = []
     for k, (px, py) in enumerate(_pts):
         _svg_nodes.append(
-            f"<circle cx='{px:.1f}' cy='{py:.1f}' r='28' fill='#1a0a28' "
+            f"<circle cx='{px:.1f}' cy='{py:.1f}' r='22' fill='#1a0a28' "
             f"stroke='#a855f7' stroke-width='1.5'/>"
         )
-        # 이름 (두 줄로 나누기)
-        nm_esc = html.escape(names[k])
+        # 노드 안에는 번호만 (이름은 위 '역할 유형' 배지의 번호와 매칭)
         _svg_nodes.append(
-            f"<text x='{px:.1f}' y='{py:.1f}' text-anchor='middle' dominant-baseline='middle' "
-            f"font-size='11' fill='#fde68a' font-weight='800' "
-            f"style='font-family:sans-serif;'>{nm_esc}</text>"
+            f"<text x='{px:.1f}' y='{py:.1f}' text-anchor='middle' dominant-baseline='central' "
+            f"font-size='17' fill='#fde68a' font-weight='900' "
+            f"style='font-family:sans-serif;'>{k+1}</text>"
         )
 
     _svg_inner = "\n".join(_svg_lines + _svg_nodes)
@@ -15941,7 +15938,8 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         f"<div style='background:#241327;border:1px solid #3b1f4e;border-radius:12px;"
         f"padding:14px;margin-bottom:14px;text-align:center;'>"
         f"<div style='font-size:12px;color:#d6bd92;font-weight:700;margin-bottom:8px;'>🔮 케미 관계도</div>"
-        f"<svg viewBox='0 0 {_W} {_H}' width='100%' style='max-width:340px;'>{_svg_inner}</svg>"
+        f"<svg viewBox='0 0 {_W} {_H}' width='100%' style='max-width:320px;'>{_svg_inner}</svg>"
+        f"<div style='font-size:10px;color:#9a8aaa;margin-top:6px;'>선이 굵고 진할수록 케미 점수가 높아요 · 번호는 위 역할 배지와 같아요</div>"
         f"</div>"
     )
     st.markdown(_svg_html, unsafe_allow_html=True)
@@ -15953,23 +15951,22 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
         _ptitle, _pquip = _chem_pair_persona(gd, names[i2], names[j2])
         _pscore = int(round(float(sc)))
         _pair_html += (
-            f"<div style='display:flex;align-items:center;gap:10px;"
-            f"padding:9px 12px;border-bottom:1px solid #1a0a28;'>"
-            f"<div style='min-width:84px;'>"
-            f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[i2])}</span>"
-            f"<span style='font-size:11px;color:#888;'> &amp; </span>"
-            f"<span style='font-size:12px;font-weight:700;color:#d4a853;'>{html.escape(names[j2])}</span>"
-            f"</div>"
-            f"<div style='flex:1;'>"
+            f"<div style='padding:11px 13px;border-bottom:1px solid #1a0a28;'>"
+            # 1행: 등급 배지 + 점수 (양끝 정렬)
+            f"<div style='display:flex;justify-content:space-between;align-items:center;gap:8px;'>"
             f"<span style='background:{col}22;border:1px solid {col}55;border-radius:12px;"
-            f"padding:2px 8px;font-size:11px;font-weight:700;color:{col};'>{html.escape(gd)}</span>"
-            f"<span style='font-size:11px;font-weight:800;color:#fde68a;margin-left:6px;'>{html.escape(_ptitle)}</span>"
-            f"<div style='font-size:12px;color:#cbb8d6;margin-top:4px;line-height:1.5;'>{html.escape(_pquip)}</div>"
+            f"padding:3px 10px;font-size:11px;font-weight:700;color:{col};white-space:nowrap;'>{html.escape(gd)}</span>"
+            f"<span style='font-size:1.4rem;font-weight:900;color:{col};line-height:1;white-space:nowrap;'>"
+            f"{_pscore}<span style='font-size:11px;color:#9a8aaa;font-weight:700;margin-left:2px;'>점</span></span>"
             f"</div>"
-            f"<div style='text-align:right;min-width:46px;'>"
-            f"<div style='font-size:1.45rem;font-weight:900;color:{col};line-height:1;'>{_pscore}</div>"
-            f"<div style='font-size:9px;color:#9a8aaa;margin-top:1px;'>점</div>"
-            f"</div></div>"
+            # 2행: 이름
+            f"<div style='margin-top:7px;font-size:13px;font-weight:800;color:#d4a853;'>"
+            f"{html.escape(names[i2])} <span style='color:#888;font-weight:600;'>&amp;</span> {html.escape(names[j2])}</div>"
+            # 3행: 칭호
+            f"<div style='margin-top:2px;font-size:12px;font-weight:800;color:#fde68a;'>{html.escape(_ptitle)}</div>"
+            # 4행: 한 줄 코멘트
+            f"<div style='margin-top:3px;font-size:12px;color:#cbb8d6;line-height:1.5;'>{html.escape(_pquip)}</div>"
+            f"</div>"
         )
     if _pair_html:
         st.markdown(
