@@ -17144,6 +17144,44 @@ _NP_GIL = [("천을귀인", "결정적일 때 꼭 누가 손 내미는 복도 �
 _NP_JEONMU = [("화", "차분하다 못해 가끔 냉장고라, 옆에서 띄워주는 사람 있어야 살아나."), ("수", "융통성보다 직진이라, 돌아가는 길을 잘 몰러."), ("목", "새로 벌이기보다 마무리형이여."), ("금", "맺고 끊는 게 약해서, 정 때문에 손해 보기도 혀."), ("토", "붕 뜬 매력은 있는디, 가끔 땅에 발 붙일 닻이 필요혀.")]
 
 
+_NP_SIZE_TITLE = {
+    "甲": {"강": "우람한 거목", "약": "어린 묘목", "중": "곧게 뻗은 거목"},
+    "乙": {"강": "무성한 덩굴", "약": "여린 새싹", "중": "바람결 화초"},
+    "丙": {"강": "이글거리는 태양", "약": "은근히 번지는 노을", "중": "한낮의 태양"},
+    "丁": {"강": "타오르는 화톳불", "약": "깜빡이는 촛불", "중": "환한 등불"},
+    "戊": {"강": "웅장한 태산", "약": "나지막한 언덕", "중": "우뚝한 태산"},
+    "己": {"강": "드넓은 들판", "약": "작은 텃밭", "중": "너른 대지"},
+    "庚": {"강": "깎아지른 바위", "약": "단단한 차돌", "중": "날 선 도끼"},
+    "辛": {"강": "벼려진 칼날 보석", "약": "작은 원석", "중": "정교한 보석"},
+    "壬": {"강": "거센 큰 바다", "약": "잔잔한 호수", "중": "드넓은 바다"},
+    "癸": {"강": "도도한 큰 물", "약": "가는 시냇물", "중": "맑게 흐르는 물"},
+}
+_NP_WATER_TITLE = {
+    "癸": {
+        ("강", "한"): "차갑고 깊은 못", ("강", "난"): "따뜻한 큰 물", ("강", "중"): "도도한 큰 물",
+        ("약", "한"): "차고 가는 시냇물", ("약", "난"): "따뜻하게 흐르는 시냇물", ("약", "중"): "가는 시냇물",
+        ("중", "한"): "서늘하게 흐르는 물", ("중", "난"): "따뜻하게 흐르는 물", ("중", "중"): "맑게 흐르는 물",
+    },
+    "壬": {
+        ("강", "한"): "시린 큰 바다", ("강", "난"): "잔잔한 큰 바다", ("강", "중"): "거센 큰 바다",
+        ("약", "한"): "차가운 호수", ("약", "난"): "따뜻한 호수", ("약", "중"): "잔잔한 호수",
+        ("중", "한"): "서늘한 바다", ("중", "난"): "너른 바다", ("중", "중"): "드넓은 바다",
+    },
+}
+_NP_GEUMGUK = [
+    "사유축이 금으로 똘똘 뭉친 사주여 — 웃는 낯 뒤에 칼 같은 기준이 숨어 있어, 만만히 봤다간 정색에 놀라, 쯧.",
+    "겉은 봄볕처럼 따순디 속은 서릿발이여 — 외유내강이 딱 이런 거지, 함부로 못 건드려.",
+    "巳가 품은 온기마저 금으로 끌려간 구조라 — 정 많아 보여도 선 넘으면 칼같이 끊어내, 알간?",
+]
+_NP_JONGGYEOK = {
+    "종왕": "기운이 한쪽으로 쫙 쏠린 사주여 — 거스르지 말고 그 대세에 올라타야 일이 풀려, 알간?",
+    "종강": "기운이 한쪽으로 쫙 쏠린 사주여 — 거스르지 말고 그 대세에 올라타야 일이 풀려, 알간?",
+    "종재": "재물의 물길에 올라탄 팔자라 — 흐름 거스르지 말고 때 맞춰 들고 나면 돼.",
+    "종살": "센 압박을 외려 힘으로 바꿔 쓰는 사주여 — 눌릴 듯하다가도 그걸 딛고 올라서.",
+    "종아": "재능이 차오르면 쏟아내야 직성이 풀리는 사주라 — 고이게 두지 말고 터뜨려, 이것아.",
+}
+
+
 def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, str]) -> Dict[str, str]:
     """진단 캐릭터 — 칭호(품위) + 욕쟁이 할매 톤 한 줄. (title, line) 반환.
     char(get_mbti_character)+result만 입력으로 받아 진단 본문과 모순되지 않게 한다."""
@@ -17158,6 +17196,18 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
         src = stem + "".join(list(getattr(chart, "branches", []) or [])) + role + str(char.get("noun", ""))
         seed = int(_hl.md5(src.encode("utf-8")).hexdigest(), 16)
         title, line = entries[seed % len(entries)]
+
+        # ── 강약·온도 버킷 ──
+        adj = str(char.get("adj", "") or "")
+        _slabel = str(result.get("strength_label", "중화") or "중화")
+        size = "강" if _slabel in ("신강", "극신강") else "약" if _slabel in ("신약", "극신약") else "중"
+        temp = "한" if adj == "차분하게 구조화하는" else "난" if adj == "활기 있게 표현하는" else "중"
+
+        # ── ① 칭호 자동 변형 (밋밋함 해소): 물은 온도까지, 그 외는 크기 ──
+        if stem in _NP_WATER_TITLE:
+            title = _NP_WATER_TITLE[stem].get((size, temp), title)
+        elif stem in _NP_SIZE_TITLE:
+            title = _NP_SIZE_TITLE[stem].get(size, title)
 
         # ── 절 수집 ──
         hit_names = set()
@@ -17177,7 +17227,6 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
         jeonmu = next((t for el, t in _NP_JEONMU if float(pct.get(el, 99) or 0) <= 3), None)
         pyeonjung = "한 우물만 파는 외골수여 — 깊긴 한디 가끔 옆을 못 봐." if (pct and max(pct.values()) >= 40) else None
 
-        adj = str(char.get("adj", "") or "")
         johu = None
         if adj == "차분하게 구조화하는":
             johu = "냉정한 게 무기인디 정작 본인이 가끔 추워, 쯧."
@@ -17198,10 +17247,29 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
         except Exception:
             pass
 
-        # ── 예산: 우선순위순 최대 2개 ──
-        ordered = [hyung, jeonmu, johu, hc, pyeonjung, gil]
-        picked = [c for c in ordered if c][:2]
-        full = (line + " " + " ".join(picked)).strip() if picked else line
+        # ── ②③ 특수구조 헤드라인 (종격 > 사유축 금국) — 있으면 단독 사용 ──
+        headline = None
+        try:
+            sp = result.get("special_pattern") or {}
+            if isinstance(sp, dict) and sp.get("is_special"):
+                headline = _NP_JONGGYEOK.get(str(sp.get("type", "")))
+        except Exception:
+            pass
+        if not headline:
+            try:
+                if _has_sayu_chuk_metal_frame(chart, result):
+                    headline = _NP_GEUMGUK[seed % len(_NP_GEUMGUK)]
+                    johu = None  # 금국 전용 절이 일반 겉온속냉 절을 대체
+            except Exception:
+                pass
+
+        # ── 조립 ──
+        if headline:
+            full = (line + " " + headline).strip()
+        else:
+            ordered = [hyung, jeonmu, johu, hc, pyeonjung, gil]
+            picked = [c for c in ordered if c][:2]
+            full = (line + " " + " ".join(picked)).strip() if picked else line
 
         # ── 후처리 ① 어미 변주 ──
         if "사주여" in full:
