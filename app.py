@@ -19049,6 +19049,43 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     else:
         _flow_grade, _flow_color = "🔵 보통", "#2563eb"
 
+    # ── 💊 오늘의 한 방 (강렬 한 줄 처방) — 신호(형>충>합) 우선, 없으면 십성 ──
+    _PUNCH_SIGNAL = {
+        "형": "속 끓이지 말고 몸을 움직여 — 그게 약이여!",
+        "충": "부딪히는 날이여 — 고집 버리고 돌아가!",
+        "합": "오늘은 사람이 복이여 — 다가오는 인연 잡어!",
+    }
+    _PUNCH_TENGOD = {
+        "비견": "혼자 다 짊어지지 마 — 손잡을 놈부터 찾어!",
+        "겁재": "오늘은 딱 한 발 빼라 — 욕심이 곧 손해여!",
+        "식신": "힘 빼고 즐겨 — 오늘은 쉬는 게 일이여!",
+        "상관": "머리는 열고 입은 조여 — 말실수 조심혀!",
+        "편재": "기회는 잡되 욕심엔 손 떼라!",
+        "정재": "서두르지 마 — 차근차근이 정답이여!",
+        "편관": "도망치지 말고 딱 끊어 결정해 — 미루면 더 커져!",
+        "정관": "오늘 쌓은 신뢰가 내일 밥이여 — 반듯하게 가!",
+        "편인": "혼자만의 시간 챙겨 — 시끄러운 데 끼지 마!",
+        "정인": "입 닫고 귀 열어 — 오늘은 죄다 가르침이여!",
+    }
+    _punch = ""
+    if "형" in _inter:
+        _punch = _PUNCH_SIGNAL["형"]
+    elif "충" in _inter:
+        _punch = _PUNCH_SIGNAL["충"]
+    elif "합" in _inter:
+        _punch = _PUNCH_SIGNAL["합"]
+    elif _tg_key:
+        _punch = _PUNCH_TENGOD.get(_tg_key, "")
+    if _punch:
+        st.markdown(
+            f"<div style='background:{_flow_color}1a;border:1.5px solid {_flow_color};"
+            f"border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center;'>"
+            f"<div style='font-size:11px;color:#d6bd92;letter-spacing:1px;margin-bottom:4px;'>💊 오늘의 한 방</div>"
+            f"<div style='font-size:18px;font-weight:800;color:#fde68a;line-height:1.4;'>{html.escape(_punch)}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
     _story_text = f"{_tg_line}{_signal_line}{_rx_line}"
 
     st.markdown(
