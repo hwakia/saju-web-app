@@ -19092,7 +19092,9 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     # ── 💊 오늘의 한 방 (강렬 한 줄 처방) — 신호(형>충>합) 우선, 없으면 십성 ──
     _PUNCH_SIGNAL = {
         "반음": "확 뒤집히기 쉬운 날 — 큰 결정은 하루 미뤄!",
+        "천간충": "생각이 부딪히는 날 — 중요한 말·결정은 한 박자 늦춰!",
         "충": "부딪히는 날이여 — 고집 버리지 말고 돌아가!",
+        "천간합": "마음이 끌리는 날 — 좋은 인연·제안에 마음 열어!",
         "합": "오늘은 사람이 복이여 — 다가오는 인연 잡어!",
         "형": "속 끓이지 말고 몸을 움직여 — 그게 약이여!",
         "원진": "괜히 거슬리는 사람 있는 날 — 한 발 물러서!",
@@ -19115,7 +19117,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     # 오늘 일진 합충형파해를 kind로 정확 판정 (강도순: 반음·충·합·형·원진·해·파·복음)
     _kinds = [str(_it.get("kind", "")) for _it in (compass.get("interactions") or [])]
     _punch = ""
-    for _k in ["반음", "충", "합", "형", "원진", "해", "파", "복음"]:
+    for _k in ["반음", "천간충", "충", "천간합", "합", "형", "원진", "해", "파", "복음"]:
         if _k in _kinds:
             _punch = _PUNCH_SIGNAL[_k]
             break
