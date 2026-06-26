@@ -19133,6 +19133,15 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             unsafe_allow_html=True,
         )
 
+    # ── 오늘 실제 작용 신호 이름 또렷이 표시 (축미충·을신충 등) ──
+    _io = str(compass.get("interaction_overview") or "")
+    if _io and _io not in ("특이 신호 없음", "일진 산출 제한"):
+        st.markdown(
+            f"<div style='font-size:12px;color:#c7a9bd;margin:-2px 0 10px;'>"
+            f"<span style='color:#9a8aaa;'>오늘 작용</span> · {html.escape(_io)}</div>",
+            unsafe_allow_html=True,
+        )
+
     _story_text = f"{_tg_line}{_signal_line}{_rx_line}"
 
     st.markdown(
