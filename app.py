@@ -17229,6 +17229,28 @@ _NP_JONGGYEOK = {
     "종살": "센 압박을 외려 힘으로 바꿔 쓰는 사주여 — 눌릴 듯하다가도 그걸 딛고 올라서.",
     "종아": "재능이 차오르면 쏟아내야 직성이 풀리는 사주라 — 고이게 두지 말고 터뜨려, 이것아.",
 }
+# 강렬 슬로건 (역할 기준) — '한마디로!' 뒤 큰 글씨 헤드라인
+_NP_TAGLINE = {
+    "독립가": ["꺾여도 안 굽힌다", "내 길은 내가 낸다", "고집, 그게 힘이다"],
+    "아이디어 뱅크": ["머릿속이 공장이다", "판을 새로 짠다", "남다른 게 무기다"],
+    "전략가": ["겉은 잔잔, 속은 칼", "조용히 때를 노린다", "판을 읽고 친다"],
+    "리더": ["있으면 사람이 모인다", "앞장설 때 빛난다", "사람을 끄는 힘"],
+    "책사": ["조용히, 그러나 정확히", "한마디가 천금이다", "다 꿰뚫어 본다"],
+    "밸런서": ["어디 둬도 제 몫 한다", "틈을 메우는 사람"],
+}
+# 일간×역할 강렬 슬로건 (60종) — 물상 + 역할 융합
+_NP_TAGLINE_STEM = {
+    ("甲", "독립가"): "꺾여도 안 굽힌다", ("甲", "아이디어 뱅크"): "큰 그림부터 그린다", ("甲", "전략가"): "큰 줄기만 잡는다", ("甲", "리더"): "큰 나무 밑에 모인다", ("甲", "책사"): "말은 적고 무게는 굵다", ("甲", "밸런서"): "곧게 중심을 잡는다",
+    ("乙", "독립가"): "밟혀도 다시 솟는다", ("乙", "아이디어 뱅크"): "막히면 새 길을 낸다", ("乙", "전략가"): "휘감아 끝내 오른다", ("乙", "리더"): "부드럽게 사람을 엮는다", ("乙", "책사"): "싸우지 않고 이긴다", ("乙", "밸런서"): "어디든 뿌리내린다",
+    ("丙", "독립가"): "숨어도 빛이 샌다", ("丙", "아이디어 뱅크"): "식은 판도 데운다", ("丙", "전략가"): "어둠을 환히 비춘다", ("丙", "리더"): "있으면 사람이 모인다", ("丙", "책사"): "웃다가 핵심을 찌른다", ("丙", "밸런서"): "어디서나 환하다",
+    ("丁", "독립가"): "작아도 오래 탄다", ("丁", "아이디어 뱅크"): "어둠에 불씨를 켠다", ("丁", "전략가"): "핵심만 정확히 데운다", ("丁", "리더"): "곁을 데우는 등불", ("丁", "책사"): "작지만 정확하다", ("丁", "밸런서"): "은은히 오래 간다",
+    ("戊", "독립가"): "밀어도 안 흔들린다", ("戊", "아이디어 뱅크"): "크게 보고 천천히 쌓는다", ("戊", "전략가"): "버티다 통째로 누른다", ("戊", "리더"): "기대도 안 무너진다", ("戊", "책사"): "한마디가 바위처럼", ("戊", "밸런서"): "묵직하게 중심을 잡는다",
+    ("己", "독립가"): "조용히 제 몫 한다", ("己", "아이디어 뱅크"): "받아서 키워낸다", ("己", "전략가"): "다져서 수확한다", ("己", "리더"): "다 품어 길러낸다", ("己", "책사"): "넓게 품고 깊게 본다", ("己", "밸런서"): "다 받아 고르게 한다",
+    ("庚", "독립가"): "부러져도 안 굽힌다", ("庚", "아이디어 뱅크"): "복잡함을 단칼에", ("庚", "전략가"): "단칼에 끊는다", ("庚", "리더"): "'이거다' 하고 끊어준다", ("庚", "책사"): "핵심만 잘라 던진다", ("庚", "밸런서"): "칼같이 정리한다",
+    ("辛", "독립가"): "함부로 못 댄다", ("辛", "아이디어 뱅크"): "거친 걸 보석으로", ("辛", "전략가"): "빈틈을 세공한다", ("辛", "리더"): "따라가면 격이 오른다", ("辛", "책사"): "한 끗을 짚는다", ("辛", "밸런서"): "깔끔하게 다듬는다",
+    ("壬", "독립가"): "가두면 답답하다", ("壬", "아이디어 뱅크"): "작은 그릇엔 안 담긴다", ("壬", "전략가"): "수평선을 본다", ("壬", "리더"): "다 품는 큰물", ("壬", "책사"): "깊은 물은 소리가 없다", ("壬", "밸런서"): "다 받아 흐른다",
+    ("癸", "독립가"): "스며 끝내 길을 낸다", ("癸", "아이디어 뱅크"): "흐르며 줍는다", ("癸", "전략가"): "겉은 잔잔, 속은 칼", ("癸", "리더"): "강요 없이 적신다", ("癸", "책사"): "조용히 다 안다", ("癸", "밸런서"): "어디로든 맞춰 흐른다",
+}
 # 직업/직군 비유 (역할 기준) — 실존 인물 대신 '요즘으로 치면 ○○형'
 _NP_JOB = {
     "독립가": ["한 우물 파는 외골수 장인형", "혼자서도 끝까지 가는 단독 플레이어형", "제 길 개척하는 창업가형"],
@@ -17243,7 +17265,7 @@ _NP_JOB = {
 def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, str]) -> Dict[str, str]:
     """진단 캐릭터 — 칭호(품위) + 욕쟁이 할매 톤 한 줄. (title, line) 반환.
     char(get_mbti_character)+result만 입력으로 받아 진단 본문과 모순되지 않게 한다."""
-    fallback = {"title": str(char.get("title", "Sai 캐릭터")), "line": "", "job": ""}
+    fallback = {"title": str(char.get("title", "Sai 캐릭터")), "line": "", "job": "", "tagline": ""}
     try:
         import hashlib as _hl
         stem = str(getattr(chart, "day_master", "") or "")
@@ -17321,11 +17343,16 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
             except Exception:
                 pass
 
-        # ── 직업/직군 비유 (역할 기준, 시드로 택1) ──
+        # ── 직업/직군 비유 + 강렬 슬로건 (역할 기준, 시드로 택1) ──
         job = ""
         _jl = _NP_JOB.get(role)
         if _jl:
             job = _jl[seed % len(_jl)]
+        tagline = _NP_TAGLINE_STEM.get((stem, role), "")
+        if not tagline:
+            _tl = _NP_TAGLINE.get(role)
+            if _tl:
+                tagline = _tl[seed % len(_tl)]
 
         # ── 조립 ──
         if headline:
@@ -17347,7 +17374,7 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
                 full = full.replace(tok, "")
             full = full.replace("  ", " ").strip()
 
-        return {"title": title, "line": full, "job": job}
+        return {"title": title, "line": full, "job": job, "tagline": tagline}
     except Exception:
         return fallback
 
@@ -24172,14 +24199,16 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _p_title = _persona.get("title") or str(char.get("title", "Sai 캐릭터"))
         _p_line = _persona.get("line", "")
         _p_job = _persona.get("job", "")
+        _p_tag = _persona.get("tagline", "") or _p_title
+        _sub_bits = [b for b in [_p_title, (f"요즘으로 치면 {_p_job}" if _p_job else "")] if b]
+        _sub_txt = " · ".join(_sub_bits)
         st.markdown(
             f"<div style='background:#241327;border:1px solid #caa24c;"
             f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
-            f"<div style='font-size:12px;color:#d6bd92;font-weight:700;letter-spacing:1px;margin-bottom:4px;'>🔮 한마디로!</div>"
-            f"<div style='font-size:22px;font-weight:800;color:#fde68a;line-height:1.25;'>{html.escape(_p_title)}</div>"
-            + (f"<div style='display:inline-block;margin-top:8px;background:#2f1c36;border:1px solid #4a3550;"
-               f"border-radius:14px;padding:3px 11px;font-size:12px;color:#e0c98a;'>🧭 요즘으로 치면 {html.escape(_p_job)}</div>" if _p_job else "")
-            + (f"<div style='font-size:15px;color:#e6d4bb;line-height:1.65;margin-top:8px;'>{html.escape(_p_line)}</div>" if _p_line else "")
+            f"<div style='font-size:12px;color:#d6bd92;font-weight:700;letter-spacing:1px;margin-bottom:6px;'>🔮 한마디로!</div>"
+            f"<div style='font-size:27px;font-weight:900;color:#fde68a;line-height:1.2;letter-spacing:-0.5px;'>{html.escape(_p_tag)}</div>"
+            + (f"<div style='font-size:13px;color:#c7a9bd;margin-top:6px;'>🧭 {html.escape(_sub_txt)}</div>" if _sub_txt else "")
+            + (f"<div style='font-size:15px;color:#e6d4bb;line-height:1.65;margin-top:10px;'>{html.escape(_p_line)}</div>" if _p_line else "")
             + "</div>",
             unsafe_allow_html=True,
         )
