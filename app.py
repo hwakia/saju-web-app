@@ -17180,12 +17180,21 @@ _NP_JONGGYEOK = {
     "종살": "센 압박을 외려 힘으로 바꿔 쓰는 사주여 — 눌릴 듯하다가도 그걸 딛고 올라서.",
     "종아": "재능이 차오르면 쏟아내야 직성이 풀리는 사주라 — 고이게 두지 말고 터뜨려, 이것아.",
 }
+# 직업/직군 비유 (역할 기준) — 실존 인물 대신 '요즘으로 치면 ○○형'
+_NP_JOB = {
+    "독립가": ["한 우물 파는 외골수 장인형", "혼자서도 끝까지 가는 단독 플레이어형", "제 길 개척하는 창업가형"],
+    "아이디어 뱅크": ["판을 크게 그리는 기획자형", "엉뚱한 데서 답 찾는 발명가형", "아이디어 쏟아내는 크리에이터형"],
+    "전략가": ["조용하다 결정타 날리는 위기관리 전문가형", "수를 읽는 참모·전략가형", "판세 계산 빠른 딜메이커형"],
+    "리더": ["사람을 끌어모으는 사령관형", "들어서면 판이 도는 진행자형", "책임 떠안는 현장 지휘관형"],
+    "책사": ["디테일 잡는 감정가·장인형", "파고들어 다 정리하는 연구자형", "조용히 핵심 짚는 분석가형"],
+    "밸런서": ["사이를 잇는 중재자·조율가형", "어디 둬도 굴러가는 올라운더형"],
+}
 
 
 def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, str]) -> Dict[str, str]:
     """진단 캐릭터 — 칭호(품위) + 욕쟁이 할매 톤 한 줄. (title, line) 반환.
     char(get_mbti_character)+result만 입력으로 받아 진단 본문과 모순되지 않게 한다."""
-    fallback = {"title": str(char.get("title", "Sai 캐릭터")), "line": ""}
+    fallback = {"title": str(char.get("title", "Sai 캐릭터")), "line": "", "job": ""}
     try:
         import hashlib as _hl
         stem = str(getattr(chart, "day_master", "") or "")
@@ -17263,6 +17272,12 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
             except Exception:
                 pass
 
+        # ── 직업/직군 비유 (역할 기준, 시드로 택1) ──
+        job = ""
+        _jl = _NP_JOB.get(role)
+        if _jl:
+            job = _jl[seed % len(_jl)]
+
         # ── 조립 ──
         if headline:
             full = (line + " " + headline).strip()
@@ -17283,7 +17298,7 @@ def _natal_persona(chart: "Chart", result: Dict[str, object], char: Dict[str, st
                 full = full.replace(tok, "")
             full = full.replace("  ", " ").strip()
 
-        return {"title": title, "line": full}
+        return {"title": title, "line": full, "job": job}
     except Exception:
         return fallback
 
@@ -24070,11 +24085,14 @@ def render_hanuneyo_text_explanation(payload, char, result):
         _persona = _natal_persona(chart, result, char)
         _p_title = _persona.get("title") or str(char.get("title", "Sai 캐릭터"))
         _p_line = _persona.get("line", "")
+        _p_job = _persona.get("job", "")
         st.markdown(
             f"<div style='background:#241327;border:1px solid #caa24c;"
             f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
             f"<div style='font-size:12px;color:#d6bd92;font-weight:700;letter-spacing:1px;margin-bottom:4px;'>🔮 한마디로!</div>"
             f"<div style='font-size:22px;font-weight:800;color:#fde68a;line-height:1.25;'>{html.escape(_p_title)}</div>"
+            + (f"<div style='display:inline-block;margin-top:8px;background:#2f1c36;border:1px solid #4a3550;"
+               f"border-radius:14px;padding:3px 11px;font-size:12px;color:#e0c98a;'>🧭 요즘으로 치면 {html.escape(_p_job)}</div>" if _p_job else "")
             + (f"<div style='font-size:15px;color:#e6d4bb;line-height:1.65;margin-top:8px;'>{html.escape(_p_line)}</div>" if _p_line else "")
             + "</div>",
             unsafe_allow_html=True,
