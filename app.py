@@ -24073,7 +24073,7 @@ def render_hanuneyo_text_explanation(payload, char, result):
         st.markdown(
             f"<div style='background:#241327;border:1px solid #caa24c;"
             f"border-radius:14px;padding:16px 18px;margin-bottom:12px;'>"
-            f"<div style='font-size:12px;color:#d6bd92;font-weight:700;letter-spacing:1px;margin-bottom:4px;'>🔮 딱 잘라 말하면</div>"
+            f"<div style='font-size:12px;color:#d6bd92;font-weight:700;letter-spacing:1px;margin-bottom:4px;'>🔮 한마디로!</div>"
             f"<div style='font-size:22px;font-weight:800;color:#fde68a;line-height:1.25;'>{html.escape(_p_title)}</div>"
             + (f"<div style='font-size:15px;color:#e6d4bb;line-height:1.65;margin-top:8px;'>{html.escape(_p_line)}</div>" if _p_line else "")
             + "</div>",
