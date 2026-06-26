@@ -18722,7 +18722,7 @@ def _daily_ten_god_usage(chart: Chart, day_gz: str) -> Dict[str, object]:
     }
 
 
-def daily_interaction_overview(interactions: List[Dict[str, str]], limit: int = 4) -> str:
+def daily_interaction_overview(interactions: List[Dict[str, str]], limit: int = 8) -> str:
     if not interactions:
         return "특이 신호 없음"
     parts: List[str] = []
@@ -19067,12 +19067,12 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             break
     _tg_line = _tengod_story.get(_tg_key, f"오늘 기운은 「{_day_gz}」이야. 하루를 천천히 살피며 가봐.")
 
-    # 신호 여부 — 의사 처방 말투 (형 > 충 > 합 순 우선)
+    # 신호 여부 — 의사 처방 말투 (충 > 형 > 합 순 우선: 충이 가장 강한 신호)
     _signal_line = ""
-    if "형" in _inter:
-        _signal_line = " 오늘은 형살 신호가 잡혀, 이 사람아. 억누르거나 억눌리는 기운이 껴 있는 날이거든. 속에서 뭔가 꽉 막히는 느낌 들 수 있어 — 그거 그냥 놔두면 안 돼. 감정을 안으로만 삭이지 말고, 가까운 사람한테라도 살짝 털어내봐. 말 못 할 상황이면 몸을 움직여 — 산책, 운동, 청소 뭐든. 그게 약이야."
-    elif "충" in _inter:
+    if "충" in _inter:
         _signal_line = " 오늘은 충 신호야. 내 원국이랑 오늘 기운이 서로 부딪히는 날이거든. 막히거나 어긋나는 일 생겨도 놀라지 마 — 오늘 원래 그런 날이야. 억지로 밀어붙이면 더 크게 부딪혀, 거봐. 오늘만큼은 유연하게 돌아가는 길을 찾아봐. 고집 부릴수록 손해야, 알겠지?"
+    elif "형" in _inter:
+        _signal_line = " 오늘은 형살 신호가 잡혀, 이 사람아. 억누르거나 억눌리는 기운이 껴 있는 날이거든. 속에서 뭔가 꽉 막히는 느낌 들 수 있어 — 그거 그냥 놔두면 안 돼. 감정을 안으로만 삭이지 말고, 가까운 사람한테라도 살짝 털어내봐. 말 못 할 상황이면 몸을 움직여 — 산책, 운동, 청소 뭐든. 그게 약이야."
     elif "합" in _inter:
         _signal_line = " 오늘은 합 신호야 — 이거 좋은 거야. 내 원국이랑 오늘 기운이 잘 엮이는 날이거든. 사람이 먼저 다가오거나, 생각지 못한 연결이 생길 수 있어. 억지로 만들려 하지 않아도 자연스럽게 맞아 들어가는 흐름이니까 — 열린 마음으로 받아들여봐. 이런 날 놓치면 아깝거든."
 
