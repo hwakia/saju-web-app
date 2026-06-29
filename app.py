@@ -5398,7 +5398,10 @@ def build_luck_flow_rows(
     age_basis: str,
 ) -> Dict[str, object]:
     age = calc_korean_age(birth_date) if age_basis == "세는나이" else calc_full_age(birth_date)
-    current = find_current_daewun(daewuns, age)
+    # 대운 판정은 절기 기준 전통 명리 관례에 따라 세는나이로 통일한다.
+    # (대운 start_age도 세는나이라 기준을 일치시켜야 교체 시점이 어긋나지 않는다)
+    _daewun_age = calc_korean_age(birth_date)
+    current = find_current_daewun(daewuns, _daewun_age)
     base_total = float(origin_result["total"])
 
     if not current:
