@@ -3984,7 +3984,9 @@ def get_saju_automated(
                     daewun_arr = []
         for dy in daewun_arr:
             try:
-                start_age = int(dy.getStartAge())
+                # lunar_python의 getStartAge()는 세는나이(虛歲) 기준이라 +1 얹혀 있다.
+                # 대운수는 출생 0세부터의 경과연수(만 나이)가 정석이므로 -1 보정한다. (삼명통회 기준)
+                start_age = max(0, int(dy.getStartAge()) - 1)
             except Exception:
                 start_age = None
             try:
@@ -5398,10 +5400,7 @@ def build_luck_flow_rows(
     age_basis: str,
 ) -> Dict[str, object]:
     age = calc_korean_age(birth_date) if age_basis == "세는나이" else calc_full_age(birth_date)
-    # 대운 판정은 절기 기준 전통 명리 관례에 따라 세는나이로 통일한다.
-    # (대운 start_age도 세는나이라 기준을 일치시켜야 교체 시점이 어긋나지 않는다)
-    _daewun_age = calc_korean_age(birth_date)
-    current = find_current_daewun(daewuns, _daewun_age)
+    current = find_current_daewun(daewuns, age)
     base_total = float(origin_result["total"])
 
     if not current:
@@ -5737,7 +5736,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "庚午 / 辛巳 / 丙戌 / 戊子",
-        "expected_start_age": 5,
+        "expected_start_age": 4,
         "note": "기준 앱 이미지: 일반 자시 처리, 대운수 5, 순행",
     },
     {
@@ -5749,7 +5748,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": True,
         "expected": "庚午 / 辛巳 / 乙酉 / 戊子",
-        "expected_start_age": 5,
+        "expected_start_age": 4,
         "note": "기준 앱 이미지: 야자시 처리, 대운수 5, 순행",
     },
     {
@@ -5761,7 +5760,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "庚午 / 辛巳 / 乙酉 / 壬午",
-        "expected_start_age": 6,
+        "expected_start_age": 5,
         "note": "기준 앱 이미지: 정오 출생, 대운수 6, 순행",
     },
     {
@@ -5773,7 +5772,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "丙子 / 辛丑 / 丙子 / 己亥",
-        "expected_start_age": 1,
+        "expected_start_age": 0,
         "note": "기준 앱 이미지: 입춘 전, 대운수 1, 순행",
     },
     {
@@ -5785,7 +5784,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "戊辰 / 丙辰 / 丁酉 / 辛亥",
-        "expected_start_age": 8,
+        "expected_start_age": 7,
         "note": "기준 앱 이미지: 23:20이지만 -30분 보정 후 22:50, 대운수 8, 순행",
     },
     {
@@ -5797,7 +5796,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": True,
         "expected": "戊辰 / 丙辰 / 丁酉 / 辛亥",
-        "expected_start_age": 8,
+        "expected_start_age": 7,
         "note": "기준 앱 이미지: 보정 후 亥시라 야자시 적용/미적용 결과 동일, 대운수 8, 순행",
     },
     {
@@ -5809,7 +5808,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "乙亥 / 丁亥 / 戊辰 / 壬子",
-        "expected_start_age": 2,
+        "expected_start_age": 1,
         "note": "기준 앱 이미지: 자정 직후, 대운수 2, 순행",
     },
     {
@@ -5821,7 +5820,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "壬申 / 戊申 / 乙丑 / 乙酉",
-        "expected_start_age": 3,
+        "expected_start_age": 2,
         "note": "기준 앱 이미지: 여자 대운 역행, 대운수 3",
     },
     {
@@ -5833,7 +5832,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "乙亥 / 乙酉 / 戊辰 / 己未",
-        "expected_start_age": 9,
+        "expected_start_age": 8,
         "note": "기준 앱 이미지: 음력 윤 1995-08-10 → 양력 1995-10-04, 대운수 9, 역행",
     },
     {
@@ -5845,7 +5844,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "辛未 / 壬辰 / 己巳 / 戊辰",
-        "expected_start_age": 2,
+        "expected_start_age": 1,
         "note": "기준 앱 이미지: 음력 1991-03-15 → 양력 1991-04-29, 대운수 2, 순행",
     },
     {
@@ -5857,7 +5856,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "丁丑 / 壬寅 / 丁丑 / 丙午",
-        "expected_start_age": 1,
+        "expected_start_age": 0,
         "note": "기준 앱 이미지: 입춘 후, 대운수 1, 역행",
     },    {
         "name": "샘플 13: 2004-02-04 05:55 여자, 양력, -30분",
@@ -5868,7 +5867,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "癸未 / 乙丑 / 癸丑 / 乙卯",
-        "expected_start_age": 1,
+        "expected_start_age": 0,
         "note": "기준 앱 이미지: 2004-02-04 05:55, 대운수 1, 순행",
     },
     {
@@ -5880,7 +5879,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "壬戌 / 癸丑 / 癸丑 / 甲寅",
-        "expected_start_age": 6,
+        "expected_start_age": 5,
         "note": "기준 앱 이미지: 1983-01-25 04:15, 대운수 6, 역행",
     },
     {
@@ -5892,7 +5891,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "己未 / 庚午 / 庚申 / 丙子",
-        "expected_start_age": 5,
+        "expected_start_age": 4,
         "note": "기준 앱 이미지: 1979-06-22 01:20, 대운수 5, 역행",
     },
     {
@@ -5904,7 +5903,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": False,
         "expected": "辛巳 / 乙未 / 辛未 / 己亥",
-        "expected_start_age": 10,
+        "expected_start_age": 9,
         "note": "기준 앱 이미지: 23:10이나 -30분 보정 후 22:40, 대운수 10, 순행",
     },
     {
@@ -5916,7 +5915,7 @@ SAMPLE_VALIDATION_CASES = [
         "correction_minutes": -30,
         "use_yajashee": True,
         "expected": "辛巳 / 乙未 / 辛未 / 己亥",
-        "expected_start_age": 10,
+        "expected_start_age": 9,
         "note": "기준 앱 이미지: 보정 후 亥시라 야자시 적용/미적용 결과 동일, 대운수 10, 순행",
     },
 
