@@ -19024,6 +19024,62 @@ def _today_luck_background_line(payload: Dict[str, object]) -> str:
     return " / ".join(parts) if parts else "대운·세운은 큰 배경, 일운은 오늘의 체감 바람으로 봅니다."
 
 
+_PUNCH_SIGNAL = {
+    "반음": "확 뒤집히기 쉬운 날 — 큰 결정은 하루 미뤄!",
+    "천간충": "생각이 부딪히는 날 — 중요한 말·결정은 한 박자 늦춰!",
+    "충": "부딪히는 날이여 — 고집 버리지 말고 돌아가!",
+    "천간합": "마음이 끌리는 날 — 좋은 인연·제안에 마음 열어!",
+    "합": "오늘은 사람이 복이여 — 다가오는 인연 잡어!",
+    "형": "속 끓이지 말고 몸을 움직여 — 그게 약이여!",
+    "원진": "괜히 거슬리는 사람 있는 날 — 한 발 물러서!",
+    "해": "발목 잡히기 쉬운 날 — 사소한 갈등 키우지 마!",
+    "파": "틀어지기 쉬운 날이여 — 약속·계획 한 번 더 확인혀!",
+    "복음": "제자리걸음 같은 날 — 새 일 벌이기보다 묵은 거 정리혀!",
+}
+_PUNCH_TENGOD = {
+    "비견": "혼자 다 짊어지지 마 — 손잡을 놈부터 찾어!",
+    "겁재": "오늘은 딱 한 발 빼라 — 욕심이 곧 손해여!",
+    "식신": "힘 빼고 즐겨 — 오늘은 쉬는 게 일이여!",
+    "상관": "머리는 열고 입은 조여 — 말실수 조심혀!",
+    "편재": "기회는 잡되 욕심엔 손 떼라!",
+    "정재": "서두르지 마 — 차근차근이 정답이여!",
+    "편관": "도망치지 말고 딱 끊어 결정해 — 미루면 더 커져!",
+    "정관": "오늘 쌓은 신뢰가 내일 밥이여 — 반듯하게 가!",
+    "편인": "혼자만의 시간 챙겨 — 시끄러운 데 끼지 마!",
+    "정인": "입 닫고 귀 열어 — 오늘은 죄다 가르침이여!",
+}
+_PUNCH_ORDER = ["반음", "천간충", "충", "천간합", "합", "형", "원진", "해", "파", "복음"]
+
+
+def daily_core_punch(compass: Dict[str, object]) -> str:
+    """compass(특정 날짜)의 핵심 처방 한 줄을 반환. (신호 강도순 → 십성 폴백)"""
+    kinds = [str(it.get("kind", "")) for it in (compass.get("interactions") or [])]
+    for k in _PUNCH_ORDER:
+        if k in kinds:
+            return _PUNCH_SIGNAL[k]
+    tg = str(compass.get("day_tengod_summary") or "")
+    for key, line in _PUNCH_TENGOD.items():
+        if key in tg:
+            return line
+    return ""
+
+
+def daily_push_teaser(chart: "Chart", result: Dict[str, object], target_date) -> Dict[str, str]:
+    """알림용 티저(제목+본문). 핵심 처방 한 줄만 보여주고 상세는 앱으로 유인."""
+    try:
+        compass = today_compass_payload(chart, result, target_date)
+    except Exception:
+        return {}
+    punch = daily_core_punch(compass) or "오늘 하루, 차분히 살펴봐."
+    day_gz = str(compass.get("day_gz", "-"))
+    return {
+        "date": target_date.isoformat(),
+        "title": "🌤 오늘의 핵심 처방",
+        "body": f"{punch} · 오늘 작용·풀이는 탭해서 확인 →",
+        "day_gz": day_gz,
+    }
+
+
 def render_today_quick_entry(payload: Dict[str, object]) -> None:
     """오늘의 처방 첫 화면: 핵심 4개만 Streamlit 기본 컴포넌트로 표시한다."""
     chart = payload.get("chart")
@@ -19091,35 +19147,10 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     else:
         _flow_grade, _flow_color = "🔵 보통", "#2563eb"
 
-    # ── 💊 오늘의 핵심 처방 (강렬 한 줄 처방) — 신호(형>충>합) 우선, 없으면 십성 ──
-    _PUNCH_SIGNAL = {
-        "반음": "확 뒤집히기 쉬운 날 — 큰 결정은 하루 미뤄!",
-        "천간충": "생각이 부딪히는 날 — 중요한 말·결정은 한 박자 늦춰!",
-        "충": "부딪히는 날이여 — 고집 버리지 말고 돌아가!",
-        "천간합": "마음이 끌리는 날 — 좋은 인연·제안에 마음 열어!",
-        "합": "오늘은 사람이 복이여 — 다가오는 인연 잡어!",
-        "형": "속 끓이지 말고 몸을 움직여 — 그게 약이여!",
-        "원진": "괜히 거슬리는 사람 있는 날 — 한 발 물러서!",
-        "해": "발목 잡히기 쉬운 날 — 사소한 갈등 키우지 마!",
-        "파": "틀어지기 쉬운 날이여 — 약속·계획 한 번 더 확인혀!",
-        "복음": "제자리걸음 같은 날 — 새 일 벌이기보다 묵은 거 정리혀!",
-    }
-    _PUNCH_TENGOD = {
-        "비견": "혼자 다 짊어지지 마 — 손잡을 놈부터 찾어!",
-        "겁재": "오늘은 딱 한 발 빼라 — 욕심이 곧 손해여!",
-        "식신": "힘 빼고 즐겨 — 오늘은 쉬는 게 일이여!",
-        "상관": "머리는 열고 입은 조여 — 말실수 조심혀!",
-        "편재": "기회는 잡되 욕심엔 손 떼라!",
-        "정재": "서두르지 마 — 차근차근이 정답이여!",
-        "편관": "도망치지 말고 딱 끊어 결정해 — 미루면 더 커져!",
-        "정관": "오늘 쌓은 신뢰가 내일 밥이여 — 반듯하게 가!",
-        "편인": "혼자만의 시간 챙겨 — 시끄러운 데 끼지 마!",
-        "정인": "입 닫고 귀 열어 — 오늘은 죄다 가르침이여!",
-    }
-    # 오늘 일진 합충형파해를 kind로 정확 판정 (강도순: 반음·충·합·형·원진·해·파·복음)
+    # ── 💊 오늘의 핵심 처방 (강렬 한 줄 처방) — 신호 강도순, 없으면 십성 (모듈 상수 재사용) ──
     _kinds = [str(_it.get("kind", "")) for _it in (compass.get("interactions") or [])]
     _punch = ""
-    for _k in ["반음", "천간충", "충", "천간합", "합", "형", "원진", "해", "파", "복음"]:
+    for _k in _PUNCH_ORDER:
         if _k in _kinds:
             _punch = _PUNCH_SIGNAL[_k]
             break
