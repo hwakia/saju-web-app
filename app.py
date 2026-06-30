@@ -19091,7 +19091,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     else:
         _flow_grade, _flow_color = "🔵 보통", "#2563eb"
 
-    # ── 💊 오늘의 한 방 (강렬 한 줄 처방) — 신호(형>충>합) 우선, 없으면 십성 ──
+    # ── 💊 오늘의 핵심 처방 (강렬 한 줄 처방) — 신호(형>충>합) 우선, 없으면 십성 ──
     _PUNCH_SIGNAL = {
         "반음": "확 뒤집히기 쉬운 날 — 큰 결정은 하루 미뤄!",
         "천간충": "생각이 부딪히는 날 — 중요한 말·결정은 한 박자 늦춰!",
@@ -19129,7 +19129,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
         st.markdown(
             f"<div style='background:{_flow_color}1a;border:1.5px solid {_flow_color};"
             f"border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center;'>"
-            f"<div style='font-size:11px;color:#d6bd92;letter-spacing:1px;margin-bottom:4px;'>💊 오늘의 한 방</div>"
+            f"<div style='font-size:11px;color:#d6bd92;letter-spacing:1px;margin-bottom:4px;'>💊 오늘의 핵심 처방</div>"
             f"<div style='font-size:18px;font-weight:800;color:#fde68a;line-height:1.4;'>{html.escape(_punch)}</div>"
             f"</div>",
             unsafe_allow_html=True,
