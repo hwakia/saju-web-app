@@ -19175,6 +19175,28 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             unsafe_allow_html=True,
         )
 
+    # ── 푸시 알림용: 앞으로 7일치 핵심 처방 티저를 localStorage에 저장 (Flutter가 읽어 예약) ──
+    try:
+        import json as _json
+        from datetime import date as _date, timedelta as _td
+        _today_d = _date.today()
+        _teasers = []
+        for _i in range(7):
+            _tz = daily_push_teaser(chart, result, _today_d + _td(days=_i))
+            if _tz:
+                _tz["hour"] = 8  # 기본 아침 8시 (추후 사용자 설정 가능)
+                _teasers.append(_tz)
+        if _teasers:
+            _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _teasers}, ensure_ascii=False)
+            import streamlit.components.v1 as _stc
+            _stc.html(
+                "<script>try{window.localStorage.setItem('sai_push_teasers_v1', "
+                + _json.dumps(_push_payload) + ");}catch(e){}</script>",
+                height=0,
+            )
+    except Exception:
+        pass
+
     _story_text = f"{_tg_line}{_signal_line}{_rx_line}"
 
     st.markdown(
