@@ -118,12 +118,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ── 오늘의 처방 로컬 알림 ─────────────────────────────────
-  // 동의(notif_consent_v1) 시 Android 13+ 알림 권한을 요청한다.
+  // 알림 여부를 아직 정하지 않은 사용자(동의 화면을 이미 지난 기존 사용자 포함)에게
+  // 앱 실행 시 딱 한 번 인앱 안내를 띄우고, '받기' 선택 시에만 OS 권한을 요청한다.
   Future<void> _maybeInitNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('notif_consent_v1') ?? true) {
+      if (prefs.containsKey('notif_consent_v1')) return;
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      final wantIt = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF241327),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Text('매일 오늘의 처방 알림',
+              style: TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.bold)),
+          content: const Text(
+            '매일 아침, 당신 사주의 오늘의 핵심 처방을 알림으로 받아보시겠어요?\n계산은 기기 안에서만 이뤄지고 서버로 전송되지 않습니다.',
+            style: TextStyle(color: Color(0xFFCBB8D6), height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('안 받을래요', style: TextStyle(color: Color(0xFF9A8AAA))),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('받을래요',
+                  style: TextStyle(color: Color(0xFFF0C75A), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      await prefs.setBool('notif_consent_v1', wantIt ?? false);
+      if (wantIt == true) {
         await NotificationService.requestPermission();
+        await _syncDailyNotifications();
       }
     } catch (_) {}
   }
