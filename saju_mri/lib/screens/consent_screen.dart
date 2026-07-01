@@ -103,6 +103,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                     _infoRow('비저장 항목', '생년월일·사주 팔자·성별'),
                     _infoRow('이용 제한', '만 14세 미만 이용 불가'),
                     const Divider(color: Color(0xFF3A2433), height: 20),
+                    _infoRow('알림(선택)', '동의 시 매일 오늘의 처방 알림을 받을 수 있어요. 처방 계산은 기기 안에서만 이뤄지며, 알림 내용은 서버로 전송·저장되지 않습니다.'),
                     _infoRow('광고', 'Google AdMob 배너·전면 광고가 표시됩니다'),
                     _infoRow('광고 식별자', 'Google 광고 ID(GAID)가 Google LLC(미국)로 전송될 수 있습니다'),
                     const SizedBox(height: 10),

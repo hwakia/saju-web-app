@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initWebView();
+    _maybeInitNotifications();
     // 동의 후 진입하는 HomeScreen에서만 광고 SDK 초기화·로드 (동의 전 전송 방지)
     MobileAds.instance.initialize().then((_) async {
       if (!mounted) return;
@@ -97,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _isInterstitialReady) {
               _showInterstitialAd();
             }
+            _syncDailyNotifications();
           },
           onWebResourceError: (error) {
             // 광고·이미지 등 부속 리소스 오류로는 오류 화면을 띄우지 않는다.
@@ -111,6 +115,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       )
       ..loadRequest(Uri.parse(_sajuUrl));
+  }
+
+  // ── 오늘의 처방 로컬 알림 ─────────────────────────────────
+  // 동의(notif_consent_v1) 시 Android 13+ 알림 권한을 요청한다.
+  Future<void> _maybeInitNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('notif_consent_v1') ?? true) {
+        await NotificationService.requestPermission();
+      }
+    } catch (_) {}
+  }
+
+  // 페이지 로드 시 웹앱이 localStorage에 넣어둔 7일치 티저를 읽어 알림 예약.
+  Future<void> _syncDailyNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('notif_consent_v1') ?? true)) return;
+      final raw = await _webViewController.runJavaScriptReturningResult(
+        "localStorage.getItem('sai_push_teasers_v1')",
+      );
+      String js = raw.toString();
+      if (js.isEmpty || js == 'null') return;
+      // Android는 결과를 JSON 인코딩 문자열로 감싸 반환할 수 있어 한 겹 해제
+      if (js.startsWith('"') && js.endsWith('"')) {
+        try {
+          final unq = jsonDecode(js);
+          if (unq is String) js = unq;
+        } catch (_) {}
+      }
+      if (js == 'null' || js.isEmpty) return;
+      await NotificationService.scheduleFromJson(js);
+    } catch (_) {}
   }
 
   // 광고 개인화 미동의 시 비맞춤형 광고로 요청
