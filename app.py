@@ -408,6 +408,25 @@ go = None
 
 ELEMENTS = ["목", "화", "토", "금", "수"]
 
+# ── 오행 표준 색 토큰 (전 화면·PNG 공통) ────────────────────────────
+# 어두운 자주/금색 테마와 어울리도록 채도를 낮춘 한 벌.
+# 색을 바꾸려면 여기만 고치면 만세력·오행분포·진단카드·예보·공유PNG에 전부 반영된다.
+EL_FG = {   # 어두운 배경 위 밝은 대표 글자색 (간지·라벨 텍스트)
+    "목": "#6ecf9a", "화": "#ef8b83", "토": "#e6c46a", "금": "#cdd3dc", "수": "#7db0e4",
+}
+EL_BG = {   # 어두운 오행 배경 틴트 (셀·칩 배경)
+    "목": "#16281d", "화": "#2e1618", "토": "#2a2110", "금": "#1c2128", "수": "#101f30",
+}
+EL_SOLID = {  # 중간 채도 대표색 (테두리·PNG 포인트·다이어그램 선)
+    "목": "#3fae74", "화": "#d9645b", "토": "#d4a43f", "금": "#9aa3b0", "수": "#4f86c8",
+}
+# ── 케미 12유형 색 (화면·PNG 공통) ─────────────────────────────────
+CHEM_GRADE_COLOR = {
+    "천생연분 케미": "#4ade80", "환상의 짝꿍": "#34d399", "불꽃 케미": "#fb7185", "척하면 척 케미": "#22d3ee",
+    "상호보완 케미": "#60a5fa", "의리 동맹 케미": "#818cf8", "티키타카 케미": "#fbbf24", "편안한 친구 케미": "#a3e635",
+    "사용설명서 케미": "#fb923c", "데면데면 케미": "#9ca3af", "애증 케미": "#f87171", "안 보면 보고 싶은 케미": "#f472b6",
+}
+
 STEMS = {
     "甲": {"ko": "갑", "element": "목", "polarity": "yang"},
     "乙": {"ko": "을", "element": "목", "polarity": "yin"},
@@ -15942,11 +15961,7 @@ def _render_room_result_view(room_id: str, participants: List[Dict]) -> None:
     )
 
     # ── 케미 등급 색상 ─────────────────────────────────────────
-    GRADE_COLOR = {
-        "천생연분 케미": "#4ade80", "환상의 짝꿍": "#34d399", "불꽃 케미": "#fb7185", "척하면 척 케미": "#22d3ee",
-        "상호보완 케미": "#60a5fa", "의리 동맹 케미": "#818cf8", "티키타카 케미": "#fbbf24", "편안한 친구 케미": "#a3e635",
-        "사용설명서 케미": "#fb923c", "데면데면 케미": "#9ca3af", "애증 케미": "#f87171", "안 보면 보고 싶은 케미": "#f472b6",
-    }
+    GRADE_COLOR = CHEM_GRADE_COLOR
 
     # ── 모든 쌍 케미 수집 ─────────────────────────────────────
     pairs = []
@@ -18091,11 +18106,11 @@ def _render_signal_list(title: str, items: List[str], empty: str) -> None:
 
 
 ELEMENT_VISUALS = {
-    "목": {"icon": "🌿", "bg": "#2a1830", "fg": "#4ade80"},
-    "화": {"icon": "🔥", "bg": "#2b1830", "fg": "#f87171"},
-    "토": {"icon": "⛰️", "bg": "#1e1408", "fg": "#fbbf24"},
-    "금": {"icon": "⚔️", "bg": "#181c22", "fg": "#94a3b8"},
-    "수": {"icon": "💧", "bg": "#080e28", "fg": "#60a5fa"},
+    "목": {"icon": "🌿", "bg": EL_BG["목"], "fg": EL_FG["목"]},
+    "화": {"icon": "🔥", "bg": EL_BG["화"], "fg": EL_FG["화"]},
+    "토": {"icon": "⛰️", "bg": EL_BG["토"], "fg": EL_FG["토"]},
+    "금": {"icon": "⚔️", "bg": EL_BG["금"], "fg": EL_FG["금"]},
+    "수": {"icon": "💧", "bg": EL_BG["수"], "fg": EL_FG["수"]},
 }
 
 
@@ -19441,11 +19456,11 @@ def share_card_operation_interpretation(char: Dict[str, str], result: Dict[str, 
 
 
 LANDSCAPE_ELEMENT_META = {
-    "목": {"icon": "🌿", "tone": "초목", "color": "#22c55e"},
-    "화": {"icon": "☀️", "tone": "빛과 온기", "color": "#f97316"},
-    "토": {"icon": "⛰️", "tone": "땅과 지반", "color": "#b7791f"},
-    "금": {"icon": "◇", "tone": "바위와 금속", "color": "#64748b"},
-    "수": {"icon": "💧", "tone": "물길과 흐름", "color": "#2563eb"},
+    "목": {"icon": "🌿", "tone": "초목", "color": EL_FG["목"]},
+    "화": {"icon": "☀️", "tone": "빛과 온기", "color": EL_FG["화"]},
+    "토": {"icon": "⛰️", "tone": "땅과 지반", "color": EL_FG["토"]},
+    "금": {"icon": "◇", "tone": "바위와 금속", "color": EL_FG["금"]},
+    "수": {"icon": "💧", "tone": "물길과 흐름", "color": EL_FG["수"]},
 }
 
 STEM_SCENE_OBJECT = {
@@ -21099,11 +21114,7 @@ def make_room_chem_result_png_bytes(
     except Exception:
         return None
 
-    GRADE_COLOR = {
-        "천생연분 케미": "#4ade80", "환상의 짝꿍": "#34d399", "불꽃 케미": "#fb7185", "척하면 척 케미": "#22d3ee",
-        "상호보완 케미": "#60a5fa", "의리 동맹 케미": "#818cf8", "티키타카 케미": "#fbbf24", "편안한 친구 케미": "#a3e635",
-        "사용설명서 케미": "#fb923c", "데면데면 케미": "#9ca3af", "애증 케미": "#f87171", "안 보면 보고 싶은 케미": "#f472b6",
-    }
+    GRADE_COLOR = CHEM_GRADE_COLOR
     pairs_sorted = sorted(pairs, key=lambda x: x[2], reverse=True)
     show  = pairs_sorted[:10]
     extra = len(pairs_sorted) - len(show)
@@ -21271,13 +21282,7 @@ def make_simple_first_share_png_bytes(payload: Dict[str, object], char: Dict[str
     box(730, y, 994, y+160, "조후", [f"{climate_label} · {temp:.0f}/100", "차갑고 뜨거운 균형 감각"], fill="#2e1b33")
     y += 186
 
-    el_colors = {
-        "목": ("#1e3324", "#86efac"),
-        "화": ("#3a1e1e", "#fca5a5"),
-        "토": ("#3a2e1a", "#f0c75a"),
-        "금": ("#26262e", "#cbd5e1"),
-        "수": ("#1a2a3a", "#93c5fd"),
-    }
+    el_colors = {el: (EL_BG[el], EL_FG[el]) for el in ELEMENTS}
     draw.text((86, y), "오행 비율", fill="#f0c75a", font=f_label)
     pill_x = 86
     pill_y = y + 38
@@ -22196,7 +22201,7 @@ def group_chemistry_analysis(participants: list) -> dict:
     ELEM_KR  = ["목", "화", "토", "금", "수"]
     ELEM_HJ  = {"목": "木", "화": "火", "토": "土", "금": "金", "수": "水"}
     ELEM_KW  = {"목": "성장·추진", "화": "열정·표현", "토": "안정·조율", "금": "결단·정밀", "수": "지혜·유연"}
-    ELEM_COLORS = {"목": "#16a34a", "화": "#dc2626", "토": "#d97706", "금": "#6b7280", "수": "#2563eb"}
+    ELEM_COLORS = dict(EL_SOLID)
     ELEM_RX_GROUP = {
         "목": "자연 속 활동(산책·등산), 새 프로젝트 함께 시작, 초록 식물 두기",
         "화": "밝은 공간, 파티·축제·발표 함께하기, 촛불·모닥불 곁에 모이기",
@@ -26407,18 +26412,16 @@ def render_origin_identity_table(
     _short_lbl = {"시주": "시", "일주": "일", "월주": "월", "년주": "년"}
 
     def _el_color(ch: str, is_stem: bool) -> str:
-        tbl = {"목": "#34d399", "화": "#f87171", "토": "#fbbf24", "금": "#e5e7eb", "수": "#60a5fa"}
+        tbl = EL_FG
         d = STEMS if is_stem else BRANCHES
         el = d.get(ch, {}).get("element", "토")
         return tbl.get(el, "#fde68a")
 
     def _el_bg(ch: str, is_stem: bool) -> str:
-        tbl = {"목": "rgba(134,239,172,.55)", "화": "rgba(252,165,165,.52)",
-               "토": "rgba(253,224,71,.45)",  "금": "rgba(226,232,240,.50)",
-               "수": "rgba(147,197,253,.52)"}
+        tbl = EL_BG
         d = STEMS if is_stem else BRANCHES
         el = d.get(ch, {}).get("element", "토")
-        return tbl.get(el, "rgba(253,230,138,.35)")
+        return tbl.get(el, EL_BG["토"])
 
     _S_4BG = "background:rgba(18,14,32,.55);"   # 4운 컬럼 행 배경 (cool tint)
     _S_WBG = "background:rgba(26,17,4,.55);"    # 원국 컬럼 행 배경 (warm tint)
@@ -26436,8 +26439,8 @@ def render_origin_identity_table(
     _S_SIP  = "font-size:10px;color:#d6bd92;font-weight:900;text-align:center;min-height:13px;line-height:1.15;padding:2px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.45rem;font-weight:950;text-align:center;line-height:1.1;padding:2px 0;"
     _S_JJG  = "display:flex;flex-direction:column;align-items:center;font-size:11px;color:#8b93a3;font-weight:700;text-align:center;line-height:1.35;padding:2px 0;"
-    _S_UN   = "font-size:9.5px;color:#93c5fd;font-weight:800;text-align:center;padding:2px 0;"
-    _S_SS   = "font-size:9px;color:#f9a8d4;font-weight:800;text-align:center;padding:2px 0 3px;line-height:1.3;overflow:hidden;"
+    _S_UN   = "font-size:9px;color:#7d8aa0;font-weight:700;text-align:center;padding:2px 0;"
+    _S_SS   = "font-size:8.5px;color:#a888a0;font-weight:600;text-align:center;padding:2px 0 3px;line-height:1.3;overflow:hidden;"
     _S_SEP  = "border-left:1px solid rgba(212,168,83,.35);"
 
     p.append("<div style='position:relative;'>")
@@ -26554,13 +26557,7 @@ def render_origin_identity_table(
 
     # ── 오행 분포 (inline style) ──────────────────────────────
     # 어두운 배경 + 밝은 오행색 글씨/테두리 — 전역 CSS가 글자색을 덮어써도 가독성 유지
-    _OH_COLORS = {
-        "목": ("#0d2818", "#6dd8a8"),   # 초록
-        "화": ("#2b0f16", "#ff9ab5"),   # 분홍
-        "토": ("#2a2008", "#e8c46a"),   # 황금
-        "금": ("#1a222b", "#b8cfe0"),   # 연청
-        "수": ("#0d1a2e", "#7ab8ff"),   # 하늘
-    }
+    _OH_COLORS = {el: (EL_BG[el], EL_FG[el]) for el in ELEMENTS}
     p.append("<div style='display:flex;gap:.3rem;flex-wrap:nowrap;margin:.6rem 0 .5rem 0;"
              "justify-content:center;max-width:420px;margin-left:auto;margin-right:auto;'>")
     for el_key in ["목", "화", "토", "금", "수"]:
