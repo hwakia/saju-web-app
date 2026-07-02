@@ -26434,7 +26434,7 @@ def render_origin_identity_table(
                  "background:#241327;border-radius:12px;padding:5px 3px 7px;"
                  "border:1px solid rgba(212,168,83,.2);"
                  "-webkit-text-size-adjust:none;text-size-adjust:none;")
-    _S_WRAP = "display:grid;grid-template-columns:repeat(8,56px);gap:1px;width:max-content;"
+    _S_WRAP = "display:grid;grid-template-columns:repeat(8,56px);gap:1px;width:max-content;background:rgba(212,168,83,.16);"
     _S_LBL  = "font-size:11px;font-weight:700;text-align:center;padding:3px 0;letter-spacing:.01em;overflow:hidden;"
     _S_SIP  = "font-size:10px;color:#d6bd92;font-weight:900;text-align:center;min-height:13px;line-height:1.15;padding:2px 0;overflow:hidden;"
     _S_GZ   = "font-size:1.45rem;font-weight:950;text-align:center;line-height:1.1;padding:2px 0;"
