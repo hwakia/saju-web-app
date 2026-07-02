@@ -26423,115 +26423,134 @@ def render_origin_identity_table(
     _S_4BG = "background:rgba(18,14,32,.55);"   # 4운 컬럼 행 배경 (cool tint)
     _S_WBG = "background:rgba(26,17,4,.55);"    # 원국 컬럼 행 배경 (warm tint)
 
-    # ── inline-style 상수 (CSS class 대신 직접 적용) ─────────────
-    _S_WRAP = ("display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1px;"
-               "margin-bottom:.6rem;background:#241327;border-radius:12px;"
-               "padding:5px 2px 7px;border:1px solid rgba(212,168,83,.2);overflow:hidden;"
-               "-webkit-text-size-adjust:none;text-size-adjust:none;")
-    _S_LBL  = "font-size:7px;font-weight:700;text-align:center;padding:2px 0 2px;letter-spacing:.01em;overflow:hidden;"
-    _S_SIP  = "font-size:7.5px;color:#d6bd92;font-weight:900;text-align:center;min-height:9px;line-height:1.1;padding:1px 0;overflow:hidden;"
-    _S_GZ   = "font-size:1.05rem;font-weight:950;text-align:center;line-height:1.05;padding:1px 0;"
-    _S_JJG  = "display:flex;flex-direction:column;align-items:center;font-size:10px;color:#6b7280;font-weight:700;text-align:center;line-height:1.3;padding:1px 0;"
-    _S_UN   = "font-size:6.5px;color:#93c5fd;font-weight:800;text-align:center;padding:1px 0 2px;"
-    _S_SS   = "font-size:6px;color:#f9a8d4;font-weight:800;text-align:center;padding:1px 0 3px;line-height:1.3;overflow:hidden;"
-    _S_SEP  = "border-left:1px solid rgba(212,168,83,.3);"
+    # ── inline-style 상수 (가로 스크롤 그리드) ─────────────
+    # 8칸(원국 4 + 운 4)을 좁게 욱여넣지 않고 각 칸을 넉넉히 잡아,
+    # 대운·세운 스트립처럼 좌우로 스크롤하며 본다. 원국(시·일·월·년)이
+    # 왼쪽에 먼저 보이고, 오른쪽으로 밀면 대운·세운·월운·일운이 나온다.
+    _S_SCROLL = ("overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:.35rem;"
+                 "background:#241327;border-radius:12px;padding:5px 3px 7px;"
+                 "border:1px solid rgba(212,168,83,.2);"
+                 "-webkit-text-size-adjust:none;text-size-adjust:none;")
+    _S_WRAP = "display:grid;grid-template-columns:repeat(8,56px);gap:1px;width:max-content;"
+    _S_LBL  = "font-size:11px;font-weight:700;text-align:center;padding:3px 0;letter-spacing:.01em;overflow:hidden;"
+    _S_SIP  = "font-size:10px;color:#d6bd92;font-weight:900;text-align:center;min-height:13px;line-height:1.15;padding:2px 0;overflow:hidden;"
+    _S_GZ   = "font-size:1.45rem;font-weight:950;text-align:center;line-height:1.1;padding:2px 0;"
+    _S_JJG  = "display:flex;flex-direction:column;align-items:center;font-size:11px;color:#8b93a3;font-weight:700;text-align:center;line-height:1.35;padding:2px 0;"
+    _S_UN   = "font-size:9.5px;color:#93c5fd;font-weight:800;text-align:center;padding:2px 0;"
+    _S_SS   = "font-size:9px;color:#f9a8d4;font-weight:800;text-align:center;padding:2px 0 3px;line-height:1.3;overflow:hidden;"
+    _S_SEP  = "border-left:1px solid rgba(212,168,83,.35);"
 
+    p.append("<div style='position:relative;'>")
+    p.append(f"<div style='{_S_SCROLL}'>")
     p.append(f"<div style='{_S_WRAP}'>")
 
-    # ─ 레이블 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
-        p.append(f"<div style='{_S_LBL}{_S_4BG}color:{col4}'>{html.escape(lbl4)}</div>")
+    # ─ 레이블 행 (원국 먼저, 그 다음 운) ─
     for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
-        lc = "#fde68a" if lbl == "일주" else "#999"
-        p.append(f"<div style='{_S_LBL}{sep_st}{_S_WBG}color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
+        lc = "#fde68a" if lbl == "일주" else "#c9b48a"
+        p.append(f"<div style='{_S_LBL}{_S_WBG}color:{lc}'>{_short_lbl.get(lbl, lbl)}</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
+        p.append(f"<div style='{_S_LBL}{sep_st}{_S_4BG}color:{col4}'>{html.escape(lbl4)}</div>")
 
     # ─ 천간 십성 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
+    for i, (lbl, pi) in enumerate(pillars):
+        role = _role(lbl, pi, True) if pi else "-"
+        p.append(f"<div style='{_S_SIP}{_S_WBG}'>{html.escape(role)}</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
         ssip = relation_to_day(chart.day_master, s4) if s4 not in ("-", "?", "") else ""
-        p.append(f"<div style='{_S_SIP}{_S_4BG}'>{html.escape(ssip)}</div>")
-    for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
-        role = _role(lbl, pi, True) if pi else "-"
-        p.append(f"<div style='{_S_SIP}{sep_st}{_S_WBG}'>{html.escape(role)}</div>")
+        p.append(f"<div style='{_S_SIP}{sep_st}{_S_4BG}'>{html.escape(ssip)}</div>")
 
     # ─ 천간 글자 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
-        s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
-        sc = _el_color(s4, True) if s4 not in ("-", "?", "") else col4
-        ebg = _el_bg(s4, True) if s4 not in ("-", "?", "") else ""
-        bg4 = f"background:{ebg};" if ebg else _S_4BG
-        p.append(f"<div style='{_S_GZ}{bg4}color:{sc}'>{html.escape(s4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
         if pi:
             sc = _el_color(pi.stem, True)
             ebg = _el_bg(pi.stem, True)
             day_extra = "border:1px solid rgba(253,230,138,.5);" if lbl == "일주" else ""
-            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg};{day_extra}color:{sc}'>{html.escape(pi.stem)}</div>")
+            p.append(f"<div style='{_S_GZ}background:{ebg};{day_extra}color:{sc}'>{html.escape(pi.stem)}</div>")
         else:
-            p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
+            p.append(f"<div style='{_S_GZ}color:#555'>?</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
+        s4 = gz4[0] if gz4 and len(gz4) >= 1 else "-"
+        sc = _el_color(s4, True) if s4 not in ("-", "?", "") else col4
+        ebg = _el_bg(s4, True) if s4 not in ("-", "?", "") else ""
+        bg4 = f"background:{ebg};" if ebg else _S_4BG
+        p.append(f"<div style='{_S_GZ}{sep_st}{bg4}color:{sc}'>{html.escape(s4)}</div>")
 
     # ─ 지지 십성 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
+    for i, (lbl, pi) in enumerate(pillars):
+        role = _role(lbl, pi, False) if pi else "-"
+        p.append(f"<div style='{_S_SIP}{_S_WBG}'>{html.escape(role)}</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         bsip = relation_to_day(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
-        p.append(f"<div style='{_S_SIP}{_S_4BG}'>{html.escape(bsip)}</div>")
-    for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
-        role = _role(lbl, pi, False) if pi else "-"
-        p.append(f"<div style='{_S_SIP}{sep_st}{_S_WBG}'>{html.escape(role)}</div>")
+        p.append(f"<div style='{_S_SIP}{sep_st}{_S_4BG}'>{html.escape(bsip)}</div>")
 
     # ─ 지지 글자 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
-        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
-        bc = _el_color(b4, False) if b4 not in ("-", "?", "") else col4
-        ebg = _el_bg(b4, False) if b4 not in ("-", "?", "") else ""
-        bg4 = f"background:{ebg};" if ebg else _S_4BG
-        p.append(f"<div style='{_S_GZ}{bg4}color:{bc}'>{html.escape(b4)}</div>")
     for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
         if pi:
             bc = _el_color(pi.branch, False)
             ebg = _el_bg(pi.branch, False)
             day_extra = "border:1px solid rgba(253,230,138,.5);" if lbl == "일주" else ""
-            p.append(f"<div style='{_S_GZ}{sep_st}background:{ebg};{day_extra}color:{bc}'>{html.escape(pi.branch)}</div>")
+            p.append(f"<div style='{_S_GZ}background:{ebg};{day_extra}color:{bc}'>{html.escape(pi.branch)}</div>")
         else:
-            p.append(f"<div style='{_S_GZ}{sep_st}color:#555'>?</div>")
+            p.append(f"<div style='{_S_GZ}color:#555'>?</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
+        b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
+        bc = _el_color(b4, False) if b4 not in ("-", "?", "") else col4
+        ebg = _el_bg(b4, False) if b4 not in ("-", "?", "") else ""
+        bg4 = f"background:{ebg};" if ebg else _S_4BG
+        p.append(f"<div style='{_S_GZ}{sep_st}{bg4}color:{bc}'>{html.escape(b4)}</div>")
 
     # ─ 지장간 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
+    for i, (lbl, pi) in enumerate(pillars):
+        jjg = _jjg_compact(pi) if pi else ""
+        p.append(f"<div style='{_S_JJG}{_S_WBG}'>{jjg}</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         jjg4 = "".join(f"<div>{html.escape(hs)}</div>" for hs, _ in BRANCHES[b4]["hidden"]) if b4 in BRANCHES else ""
-        p.append(f"<div style='{_S_JJG}{_S_4BG}'>{jjg4}</div>")
-    for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
-        jjg = _jjg_compact(pi) if pi else ""
-        p.append(f"<div style='{_S_JJG}{sep_st}{_S_WBG}'>{jjg}</div>")
+        p.append(f"<div style='{_S_JJG}{sep_st}{_S_4BG}'>{jjg4}</div>")
 
     # ─ 12운성 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
+    for i, (lbl, pi) in enumerate(pillars):
+        stage = get_twelve_stage(chart.day_master, pi.branch) if pi else ""
+        p.append(f"<div style='{_S_UN}{_S_WBG}'>{html.escape(stage)}</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         stg = get_twelve_stage(chart.day_master, b4) if b4 not in ("-", "?", "") else ""
-        p.append(f"<div style='{_S_UN}{_S_4BG}'>{html.escape(stg)}</div>")
-    for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
-        stage = get_twelve_stage(chart.day_master, pi.branch) if pi else ""
-        p.append(f"<div style='{_S_UN}{sep_st}{_S_WBG}'>{html.escape(stage)}</div>")
+        p.append(f"<div style='{_S_UN}{sep_st}{_S_4BG}'>{html.escape(stg)}</div>")
 
     # ─ 신살 행 ─
-    for lbl4, gz4, col4 in _4un_disp:
+    for i, (lbl, pi) in enumerate(pillars):
+        ss = _sinsal_tags(pi.branch, pi.stem) if pi else ""
+        p.append(f"<div style='{_S_SS}{_S_WBG}'>{html.escape(ss)}</div>")
+    for j, (lbl4, gz4, col4) in enumerate(_4un_disp):
+        sep_st = _S_SEP if j == 0 else ""
         b4 = gz4[1] if gz4 and len(gz4) >= 2 else "-"
         s4 = gz4[0] if gz4 and len(gz4) >= 1 else ""
         ss4 = _sinsal_tags(b4, s4)
-        p.append(f"<div style='{_S_SS}{_S_4BG}'>{html.escape(ss4)}</div>")
-    for i, (lbl, pi) in enumerate(pillars):
-        sep_st = _S_SEP if i == 0 else ""
-        ss = _sinsal_tags(pi.branch, pi.stem) if pi else ""
-        p.append(f"<div style='{_S_SS}{sep_st}{_S_WBG}'>{html.escape(ss)}</div>")
+        p.append(f"<div style='{_S_SS}{sep_st}{_S_4BG}'>{html.escape(ss4)}</div>")
 
-    p.append("</div>")  # end 8col grid
+    p.append("</div>")  # end grid
+    p.append("</div>")  # end scroll
+    # 오른쪽 페이드 + 셰브런(›): 가로 스크롤 가능함을 시각적으로 암시
+    p.append("<div style='position:absolute;top:0;right:0;bottom:0;width:30px;"
+             "pointer-events:none;border-radius:0 12px 12px 0;"
+             "background:linear-gradient(to right,rgba(36,19,39,0),rgba(36,19,39,.94));'></div>")
+    p.append("<div style='position:absolute;top:50%;right:7px;transform:translateY(-50%);"
+             "pointer-events:none;color:#f0c75a;font-size:17px;font-weight:900;"
+             "text-shadow:0 0 4px rgba(0,0,0,.5);'>›</div>")
+    p.append("</div>")  # end relative wrapper
+    # 스크롤 힌트 텍스트 (조금 더 또렷하게)
+    p.append("<div style='text-align:center;font-size:10.5px;color:#c9a94a;font-weight:700;"
+             "margin:.12rem 0 .55rem;letter-spacing:.02em;'>"
+             "↔ 좌우로 밀어 대운·세운·월운·일운 보기</div>")
 
     # ── 오행 분포 (inline style) ──────────────────────────────
     # 어두운 배경 + 밝은 오행색 글씨/테두리 — 전역 CSS가 글자색을 덮어써도 가독성 유지
