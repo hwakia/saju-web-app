@@ -19162,6 +19162,15 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     else:
         _flow_grade, _flow_color = "🔵 보통", "#2563eb"
 
+    # ── 매일 아침 알림 동의 체크박스 (오늘의 핵심 처방 위) ──
+    if "push_optin_v1" not in st.session_state:
+        st.session_state["push_optin_v1"] = True
+    st.checkbox(
+        "🔔 매일 아침 8시 ‘오늘의 핵심 처방’ 알림 받기",
+        key="push_optin_v1",
+        help="계산은 기기 안에서만 이뤄지고 서버로 전송되지 않아요. 앱 알림 권한이 필요합니다.",
+    )
+
     # ── 💊 오늘의 핵심 처방 (강렬 한 줄 처방) — 신호 강도순, 없으면 십성 (모듈 상수 재사용) ──
     _kinds = [str(_it.get("kind", "")) for _it in (compass.get("interactions") or [])]
     _punch = ""
@@ -19201,17 +19210,20 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             if _tz:
                 _tz["hour"] = 8  # 기본 아침 8시 (추후 사용자 설정 가능)
                 _teasers.append(_tz)
-        if _teasers:
-            _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _teasers}, ensure_ascii=False)
-            import streamlit.components.v1 as _stc
-            _stc.html(
-                "<script>try{var _v=" + _json.dumps(_push_payload) + ";"
-                "try{window.top.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
-                "try{window.parent.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
-                "try{window.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
-                "}catch(e){}</script>",
-                height=0,
-            )
+        import streamlit.components.v1 as _stc
+        if _teasers and st.session_state.get("push_optin_v1", True):
+            _items_payload = _teasers
+        else:
+            _items_payload = []   # 미동의/없음 → 빈 목록 저장 시 Flutter가 예약 취소
+        _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _items_payload}, ensure_ascii=False)
+        _stc.html(
+            "<script>try{var _v=" + _json.dumps(_push_payload) + ";"
+            "try{window.top.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
+            "try{window.parent.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
+            "try{window.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
+            "}catch(e){}</script>",
+            height=0,
+        )
     except Exception:
         pass
 
