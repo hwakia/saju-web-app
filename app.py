@@ -19205,8 +19205,11 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _teasers}, ensure_ascii=False)
             import streamlit.components.v1 as _stc
             _stc.html(
-                "<script>try{window.localStorage.setItem('sai_push_teasers_v1', "
-                + _json.dumps(_push_payload) + ");}catch(e){}</script>",
+                "<script>try{var _v=" + _json.dumps(_push_payload) + ";"
+                "try{window.top.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
+                "try{window.parent.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
+                "try{window.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
+                "}catch(e){}</script>",
                 height=0,
             )
     except Exception:
