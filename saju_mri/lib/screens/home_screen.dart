@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isBannerLoaded = false;
   bool _isLoading = true;
   bool _hasError = false;
+  String? _lastSaiTest; // 웹 테스트 알림 신호 중복 방지
   bool _personalizedAds = false; // 광고 개인화 동의(기본=비맞춤형)
 
   // ─── 전면광고 ───────────────────────────────────────────────
@@ -69,6 +70,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ..addJavaScriptChannel('SaiPush', onMessageReceived: _onPushChannel)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onUrlChange: (UrlChange change) async {
+            final u = Uri.tryParse(change.url ?? '');
+            if (u == null) return;
+            final t = u.queryParameters['sai_test'];
+            if (t != null && t.isNotEmpty && t != _lastSaiTest) {
+              _lastSaiTest = t;
+              await NotificationService.requestPermission();
+              await NotificationService.showTestNow();
+            }
+          },
           onNavigationRequest: (request) {
             // Streamlit URL에서 app_ok=1 이 사라지면 다시 붙여준다
             final uri = Uri.tryParse(request.url);

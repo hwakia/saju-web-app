@@ -19172,12 +19172,9 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     )
     if st.button("🔔 지금 테스트 알림 보내기", key="push_test_btn",
                  help="앱에서 알림이 정상 작동하는지 즉시 확인해요. (앱에서 열었을 때만 작동)"):
-        import streamlit.components.v1 as _stc_t
-        _stc_t.html(
-            "<script>try{var _ch=(window.top&&window.top.SaiPush)||(window.parent&&window.parent.SaiPush)||window.SaiPush;"
-            "if(_ch){_ch.postMessage('test');}}catch(e){}</script>",
-            height=0,
-        )
+        # iframe 브리지 대신 URL 쿼리 파라미터로 신호 → Flutter가 onUrlChange로 감지
+        st.session_state["_sai_test_n"] = st.session_state.get("_sai_test_n", 0) + 1
+        st.query_params["sai_test"] = str(st.session_state["_sai_test_n"])
 
     # ── 💊 오늘의 핵심 처방 (강렬 한 줄 처방) — 신호 강도순, 없으면 십성 (모듈 상수 재사용) ──
     _kinds = [str(_it.get("kind", "")) for _it in (compass.get("interactions") or [])]
