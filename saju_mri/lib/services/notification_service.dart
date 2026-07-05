@@ -34,6 +34,25 @@ class NotificationService {
     return granted ?? true;
   }
 
+  /// 즉시 테스트 알림 표시 (권한·표시 파이프라인 확인용).
+  static Future<void> showTestNow() async {
+    await init();
+    const androidDetails = AndroidNotificationDetails(
+      'sai_daily',
+      '오늘의 처방',
+      channelDescription: '매일 오늘의 핵심 처방 알림',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails);
+    await _plugin.show(
+      9999,
+      '🌤 테스트 알림',
+      '알림이 정상 작동해요! 매일 아침 8시에 이렇게 옵니다.',
+      details,
+    );
+  }
+
   /// localStorage에서 읽은 JSON 문자열로 알림을 예약한다.
   static Future<void> scheduleFromJson(String? jsonStr) async {
     if (jsonStr == null) return;

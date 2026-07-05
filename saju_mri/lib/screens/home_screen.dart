@@ -66,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _initWebView() {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel('SaiPush', onMessageReceived: _onPushChannel)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
@@ -115,6 +116,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       )
       ..loadRequest(Uri.parse(_sajuUrl));
+  }
+
+  // 웹 체크박스(매일 아침 알림 받기)와 연동: 켜면 OS 권한 요청+예약, 끄면 취소.
+  Future<void> _onPushChannel(JavaScriptMessage message) async {
+    try {
+      final m = message.message.trim();
+      final prefs = await SharedPreferences.getInstance();
+      if (m == 'optin') {
+        await prefs.setBool('notif_consent_v1', true);
+        await NotificationService.requestPermission();
+        await _syncDailyNotifications();
+      } else if (m == 'optout') {
+        await prefs.setBool('notif_consent_v1', false);
+        await NotificationService.scheduleFromJson('{"v":1,"items":[]}');
+      } else if (m == 'test') {
+        await NotificationService.requestPermission();
+        await NotificationService.showTestNow();
+      }
+    } catch (_) {}
   }
 
   // ── 오늘의 처방 로컬 알림 ─────────────────────────────────
