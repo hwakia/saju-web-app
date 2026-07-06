@@ -54,10 +54,10 @@ class NotificationService {
   }
 
   /// localStorage에서 읽은 JSON 문자열로 알림을 예약한다.
-  static Future<void> scheduleFromJson(String? jsonStr) async {
-    if (jsonStr == null) return;
+  static Future<int> scheduleFromJson(String? jsonStr) async {
+    if (jsonStr == null) return 0;
     var s = jsonStr.trim();
-    if (s.isEmpty || s == 'null' || s == '"null"') return;
+    if (s.isEmpty || s == 'null' || s == '"null"') return 0;
     await init();
 
     // 최신 티저로 갱신: 기존 예약 전부 취소 후 재등록
@@ -68,10 +68,10 @@ class NotificationService {
       final decoded = jsonDecode(s);
       data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     } catch (_) {
-      return;
+      return 0;
     }
     final items = (data['items'] as List?) ?? const [];
-    if (items.isEmpty) return;
+    if (items.isEmpty) return 0;
 
     const androidDetails = AndroidNotificationDetails(
       'sai_daily',
@@ -84,6 +84,7 @@ class NotificationService {
 
     final now = tz.TZDateTime.now(tz.local);
     int id = 2000;
+    int scheduled = 0;
     for (final it in items) {
       if (it is! Map) continue;
       final dateStr = it['date']?.toString();
@@ -110,7 +111,25 @@ class NotificationService {
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
         );
+        scheduled++;
       } catch (_) {}
     }
+    // 콘솔 진단용(사용자에겐 안 보임): flutter run 시 예약 개수 확인
+    print('SAI schedule: $scheduled notifications from ${items.length} items');
+    return scheduled;
+  }
+
+  /// 즉시 정보 알림 표시 (예약 완료 확인 등).
+  static Future<void> showNow(String title, String body, {int id = 9998}) async {
+    await init();
+    const androidDetails = AndroidNotificationDetails(
+      'sai_daily',
+      '오늘의 처방',
+      channelDescription: '매일 오늘의 핵심 처방 알림',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails);
+    await _plugin.show(id, title, body, details);
   }
 }

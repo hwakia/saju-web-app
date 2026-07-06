@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _hasError = false;
   String? _lastSaiTest; // 웹 테스트 알림 신호 중복 방지
+  String? _lastSaiSched; // 예약 데이터 신호 중복 방지
   bool _personalizedAds = false; // 광고 개인화 동의(기본=비맞춤형)
 
   // ─── 전면광고 ───────────────────────────────────────────────
@@ -78,6 +79,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _lastSaiTest = t;
               await NotificationService.requestPermission();
               await NotificationService.showTestNow();
+            }
+            final sched = u.queryParameters['sai_sched'];
+            if (sched != null && sched.isNotEmpty && sched != _lastSaiSched) {
+              _lastSaiSched = sched;
+              await NotificationService.scheduleFromJson(sched);
             }
           },
           onNavigationRequest: (request) {

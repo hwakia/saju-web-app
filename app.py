@@ -19222,6 +19222,8 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
         else:
             _items_payload = []   # 미동의/없음 → 빈 목록 저장 시 Flutter가 예약 취소
         _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _items_payload}, ensure_ascii=False)
+        # 확실한 전달: URL 쿼리 파라미터로도 예약 데이터 전달 (Flutter onUrlChange가 예약)
+        st.query_params["sai_sched"] = _push_payload
         _optin_js = "true" if _optin else "false"
         _stc.html(
             "<script>try{var _v=" + _json.dumps(_push_payload) + ";var _optin=" + _optin_js + ";"
