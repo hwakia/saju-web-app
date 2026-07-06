@@ -5,6 +5,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -83,7 +84,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             final sched = u.queryParameters['sai_sched'];
             if (sched != null && sched.isNotEmpty && sched != _lastSaiSched) {
               _lastSaiSched = sched;
-              await NotificationService.scheduleFromJson(sched);
+              final n = await NotificationService.scheduleFromJson(sched);
+              if (n > 0) {
+                // 예약이 잡히면 딱 한 번 배터리 최적화 제외를 요청(삼성 등에서 알림 안정화)
+                final prefs = await SharedPreferences.getInstance();
+                if (!(prefs.getBool('batt_prompt_v1') ?? false)) {
+                  await prefs.setBool('batt_prompt_v1', true);
+                  try {
+                    if (await Permission.ignoreBatteryOptimizations.isDenied) {
+                      await Permission.ignoreBatteryOptimizations.request();
+                    }
+                  } catch (_) {}
+                }
+              }
             }
           },
           onNavigationRequest: (request) {
