@@ -19222,6 +19222,11 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
         else:
             _items_payload = []   # 미동의/없음 → 빈 목록 저장 시 Flutter가 예약 취소
         _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _items_payload}, ensure_ascii=False)
+        # 예약 데이터를 메인 페이지 DOM에 숨겨 심는다 → 앱이 직접 읽어 예약(iframe·URL 문제 없음)
+        st.markdown(
+            "<div id='sai_sched_data' style='display:none'>" + html.escape(_push_payload) + "</div>",
+            unsafe_allow_html=True,
+        )
         _optin_js = "true" if _optin else "false"
         _stc.html(
             "<script>try{var _v=" + _json.dumps(_push_payload) + ";var _optin=" + _optin_js + ";"

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,7 +23,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _hasError = false;
   String? _lastSaiTest; // 웹 테스트 알림 신호 중복 방지
-  String? _lastSaiSched; // 예약 데이터 신호 중복 방지
+  Timer? _schedPoll; // 예약 데이터 폴링 타이머
+  String? _lastDivSched; // 예약 데이터 중복 방지
   bool _personalizedAds = false; // 광고 개인화 동의(기본=비맞춤형)
 
   // ─── 전면광고 ───────────────────────────────────────────────
@@ -47,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _initWebView();
     _maybeInitNotifications();
+    _schedPoll = Timer.periodic(const Duration(seconds: 7), (_) => _pollSchedData());
     // 동의 후 진입하는 HomeScreen에서만 광고 SDK 초기화·로드 (동의 전 전송 방지)
     MobileAds.instance.initialize().then((_) async {
       if (!mounted) return;
@@ -80,23 +83,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _lastSaiTest = t;
               await NotificationService.requestPermission();
               await NotificationService.showTestNow();
-            }
-            final sched = u.queryParameters['sai_sched'];
-            if (sched != null && sched.isNotEmpty && sched != _lastSaiSched) {
-              _lastSaiSched = sched;
-              final n = await NotificationService.scheduleFromJson(sched);
-              if (n > 0) {
-                // 예약이 잡히면 딱 한 번 배터리 최적화 제외를 요청(삼성 등에서 알림 안정화)
-                final prefs = await SharedPreferences.getInstance();
-                if (!(prefs.getBool('batt_prompt_v1') ?? false)) {
-                  await prefs.setBool('batt_prompt_v1', true);
-                  try {
-                    if (await Permission.ignoreBatteryOptimizations.isDenied) {
-                      await Permission.ignoreBatteryOptimizations.request();
-                    }
-                  } catch (_) {}
-                }
-              }
             }
           },
           onNavigationRequest: (request) {
@@ -209,6 +195,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // 페이지 로드 시 웹앱이 localStorage에 넣어둔 7일치 티저를 읽어 알림 예약.
+  // 웹이 메인 페이지에 심어둔 예약 데이터(hidden div)를 주기적으로 읽어 예약한다.
+  Future<void> _pollSchedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('notif_consent_v1') ?? true)) return;
+      final raw = await _webViewController.runJavaScriptReturningResult(
+        "(function(){var e=document.getElementById('sai_sched_data');return e?e.textContent:'';})()",
+      );
+      String s = raw.toString();
+      if (s.isEmpty || s == 'null') return;
+      if (s.startsWith('"') && s.endsWith('"')) {
+        try {
+          final d = jsonDecode(s);
+          if (d is String) s = d;
+        } catch (_) {}
+      }
+      if (s.isEmpty || s == 'null' || s == _lastDivSched) return;
+      _lastDivSched = s;
+      final n = await NotificationService.scheduleFromJson(s);
+      if (n > 0 && !(prefs.getBool('batt_prompt_v1') ?? false)) {
+        await prefs.setBool('batt_prompt_v1', true);
+        try {
+          if (await Permission.ignoreBatteryOptimizations.isDenied) {
+            await Permission.ignoreBatteryOptimizations.request();
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   Future<void> _syncDailyNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -474,6 +490,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _schedPoll?.cancel();
     _bannerAd?.dispose();
     _interstitialAd?.dispose();
     super.dispose();
