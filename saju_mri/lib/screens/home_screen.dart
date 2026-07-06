@@ -199,7 +199,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _pollSchedData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (!(prefs.getBool('notif_consent_v1') ?? true)) return;
       final raw = await _webViewController.runJavaScriptReturningResult(
         "(function(){var e=document.getElementById('sai_sched_data');return e?e.textContent:'';})()",
       );
@@ -214,13 +213,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (s.isEmpty || s == 'null' || s == _lastDivSched) return;
       _lastDivSched = s;
       final n = await NotificationService.scheduleFromJson(s);
-      if (n > 0 && !(prefs.getBool('batt_prompt_v1') ?? false)) {
-        await prefs.setBool('batt_prompt_v1', true);
-        try {
-          if (await Permission.ignoreBatteryOptimizations.isDenied) {
-            await Permission.ignoreBatteryOptimizations.request();
-          }
-        } catch (_) {}
+      if (n > 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('🔔 오늘의 처방 알림 $n개 예약됨'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: const Color(0xFF2A2344),
+          ));
+        }
+        if (!(prefs.getBool('batt_prompt_v1') ?? false)) {
+          await prefs.setBool('batt_prompt_v1', true);
+          try {
+            if (await Permission.ignoreBatteryOptimizations.isDenied) {
+              await Permission.ignoreBatteryOptimizations.request();
+            }
+          } catch (_) {}
+        }
       }
     } catch (_) {}
   }
