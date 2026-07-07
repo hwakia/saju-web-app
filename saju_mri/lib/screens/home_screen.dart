@@ -200,7 +200,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = await _webViewController.runJavaScriptReturningResult(
-        "(function(){var e=document.getElementById('sai_sched_data');return e?e.textContent:'';})()",
+        "(function(){"
+        "try{var v=localStorage.getItem('sai_push_teasers_v1');if(v)return v;}catch(e){}"
+        "try{var el=document.getElementById('sai_sched_data');if(el&&el.textContent)return el.textContent;}catch(e){}"
+        "return '';})()",
       );
       String s = raw.toString();
       if (s.isEmpty || s == 'null') return;
@@ -216,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (n > 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('🔔 오늘의 처방 알림 $n개 예약됨'),
+            content: const Text('🔔 오늘의 처방 알림 예약됨'),
             duration: const Duration(seconds: 3),
             backgroundColor: const Color(0xFF2A2344),
           ));
