@@ -200,10 +200,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = await _webViewController.runJavaScriptReturningResult(
-        "(function(){"
-        "try{var v=localStorage.getItem('sai_push_teasers_v1');if(v)return v;}catch(e){}"
-        "try{var el=document.getElementById('sai_sched_data');if(el&&el.textContent)return el.textContent;}catch(e){}"
-        "return '';})()",
+        "(function(){try{var t=document.body?document.body.textContent:'';"
+        "var a=t.indexOf('@@SAI@@');var b=t.indexOf('@@END@@');"
+        "if(a>=0&&b>a)return t.substring(a+7,b);}catch(e){}return '';})()",
       );
       String s = raw.toString();
       if (s.isEmpty || s == 'null') return;

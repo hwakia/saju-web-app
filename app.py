@@ -19224,7 +19224,7 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
         _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _items_payload}, ensure_ascii=False)
         # 예약 데이터를 메인 페이지 DOM에 숨겨 심는다 → 앱이 직접 읽어 예약(iframe·URL 문제 없음)
         st.markdown(
-            "<div id='sai_sched_data' style='display:none'>" + html.escape(_push_payload) + "</div>",
+            "<div style='display:none'>@@SAI@@" + html.escape(_push_payload) + "@@END@@</div>",
             unsafe_allow_html=True,
         )
         # [진단용] 웹이 예약 데이터를 만들었는지 눈으로 확인 (나중에 제거)
