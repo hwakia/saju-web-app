@@ -19227,6 +19227,8 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             "<div id='sai_sched_data' style='display:none'>" + html.escape(_push_payload) + "</div>",
             unsafe_allow_html=True,
         )
+        # [진단용] 웹이 예약 데이터를 만들었는지 눈으로 확인 (나중에 제거)
+        st.caption(f"🔧 예약 데이터: {len(_items_payload)}건 준비됨 · 체크={_optin}")
         _optin_js = "true" if _optin else "false"
         _stc.html(
             "<script>try{var _v=" + _json.dumps(_push_payload) + ";var _optin=" + _optin_js + ";"
