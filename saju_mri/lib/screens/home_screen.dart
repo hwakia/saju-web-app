@@ -214,7 +214,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
       if (s.isEmpty || s == 'null' || s == _lastDivSched) return;
       _lastDivSched = s;
-      final n = await NotificationService.scheduleFromJson(s);
+      String jsonStr;
+      try {
+        final bytes = <int>[];
+        for (int i = 0; i + 1 < s.length; i += 2) {
+          bytes.add(int.parse(s.substring(i, i + 2), radix: 16));
+        }
+        jsonStr = utf8.decode(bytes);
+      } catch (_) {
+        return;
+      }
+      final n = await NotificationService.scheduleFromJson(jsonStr);
       if (n > 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
