@@ -19162,20 +19162,6 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
     else:
         _flow_grade, _flow_color = "🔵 보통", "#2563eb"
 
-    # ── 매일 아침 알림 동의 체크박스 (오늘의 핵심 처방 위) ──
-    if "push_optin_v1" not in st.session_state:
-        st.session_state["push_optin_v1"] = True
-    st.checkbox(
-        "🔔 매일 아침 8시 ‘오늘의 핵심 처방’ 알림 받기",
-        key="push_optin_v1",
-        help="계산은 기기 안에서만 이뤄지고 서버로 전송되지 않아요. 앱 알림 권한이 필요합니다.",
-    )
-    if st.button("🔔 지금 테스트 알림 보내기", key="push_test_btn",
-                 help="앱에서 알림이 정상 작동하는지 즉시 확인해요. (앱에서 열었을 때만 작동)"):
-        # iframe 브리지 대신 URL 쿼리 파라미터로 신호 → Flutter가 onUrlChange로 감지
-        st.session_state["_sai_test_n"] = st.session_state.get("_sai_test_n", 0) + 1
-        st.query_params["sai_test"] = str(st.session_state["_sai_test_n"])
-
     # ── 💊 오늘의 핵심 처방 (강렬 한 줄 처방) — 신호 강도순, 없으면 십성 (모듈 상수 재사용) ──
     _kinds = [str(_it.get("kind", "")) for _it in (compass.get("interactions") or [])]
     _punch = ""
@@ -19203,45 +19189,6 @@ def render_today_quick_entry(payload: Dict[str, object]) -> None:
             f"<span style='color:#9a8aaa;'>오늘 작용</span> · {html.escape(_io)}</div>",
             unsafe_allow_html=True,
         )
-
-    # ── 푸시 알림용: 앞으로 7일치 핵심 처방 티저를 localStorage에 저장 (Flutter가 읽어 예약) ──
-    try:
-        import json as _json
-        from datetime import date as _date, timedelta as _td
-        _today_d = _date.today()
-        _teasers = []
-        for _i in range(7):
-            _tz = daily_push_teaser(chart, result, _today_d + _td(days=_i))
-            if _tz:
-                _tz["hour"] = 8  # 기본 아침 8시 (추후 사용자 설정 가능)
-                _teasers.append(_tz)
-        import streamlit.components.v1 as _stc
-        _optin = bool(st.session_state.get("push_optin_v1", True))
-        if _teasers and _optin:
-            _items_payload = _teasers
-        else:
-            _items_payload = []   # 미동의/없음 → 빈 목록 저장 시 Flutter가 예약 취소
-        _push_payload = _json.dumps({"v": 1, "updated": _today_d.isoformat(), "items": _items_payload}, ensure_ascii=False)
-        # 예약 데이터를 메인 페이지 DOM에 숨겨 심는다 → 앱이 직접 읽어 예약(iframe·URL 문제 없음)
-        st.markdown(
-            "<div style='display:none'>@@SAI@@" + _push_payload.encode("utf-8").hex() + "@@END@@</div>",
-            unsafe_allow_html=True,
-        )
-        # [진단용] 웹이 예약 데이터를 만들었는지 눈으로 확인 (나중에 제거)
-        st.caption(f"🔧 예약 데이터: {len(_items_payload)}건 준비됨 · 체크={_optin}")
-        _optin_js = "true" if _optin else "false"
-        _stc.html(
-            "<script>try{var _v=" + _json.dumps(_push_payload) + ";var _optin=" + _optin_js + ";"
-            "try{window.top.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
-            "try{window.parent.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
-            "try{window.localStorage.setItem('sai_push_teasers_v1',_v);}catch(e){}"
-            "try{var _ch=(window.top&&window.top.SaiPush)||(window.parent&&window.parent.SaiPush)||window.SaiPush;"
-            "if(_ch){_ch.postMessage(_optin?'optin':'optout');}}catch(e){}"
-            "}catch(e){}</script>",
-            height=0,
-        )
-    except Exception:
-        pass
 
     _story_text = f"{_tg_line}{_signal_line}{_rx_line}"
 
