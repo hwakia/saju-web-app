@@ -1,13 +1,9 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,9 +18,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isBannerLoaded = false;
   bool _isLoading = true;
   bool _hasError = false;
-  String? _lastSaiTest; // 웹 테스트 알림 신호 중복 방지
-  Timer? _schedPoll; // 예약 데이터 폴링 타이머
-  String? _lastDivSched; // 예약 데이터 중복 방지
   bool _personalizedAds = false; // 광고 개인화 동의(기본=비맞춤형)
 
   // ─── 전면광고 ───────────────────────────────────────────────
@@ -48,8 +41,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initWebView();
-    _maybeInitNotifications();
-    _schedPoll = Timer.periodic(const Duration(seconds: 7), (_) => _pollSchedData());
     // 동의 후 진입하는 HomeScreen에서만 광고 SDK 초기화·로드 (동의 전 전송 방지)
     MobileAds.instance.initialize().then((_) async {
       if (!mounted) return;
@@ -72,19 +63,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _initWebView() {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel('SaiPush', onMessageReceived: _onPushChannel)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onUrlChange: (UrlChange change) async {
-            final u = Uri.tryParse(change.url ?? '');
-            if (u == null) return;
-            final t = u.queryParameters['sai_test'];
-            if (t != null && t.isNotEmpty && t != _lastSaiTest) {
-              _lastSaiTest = t;
-              await NotificationService.requestPermission();
-              await NotificationService.showTestNow();
-            }
-          },
           onNavigationRequest: (request) {
             // Streamlit URL에서 app_ok=1 이 사라지면 다시 붙여준다
             final uri = Uri.tryParse(request.url);
@@ -117,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _isInterstitialReady) {
               _showInterstitialAd();
             }
-            _syncDailyNotifications();
           },
           onWebResourceError: (error) {
             // 광고·이미지 등 부속 리소스 오류로는 오류 화면을 띄우지 않는다.
@@ -132,138 +111,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       )
       ..loadRequest(Uri.parse(_sajuUrl));
-  }
-
-  // 웹 체크박스(매일 아침 알림 받기)와 연동: 켜면 OS 권한 요청+예약, 끄면 취소.
-  Future<void> _onPushChannel(JavaScriptMessage message) async {
-    try {
-      final m = message.message.trim();
-      final prefs = await SharedPreferences.getInstance();
-      if (m == 'optin') {
-        await prefs.setBool('notif_consent_v1', true);
-        await NotificationService.requestPermission();
-        await _syncDailyNotifications();
-      } else if (m == 'optout') {
-        await prefs.setBool('notif_consent_v1', false);
-        await NotificationService.scheduleFromJson('{"v":1,"items":[]}');
-      } else if (m == 'test') {
-        await NotificationService.requestPermission();
-        await NotificationService.showTestNow();
-      }
-    } catch (_) {}
-  }
-
-  // ── 오늘의 처방 로컬 알림 ─────────────────────────────────
-  // 알림 여부를 아직 정하지 않은 사용자(동의 화면을 이미 지난 기존 사용자 포함)에게
-  // 앱 실행 시 딱 한 번 인앱 안내를 띄우고, '받기' 선택 시에만 OS 권한을 요청한다.
-  Future<void> _maybeInitNotifications() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.containsKey('notif_consent_v1')) return;
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
-      final wantIt = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF241327),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          title: const Text('매일 오늘의 처방 알림',
-              style: TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.bold)),
-          content: const Text(
-            '매일 아침, 당신 사주의 오늘의 핵심 처방을 알림으로 받아보시겠어요?\n계산은 기기 안에서만 이뤄지고 서버로 전송되지 않습니다.',
-            style: TextStyle(color: Color(0xFFCBB8D6), height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('안 받을래요', style: TextStyle(color: Color(0xFF9A8AAA))),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('받을래요',
-                  style: TextStyle(color: Color(0xFFF0C75A), fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-      await prefs.setBool('notif_consent_v1', wantIt ?? false);
-      if (wantIt == true) {
-        await NotificationService.requestPermission();
-        await _syncDailyNotifications();
-      }
-    } catch (_) {}
-  }
-
-  // 페이지 로드 시 웹앱이 localStorage에 넣어둔 7일치 티저를 읽어 알림 예약.
-  // 웹이 메인 페이지에 심어둔 예약 데이터(hidden div)를 주기적으로 읽어 예약한다.
-  Future<void> _pollSchedData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = await _webViewController.runJavaScriptReturningResult(
-        "(function(){try{var t=document.body?document.body.textContent:'';"
-        "var a=t.indexOf('@@SAI@@');var b=t.indexOf('@@END@@');"
-        "if(a>=0&&b>a)return t.substring(a+7,b);}catch(e){}return '';})()",
-      );
-      String s = raw.toString();
-      if (s.isEmpty || s == 'null') return;
-      if (s.startsWith('"') && s.endsWith('"')) {
-        try {
-          final d = jsonDecode(s);
-          if (d is String) s = d;
-        } catch (_) {}
-      }
-      if (s.isEmpty || s == 'null' || s == _lastDivSched) return;
-      _lastDivSched = s;
-      String jsonStr;
-      try {
-        final bytes = <int>[];
-        for (int i = 0; i + 1 < s.length; i += 2) {
-          bytes.add(int.parse(s.substring(i, i + 2), radix: 16));
-        }
-        jsonStr = utf8.decode(bytes);
-      } catch (_) {
-        return;
-      }
-      final n = await NotificationService.scheduleFromJson(jsonStr);
-      if (n > 0) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('🔔 오늘의 처방 알림 예약됨'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: const Color(0xFF2A2344),
-          ));
-        }
-        if (!(prefs.getBool('batt_prompt_v1') ?? false)) {
-          await prefs.setBool('batt_prompt_v1', true);
-          try {
-            if (await Permission.ignoreBatteryOptimizations.isDenied) {
-              await Permission.ignoreBatteryOptimizations.request();
-            }
-          } catch (_) {}
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _syncDailyNotifications() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (!(prefs.getBool('notif_consent_v1') ?? true)) return;
-      final raw = await _webViewController.runJavaScriptReturningResult(
-        "localStorage.getItem('sai_push_teasers_v1')",
-      );
-      String js = raw.toString();
-      if (js.isEmpty || js == 'null') return;
-      // Android는 결과를 JSON 인코딩 문자열로 감싸 반환할 수 있어 한 겹 해제
-      if (js.startsWith('"') && js.endsWith('"')) {
-        try {
-          final unq = jsonDecode(js);
-          if (unq is String) js = unq;
-        } catch (_) {}
-      }
-      if (js == 'null' || js.isEmpty) return;
-      await NotificationService.scheduleFromJson(js);
-    } catch (_) {}
   }
 
   // 광고 개인화 미동의 시 비맞춤형 광고로 요청
@@ -510,7 +357,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _schedPoll?.cancel();
     _bannerAd?.dispose();
     _interstitialAd?.dispose();
     super.dispose();
